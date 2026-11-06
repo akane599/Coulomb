@@ -30,8 +30,10 @@ internal class ParseContext(
         name: String,
         count: Int = 1,
     ) {
-        // A hostile or broken dump must not grow this map without bound.
-        val key = if (unknown.size < MAX_UNKNOWN_NAMES || name in unknown) name.take(MAX_NAME) else OTHER
+        // A hostile or broken dump must not grow this map without bound. Names are cut before the
+        // lookup, so a long name already counted keeps counting once the map is full.
+        val cut = name.take(MAX_NAME)
+        val key = if (unknown.size < MAX_UNKNOWN_NAMES || cut in unknown) cut else OTHER
         unknown[key] = (unknown[key] ?: 0) + count
     }
 

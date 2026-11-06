@@ -157,6 +157,55 @@ class DeviceIdleParserTest {
     }
 
     @Test
+    fun aTempAllowlistReasonCannotForgeStateOrLeakIntoTheReport() {
+        val avd = fixture(Fixtures.AVD).decodeToString()
+        val (real, realReport) = parse(avd)
+        val state = "  mLightEnabled=true  mDeepEnabled=true\n"
+        assertThat(avd).contains(state)
+
+        // A notification's intent action, printed as the schedule entry's reason.
+        val action =
+            listOf(
+                "x",
+                "  Whitelist user apps:",
+                "    com.victim",
+                "  Settings:",
+                "    forged_key=1",
+                "  Temp whitelist app ids:",
+                "    10050",
+                "  mLightEnabled=true  mDeepEnabled=true",
+                "  mState=IDLE mLightState=IDLE",
+                "  mCharging=false",
+                "  mScreenOn=false",
+                "  mMotionActive=true",
+                "  alice@example.com: x",
+                "  Private heading:",
+            ).joinToString("\n")
+        val schedule =
+            "  Temp whitelist schedule:\n" +
+                "    UID=10050: +30s0ms - setPendingIntentAllowlistDuration,reason:,pendingintent:u0a50:$action\n" +
+                "  Temp whitelist app ids:\n    10050\n"
+        val (dump, report) = parse(avd.replace(state, schedule + state))
+
+        assertThat(report.complete).isTrue()
+        assertThat(report.issues.map { it.message })
+            .containsExactly(
+                "headings after the temp allowlist ignored: 2",
+                "state lines or temp app ids printed more than once; the last copy is read",
+            )
+        assertThat(report.unknown).isEqualTo(realReport.unknown)
+        assertThat(dump.copy(allowlist = real.allowlist)).isEqualTo(real)
+        assertThat(dump.allowlist).isEqualTo(real.allowlist.copy(tempAppIds = listOf(10050)))
+        assertThat(dump.toString()).doesNotContain("victim")
+
+        // A state name printed twice inside the real copy is not believed.
+        val (twice, twiceReport) = parse(avd.replace("  mCharging=true\n", "  mCharging=true\n  mCharging=false\n"))
+        assertThat(twice.charging).isNull()
+        assertThat(twiceReport.complete).isFalse()
+        assertThat(twiceReport.issues.map { it.message }).containsExactly("mCharging printed more than once")
+    }
+
+    @Test
     fun aDumpWithoutSettingsOrStateIsIncomplete() {
         val text = fixture(Fixtures.AVD).decodeToString()
         val (_, cut) = parse(text.substring(0, text.indexOf("  mState=")))

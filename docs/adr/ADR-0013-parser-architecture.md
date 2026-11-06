@@ -158,8 +158,8 @@ in such text can print a line that looks like the platform's own. What each pars
   file at both tags). App text printed n spaces in therefore never yields a line shallower than n.
   S10 reads only lines two or four spaces in (app tags are six in), so a tag cannot forge another
   app's `Alarm Stats` entry; a stats tag is every deeper line up to the next platform line, line
-  breaks included. S13's statistics windows hold no app text and app text never reaches column 0,
-  so they cannot be forged either.
+  breaks included. S13's statistics windows hold no app text. (App text does reach column 0 in
+  `Job history`, after the windows; see the review amendment below.)
 - **Counts where the indent does not help.** `PowerManagerService` prints with a plain
   `PrintWriter`: the held wakelock list is kept only when the lines between `Wake Locks: size=N`
   and `Suspend Blockers:` are N readable entries and one blank line. S13's job list is printed two
@@ -182,3 +182,45 @@ in such text can print a line that looks like the platform's own. What each pars
 - **Unknown names, never values.** OEM keys and names are counted by name only after a name pattern
   check; text that fails the check counts as `<line without key>`. Samsung's extra job stop reason
   `olaf` and Power Manager state names are counted this way.
+
+## Amendment 2026-11-06: independent review of the dumpsys text parsers
+
+A fresh read-only review traced S10 to S13, S19 and S21 against the AOSP printers in both tags and
+built crafted inputs against the compiled parsers. It reproduced three forgeries the parsers called
+complete and one exception. These corrections and changes follow from it:
+
+- **Correction: app text can reach column 0 in S13.** `JobPackageTracker.dumpHistory` drops the
+  indent to 0 and prints each event's tag, which holds the namespace (JobPackageTracker.java
+  L582-630, both tags). A namespace may hold line breaks: it is trimmed and rejected over 1000
+  characters, not capped (`JobSchedulerService.validateNamespace`, 16 L4995-5008, 17 L5317-5330).
+  With fewer than four real historical windows, a namespace could add a window for another app.
+  `Current stats` is always the last window (`dump` L536-553) and `Job history` comes after it, so
+  S13 now reads no heading once `Current stats` has ended; such headings are reported and ignored.
+- **Lines too long to keep.** `TextDump` hands each dropped line to the walker (`onLost`). A
+  wakelock tag has no length limit, so two 70 KB lines around a forged entry kept S12's count
+  matching and swapped an app's entry for another's. A dropped line between `Wake Locks` and
+  `Suspend Blockers` now makes the list untrusted. A bare `  (uid=5)` line made the entry reader
+  throw; the trailer must now follow the indent. S10 needs no such rule: its app text is six or
+  more spaces in, so a dropped line loses a tag, never forges one. S13's lines cannot reach 64 KB.
+  S21 now also requires that no line was dropped.
+- **S11 app text.** The reasons in `Temp whitelist schedule` hold a notification `PendingIntent`'s
+  intent action (PendingIntentRecord.java, 16 L590-603, 17 L593-606), printed with a plain
+  `PrintWriter`. They could set the Doze state, charging and screen values and put an e-mail
+  address into `unknown`. The dump runs under the controller's lock in a fixed order, so S11 now
+  reads the sections before the schedule from their first copy and ignores later ones. It reads
+  `Temp whitelist app ids` and the state lines from their last copy, and does not believe a state
+  name printed twice in that copy. Unknown names seen after the schedule count only from the last
+  state line on, and every unknown name must pass a name pattern.
+- **Private compute core UIDs.** Android 17 prints `u<user>p<n>` for app ids 30000 to 39999
+  (`UserHandle.formatUid` 17 L505-531, `Process.FIRST_PCC_UID` 17 L328). They are now read back.
+  An unread one would have blanked a whole alarm or job section.
+- **Correction to decision 5.** For `dumpsys battery`, OEM `key: value` lines keep their values in
+  `extras`: SPEC 5.1 asks for a raw map. The log buffer lines (`[Name]` and the timestamped lines
+  after it), which hold serials, are skipped and only the buffer's name is counted. A bracketed
+  line with spaces, such as Samsung's `[Not Battery Adaptive Protect Mode]`, is a state that
+  changes with a setting; it is counted as `<bracketed line>`.
+- **`ParseContext`** cuts a name to 80 characters before looking it up, so a long name already
+  counted keeps counting once the map is full.
+
+Left as it is: a dump cut exactly at a line boundary inside the last section still looks whole to
+the parser; the transport reports it (ADR-0009).

@@ -49,6 +49,18 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 - S13 `dumpsys jobscheduler` (`JobSchedulerParser`): per-app statistics windows (counts, time
   shares, stop reasons including `timeout_abandoned`) and each registered job's unsatisfied
   constraints, restrictions, bucket and readiness. `Job history` is left to S7.
+- Independent review of the six `dumpsys` text parsers (ADR-0013 third amendment), findings fixed:
+  - S13: an app's job namespace, printed at column 0 in `Job history`, could add a statistics
+    window for another app; no heading is read after `Current stats` now;
+  - S12: two over-long wakelock tag lines could keep the count matching around a forged entry, and
+    a bare `(uid=5)` line threw; a dropped line now distrusts the list (`TextDump.onLost`);
+  - S11: a notification's intent action in the temp allowlist could set the Doze state and leak
+    text into `unknown`; sections are read from the copy the print order makes real;
+  - Android 17 `u<user>p<n>` UIDs are read; S21 requires no dropped line; `ParseContext` cuts names
+    before counting them.
+- SPEC 7.4 lint check (`:lint`, ADR-0016): any `AlarmManager` call and any `WakeLock.acquire()`
+  without a timeout of at most 2 s fail `:app:lintDebug`. Every Android module loads it, since lint
+  analyses library modules with their own checks.
 - S8 `suspend_control_internal` is not registered on either fixture device ("Can't find service"),
   so it has no parser yet; the capability probe reports it unavailable (P0 finding).
 

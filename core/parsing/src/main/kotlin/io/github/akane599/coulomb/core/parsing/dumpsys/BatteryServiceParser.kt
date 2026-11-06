@@ -31,7 +31,7 @@ public object BatteryServiceParser {
         val dump = TextDump(input, ctx, SOURCE)
         val walk = BatteryServiceWalk(ctx)
         val clean = dump.forEachLine(walk::read)
-        val complete = walk.finish(dump.bytesRead) && clean
+        val complete = walk.finish(dump.bytesRead) && clean && dump.lostLines == 0
         return Parsed(walk.result(), ctx.report(dump.bytesRead, complete))
     }
 }
@@ -88,8 +88,10 @@ private class BatteryServiceWalk(
                 updatesStopped = true
             }
 
+            // `[BattInfoLogBuffer]` names a Samsung section; `[Not Battery Adaptive Protect Mode]` is a
+            // state, whose text changes with a setting, so it is counted under one name.
             trimmed.length > 2 && trimmed.first() == '[' && trimmed.last() == ']' -> {
-                ctx.unknown(trimmed.take(MAX_KEY))
+                ctx.unknown(if (SECTION_MARKER.matches(trimmed)) trimmed else BRACKETED_STATE)
             }
 
             else -> {
@@ -197,6 +199,8 @@ private class BatteryServiceWalk(
         /** Counted in place of a line's text when the line has no usable key. */
         const val NO_KEY = "<line without key>"
         const val MAX_KEY = 80
+        const val BRACKETED_STATE = "<bracketed line>"
+        val SECTION_MARKER = Regex("\\[[A-Za-z][A-Za-z0-9_]{0,78}]")
         const val MAX_VALUE = 256
 
         /** The S25 Ultra prints about 60. */

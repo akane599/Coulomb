@@ -178,9 +178,16 @@ private const val PER_USER_RANGE = 100_000
 private const val FIRST_APPLICATION_UID = 10_000
 
 /**
+ * `Process.FIRST_PCC_UID`, the first private compute core app id (android-17.0.0_r1 L328; the
+ * range and the `p` form are new in 17).
+ */
+private const val FIRST_PCC_UID = 30_000
+
+/**
  * The UID behind `UserHandle.formatUid` text (android-16.0.0_r4 L471-494, android-17.0.0_r1
- * L505-531): a plain number below 10000, `u<user>a<n>` for an app, `u<user>s<n>` for a system UID.
- * Isolated (`i`, `ai`) and private compute (`p`) forms give null.
+ * L505-531): a plain number below 10000, `u<user>a<n>` for an app, `u<user>p<n>` for a private
+ * compute core process and `u<user>s<n>` for a system UID. Isolated (`i`, `ai`) forms give null:
+ * those UIDs are reused by later processes, so they name no app.
  */
 internal fun parseFormattedUid(text: String): Int? {
     val plain = text.toIntOrNull()
@@ -196,10 +203,16 @@ internal fun parseFormattedUid(text: String): Int? {
 
         else -> {
             val (user, kind, n) = match.destructured
-            user.toInt() * PER_USER_RANGE + (if (kind == "a") FIRST_APPLICATION_UID else 0) + n.toInt()
+            val base =
+                when (kind) {
+                    "a" -> FIRST_APPLICATION_UID
+                    "p" -> FIRST_PCC_UID
+                    else -> 0
+                }
+            user.toInt() * PER_USER_RANGE + base + n.toInt()
         }
     }
 }
 
 /** User ids up to 4 digits keep the result inside an Int; real ones are 0 to a few hundred. */
-private val FORMATTED_UID = Regex("u([0-9]{1,4})([as])([0-9]{1,5})")
+private val FORMATTED_UID = Regex("u([0-9]{1,4})([asp])([0-9]{1,5})")

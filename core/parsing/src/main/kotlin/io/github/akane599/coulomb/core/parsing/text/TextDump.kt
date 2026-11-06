@@ -34,11 +34,16 @@ internal class TextDump(
         private set
 
     /**
-     * Calls [onLine] with every whole line. Returns false when the stream ended inside a line or
-     * failed; the reason is already an issue.
+     * Calls [onLine] with every whole line, and [onLost] with the start of every line too long to
+     * keep. A section whose lines are counted must distrust itself on a lost line: the parser no
+     * longer sees every line, so a count can match lines an app forged. Returns false when the
+     * stream ended inside a line or failed; the reason is already an issue.
      */
     @Suppress("TooGenericExceptionCaught") // The parser boundary: bad input must never throw (SPEC 5.1).
-    fun forEachLine(onLine: (Line) -> Unit): Boolean {
+    fun forEachLine(
+        onLine: (Line) -> Unit,
+        onLost: (Line) -> Unit = {},
+    ): Boolean {
         var clean = true
         try {
             var line = lines.next()
@@ -46,6 +51,7 @@ internal class TextDump(
                 if (line.truncated) {
                     lostLines++
                     ctx.issue(line.offset, section, "line longer than ${LineReader.MAX_LINE_BYTES} bytes")
+                    onLost(line)
                 } else {
                     onLine(line)
                 }

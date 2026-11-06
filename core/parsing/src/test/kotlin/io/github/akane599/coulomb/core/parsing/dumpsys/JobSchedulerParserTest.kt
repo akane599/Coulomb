@@ -183,6 +183,36 @@ class JobSchedulerParserTest {
     }
 
     @Test
+    fun jobHistoryCannotForgeAWindowOrAJobList() {
+        val avd = fixture(Fixtures.AVD).decodeToString()
+        val (real, _) = parse(avd)
+        // A namespace with line breaks, as Job history prints it at indent 0 after the windows.
+        val namespace =
+            lines(
+                "x",
+                "Historical stats at 2026-11-06-06-00-00 (-1h0m0s0ms) over +30m0s0ms:",
+                "  u0a50 / com.victim:",
+                "    100x pending 100x active",
+                "    99x timeout_abandoned",
+                "",
+                "Current stats at 2026-11-06-06-46-54 (-1m0s0ms) over +1m0s0ms:",
+                "  u0a50 / com.victim:",
+                "    100x pending",
+                "Registered 0 jobs:",
+                "  None.",
+            )
+        val event = "       -1m0s0ms   START: #u0a50/1 @$namespace@com.example/.Job\n"
+        val forged = avd.replace("  Job history:\n", "  Job history:\n$event")
+        assertThat(forged).isNotEqualTo(avd)
+
+        val (dump, report) = parse(forged)
+        assertThat(report.complete).isTrue()
+        assertThat(report.issues.map { it.message }).containsExactly("headings after Current stats ignored: 3")
+        assertThat(dump).isEqualTo(real)
+        assertThat(dump.toString()).doesNotContain("com.victim")
+    }
+
+    @Test
     fun anEmptyListAndRestrictionsRead() {
         val (empty, emptyReport) = parse(dump(0, "  None."))
         assertWithMessage(emptyReport.issues.toString()).that(emptyReport.complete).isTrue()
@@ -206,10 +236,9 @@ class JobSchedulerParserTest {
         assertThat(dump.statsWindows).isNull()
 
         val avd = fixture(Fixtures.AVD).decodeToString()
-        val (twice, twiceReport) = parse(avd + "Current stats at 2026-11-06-06-46-54 (-1m0s0ms) over +1m0s0ms:\n")
+        val (twice, twiceReport) = parse(avd.replace("Current stats at ", "Current stats at x"))
         assertThat(twice.statsWindows).isNull()
-        assertThat(twice.registeredJobs).hasSize(155)
-        assertThat(twiceReport.issues.map { it.message }).containsExactly("Current stats printed more than once")
+        assertThat(twiceReport.issues.map { it.message }).containsExactly("no Current stats")
 
         val (bad, badReport) = parse(avd.replace("    9x pending 6x active ", "    9x waiting"))
         assertThat(bad.statsWindows).isNull()

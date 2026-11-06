@@ -192,6 +192,28 @@ class PowerParserTest {
     }
 
     @Test
+    fun linesTooLongToKeepCannotSwapAnEntry() {
+        val phone = fixture(Fixtures.PHONE).decodeToString()
+        val real = "'AkaTerminal:terminal'"
+        val long = "A".repeat(70_000)
+        val tail = "B".repeat(70_000)
+
+        // Both long lines are dropped, leaving exactly the declared count of lines.
+        val forged = "  PARTIAL_WAKE_LOCK  'victim' ACQ=-5h0m0s0ms LONG (uid=10123 isFrozen=false pid=77)"
+        val (swap, swapReport) = parse(phone.replace(real, "'$long\n$forged\n$tail'"))
+        assertThat(swap.wakeLocks).isNull()
+        assertThat(swapReport.complete).isFalse()
+        assertThat(swapReport.issues.map { it.message })
+            .containsExactly("line longer than 65536 bytes", "line longer than 65536 bytes", "wake lock lines do not match their count")
+
+        // A line that is only the platform's trailer once threw from the entry reader.
+        val (bare, bareReport) = parse(minimal("$long\n  (uid=5)\n$tail"))
+        assertThat(bare.wakeLocks).isNull()
+        assertThat(bareReport.complete).isFalse()
+        assertThat(parse(minimal("(uid=5)")).value.wakeLocks).isNull()
+    }
+
+    @Test
     fun aDumpWithoutItsSectionsIsIncomplete() {
         val (dump, report) = parse("Permission Denial: can't dump PowerManager from pid=1\n")
         assertThat(report.complete).isFalse()

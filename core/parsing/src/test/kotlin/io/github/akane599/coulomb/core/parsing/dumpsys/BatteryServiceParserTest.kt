@@ -64,6 +64,8 @@ class BatteryServiceParserTest {
         // Every extra key is counted, and so is every log buffer, by name.
         assertThat(report.unknown).containsEntry("[BattInfoLogBuffer]", 1)
         assertThat(report.unknown).containsEntry("[EventLogBuffer]", 1)
+        assertThat(report.unknown).containsEntry("<bracketed line>", 1)
+        assertThat(report.unknown.keys.filter { " " in it && it.startsWith("[") }).isEmpty()
         assertThat(report.unknown).containsEntry("mSavedBatteryBsoh", 1)
         assertThat(report.unknown).containsEntry("<line without key>", 2)
         assertThat(report.unknown.keys).containsAtLeastElementsIn(extras.keys)

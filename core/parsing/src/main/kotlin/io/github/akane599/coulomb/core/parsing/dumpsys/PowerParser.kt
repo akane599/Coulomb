@@ -30,8 +30,9 @@ import java.io.InputStream
  * the header, before any app text, so a later copy is reported and not read. A tag can end in `'`
  * or hold ` (uid=`, so an entry is read from both ends: the last ` (uid=` starts the platform's
  * own trailer (`WakeLock.toString`, android-16.0.0_r4 L5842-5876 and `getLockFlagsString`
- * L5906-5917, android-17.0.0_r1 L6085-6127 and L6157-6168), and the last quote before it closes
- * the tag.
+ * L5906-5918, android-17.0.0_r1 L6085-6127 and L6157-6169), and the last quote before it closes
+ * the tag. A tag has no length limit, so a line the reader drops for length makes the list
+ * untrusted too.
  */
 public object PowerParser {
     public const val SOURCE: String = "dumpsys.power"
@@ -40,7 +41,7 @@ public object PowerParser {
         val ctx = ParseContext(SOURCE)
         val dump = TextDump(input, ctx, SOURCE)
         val walk = PowerWalk(ctx)
-        val clean = dump.forEachLine(walk::read)
+        val clean = dump.forEachLine(walk::read, walk::lost)
         val complete = walk.finish(dump.bytesRead) && clean && dump.lostLines == 0
         return Parsed(walk.result(), ctx.report(dump.bytesRead, complete))
     }
@@ -91,6 +92,14 @@ private class PowerWalk(
                 saverLine(text)
             }
         }
+    }
+
+    /**
+     * A wakelock tag has no length limit, so an app can make lines the reader drops. Between
+     * `Wake Locks` and `Suspend Blockers` that would let forged lines fill the count.
+     */
+    fun lost(line: Line) {
+        if (section == PowerSection.WAKE_LOCKS && !line.text.startsWith(SUSPEND_BLOCKERS)) wakeLockOverflow = true
     }
 
     private fun heading(text: String) {
@@ -176,7 +185,8 @@ private class PowerWalk(
 
     private fun wakeLock(text: String): HeldWakeLock? {
         val trailerAt = text.lastIndexOf(TRAILER)
-        if (!text.startsWith("  ") || !text.endsWith(")") || trailerAt < 0) return null
+        // The trailer must follow the two-space indent: `  (uid=5)` alone is not an entry.
+        if (!text.startsWith("  ") || !text.endsWith(")") || trailerAt < 2) return null
         val head = text.substring(2, trailerAt)
         val open = head.indexOf(" '")
         val close = head.lastIndexOf('\'')

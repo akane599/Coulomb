@@ -26,6 +26,20 @@ import java.io.InputStream
  * other names are counted as unknown by name. Lines that hold places (`mLastGpsLocation`) or other
  * values Coulomb has no use for are skipped without being kept.
  *
+ * App text reaches the dump in one place: the reasons in `Temp whitelist schedule`
+ * (`dumpTempWhitelistScheduleLocked`, 16 L5498-5519, 17 L5582-5602). A notification's
+ * `PendingIntent` puts its intent action there (services/core/java/com/android/server/am/
+ * PendingIntentRecord.java, 16 L590-603, 17 L593-606), and the
+ * plain `PrintWriter` prints its line breaks as they are. The dump runs under the controller's lock
+ * (16 L5276, 17 L5358) in a fixed order: flags, settings, history and the allowlists, then the
+ * schedule, then `Temp whitelist app ids` and the state lines that start at `mLightEnabled=`. So:
+ * - a section printed before the schedule is read from its first copy, and a copy after the
+ *   schedule is reported and ignored;
+ * - `Temp whitelist app ids` and the state lines are read from their last copy, since app text can
+ *   only come before the real one, and a state name printed twice in that copy is not believed;
+ * - unknown names seen after the schedule are kept only from the last state line on, so app text
+ *   never reaches the report.
+ *
  * The dump is complete when the stream ended cleanly, every line was readable, and the settings
  * and the `mState` line, which comes near the end, were present.
  */
@@ -46,6 +60,8 @@ private enum class IdleSection {
     NONE,
     IGNORED,
     UNKNOWN,
+    FLAGS,
+    SCHEDULE,
     SETTINGS,
     HISTORY,
     SYSTEM_EXCEPT_IDLE,
@@ -69,6 +85,18 @@ private class DeviceIdleWalk(
     private val appIds = HashMap<IdleSection, MutableList<Int>>()
     private var lost = false
 
+    private val headingsRead = HashSet<IdleSection>()
+    private var afterSchedule = false
+    private var ignoredHeadings = 0
+    private var firstIgnoredHeading = -1L
+    private var tempHeadings = 0
+    private var tempUnreadable = false
+    private var stateBlocks = 0
+    private val valueCounts = HashMap<String, Int>()
+
+    /** Unknown names seen after the schedule, kept only from the last state line on. */
+    private val laterUnknown = LinkedHashMap<String, Int>()
+
     fun read(line: Line) {
         val text = line.text
         when {
@@ -79,20 +107,30 @@ private class DeviceIdleWalk(
             }
 
             text.startsWith(TOP_INDENT) -> {
-                top(text.substring(TOP_INDENT.length))
+                top(text.substring(TOP_INDENT.length), line.offset)
             }
 
             else -> {
-                ctx.unknown(NO_KEY)
+                unknown(NO_KEY)
             }
         }
     }
 
-    private fun top(text: String) {
+    private fun unknown(name: String) {
+        if (afterSchedule) laterUnknown[name] = (laterUnknown[name] ?: 0) + 1 else ctx.unknown(name)
+    }
+
+    /** A name as the platform would print one, or [NO_KEY]: app text never becomes a name. */
+    private fun nameOf(text: String) = if (NAME.matches(text)) text else NO_KEY
+
+    private fun top(
+        text: String,
+        offset: Long,
+    ) {
         val heading = if (text.endsWith(':') && '=' !in text) text.dropLast(1) else null
         when {
             heading != null -> {
-                section = HEADINGS[heading] ?: IdleSection.UNKNOWN.also { ctx.unknown(heading.take(MAX_NAME)) }
+                section = headingSection(heading, offset)
             }
 
             text == CONSTRAINTS_OPEN -> {
@@ -101,6 +139,7 @@ private class DeviceIdleWalk(
 
             '=' in text -> {
                 section = IdleSection.NONE
+                if (text.startsWith(STATE_START)) startState()
                 values(text)
             }
 
@@ -110,13 +149,57 @@ private class DeviceIdleWalk(
         }
     }
 
+    private fun headingSection(
+        heading: String,
+        offset: Long,
+    ): IdleSection {
+        val known = HEADINGS[heading] ?: return IdleSection.UNKNOWN.also { unknown(nameOf(heading)) }
+        return when {
+            known == IdleSection.SCHEDULE -> {
+                afterSchedule = true
+                known
+            }
+
+            // The real copy is the last: app text in the schedule comes before it.
+            known == IdleSection.TEMP_APP_IDS -> {
+                tempHeadings++
+                tempUnreadable = false
+                appIds.remove(known)
+                known
+            }
+
+            afterSchedule || !headingsRead.add(known) -> {
+                if (ignoredHeadings++ == 0) firstIgnoredHeading = offset
+                IdleSection.IGNORED
+            }
+
+            else -> {
+                known
+            }
+        }
+    }
+
+    /** `mLightEnabled=` starts the state lines; only the last copy of them is read. */
+    private fun startState() {
+        stateBlocks++
+        values.clear()
+        valueCounts.clear()
+        laterUnknown.clear()
+    }
+
     /** `name=value` pairs; a pair starts the line or follows a space. */
     private fun values(text: String) {
         for (pair in PAIR.findAll(text)) {
             val name = pair.groupValues[1]
             when {
-                name in WANTED -> values.putIfAbsent(name, pair.groupValues[2])
-                name !in KNOWN_NAMES -> ctx.unknown(name.take(MAX_NAME))
+                name in WANTED -> {
+                    valueCounts[name] = (valueCounts[name] ?: 0) + 1
+                    values.putIfAbsent(name, pair.groupValues[2])
+                }
+
+                name !in KNOWN_NAMES -> {
+                    unknown(nameOf(name))
+                }
             }
             // These values hold spaces and `=` of their own: a sensor's or a place's description.
             if (name in REST_OF_LINE) break
@@ -128,8 +211,8 @@ private class DeviceIdleWalk(
         val colon = text.indexOf(": ")
         when {
             text in KNOWN_LINES || text.endsWith(STATIONARY_LISTENERS) -> section = IdleSection.NONE
-            colon > 0 -> ctx.unknown(text.substring(0, colon).trim().take(MAX_NAME))
-            section != IdleSection.UNKNOWN -> ctx.unknown(NO_KEY)
+            colon > 0 -> unknown(nameOf(text.substring(0, colon).trim()))
+            section != IdleSection.UNKNOWN -> unknown(NO_KEY)
         }
     }
 
@@ -143,10 +226,13 @@ private class DeviceIdleWalk(
                 IdleSection.HISTORY -> event(text)
                 in PACKAGE_SECTIONS -> true.also { packages.getOrPut(section) { ArrayList() } += text.take(MAX_PACKAGE) }
                 in APP_ID_SECTIONS -> text.toIntOrNull()?.also { appIds.getOrPut(section) { ArrayList() } += it } != null
-                IdleSection.NONE -> true.also { ctx.unknown(UNDER_NO_HEADING) }
+                IdleSection.NONE -> true.also { unknown(UNDER_NO_HEADING) }
                 else -> true
             }
-        if (!ok) {
+        if (!ok && section == IdleSection.TEMP_APP_IDS) {
+            // Judged at the end: only the last copy counts.
+            tempUnreadable = true
+        } else if (!ok) {
             lost = true
             ctx.issue(line.offset, DeviceIdleParser.SOURCE, "unreadable ${section.name.lowercase()} item")
         }
@@ -156,7 +242,7 @@ private class DeviceIdleWalk(
         val eq = text.indexOf('=')
         if (eq <= 0) return false
         val key = text.substring(0, eq)
-        if (key !in AOSP_SETTINGS) ctx.unknown("settings.${key.take(MAX_NAME)}")
+        if (key !in AOSP_SETTINGS) ctx.unknown(if (SETTING.matches(key)) "settings.$key" else "settings.$NO_KEY")
         settings.putIfAbsent(key, text.substring(eq + 1))
         return true
     }
@@ -165,7 +251,7 @@ private class DeviceIdleWalk(
     private fun event(text: String): Boolean {
         val m = EVENT.matchEntire(text) ?: return false
         val (label, time, reason) = m.destructured
-        val kind = EVENT_KINDS[label] ?: return false.also { ctx.unknown("event.${label.take(MAX_NAME)}") }
+        val kind = EVENT_KINDS[label] ?: return false.also { ctx.unknown("event.$label") }
         val ms = if (time == NO_TIME) null else Durations.parseMs(time) ?: return false
         history += DozeEvent(kind, ms?.let { -it }, reason.ifEmpty { null }?.take(MAX_REASON))
         return true
@@ -173,20 +259,39 @@ private class DeviceIdleWalk(
 
     /** Records what is missing; true when nothing required is. */
     fun finish(offset: Long): Boolean {
+        reportCopies(offset)
+        val repeated = valueCounts.filterValues { it > 1 }.keys.sorted()
+        repeated.forEach { values.remove(it) }
         val missing =
             buildList {
                 if (settings.isEmpty()) add("Settings")
                 if (STATE !in values || LIGHT_STATE !in values) add("mState line")
             }
-        missing.forEach { ctx.issue(offset, DeviceIdleParser.SOURCE, "no $it") }
-        val deep = values[STATE]
-        val light = values[LIGHT_STATE]
-        if (deep != null && deepState() == null) ctx.unknown("mState.${deep.take(MAX_NAME)}")
-        if (light != null && lightState() == null) ctx.unknown("mLightState.${light.take(MAX_NAME)}")
-        val unreadable = BOOLEANS.filter { it in values && bool(it) == null }
-        unreadable.forEach { ctx.issue(offset, DeviceIdleParser.SOURCE, "unreadable $it") }
-        return missing.isEmpty() && unreadable.isEmpty() && !lost
+        val problems =
+            missing.map { "no $it" } +
+                repeated.map { "$it printed more than once" } +
+                BOOLEANS.filter { it in values && bool(it) == null }.map { "unreadable $it" } +
+                listOfNotNull("unreadable temp_app_ids item".takeIf { tempUnreadable })
+        problems.forEach { ctx.issue(offset, DeviceIdleParser.SOURCE, it) }
+        values[STATE]?.let { if (deepState() == null) ctx.unknown("mState.${stateName(it)}") }
+        values[LIGHT_STATE]?.let { if (lightState() == null) ctx.unknown("mLightState.${stateName(it)}") }
+        return problems.isEmpty() && !lost
     }
+
+    /** What the copy rules set aside: reported, but the copies read are trusted. */
+    private fun reportCopies(offset: Long) {
+        // Names after the schedule count only when a state copy followed them.
+        if (stateBlocks > 0) laterUnknown.forEach { (name, count) -> ctx.unknown(name, count) }
+        if (ignoredHeadings > 0) {
+            ctx.issue(firstIgnoredHeading, DeviceIdleParser.SOURCE, "headings after the temp allowlist ignored: $ignoredHeadings")
+        }
+        if (stateBlocks > 1 || tempHeadings > 1) {
+            ctx.issue(offset, DeviceIdleParser.SOURCE, "state lines or temp app ids printed more than once; the last copy is read")
+        }
+    }
+
+    /** A state the platform names in capitals; anything else is not a name. */
+    private fun stateName(value: String) = if (STATE_NAME.matches(value)) value else NO_KEY
 
     private fun deepState() = DeepDozeState.entries.firstOrNull { it.name == values[STATE] }
 
@@ -236,16 +341,16 @@ private class DeviceIdleWalk(
         val REST_OF_LINE = setOf(MOTION_SENSOR, "mLastGenericLocation", "mLastGpsLocation")
         const val STATE = "mState"
         const val LIGHT_STATE = "mLightState"
+        const val STATE_START = "mLightEnabled="
         const val NO_TIME = "--"
         const val NO_KEY = "<line without key>"
         const val UNDER_NO_HEADING = "<item under no heading>"
-        const val MAX_NAME = 80
         const val MAX_PACKAGE = 255
         const val MAX_REASON = 80
 
         val HEADINGS: Map<String, IdleSection> =
             mapOf(
-                "Flags" to IdleSection.IGNORED,
+                "Flags" to IdleSection.FLAGS,
                 "Settings" to IdleSection.SETTINGS,
                 "Idling history" to IdleSection.HISTORY,
                 "Whitelist (except idle) system apps" to IdleSection.SYSTEM_EXCEPT_IDLE,
@@ -255,7 +360,7 @@ private class DeviceIdleWalk(
                 "Whitelist (except idle) all app ids" to IdleSection.APP_IDS_EXCEPT_IDLE,
                 "Whitelist user app ids" to IdleSection.USER_APP_IDS,
                 "Whitelist all app ids" to IdleSection.ALL_APP_IDS,
-                "Temp whitelist schedule" to IdleSection.IGNORED,
+                "Temp whitelist schedule" to IdleSection.SCHEDULE,
                 "Temp whitelist app ids" to IdleSection.TEMP_APP_IDS,
             )
 
@@ -309,6 +414,11 @@ private class DeviceIdleWalk(
         val KNOWN_LINES = setOf("Location prefetching disabled", "}")
 
         val PAIR = Regex("(?:^|\\s)([A-Za-z][A-Za-z0-9_.]*)=(\\S*)")
+
+        /** Names, headings and OEM keys as the platform prints them: no `@`, quotes or line noise. */
+        val NAME = Regex("[A-Za-z-][A-Za-z0-9 _.()/-]{0,79}")
+        val SETTING = Regex("[a-z][a-z0-9_]{0,79}")
+        val STATE_NAME = Regex("[A-Z][A-Z_]{0,39}")
         val EVENT = Regex("([a-z?-]+): (\\S+)(?: \\((.*)\\))?")
         val EVENT_KINDS =
             mapOf(

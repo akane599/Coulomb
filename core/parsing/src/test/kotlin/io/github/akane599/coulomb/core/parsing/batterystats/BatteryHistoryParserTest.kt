@@ -242,6 +242,9 @@ class BatteryHistoryParserTest {
         assertThat(parseFormattedUid("u0a123")).isEqualTo(10_123)
         assertThat(parseFormattedUid("u10a5")).isEqualTo(1_010_005)
         assertThat(parseFormattedUid("u10s1000")).isEqualTo(1_001_000)
+        // Private compute core, Android 17: app id 30000 + n.
+        assertThat(parseFormattedUid("u0p7")).isEqualTo(30_007)
+        assertThat(parseFormattedUid("u10p0")).isEqualTo(1_030_000)
         // Isolated and other forms are not guessed at.
         assertThat(parseFormattedUid("u0i5")).isNull()
         assertThat(parseFormattedUid("u0ai5")).isNull()

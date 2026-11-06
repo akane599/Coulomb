@@ -21,15 +21,22 @@ import java.io.InputStream
  * `JobPackageTracker` statistics windows (JobSchedulerService.java `dumpInternal`,
  * android-16.0.0_r4 L5957-6322, android-17.0.0_r1 L6371-6729). Never throws on bad input.
  *
- * Job names carry app text that is not escaped: a namespace is only trimmed and capped at 1000
- * characters (JobScheduler.java `sanitizeNamespace`, 16 L304-309, 17 L328-333), and extras print
- * as the app set them. The service prints through an `IndentingPrintWriter`, which indents every
- * line of a printed string (IndentingPrintWriter.java L199-253, both tags), so app text inside a
- * job entry never reaches column 0 and a statistics window, whose lines hold no app text, cannot
- * be forged. Inside the job list it can: a namespace printed two spaces in can add lines two or four
- * spaces in. So the list is kept only when its `JOB` lines match the count printed above it, and a
- * job whose `Source`, `Unsatisfied constraints`, `Standby bucket`, `Restricted due to` or `Ready`
- * line is missing or appears twice is dropped and reported.
+ * Job names carry app text that is not escaped: a namespace is only trimmed, may hold line breaks
+ * and is rejected over 1000 characters (JobSchedulerService.java `validateNamespace`, 16
+ * L4995-5008, 17 L5317-5330), and extras print as the app set them. The service prints through an
+ * `IndentingPrintWriter`, which indents every line of a printed string (IndentingPrintWriter.java
+ * L199-253, both tags), so app text inside a job entry never reaches column 0.
+ *
+ * Two places still let app text add lines:
+ * - Inside the job list, a namespace printed two spaces in can add lines two or four spaces in. So
+ *   the list is kept only when its `JOB` lines match the count printed above it, and a job whose
+ *   `Source`, `Unsatisfied constraints`, `Standby bucket`, `Restricted due to` or `Ready` line is
+ *   missing or appears twice is dropped and reported.
+ * - `Job history` drops the indent to 0 and prints each event's tag, which holds the namespace
+ *   (JobPackageTracker.java `dumpHistory` L582-630, both tags), so its lines can look like any
+ *   heading. It comes after the statistics windows, and `Current stats` is always the last window
+ *   (`dump` L536-553). So nothing is read as a heading once `Current stats` has ended; such a
+ *   heading is reported and ignored.
  */
 public object JobSchedulerParser {
     public const val SOURCE: String = "dumpsys.jobscheduler"
@@ -118,6 +125,9 @@ private class JobWalk(
 
     private var currentHeadings = 0
     private var historicalHeadings = 0
+    private var pastWindows = false
+    private var lateHeadings = 0
+    private var firstLateHeading = -1L
     private val windows = ArrayList<JobStatsWindow>()
     private var window: WindowBuilder? = null
     private var pkg: PackageBuilder? = null
@@ -150,6 +160,12 @@ private class JobWalk(
         text: String,
         offset: Long,
     ) {
+        if (pastWindows) {
+            if (REGISTERED_HEADING.matches(text) || WINDOW_HEADING.matches(text)) {
+                if (lateHeadings++ == 0) firstLateHeading = offset
+            }
+            return
+        }
         REGISTERED_HEADING.matchEntire(text)?.let {
             if (++registeredHeadings == 1) {
                 declaredJobs = it.groupValues[1].toInt()
@@ -346,7 +362,10 @@ private class JobWalk(
 
     private fun endWindow(offset: Long) {
         endPackage(offset)
-        window?.let { windows += it.build() }
+        window?.let {
+            windows += it.build()
+            if (it.current) pastWindows = true
+        }
         window = null
     }
 
@@ -359,6 +378,8 @@ private class JobWalk(
             registeredHeadings > 1 -> problems += "Registered jobs printed more than once"
         }
         if (unreadableJobs > 0) ctx.issue(firstUnreadableJob, JobSchedulerParser.SOURCE, "registered jobs not read: $unreadableJobs")
+        // App text in Job history; the real sections were read before it.
+        if (lateHeadings > 0) ctx.issue(firstLateHeading, JobSchedulerParser.SOURCE, "headings after Current stats ignored: $lateHeadings")
         when {
             currentHeadings == 0 -> problems += "no Current stats"
             currentHeadings > 1 -> problems += "Current stats printed more than once"
