@@ -28,6 +28,7 @@ coroutines = "1.11.0"
 serialization = "1.12.0"
 collectionsImmutable = "0.5.2"
 wire = "7.1.2"
+okio = "3.18.2"
 glance = "1.2.0"
 work = "2.12.0"
 shizuku = "13.1.5"
@@ -109,6 +110,7 @@ kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collec
 
 # Protobuf
 wire-runtime = { module = "com.squareup.wire:wire-runtime", version.ref = "wire" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 
 # Privilege
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }

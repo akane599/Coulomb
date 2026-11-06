@@ -17,6 +17,9 @@ complexity:
     # Private helpers and interface implementations do not widen a class's API.
     ignorePrivate: true
     ignoreOverridden: true
+  # A `when` that only maps one enum to another is a table, not branching logic.
+  CyclomaticComplexMethod:
+    ignoreSimpleWhenEntries: true
 
 naming:
   FunctionNaming:

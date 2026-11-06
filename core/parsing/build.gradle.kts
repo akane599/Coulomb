@@ -19,6 +19,7 @@ wire {
 dependencies {
     api(projects.core.model)
     implementation(libs.wire.runtime)
+    implementation(libs.okio)
 }
 
 // Golden tests read the committed fixtures (SPEC 16.2) from the repository root.
