@@ -491,65 +491,89 @@ Order by `elapsedRealtimeNanos` plus boot count; display wall-clock time. Wall-c
 
 ## 8. Domain model and database schema
 
-The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested.
+The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested. ADR-0015 records the keys, foreign-key actions, retention and size budget of version 1.
 
 ```kotlin
 // Units are in field names. Times: elapsed = elapsedRealtimeNanos, wall = epoch ms.
+// bootSeq = Coulomb's own boot number (Boot); rows order by (bootSeq, elapsed) (ADR-0015).
 
 entity DeviceProfile(fingerprint PK, model, oem, sdkInt, sdkIntFull,
-  designCapacityMah, designCapacitySource, currentScale /*1|1000*/, currentSign /*+1|-1*/,
-  chargeCounterReliable, calibratedAtWall, calibrationQuality /*0..1*/)
+  designCapacityMah?, designCapacitySource?, currentScale? /*1|1000*/, currentSign? /*+1|-1*/,
+  chargeCounterReliable?, calibratedAtWall?, calibrationQuality? /*0..1*/)
+
+entity Boot(bootSeq PK, rawBootCount?, fingerprint, firstWallMs, firstElapsedNs,
+  historyOffsetMs?, imported)
 
 entity Capability(id PK, state /*AVAILABLE|DEGRADED|UNAVAILABLE*/, tier /*T0..T3*/,
-  reason, fixAction?, probedAtWall, fingerprint)
+  reason?, fixAction?, probedAtWall, fingerprint, detailJson)
 
-entity BatterySample(elapsedNs PK, bootCount, wallMs, levelPct, chargeUah?, currentUa?,
+entity BatterySample((bootSeq, elapsedNs) PK, wallMs, levelPct, chargeUah?, currentUa?, currentRaw?,
   voltageMv, tempDeciC, plugType, status, screenOn, dozeState, thermalStatus)
+entity SampleAggregate((resolutionS, bootSeq, startElapsedNs) PK, startWallMs, sampleCount,
+  levelFirst/LastPct, chargeFirst/LastUah?, currentMin/Mean/MaxUa?, voltageMeanMv,
+  tempMin/Mean/MaxDeciC, screenOnShare, plugType)
 
-entity Session(id PK, kind /*DISCHARGE|CHARGE|SCREEN_ON|SCREEN_OFF*/, startElapsedNs, endElapsedNs?,
-  bootCount, startWall, endWall?, startLevel, endLevel?, startChargeUah?, endChargeUah?,
-  avgCurrentMa?, maxTempDeciC, awakeRatio?, deepIdleReachedMs?, closeReason, quality)
+entity Session(id PK, kind /*DISCHARGE|CHARGE|SCREEN_ON|SCREEN_OFF*/, bootSeq, startElapsedNs,
+  endElapsedNs?, startWall, endWall?, startSnapshotId?, endSnapshotId?, startLevel, endLevel?,
+  startChargeUah?, endChargeUah?, chargeSource?, avgCurrentMa?, peakCurrentMa?, minTempDeciC?,
+  meanTempDeciC?, maxTempDeciC, awakeRatio?, deepIdleReached?, deepIdleReachedMs?,
+  minutesAtOrAbove80?, minutesAt100?, stressIndex?, cycleEquivalents?, closeReason?, quality)
 
-entity ChargeDetail(sessionId PK/FK, plugType, chargerProfileId?, peakW, avgW,
+entity ChargeDetail(sessionId PK/FK, plugType, chargerProfileId?, peakW?, avgW?,
   ccToCvLevel?, minutesAbove80, minutesAbove38C, targetLevel?, protectionMode?)
 
-entity Snapshot(id PK, elapsedNs, bootCount, wallMs, trigger, kind /*LIGHT|HEAVY*/,
-  statsStartWall?, historyCursorMs? /*NEXT: value, ADR-0014*/, blobPath?, partial, durationMs)
+entity Snapshot(id PK, bootSeq, elapsedNs, wallMs, trigger, kind /*LIGHT|HEAVY*/,
+  levelPct?, chargeUah?, currentRaw?, voltageMv?, tempDeciC?, plugType?, status?,
+  statsStartWall?, historyCursorMs? /*NEXT: value, ADR-0014*/, historyEventId?,
+  sourceStatusJson, blobPath?, partial, countersPruned, durationMs)
 
 entity UidPower(snapshotId FK, uid, component, processState, mAh, provenance)
 entity UidMeta(uid PK, packages /*json*/, label, isSystem, iconCacheKey, updatedWall)
+entity UidPackage(uid, packageName, firstSeenWall, lastSeenWall)
 
 entity WakeStat(snapshotId FK, uid?, tag, kind /*PARTIAL|KERNEL|WAKEUP_REASON*/,
   totalMs, count, maxMs?, screenOffMs?)
-entity AlarmStat(snapshotId FK, uid, wakeups, total)
-entity JobStat(snapshotId FK, uid, jobs, runtimeMs, abandoned, topStopReason?)
-entity NetStat(snapshotId FK, uid, mobileRxB, mobileTxB, wifiRxB, wifiTxB, radioActiveMs?)
-entity RailEnergy(snapshotId FK, rail, energyUws)
+entity AlarmStat(snapshotId FK, uid, wakeups, total?)
+entity JobStat(snapshotId FK, uid, jobs, runtimeMs?, abandoned?, topStopReason?)
+entity NetStat(snapshotId FK, uid, mobileRxB?, mobileTxB?, wifiRxB?, wifiTxB?, radioActiveMs?)
+entity RailEnergy(snapshotId FK, rail, energyUws, readElapsedNs?)
+entity UidStat(snapshotId FK, uid, key, value)
+entity DeviceStat(snapshotId FK, key, value)
 
-entity WindowResult(id PK, fromSnapshotId, toSnapshotId, measuredMah?, modeledMah,
-  unattributedMah?, screenOnMs, screenOffMs, awakeMsScreenOff?, quality)
-entity WindowUid(windowId FK, uid, component, processState, mAh, provenance)
+entity WindowResult(id PK, kind /*CONSECUTIVE|SESSION|DAY|REFERENCE*/, sessionId?,
+  fromSnapshotId, toSnapshotId, measuredMah?, chargeSource?, modeledMah?, unattributedMah?,
+  screenOnMs, screenOffMs, awakeMsScreenOff?, quality, detailPruned)
+entity WindowUid(windowId FK, uid, component, processState, process, mAh, provenance)
+entity WindowWake(windowId FK, uid?, tag, kind, totalMs, count, screenOffMs?)
+entity WindowStat(windowId FK, uid, key, value, provenance)
 
-entity HistoryEvent(elapsedNs, bootCount, type, uid?, tag?, value?)  // compact, 30-day ring
+entity HistoryEvent(id PK, bootSeq, elapsedNs, type, change, baseline, uid?, tagId?, value?)
+  // compact 30-day ring: codes, interned tags, no time index (ADR-0015)
+entity HistoryTag(id PK, tag)
+entity HistoryGap(id PK, startMonotonicMs, endMonotonicMs, startBootSeq, startElapsedNs,
+  endBootSeq, endElapsedNs, reason)
 
-entity Reference(id PK, name, snapshotId FK, origin /*AUTO|USER*/, createdWall)
+entity Reference(id PK, name?, snapshotId FK, origin /*AUTO|USER*/, autoKind?, createdWall)
 
-entity CapacityEstimate(id PK, sessionId FK, capacityMah, weight, tempMeanDeciC, createdWall)
-entity HealthSummary(dateWall PK, estimateMah, ciLowMah, ciHighMah, healthPct,
+entity CapacityEstimate(id PK, sessionId FK, capacityMah, weight, deltaSocPct, deltaChargeMah,
+  tempMeanDeciC, createdWall)
+entity HealthSummary(epochDay PK, estimateMah?, ciLowMah?, ciHighMah?, healthPct?,
   systemSohPct?, oemHealth?, cycleCount?, cycleEquivalentsSum)
 
 entity ChargerProfile(id PK, name, plugType, baselineW, firstSeenWall, lastSeenWall, notes?)
 
-entity Insight(id PK, ruleId, windowId?, severity /*INFO|WATCH|ACT*/, subjectUid?,
-  evidenceJson, state /*NEW|SEEN|SNOOZED|DISMISSED|ACTED*/, createdWall, snoozeUntilWall?)
+entity Insight(id PK, ruleId, windowId?, severity /*INFO|WATCH|ACT*/, subjectKey?, subjectUid?,
+  evidenceJson, state /*NEW|SEEN|SNOOZED|DISMISSED|ACTED*/, createdWall, stateChangedWall,
+  snoozeUntilWall?)
 
 entity ActionLog(id PK, actionType, target, beforeValue?, afterValue, tier,
-  executedWall, revertedWall?, origin /*USER|INSIGHT*/, externalDriftWall?)
+  executedWall, revertedWall?, origin /*USER|INSIGHT*/, insightId?, externalDriftWall?,
+  externalDriftValue?)
 ```
 
 ### 8.1 Rules
 
-- Indexes on every foreign key and on `(kind, startElapsedNs)`, `(uid, snapshotId)`, `(ruleId, state)`.
+- Indexes on every foreign key and on `(kind, bootSeq, startElapsedNs)`, `(uid, snapshotId)`, `(ruleId, state)` (ADR-0015).
 - Settings live in Proto DataStore, not Room.
 - Icons are never stored in the database; an in-memory LRU cache (64 entries) loads them from `PackageManager`.
 - DAOs expose `Flow` for UI and `suspend` functions for writes. No main-thread queries; StrictMode fails debug builds on violations.

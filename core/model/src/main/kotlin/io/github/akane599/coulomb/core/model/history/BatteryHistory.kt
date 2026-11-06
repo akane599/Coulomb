@@ -56,6 +56,7 @@ public data class HistoryRecord(
     val baseline: Boolean = false,
 )
 
+/** Stored in the database as a code by its position in a fixed list: entries may be added, never removed. */
 public enum class HistoryChange {
     /** A state flag or an event turned on. */
     START,
@@ -70,7 +71,8 @@ public enum class HistoryChange {
 /**
  * What a [HistoryRecord] reports. The checkin names (`Bl`, `+S`, `Etp`) are those of
  * `BatteryStats.HistoryPrinter` (frameworks/base core/java/android/os/BatteryStats.java,
- * android-16.0.0_r4 and android-17.0.0_r1, which print the same).
+ * android-16.0.0_r4 and android-17.0.0_r1, which print the same). Stored in the database as a
+ * code by its position in a fixed list: entries may be added, never removed.
  */
 public enum class HistoryKind {
     // Markers: no value unless stated.

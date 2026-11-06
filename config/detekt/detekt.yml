@@ -13,7 +13,8 @@ complexity:
   LongMethod:
     ignoreAnnotated: ['Composable']
   TooManyFunctions:
-    ignoreAnnotatedFunctions: ['Preview']
+    # A Room DAO method is one SQL statement, declared rather than written; DAOs need one per table.
+    ignoreAnnotatedFunctions: ['Preview', 'Query', 'Insert', 'Update', 'Upsert', 'Delete']
     # Private helpers and interface implementations do not widen a class's API.
     ignorePrivate: true
     ignoreOverridden: true

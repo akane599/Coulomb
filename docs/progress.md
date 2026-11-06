@@ -63,6 +63,17 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   analyses library modules with their own checks.
 - S8 `suspend_control_internal` is not registered on either fixture device ("Can't find service"),
   so it has no parser yet; the capability probe reports it unavailable (P0 finding).
+- Room schema version 1 (`:core:database`, ADR-0015), reworked after an independent second opinion:
+  - Coulomb's own boot number (`bootSeq`, `boot` table) keys every time, so an import or an
+    unreadable boot count cannot reorder rows;
+  - snapshots keep their battery values and each source's outcome;
+  - windows have a kind, a session and a charge source, with per-window wakelock and counter
+    records;
+  - `RESTRICT` protects data kept for good; retention and compaction cut by key, never wall time;
+  - the history ring stores codes and interned tags without a time index (31 bytes per event,
+    from 65), with each snapshot marking the ids its read stored.
+  - `SizeBudgetTest` projects about 131 MB after a year against SPEC 7.7's 150 MB, from the
+    rates in ADR-0015. The 72 h run at the gate replaces those rates before the schema freezes.
 
 ### Open findings
 
@@ -73,6 +84,10 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 - `--history-start` makes system_server walk the whole history buffer and print the whole tag
   pool on every read, and it starts an asynchronous stats write. The collector keeps to one read
   per heavy snapshot; the on-device cost is measured in the P2 performance gate.
+- Snapshot blobs: the heavy snapshot's dumps on the phone fixture compress to about 340 KB (S13
+  180 KB, S5 85 KB, S10 45 KB). At about 100 heavy snapshots a day, 30 days of blobs (SPEC 7.7)
+  would take about 1 GB of storage. The collector's ADR decides what a blob holds (default: the S5
+  proto and any source whose parse was incomplete) and caps the folder.
 - A state change within a second of a read's last record can be merged into that record after the
   read, and no later read prints it (ADR-0014 second amendment). The collector must compare each
   read's baseline with the stored state and record an uncertain span. This will be checked on the

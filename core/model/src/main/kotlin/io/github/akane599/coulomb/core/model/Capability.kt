@@ -51,7 +51,7 @@ public enum class CapabilityId(
     WORKER_BIND("worker_bind"),
 }
 
-/** What the user can do to make an unavailable capability available. */
+/** What the user can do to make an unavailable capability available. Stored by name: add, never rename. */
 public enum class FixAction {
     CONNECT_SHIZUKU,
     START_SHIZUKU,
