@@ -82,6 +82,8 @@ tools/ci/check.sh all                                 # everything CI runs (stat
 tools/fixtures/capture.sh <serial> <raw-dir>          # read-only SPEC 16.2 capture (raw dir outside repo)
 python3 -I tools/fixtures/redact.py <raw-dir> <device> # writes fixtures/<device>/<build>/ (ADR-0004, ADR-0008)
 python3 -I tools/capabilities/report.py fixtures/<device>/<build> docs/capabilities/<device>-<build>.md
+tools/validation/capture.sh <serial> <raw-dir>        # read-only checkpoint of a validation run (raw dir outside repo)
+python3 -I tools/validation/report.py <raw-dir>       # rates, heavy snapshot cost, protocols E and A (SPEC 16.6)
 ```
 
 ## Repository map
