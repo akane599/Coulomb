@@ -1,6 +1,7 @@
 # ADR-0018: The collector
 
-- Status: accepted (fills gaps in SPEC 7; adds one `Snapshot` column)
+- Status: accepted (fills gaps in SPEC 7; adds one `Snapshot` column and one trigger; widens one
+  SPEC 7.5 timeout)
 - Date: 2026-11-06
 - Phase: P2
 
@@ -93,7 +94,7 @@ This state lives in memory. The first read after Coulomb's process starts is not
 | --- | --- | --- |
 | S1, S2 (light data) | Every snapshot | — |
 | S5 proto (S6 `-c` if it fails) | Every heavy snapshot | 2 s |
-| S7 history | After S5 | 2 s; 15 s for a catch-up read (cursor 0, or after a failed read) |
+| S7 history | After S5 | What the budget left, at most 2 s; 15 s for a catch-up read |
 
 - **Only what P2 consumes.** S5 gives the per-UID modeled mAh, wakelocks, alarm and job counts,
   network bytes and the device timers; S7 gives the event timeline. Every other source is read
@@ -112,6 +113,12 @@ This state lives in memory. The first read after Coulomb's process starts is not
   to `PrivilegedAccess.dumpBatteryStats` and `dumpService`.
 - **Budget.** The whole heavy snapshot is capped at 4 s (SPEC 7.5). A source not run because of
   it is marked `skipped` in `sourceStatusJson`.
+- **The catch-up read.** When there is no cursor yet, or the last read failed, the read may have
+  the whole history buffer to get through: 2.3 MB of text in the phone fixture. A 2 s cap could
+  then fail every time, and Coulomb would never store a timeline. Measurement honesty outranks the
+  functional spec (SPEC 0.2), so this read gets 15 s and is the one exception to the 2 s and 4 s
+  caps of SPEC 7.5. To keep self-drain bounded it runs at most once per 30 minutes; in between, a
+  failed read retries with the normal budget. The 72 h run measures how long it takes.
 - **Raw copies.** The parser's input is copied for the blob, up to 8 MB; past that the copy is
   dropped, not cut.
 - **Measured later.** The 72 h run measures each source's cost.
@@ -129,18 +136,30 @@ This state lives in memory. The first read after Coulomb's process starts is not
   - `device_stat` keys: screen, Doze, radio, signal and brightness bins, discharge totals.
 - **Not reported is null or absent, never 0** (the parser rule).
 
-### Light snapshots
+### Trigger policy
 
-- A level change (SPEC 7.2) is stored as a sample only (ADR-0015).
-- Boot, package replaced and package changed store a light snapshot row. They are a few a day,
-  and windows and references need a row to point at.
+The policy is pure (`TriggerPolicy`); the engine supplies what it knows.
+- **Level change** (SPEC 7.2): a sample only (ADR-0015). If the stored sessions no longer match
+  the device, as after a missed plug or screen broadcast, it becomes a heavy snapshot (light
+  without dump access), since sessions start and end at snapshots.
+- **Package added, replaced or removed:** a light snapshot row. They are a few a day, and the UID
+  package table needs a row's time.
+- **App open, refresh and unlock:** heavy, but skipped if a heavy snapshot ran in the last 60 s.
+- **Everything else is heavy:** screen on and off, plug, the 30-minute screen-on snapshot, boot,
+  Coulomb's own update, and `SERVICE_STARTED`. That last trigger is new: the service started, or
+  the system restarted it after killing the process, with no other trigger.
+- **First trigger of a process:** always heavy, so the history read shows what happened while
+  Coulomb was not running.
+- **No dump access yet** (privileges not bound after boot, or revoked): a wanted heavy snapshot is
+  stored as a light row and is owed. The owed snapshot runs when access returns, or on the next
+  trigger once dumps work, and keeps the original trigger.
 
 ### Blobs
 
 A blob is the gzip of the raw S5 proto. It is kept for a heavy snapshot that:
 - starts or ends a charge or discharge session (plug triggers, boot);
 - is the first heavy snapshot of a local day;
-- is taken for a user reference;
+- is taken for a user reference (P4, with the screens that set them);
 - or has a source whose parse was incomplete. For those, the incomplete source's raw text is
   kept too, for diagnosis.
 
@@ -162,11 +181,20 @@ Windows run between heavy snapshots (ADR-0015 kinds):
 are in one boot; else the level change times the capacity (Estimated, `LEVEL_DELTA`); else null.
 Across a reboot the counter is not trusted: some fuel gauges re-estimate it at boot.
 
+The capacity is S5's `power_use_summary.battery_capacity_mah` (BatteryStats android-17.0.0_r1
+L8786, android-16.0.0_r4 L8754, through `populateBatterySessionInfo`, BatteryUsageStatsProvider
+android-17.0.0_r1 L296-303, android-16.0.0_r4 L297-304). It is the platform's estimate, not the
+design capacity: the power profile's value at first, replaced on battery by `charge_full / 1000`
+or, failing that, by charge ÷ level above 25% (BatteryStatsImpl android-17.0.0_r1 L11098-11099 and
+L13319-13327, android-16.0.0_r4 L11506-11507 and L13722-13730). The design capacity, wear and the
+learned capacity come in P4.
+
 **Resets.** The platform resets its statistics when the device is unplugged at a high level
 (`shouldResetOnUnplugLocked`, BatteryStatsImpl android-16.0.0_r4 L13530-13550, android-17.0.0_r1
-L13127-13147), so most days have a reset. A window's counters are taken over a chain: its two ends
-and every snapshot in between whose counters are still stored, split at each reset
-(`Attribution.window`, ADR-0017). Counters are pruned two hours back, so the collector pins the
+L13127-13147), so most days have a reset. A window's counters are taken over a chain, split at
+each reset (`Attribution.window`, ADR-0017). The chain is the window's two ends plus, for each
+reset between them, the stored snapshots on either side of it. Between two resets counters only
+grow, so other snapshots would add nothing. Counters are pruned two hours back, so the collector pins the
 last heavy snapshot before the latest reset with a hidden automatic reference, `BEFORE_RESET`.
 A window that spans one reset then keeps its earlier part. Two resets in one window leave it a
 lower bound, marked partial.
@@ -183,6 +211,39 @@ Modeled.
 
 **Quality.** As the drain rate's (ADR-0017): source quality times resolution, halved for a
 partial window.
+
+**Day windows.** A local day starts at its first heavy snapshot, not at midnight: no alarm wakes
+the device at midnight (SPEC 7.4). When a heavy snapshot falls on a later local date than the
+`TODAY` reference, it closes the day window and becomes the new `TODAY`.
+
+### Sessions
+
+`SessionRules` (ADR-0015) decides opens and closes. At close the collector fills:
+- start and end level, charge and time;
+- the drain source (counter or level) and the drained mAh;
+- time-weighted average current and the peak current: the highest charge current for a charge
+  session, the largest discharge current otherwise;
+- minimum, mean and maximum temperature;
+- for a charge session, the minutes at or above 80% and at 100%. A sample stands for at most
+  2 minutes, so a gap in the samples does not count as time at that level;
+- quality: source quality times resolution, halved unless the session closed on a state change
+  (a reboot or process gap leaves the end uncertain).
+
+A session closed by a reboot ends where the old boot was last seen: its last sample or snapshot,
+whichever is later. Its end snapshot is that boot's last heavy snapshot, so it still gets a window.
+Wear and capacity estimates are left null until P4, and deep Doze time until P5.
+
+### Calibration
+
+After each snapshot commits, the tracker reads the last 60 minutes of samples and runs ADR-0017's
+calibration: charge counter trust, current sign and current scale. The device profile is updated
+when the result improves or the counter verdict changes. Once quality reaches 0.9 and the counter
+verdict is known, the tracker stops running.
+
+### UID packages
+
+The UID-to-package table is updated from S5. All UIDs are written with the first heavy snapshot of
+a local day; later snapshots write only UIDs whose package list changed.
 
 ### Samplers and wakelocks
 
@@ -208,12 +269,24 @@ partial window.
   - windows;
   - moved automatic references;
   - the boot's history offset.
-- **The service.** Full mode runs a `specialUse` foreground service (subtype `battery_monitoring`).
-  It may start from `BOOT_COMPLETED`, since `specialUse` is on the default allowlist
-  (`FGS_BOOT_COMPLETED_RESTRICTIONS`, ActiveServices android-17.0.0_r1 L389-404, android-16.0.0_r4
-  L368-383; `DEFAULT_FGS_BOOT_COMPLETED_ALLOWLIST`, ActivityManagerConstants android-17.0.0_r1
-  L199-205, android-16.0.0_r4 L195-201).
-- **Receivers.** Screen, plug and battery receivers are registered at runtime in the service.
+- **After commit.** The calibration tracker runs, then retention when due.
+- **The service.** Full mode runs a `specialUse` foreground service (subtype `battery_monitoring`)
+  with a minimum-importance notification. It is sticky. It may start from the background on:
+  - `BOOT_COMPLETED`, since `specialUse` is on the default allowlist
+    (`FGS_BOOT_COMPLETED_RESTRICTIONS`, ActiveServices android-17.0.0_r1 L389-404,
+    android-16.0.0_r4 L368-383; `DEFAULT_FGS_BOOT_COMPLETED_ALLOWLIST`, ActivityManagerConstants
+    android-17.0.0_r1 L199-205, android-16.0.0_r4 L195-201);
+  - `MY_PACKAGE_REPLACED`, which is sent with a temporary foreground-service allowlist
+    (BroadcastHelper android-17.0.0_r1 L714-720 and L288-298, android-16.0.0_r4 L734-740 and
+    L288-298).
+- **The boot receiver is not exported.** Both broadcasts come from system_server, whose own pid
+  passes the component check (BroadcastSkipPolicy android-17.0.0_r1 L136-145, android-16.0.0_r4
+  L133-142; `ActivityManagerService.checkComponentPermission` android-17.0.0_r1 L6898-6902,
+  android-16.0.0_r4 L6235-6239).
+- **Receivers.** Screen, unlock, plug, battery, clock-change and package receivers are registered
+  at runtime in the service, not exported.
+- **Until onboarding exists (P3),** opening the app starts the service. `adb shell am start` on the
+  main activity is also how a headless run starts it.
 - **Lite mode** (WorkManager, 6 h) arrives with Settings in P4. Until then Full is the only mode.
 
 ### Retention
@@ -230,6 +303,25 @@ turns "N days ago" into a `(bootSeq, elapsedNs)` key from the boot table.
 
 `VACUUM` runs only while charging, when the database has freed more than 10% of its pages.
 
+## Validation
+
+On the API 37 emulator (2026-11-06), with the P1 grants in place:
+- Installing an update started the service through `MY_PACKAGE_REPLACED`, and a reboot started it
+  through `BOOT_COMPLETED`. The system logged both allowances.
+- Heavy snapshots took 75–250 ms of wall time, with S5 and S7 read in the app's process.
+- History was stored with no gaps: 421 events at first, 674 after the reboot. Each boot's offset
+  was accepted from its first read.
+- Unplug, screen off, level steps, screen on and replug were simulated with `dumpsys battery`, and
+  the battery was reset afterwards. Sessions, windows and references came out as designed. A
+  stats reset at a full unplug was seen (`total_realtime_ms` 1869306 → 510), and `BEFORE_RESET`
+  was set.
+- The emulator's charge counter is a fixed 10000 µAh. Calibration rejected it, and drain fell back
+  to `LEVEL_DELTA` with the emulator's 3000 mAh capacity.
+- The sessions open at the reboot closed with `REBOOT` at the old boot's last sample.
+
+Two defects found there are fixed: awake screen-off time was null rather than 0 when the counter
+did not move, and a session closed by a reboot had no end snapshot.
+
 ## Consequences
 
 - The 72 h run measures:
@@ -241,3 +333,4 @@ turns "N days ago" into a `(bootSeq, elapsedNs)` key from the boot table.
   These replace ADR-0015's assumed rates before the schema freeze.
 - Adding a deferred source needs its parser, its capability probe and a row here.
 - One `Snapshot` column is added before the freeze. The identity hash in `SchemaTest` changes once.
+- `SnapshotTrigger` gains `SERVICE_STARTED`. Triggers are stored as text, so the schema is unchanged.

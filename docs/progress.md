@@ -74,6 +74,31 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
     from 65), with each snapshot marking the ids its read stored.
   - `SizeBudgetTest` projects about 131 MB after a year against SPEC 7.7's 150 MB, from the
     rates in ADR-0015. The 72 h run at the gate replaces those rates before the schema freezes.
+- `:core:analytics` (ADR-0017), pure functions with unit tests: current calibration (sign, scale,
+  charge counter trust), drain rate with provenance and quality, capacity as a weighted median
+  with a bootstrap interval, wear, attribution windows split at resets, and the session rules.
+- Independent review of the estimators and attribution diffs (ADR-0017 amendment): nine defects
+  and five doubts, all nine fixed with tests. Among them: draining while plugged no longer counts
+  as charging evidence, a counter derived from the level is coarse, and the shown %/h is always
+  Estimated.
+- The collector (`:core:collect`, ADR-0018):
+  - history placement on Coulomb's clock from the `TIME` pairings, segments per boot, the
+    restated-state check, and five noisy history kinds left out (41% of the phone's changes);
+  - counter rows from S5, heavy reads in the app's process first (a worker bind costs 474 ms);
+  - one actor with the SPEC 7.2 trigger policy, one Room transaction per snapshot: history,
+    snapshot, sessions, consecutive, session and day windows over chains split at resets, the
+    automatic references (with a hidden `BEFORE_RESET`), UID packages;
+  - sessions closed with drain, currents, temperatures and time at 80% and 100%; a calibration
+    tracker on the last hour of samples; retention cut by `(bootSeq, elapsedNs)` keys, run once a
+    day while charging;
+  - Full mode: a `specialUse` foreground service with runtime receivers, a boot and update
+    receiver, the SPEC 7.3 samplers with no alarms, and 200 ms wakelocks only while plugged in;
+  - one exception to SPEC 7.5, recorded in ADR-0018: a catch-up history read gets 15 s, at most
+    once per 30 minutes, because the whole buffer may not fit in 2 s.
+- Emulator run on API 37 (ADR-0018, Validation). Update and boot start the service. Heavy
+  snapshots take 75–250 ms of wall time. History was stored without gaps across a reboot. Simulated
+  unplug, screen and level steps gave the expected sessions, windows and references. A stats reset
+  at a full unplug was confirmed. Two defects found there are fixed.
 
 ### Open findings
 
@@ -89,9 +114,21 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   would take about 1 GB of storage. The collector's ADR decides what a blob holds (default: the S5
   proto and any source whose parse was incomplete) and caps the folder.
 - A state change within a second of a read's last record can be merged into that record after the
-  read, and no later read prints it (ADR-0014 second amendment). The collector must compare each
-  read's baseline with the stored state and record an uncertain span. This will be checked on the
-  emulator with the instrumented tests.
+  read, and no later read prints it (ADR-0014 second amendment). The collector now compares each
+  read's baseline with the stored state and records a `STATE_MISMATCH` gap (ADR-0018). An
+  instrumented test on the emulator is still to come.
+- Snapshot blobs are settled in ADR-0018: the raw S5 proto (about 340 KB on the phone) for 5 to 10
+  heavy snapshots a day, plus the raw text of any source whose parse was incomplete, kept 30 days
+  or up to 128 MB.
+
+### Still to do before the P2 gate
+
+- Independent review of the collector (history ingest, windows, engine), then fix its findings.
+- Instrumented contract tests on the API 37 emulator.
+- The 72 h headless run on the phone, for protocols A and E and the measured rates: per-source
+  cost, heavy snapshot rate, blob count, history rows a day, and whether any counter moves
+  between two plugged-in snapshots. The owner is asked before connecting.
+- Freeze the schema with the measured rates.
 
 ## P1 Privileged core (2026-11-06)
 
