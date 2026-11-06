@@ -269,13 +269,13 @@ Both were shut down after the runs.
 
 - The in-app capability probe on the phone was not in the approved step list and did not run.
   `docs/capabilities/sm-s938b-S938BXXSDDZJ1.md` still holds the P0 shell-level view.
-- Protocol F expects "no crash". No crash showed up in the drill output, but the phone's crash log
-  buffer was not read. Next approved phone session: read it (read-only, seconds).
+- Protocol F expects "no crash". No crash showed up in the drill output, and the phone's crash log
+  buffer, read at the start of the P2 72 h run (2026-11-06), holds no Coulomb lines.
 - Sui and root (T3) have not been exercised; neither the phone setup nor the emulators run Sui.
-- Instrumented `UserService` contract tests (SPEC 16.3) are not written yet; the drills covered the
-  contract by hand. They are queued for the start of P2. Official Shizuku cannot authorize on the
-  API 37 AVD, so they run on `pixel-api36`. This is an exception to SPEC 16.7 (API 36 only for
-  Android 16 bugs) until a working manager runs on the API 37 AVD.
+- The instrumented `UserService` contract tests (SPEC 16.3) were written in P2 and pass 8/8 on
+  `pixel-api36` (P2 section). Official Shizuku cannot authorize on the API 37 AVD, so they run on
+  API 36. This is an exception to SPEC 16.7 (API 36 only for Android 16 bugs) until a working
+  manager runs on the API 37 AVD.
 
 ### Owner decisions at the gate
 
