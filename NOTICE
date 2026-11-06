@@ -1,0 +1,8 @@
+Coulomb
+Copyright The Coulomb contributors. Licensed under GPL-3.0-or-later (see LICENSE).
+
+This product includes protocol buffer definitions from the Android Open Source Project
+(https://source.android.com), tag android-17.0.0_r1, in core/parsing/src/main/proto/.
+Copyright (C) 2016-2018 The Android Open Source Project.
+Licensed under the Apache License, Version 2.0 (see LICENSES/Apache-2.0.txt).
+Each file is modified only by an added "option java_package" line, marked in the file.
