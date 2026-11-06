@@ -262,9 +262,11 @@ A session closed by a reboot ends where the old boot was last seen: its last sam
 whichever is later. Its end snapshot is that boot's last heavy snapshot, even when a light one
 came after it, so it still gets a window.
 
-After a process start, a level more than 1 point above the last one stored, while unplugged,
-means the device charged while Coulomb was not running, even if the history read does not show
-it: the discharge session ends with a data gap and a new one opens.
+After a process start in the same boot, a level more than 1 point above the last reading stored,
+when that reading was unplugged and the device still is, means the device charged while Coulomb
+was not running, even if the history read does not show it: the discharge session ends with a
+data gap and a new one opens. Across a reboot nothing is inferred: fuel gauges may re-estimate
+the level at boot.
 
 ### References
 
@@ -272,9 +274,10 @@ Automatic references move on light snapshots too: a reference marks a moment, an
 earlier unplug would be wrong, not just less detailed.
 - **Since boot:** the first snapshot of each boot.
 - **Since unplugged** (and **since full charge**, when the charge ended full): only when a
-  discharge session opens after a charge session closed in the same reconcile, or after the
-  history showed the plug state flip while Coulomb was not running. A reopen after a reboot or a
-  data gap, or the first snapshot ever, leaves it where it is.
+  discharge session opens after a charge session closed in the same reconcile, or after a stored
+  discharge session closed because the history showed the plug state flip while Coulomb was not
+  running. A reopen after a reboot or a data gap leaves it where it is, and so does the first
+  snapshot ever: a flip in its catch-up read is older than anything Coulomb watched.
 - **Since screen off:** the same rule for screen-off after screen-on.
 - **Today:** with the day window, on heavy snapshots only.
 - **Before reset:** the heavy snapshot before a reset, when both sides share a counter source.
@@ -342,9 +345,12 @@ a local day; later snapshots write only UIDs whose package list changed.
 Retention runs once a day while charging with the screen off (SPEC 7.7: charging and idle), on
 the next snapshot after 24 h, in the actor. It turns "N days ago" into a `(bootSeq, elapsedNs)`
 key counted back in elapsed time: the current boot ran for its elapsed time, each earlier boot
-for at least the latest elapsed time stored in it. Time a boot ran unseen, and boots Coulomb never
-saw, count as nothing, so a cut can only fall earlier than the true instant: rows are kept too
-long, never pruned early. The wall clock is not used, so a clock change cannot move a cut.
+for at least the latest snapshot or sample stored in it (the two tables indexed by
+`(bootSeq, elapsedNs)`; snapshot rows are kept for good). Time a boot ran unseen, and boots
+Coulomb never saw, count as nothing, so a cut can only fall earlier than the true instant: rows
+are kept too long, never pruned early. The wall clock is not used, so a clock change cannot move
+a cut. The earlier boots are read only when a cut reaches past the current boot, which the
+hourly 2 h counter cut almost never does.
 - Samples: 14 days.
 - Aggregates: 180 days.
 - History ring: 30 days.
@@ -400,6 +406,21 @@ It is the measured discharge (see Snapshot rows), so it was renamed `stats_disch
 stays Measured. While fixing these, the collector also gained Coulomb's own UID in window detail
 (SPEC 6.9), a clock-change check from the clocks themselves (the broadcast can arrive after the
 read), and the unseen-charge rule (Sessions).
+
+A second reviewer then checked the fix commit. It confirmed nine fixes and found two defects in
+the others, both fixed with tests: the first snapshot ever still moved since unplugged when its
+catch-up read held a plug change, and the hourly counter prune scanned the unindexed history
+table on battery (0.67 s at 30 days of events). Its doubt about the unseen-charge rule across a
+reboot led to the same-boot condition above.
+
+Accepted, with their cost known:
+- A reference on a light snapshot has no counters, so a discharge whose unplug snapshot came out
+  light gets measured drain but no attribution.
+- A day whose two ends used different counter sources (S5 and S6) gets no day window; `TODAY`
+  still moves.
+- If a process starts without dump access, its first snapshot is light and the later heavy
+  read's unseen changes are not applied to the sessions: that read cannot tell changes Coulomb
+  missed from ones it watched.
 
 Open, for the 72 h run to settle:
 - **Unclean reboots.** A crash reboot may not print a history `START`; placement then relies on
