@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="collector_channel">Battery monitoring</string>
+    <string name="collector_channel_description">Shown while Coulomb records battery use. Turning it off hides the notification; monitoring continues.</string>
+    <string name="collector_notification">Monitoring battery</string>
+</resources>

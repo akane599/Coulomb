@@ -18,13 +18,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.akane599.coulomb.core.collect.android.CollectorService
+import io.github.akane599.coulomb.core.model.SnapshotTrigger
 
-/** P0 shell: edge-to-edge host only. Navigation and screens arrive in P4 (SPEC 10, 17). */
+/**
+ * Edge-to-edge host. Navigation and screens arrive in P4 (SPEC 10, 17). Opening the app starts
+ * Full mode, the default (SPEC 7.1), and asks for an app-open snapshot (SPEC 7.2).
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        CollectorService.start(this, SnapshotTrigger.APP_OPENED)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
