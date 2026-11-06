@@ -121,12 +121,35 @@ This state lives in memory. The first read after Coulomb's process starts is not
   failed read retries with the normal budget. The 72 h run measures how long it takes.
 - **Raw copies.** The parser's input is copied for the blob, up to 8 MB; past that the copy is
   dropped, not cut.
+- **Heavy only when whole.** A snapshot is stored heavy only when the source its counters come
+  from (S5, or S6 when S5 failed) was read whole: the dump completed and the UID list did not end
+  early. A partial read, or one during which the CPU slept, is stored as a light row with no
+  counters; `sourceStatusJson` says why. Its history read is still stored.
+- **Sleep inside a read.** Coulomb holds no wakelock on battery (SPEC 7.4), so the CPU can suspend
+  between the light reading and the dump's end. The counters then describe an instant up to the
+  sleep later than the snapshot's time, and a window ending there would mix two moments. The
+  engine compares `elapsedRealtime` with `uptimeMillis` over that span; more than 1 s apart marks
+  the counter source `slept`. The 72 h run counts how often this happens at screen off.
+- **One source per window.** S5 and S6 disagree at the same instant (rounding, and lines checkin
+  does not print), so a window joins only snapshots whose counters came from the same source.
+  A chain link from the other source is left out; a reset next to it makes the window partial.
 - **Measured later.** The 72 h run measures each source's cost.
 
 ### Snapshot rows
 
 - `Snapshot` gains `statsRealtimeMs` (`total_realtime_ms`). Without it, a reset cannot be told
   from a clock change (ADR-0017 amendment).
+- **Device power rows.** The system-level power items are the device-scope aggregate per
+  component, apps included (BatteryStats android-17.0.0_r1 L8733-8782 proto and L4529-4540
+  checkin; android-16.0.0_r4 L8701-8750 and L4508-4519). Both writers give them uid 0, so they are
+  stored under `DEVICE_UID` and never added to the UID rows. Their sum is the power model's
+  device total: 2450 mAh on the phone fixture, against 1604 mAh for the UIDs.
+- **The summary's "computed" total is measured.** On Android 16 and 17 `computed_power_mah` (and
+  checkin `pws`) is the battery discharge since the reset: `PowerStatsExporter` adds
+  `batteryDischargeMah` to the device aggregate and to the drained range alike
+  (`populateBatteryLevelInfo`, android-16.0.0_r4 and android-17.0.0_r1 L245-254). Both fixtures
+  agree: 3054 = min = max on the phone, 0 on the always-charging emulator whose items sum to
+  14 mAh. It is stored as the measured `stats_discharge_uah`, not as a model total.
 - **Counter rows from S5:**
   - `uid_power`: modeled per-UID mAh, as `component = "all"` and `processState = "any"`;
   - `wake_stat`: partial wakelocks, kernel wakelocks and wakeup reasons;
@@ -141,10 +164,12 @@ This state lives in memory. The first read after Coulomb's process starts is not
 The policy is pure (`TriggerPolicy`); the engine supplies what it knows.
 - **Level change** (SPEC 7.2): a sample only (ADR-0015). If the stored sessions no longer match
   the device, as after a missed plug or screen broadcast, it becomes a heavy snapshot (light
-  without dump access), since sessions start and end at snapshots.
+  without dump access), since sessions start and end at snapshots. It pays an owed heavy snapshot
+  only once dumps work: while they do not, it stays a sample.
 - **Package added, replaced or removed:** a light snapshot row. They are a few a day, and the UID
   package table needs a row's time.
-- **App open, refresh and unlock:** heavy, but skipped if a heavy snapshot ran in the last 60 s.
+- **App open, refresh and unlock:** heavy, but skipped if any snapshot, light or heavy, ran in the
+  last 60 s. An owed heavy snapshot passes the debounce only when dumps work.
 - **Everything else is heavy:** screen on and off, plug, the 30-minute screen-on snapshot, boot,
   Coulomb's own update, and `SERVICE_STARTED`. That last trigger is new: the service started, or
   the system restarted it after killing the process, with no other trigger.
@@ -204,10 +229,14 @@ than 2 minutes older. Most platform counters only advance on battery, so this is
 cautious. The 72 h run checks whether any counter moves between two plugged-in snapshots before
 the rule is relaxed.
 
+**Modeled drain** is the change in the device power rows. Without the device section at both
+ends it is null. The UID rows alone leave out what no app was charged for, and the summary's
+total is the measured discharge.
+
 **Detail rows.** UIDs with at least 0.1 mAh, at most 30, get their own rows; the rest are summed
 into `OTHER_UID` per component and process state. Wakelock rows need at least 1 s, at most 30
-per kind. Stat rows follow the same UIDs. Timers and counts are Measured; modeled energy is
-Modeled.
+per kind. Stat rows follow the same UIDs. Coulomb's own UID keeps its rows at any size, wakelocks
+included (SPEC 6.9, protocol E). Timers and counts are Measured; modeled energy is Modeled.
 
 **Quality.** As the drain rate's (ADR-0017): source quality times resolution, halved for a
 partial window.
@@ -230,7 +259,25 @@ the device at midnight (SPEC 7.4). When a heavy snapshot falls on a later local 
   (a reboot or process gap leaves the end uncertain).
 
 A session closed by a reboot ends where the old boot was last seen: its last sample or snapshot,
-whichever is later. Its end snapshot is that boot's last heavy snapshot, so it still gets a window.
+whichever is later. Its end snapshot is that boot's last heavy snapshot, even when a light one
+came after it, so it still gets a window.
+
+After a process start, a level more than 1 point above the last one stored, while unplugged,
+means the device charged while Coulomb was not running, even if the history read does not show
+it: the discharge session ends with a data gap and a new one opens.
+
+### References
+
+Automatic references move on light snapshots too: a reference marks a moment, and one left on an
+earlier unplug would be wrong, not just less detailed.
+- **Since boot:** the first snapshot of each boot.
+- **Since unplugged** (and **since full charge**, when the charge ended full): only when a
+  discharge session opens after a charge session closed in the same reconcile, or after the
+  history showed the plug state flip while Coulomb was not running. A reopen after a reboot or a
+  data gap, or the first snapshot ever, leaves it where it is.
+- **Since screen off:** the same rule for screen-off after screen-on.
+- **Today:** with the day window, on heavy snapshots only.
+- **Before reset:** the heavy snapshot before a reset, when both sides share a counter source.
 Wear and capacity estimates are left null until P4, and deep Doze time until P5.
 
 ### Calibration
@@ -269,7 +316,8 @@ a local day; later snapshots write only UIDs whose package list changed.
   - windows;
   - moved automatic references;
   - the boot's history offset.
-- **After commit.** The calibration tracker runs, then retention when due.
+- **After commit,** for light snapshots too: the calibration tracker runs, then the counter prune
+  and retention when due.
 - **The service.** Full mode runs a `specialUse` foreground service (subtype `battery_monitoring`)
   with a minimum-importance notification. It is sticky. It may start from the background on:
   - `BOOT_COMPLETED`, since `specialUse` is on the default allowlist
@@ -291,14 +339,20 @@ a local day; later snapshots write only UIDs whose package list changed.
 
 ### Retention
 
-Retention runs once a day while charging, on the next heavy snapshot after 24 h, in the actor. It
-turns "N days ago" into a `(bootSeq, elapsedNs)` key from the boot table.
+Retention runs once a day while charging with the screen off (SPEC 7.7: charging and idle), on
+the next snapshot after 24 h, in the actor. It turns "N days ago" into a `(bootSeq, elapsedNs)`
+key counted back in elapsed time: the current boot ran for its elapsed time, each earlier boot
+for at least the latest elapsed time stored in it. Time a boot ran unseen, and boots Coulomb never
+saw, count as nothing, so a cut can only fall earlier than the true instant: rows are kept too
+long, never pruned early. The wall clock is not used, so a clock change cannot move a cut.
 - Samples: 14 days.
 - Aggregates: 180 days.
 - History ring: 30 days.
 - Window detail, by kind (ADR-0015).
 - Counters: 2 hours back, except the latest heavy snapshot, references (`BEFORE_RESET` among
-  them) and the starts of open sessions (ADR-0015).
+  them) and the starts of open sessions (ADR-0015). This prune is cheap and runs at most hourly
+  after any snapshot, on battery too; a day of heavy snapshots would otherwise keep every counter
+  until the charger.
 - Blobs: as above.
 
 `VACUUM` runs only while charging, when the database has freed more than 10% of its pages.
@@ -321,6 +375,40 @@ On the API 37 emulator (2026-11-06), with the P1 grants in place:
 
 Two defects found there are fixed: awake screen-off time was null rather than 0 when the counter
 did not move, and a session closed by a reboot had no end snapshot.
+
+### Independent review (2026-11-06)
+
+A read-only reviewer probed the collector with its own tests before the P2 gate. Each finding
+below now has an asserting regression test in `:core:collect`.
+
+| Finding | Fix |
+| --- | --- |
+| Device power rows were never stored (`uid == null` never matched) | Stored by where they are printed; modeled drain is their change |
+| A CPU sleep inside a dump looked like a reset or a huge window | `slept` status; the snapshot is light |
+| Partial S5, partial S6 and mixed S5/S6 snapshots ended windows | Heavy only when whole; one source per window |
+| A timed-out read (no `NEXT:`) never got the catch-up again | Any read that set no cursor counts as failed |
+| The charge counter was compared across a reboot | Same-boot check in the window builder |
+| Retention cuts into earlier boots followed the wall clock | Elapsed chain over the boots |
+| A read that stored nothing still marked the snapshot's history event id | Marked only when a cursor was set |
+| While dumps were unavailable every level change became a light row, and the debt bypassed the debounce | Debt paid only once dumps work; debounce counts any snapshot |
+| A reboot-closed session lost its window when the old boot ended on a light snapshot | Its window ends at the boot's last heavy snapshot |
+| References moved on reopens (reboot, first snapshot) | Moved only on a real transition |
+| Retention was not gated on idle; counters were pruned only daily | Screen-off gate; hourly prune |
+
+One finding was a misreading: the review read `modeled_uah` as a model total labelled Measured.
+It is the measured discharge (see Snapshot rows), so it was renamed `stats_discharge_uah` and
+stays Measured. While fixing these, the collector also gained Coulomb's own UID in window detail
+(SPEC 6.9), a clock-change check from the clocks themselves (the broadcast can arrive after the
+read), and the unseen-charge rule (Sessions).
+
+Open, for the 72 h run to settle:
+- **Unclean reboots.** A crash reboot may not print a history `START`; placement then relies on
+  the boot offset check. Not reproducible on the emulator.
+- **`STATE_MISMATCH` gaps.** Honest given the format, but their rate on the phone is unknown.
+- **Screen toggles.** Every screen change is a heavy snapshot; a user who toggles often pays for
+  each. The run measures the cost per snapshot before any debounce is added.
+- **`slept` at screen off.** If most screen-off snapshots sleep, screen-off windows lose their
+  start, and a short wakelock-free retry is needed.
 
 ## Consequences
 

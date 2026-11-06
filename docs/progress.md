@@ -99,8 +99,41 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   snapshots take 75–250 ms of wall time. History was stored without gaps across a reboot. Simulated
   unplug, screen and level steps gave the expected sessions, windows and references. A stats reset
   at a full unplug was confirmed. Two defects found there are fixed.
+- Fixture gate test (`FixtureGateTest`): every file in both fixture sets is parsed whole by its
+  parser (no issue, every byte read) or listed as no parser input, with the reason. History reads
+  start from the cursor saved beside them.
+- Validation tools for the 72 h run, read-only: `tools/validation/capture.sh` copies the database
+  and reads Coulomb's process CPU, service, alarms and batterystats lines (`-c`, never
+  `--checkin`); `tools/validation/report.py` prints the rates, the heavy snapshot cost and
+  protocols E and A, and says "not a result" where its inputs are missing.
+- Instrumented tests (`:app` androidTest, Hilt runner, run with `am instrument` after
+  `install -r -t`, never `connectedAndroidTest`, which uninstalls):
+  - the SPEC 16.3 UserService contract (8 tests): 8/8 on the API 36 emulator with Shizuku. They
+    skip on API 37, where official Shizuku cannot authorize;
+  - on-device parser tests over the collector's in-app route: 2/2 on API 36, and on API 37 the
+    two in-app tests pass with the worker-only S21 test skipped.
+- SELinux: apps cannot look up `battery` or `suspend_control_internal` (public `service.te`, not
+  `app_api_service`; android-16.0.0_r4 L93 and L58, android-17.0.0_r1 L91 and L56), so
+  `Debug.dumpService` returns false in-app. Those services now go only through the worker, and the
+  in-app route reports `NO_ACCESS` instead of a generic dump failure.
+- Independent review of the collector (ADR-0018 review section): eleven findings, all fixed with
+  asserting regression tests. The largest:
+  - device-scope power was never stored;
+  - a CPU sleep inside a dump, or an incomplete dump, could end a window;
+  - the charge counter was compared across a reboot;
+  - retention cuts into earlier boots followed the wall clock;
+  - without dump access every level change became a snapshot row.
+  A smoke run on the API 37 emulator after the fixes: five heavy snapshots (S5 and S7 whole,
+  63–159 ms), sessions and references on the real transitions, device power rows and Coulomb's
+  own UID rows stored, no false `slept`.
 
 ### Open findings
+
+- `computed_power_mah` (and checkin `pws`) is the measured battery discharge on Android 16 and
+  17, not a model total: `PowerStatsExporter` adds `batteryDischargeMah` to the device aggregate
+  (ADR-0018, Snapshot rows). The power model's device total is the sum of the per-component items:
+  2450 mAh on the phone fixture against 3054 mAh discharged, so about a fifth of the phone's drain
+  is unattributed by the model itself. Stored as `stats_discharge_uah`, Measured.
 
 - Power estimates in the phone's checkin dump are above those in its proto dump taken 0.3 s
   earlier, while CPU times match. The two writers ask for different usage stats (`detailed`
@@ -123,11 +156,10 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 
 ### Still to do before the P2 gate
 
-- Independent review of the collector (history ingest, windows, engine), then fix its findings.
-- Instrumented contract tests on the API 37 emulator.
 - The 72 h headless run on the phone, for protocols A and E and the measured rates: per-source
-  cost, heavy snapshot rate, blob count, history rows a day, and whether any counter moves
-  between two plugged-in snapshots. The owner is asked before connecting.
+  cost, heavy snapshot rate, blob count, history rows a day, how often a screen-off dump sleeps,
+  and whether any counter moves between two plugged-in snapshots. The owner is asked before
+  connecting.
 - Freeze the schema with the measured rates.
 
 ## P1 Privileged core (2026-11-06)
