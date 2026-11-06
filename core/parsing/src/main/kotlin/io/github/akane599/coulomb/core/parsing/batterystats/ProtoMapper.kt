@@ -47,7 +47,9 @@ import okio.ByteString
  * So an absent field is its zero (root's entry has no uid, a top-state entry has no state), and
  * so is an absent message the writer always starts (`cpu`, `network`, `wifi`, `battery`, `misc`,
  * ...) or starts for an existing timer: an all-zero counter and a missing one both read as 0.
- * Only `bluetooth_misc` and `power_use_item`, which the writer may skip, stay null when absent.
+ * Only `bluetooth_misc` and `power_use_item` stay null when absent: the writer may skip them, and
+ * it drops an all-zero `power_use_item`, so a UID with 0 mAh reads as null, never 0.0. A timer's
+ * absent `max_duration_ms` is null too: the writer leaves out a zero maximum and an untracked one.
  * Entries with no time (wakelocks, jobs, syncs, sensors, processes) and zero stop-reason counts are
  * dropped, as the checkin writer drops them, so [BatteryStatsCheckinParser] gives the same lists.
  * An enum value the schema does not know (an OEM addition such as Samsung's job stop reason 100)

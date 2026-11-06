@@ -19,8 +19,9 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 ### Open findings
 
 - Power estimates in the phone's checkin dump are above those in its proto dump taken 0.3 s
-  earlier, while CPU times match. The cause is not established (ADR-0013 amendment); `powerMah`
-  must not be compared across sources until it is.
+  earlier, while CPU times match. The two writers ask for different usage stats (`detailed`
+  false vs true, ADR-0013 review amendment), so `powerMah` is never compared across sources;
+  whether that explains the whole gap is not proven.
 
 ## P1 Privileged core (2026-11-06)
 

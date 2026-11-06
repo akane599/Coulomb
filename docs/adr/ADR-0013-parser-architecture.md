@@ -109,7 +109,33 @@ Found while writing the S6 parser and checking it against S5 on the same capture
   - an OEM's unnamed stop reasons.
 - **Power estimates differ between the two dumps.** The power figures in the phone's checkin dump
   are above those in the proto dump taken 0.3 s earlier (CPU 1045 vs 927 mAh, Bluetooth 1.6 vs
-  0.15 mAh), while the per-UID CPU times match. Both paths call `prepareForDumpLocked` and the same
-  dump helper (BatteryStatsService.java android-17.0.0_r1 L3374-3456; BatteryStats.java L7835 and
-  L7915), so the format does not explain the gap. The cause is not established. Until it is, estimators must not compare
-  `powerMah` across the two sources, and the cross-check test leaves power out.
+  0.15 mAh), while the per-UID CPU times match. Corrected below: the two paths ask for different
+  usage stats.
+
+## Amendment 2026-11-06: independent review of S5 and S6
+
+An independent read-only review of both parsers (neutral brief) found the following; all are
+fixed or recorded.
+
+- **The power figures are different quantities.** The proto writer asks the dump helper for
+  usage stats with `detailed = false` (BatteryStats.java android-17.0.0_r1 L7930-7932,
+  android-16.0.0_r4 L7898-7900), the checkin writer with `detailed = true` (L4523, L4502).
+  Detailed adds power models, process-state, power-state and screen-state data and virtual UIDs
+  (`BatteryStatsDumpHelperImpl`, android-16.0.0_r4 and android-17.0.0_r1 L31-43), which likely
+  explains the UIDs that have only a power entry in checkin. So `powerMah`, `powerUse` and `powerSummary` are not
+  comparable across S5 and S6; whether the query alone explains the whole gap is not proven.
+  Attribution takes mAh from `BatteryUsageStats` (S4, SPEC 6.5) and never mixes sources in a window.
+- **Names with line breaks.** Tag pool strings (`hsp`) and quoted job, sync, process and kernel
+  names are written without escaping line breaks; only `wl` names are cleaned. Read line by
+  line, the rest of such a name passed for a record, so an app could add rows to any UID.
+  Records are now joined while a quote is open (`CheckinLines`), with caps on length and line
+  count. `wua` and `wl` names have commas replaced, so they cannot carry a record.
+- **Completeness.** A UID entry the proto adapter cannot decode, or an overlong checkin record
+  outside the history, now makes the dump and the UID list incomplete: per-UID sums are partial.
+- **No invented zeros.** A checkin line that is there but short, or has a column that is not a
+  number, gives null for that column; 0 stays for a line the writer left out.
+- **No values in issues.** A line whose first field is not a short number is "not a checkin
+  line", without its text, and no longer marks the dump as another format version.
+- **Smaller points.** A broken proto header is "malformed", not "ended early". A proto timer's
+  absent maximum reads as null: the writer leaves out both a zero maximum and an untracked one.
+  A name holding `",` still splits early; the format cannot tell it apart.

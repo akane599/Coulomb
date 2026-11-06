@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.parsing.ParseContext
 import io.github.akane599.coulomb.core.parsing.aosp.os.SystemProto
 import io.github.akane599.coulomb.core.parsing.aosp.os.UidProto
 import io.github.akane599.coulomb.core.parsing.io.MeteredSource
+import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 
@@ -21,7 +22,8 @@ import java.io.InputStream
  * `dumpsys batterystats --proto` (S5) into a [BatteryStatsDump] (ADR-0013).
  *
  * The two outer messages are walked field by field; each UID and the system message are decoded on
- * their own, so a cut stream keeps every complete UID and a broken entry costs only itself. Never
+ * their own, so a cut stream keeps every complete UID and a broken entry costs only itself. A
+ * dropped UID still makes the UID list, and the dump, incomplete: per-UID sums are partial. Never
  * throws on bad input.
  */
 public object BatteryStatsProtoParser {
@@ -60,33 +62,48 @@ public object BatteryStatsProtoParser {
         private var statsSeen = false
         private var statsEnded = false
 
+        /** A UID entry could not be decoded. */
+        private var uidDropped = false
+
         /** True when the whole dump was read and nothing required was missing. */
         @Suppress("TooGenericExceptionCaught") // The parser boundary: bad input must never throw (SPEC 5.1).
         fun run(): Boolean {
-            try {
-                val reader = ProtoReader(meter.source)
-                val root = reader.beginMessage()
-                while (true) {
-                    val tag = reader.nextTag()
-                    if (tag == -1) break
-                    if (tag == DUMP_BATTERYSTATS) {
-                        readStats(reader)
-                    } else {
-                        ctx.unknown("BatteryStatsServiceDumpProto.$tag")
-                        reader.skip()
+            val read =
+                try {
+                    val reader = ProtoReader(meter.source)
+                    val root = reader.beginMessage()
+                    while (true) {
+                        val tag = reader.nextTag()
+                        if (tag == -1) break
+                        if (tag == DUMP_BATTERYSTATS) {
+                            readStats(reader)
+                        } else {
+                            ctx.unknown("BatteryStatsServiceDumpProto.$tag")
+                            reader.skip()
+                        }
                     }
+                    reader.endMessageAndGetUnknownFields(root)
+                    true
+                } catch (e: EOFException) {
+                    failed("ended early", e)
+                } catch (e: IOException) {
+                    // ProtocolException and other framing errors: the bytes are there but wrong.
+                    failed("malformed", e)
+                } catch (e: RuntimeException) {
+                    failed("malformed", e)
                 }
-                reader.endMessageAndGetUnknownFields(root)
-            } catch (e: IOException) {
-                ctx.issue(meter.offset, SOURCE, "ended early: ${e.javaClass.simpleName}")
-                return false
-            } catch (e: RuntimeException) {
-                ctx.issue(meter.offset, SOURCE, "malformed: ${e.javaClass.simpleName}")
-                return false
-            }
+            if (!read) return false
             if (!statsSeen) ctx.issue(meter.offset, SOURCE, "no batterystats message")
             if (statsSeen && device == null) ctx.issue(meter.offset, SOURCE, "no system message")
-            return statsEnded && device != null
+            return statsEnded && device != null && !uidDropped
+        }
+
+        private fun failed(
+            what: String,
+            e: Exception,
+        ): Boolean {
+            ctx.issue(meter.offset, SOURCE, "$what: ${e.javaClass.simpleName}")
+            return false
         }
 
         private fun readStats(reader: ProtoReader) {
@@ -139,12 +156,19 @@ public object BatteryStatsProtoParser {
             try {
                 mapper.uid(UidProto.ADAPTER.decode(bytes))
             } catch (e: IOException) {
-                ctx.issue(offset, "UidProto", "malformed: ${e.javaClass.simpleName}")
-                null
+                dropUid(offset, e)
             } catch (e: RuntimeException) {
-                ctx.issue(offset, "UidProto", "malformed: ${e.javaClass.simpleName}")
-                null
+                dropUid(offset, e)
             }
+
+        private fun dropUid(
+            offset: Long,
+            e: Exception,
+        ): UidStats? {
+            ctx.issue(offset, "UidProto", "malformed: ${e.javaClass.simpleName}")
+            uidDropped = true
+            return null
+        }
 
         @Suppress("TooGenericExceptionCaught") // One broken entry must not end the walk.
         private fun decodeSystem(
@@ -165,7 +189,7 @@ public object BatteryStatsProtoParser {
             val version = reportVersion
             val parcel = parcelVersion
             val header = if (version != null && parcel != null) StatsHeader(version, parcel, startPlatform, endPlatform) else null
-            return BatteryStatsDump(header = header, device = device, uids = uids.toList(), uidsComplete = statsEnded)
+            return BatteryStatsDump(header = header, device = device, uids = uids.toList(), uidsComplete = statsEnded && !uidDropped)
         }
     }
 }

@@ -36,6 +36,17 @@ class CsvTest {
     }
 
     @Test
+    fun anOpenQuoteIsFoundOnlyAtTheStartOfAField() {
+        assertThat(Csv.hasOpenQuote("9,1,l,jb,\"name")).isTrue()
+        // A quote closes a field only before a comma or the end of the line.
+        assertThat(Csv.hasOpenQuote("9,1,l,jb,\"na\"me")).isTrue()
+        assertThat(Csv.hasOpenQuote("9,1,l,jb,\"na\"me\",5")).isFalse()
+        assertThat(Csv.hasOpenQuote("9,1,l,jb,\"name\",5,1")).isFalse()
+        assertThat(Csv.hasOpenQuote("a\"b,c")).isFalse()
+        assertThat(Csv.hasOpenQuote("")).isFalse()
+    }
+
+    @Test
     fun aQuoteInsideAnUnquotedFieldIsJustACharacter() {
         assertThat(Csv.split("a\"b,c")).containsExactly("a\"b", "c").inOrder()
     }

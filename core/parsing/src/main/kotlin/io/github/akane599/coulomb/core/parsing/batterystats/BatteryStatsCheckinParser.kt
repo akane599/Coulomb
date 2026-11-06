@@ -43,14 +43,14 @@ public object BatteryStatsCheckinParser {
     ): Parsed<BatteryStatsDump> {
         val meter = MeteredSource(input)
         val ctx = ParseContext(SOURCE)
-        val walk = CheckinWalk(LineReader(meter), ctx, JobStopReasons.codes(sdkInt))
+        val walk = CheckinWalk(CheckinLines(LineReader(meter)), ctx, JobStopReasons.codes(sdkInt))
         val complete = walk.run()
         return Parsed(walk.result(), ctx.report(meter.offset, complete))
     }
 }
 
 private class CheckinWalk(
-    private val lines: LineReader,
+    private val lines: CheckinLines,
     private val ctx: ParseContext,
     private val stopReasonCodes: IntArray,
 ) {
@@ -64,13 +64,16 @@ private class CheckinWalk(
     private var cut = false
     private var otherVersion = false
 
+    /** A record was too long to read, so some data is missing. */
+    private var lost = false
+
     @Suppress("TooGenericExceptionCaught") // The parser boundary: bad input must never throw (SPEC 5.1).
     fun run(): Boolean {
         try {
             var line = lines.next()
             while (line != null && line.terminated) {
                 if (line.truncated) {
-                    ctx.issue(line.offset, BatteryStatsCheckinParser.SOURCE, "line longer than ${LineReader.MAX_LINE_BYTES} bytes")
+                    truncated(line)
                 } else {
                     read(line)
                 }
@@ -93,11 +96,19 @@ private class CheckinWalk(
     }
 
     /** Read to the end, in the known format, with the version and device sections present. */
-    private val complete: Boolean get() = !cut && !otherVersion && header != null && device.sawBattery
+    private val complete: Boolean get() = !cut && !otherVersion && !lost && header != null && device.sawBattery
+
+    /** History records belong to S7; any other record lost makes the dump incomplete. */
+    private fun truncated(line: Line) {
+        ctx.issue(line.offset, BatteryStatsCheckinParser.SOURCE, "record longer than ${LineReader.MAX_LINE_BYTES} bytes")
+        if (!isHistory(line.text)) lost = true
+    }
+
+    private fun isHistory(text: String) = text.startsWith(CheckinLines.HISTORY_PREFIX) || text.startsWith(CheckinLines.POOL_PREFIX)
 
     private fun read(line: Line) {
         // History records are most of the lines; S7 reads them (ADR-0014).
-        if (line.text.isEmpty() || line.text.startsWith(HISTORY) || line.text.startsWith(HISTORY_POOL)) return
+        if (line.text.isEmpty() || isHistory(line.text)) return
         val row = row(line) ?: return
         when (row.category) {
             "i" -> info(row)
@@ -111,7 +122,7 @@ private class CheckinWalk(
         val fields = Csv.split(line.text)
         val uid = fields.getOrNull(1)?.toIntOrNull()
         when {
-            fields.size < CheckinRow.HEADER -> issue(line, "not a checkin line")
+            fields.size < CheckinRow.HEADER || !isVersion(fields[0]) -> issue(line, "not a checkin line")
             fields[0] != FORMAT_VERSION -> otherFormat(line, fields[0])
             uid == null -> issue(line, "uid is not a number")
             else -> return CheckinRow(line.offset, uid, fields[CATEGORY], fields[TYPE], fields, ctx)
@@ -119,12 +130,15 @@ private class CheckinWalk(
         return null
     }
 
+    /** A short number; anything else is not a format version, and is never echoed into an issue. */
+    private fun isVersion(field: String) = field.length <= VERSION_DIGITS && field.isNotEmpty() && field.all { it in '0'..'9' }
+
     /** The column layout here is version 9's; another version is not guessed at. Reported once. */
     private fun otherFormat(
         line: Line,
         version: String,
     ) {
-        if (!otherVersion) issue(line, "checkin format ${version.take(VERSION_CHARS)}")
+        if (!otherVersion) issue(line, "checkin format $version")
         otherVersion = true
     }
 
@@ -199,9 +213,7 @@ private class CheckinWalk(
         const val FORMAT_VERSION = "9"
         const val CATEGORY = 2
         const val TYPE = 3
-        const val VERSION_CHARS = 8
-        const val HISTORY = "9,h,"
-        const val HISTORY_POOL = "9,hsp,"
+        const val VERSION_DIGITS = 4
 
         /** `pwi` label of an app's own total. */
         const val APP_LABEL = "uid"

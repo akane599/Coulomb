@@ -8,6 +8,9 @@ import com.google.common.truth.Truth.assertWithMessage
 import io.github.akane599.coulomb.core.model.stats.SensorStat
 import io.github.akane599.coulomb.core.model.stats.UidProcessState
 import io.github.akane599.coulomb.core.parsing.Fixtures
+import io.github.akane599.coulomb.core.parsing.aosp.os.BatteryStatsProto
+import io.github.akane599.coulomb.core.parsing.aosp.os.SystemProto
+import io.github.akane599.coulomb.core.parsing.aosp.os.UidProto
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import kotlin.random.Random
@@ -64,6 +67,7 @@ class BatteryStatsProtoParserTest {
     @Test
     fun aCutStreamKeepsEveryCompleteUidAndSaysItIsIncomplete() {
         val bytes = Fixtures.bytes(Fixtures.PHONE, "batterystats.proto.bin")
+        val whole = parse(bytes).value.uids
         var previous = -1
         for (fraction in listOf(0.0, 0.01, 0.1, 0.5, 0.9, 0.97, 0.999)) {
             val cut = bytes.copyOf((bytes.size * fraction).toInt())
@@ -72,11 +76,51 @@ class BatteryStatsProtoParserTest {
             assertThat(dump.uidsComplete).isFalse()
             assertThat(dump.uids.size).isAtLeast(previous)
             previous = dump.uids.size
+            // What survives is the whole dump's first UIDs, unchanged.
+            assertThat(dump.uids).isEqualTo(whole.take(dump.uids.size))
         }
         // Cut inside the system message (the last field): all UIDs, no device totals.
         val (late, _) = parse(bytes.copyOf(bytes.size - 100))
         assertThat(late.uids).hasSize(557)
         assertThat(late.device).isNull()
+    }
+
+    @Test
+    fun aBrokenUidCostsOnlyItselfButMakesTheListIncomplete() {
+        val good = UidProto(uid = 10_050).encode()
+        val stats =
+            BatteryStatsProto(
+                report_version = 36,
+                parcel_version = 216,
+                system = SystemProto(battery = SystemProto.Battery(start_clock_time_ms = 1)),
+            )
+        // uids (field 5) entries: a good one, one whose only byte has wire type 7, another good one.
+        val broken = byteArrayOf(UIDS_TAG, 1, 0x0F)
+        val inner = stats.encode() + uidEntry(good) + broken + uidEntry(UidProto(uid = 10_051).encode())
+        val brokenAt = stats.encode().size + uidEntry(good).size
+        val dump = byteArrayOf(DUMP_TAG) + varint(inner.size) + inner
+        val (value, report) = parse(dump)
+        assertThat(value.uids.map { it.uid }).containsExactly(10_050, 10_051).inOrder()
+        assertThat(value.uidsComplete).isFalse()
+        assertThat(value.device).isNotNull()
+        assertThat(report.complete).isFalse()
+        val issue = report.issues.single()
+        assertThat(issue.section).isEqualTo("UidProto")
+        // The entry's tag byte, after the outer tag and its one-byte length.
+        assertThat(issue.offset).isEqualTo((1 + varint(inner.size).size + brokenAt).toLong())
+    }
+
+    private fun uidEntry(bytes: ByteArray) = byteArrayOf(UIDS_TAG) + varint(bytes.size) + bytes
+
+    private fun varint(value: Int): ByteArray {
+        val out = ArrayList<Byte>()
+        var v = value
+        while (v >= VARINT_MORE) {
+            out += ((v and VARINT_BITS) or VARINT_MORE).toByte()
+            v = v ushr VARINT_SHIFT
+        }
+        out += v.toByte()
+        return out.toByteArray()
     }
 
     @Test
@@ -97,5 +141,12 @@ class BatteryStatsProtoParserTest {
         const val SEED = 36
         const val DAMAGE_RUNS = 40
         const val DAMAGED_BYTES = 16
+
+        /** Field 1 and field 5, length-delimited. */
+        const val DUMP_TAG: Byte = 0x0A
+        const val UIDS_TAG: Byte = 0x2A
+        const val VARINT_MORE = 0x80
+        const val VARINT_BITS = 0x7F
+        const val VARINT_SHIFT = 7
     }
 }

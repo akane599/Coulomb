@@ -23,8 +23,9 @@ import io.github.akane599.coulomb.core.model.stats.WifiStat
  *
  * The writer leaves a line out when all its values are zero (`cpu`, `nt`, `wfl`, `st`, `pr`, the
  * dumpTimer lines) or the total is zero (`jb`, `sy`, `sr`, `blem`), so an absent counter is 0 here,
- * as in [ProtoMapper]. Wakelocks without partial time and zero stop-reason counts are dropped, as
- * the proto drops them.
+ * as in [ProtoMapper]. A line that is there but short, or has a column that is not a number, gives
+ * null for that column: the value is unknown, not zero. Wakelocks without partial time and zero
+ * stop-reason counts are dropped, as the proto drops them.
  */
 internal class CheckinUid(
     val uid: Int,
@@ -32,11 +33,9 @@ internal class CheckinUid(
 ) {
     var powerMah: Double? = null
     private val packages = LinkedHashSet<String>()
-    private var cpuUserMs: Long? = null
-    private var cpuSystemMs: Long? = null
+    private var cpu: Pair<Long?, Long?>? = null
     private val wakelocks = ArrayList<WakelockStat>()
-    private var aggregatedMs: Long? = null
-    private var aggregatedBackgroundMs: Long? = null
+    private var aggregated: Pair<Long?, Long?>? = null
     private val alarms = ArrayList<NamedCount>()
     private val jobs = ArrayList<JobTimer>()
     private val stopCounts = ArrayList<JobStopCount>()
@@ -46,7 +45,7 @@ internal class CheckinUid(
     private var wifi: WifiStat? = null
     private var bluetooth: BluetoothStat? = null
     private val states = ArrayList<ProcessStateTime>()
-    private val timers = HashMap<String, Long>()
+    private val timers = HashMap<String, Long?>()
     private val processes = ArrayList<ProcessStat>()
 
     /** Reads [row] when it is a section this class maps; false otherwise. */
@@ -81,11 +80,11 @@ internal class CheckinUid(
             uid = uid,
             packages = packages.toList(),
             powerMah = powerMah,
-            cpuUserMs = cpuUserMs ?: 0,
-            cpuSystemMs = cpuSystemMs ?: 0,
+            cpuUserMs = cpu.let { if (it == null) 0 else it.first },
+            cpuSystemMs = cpu.let { if (it == null) 0 else it.second },
             partialWakelocks = wakelocks.toList(),
-            aggregatedPartialWakelockMs = aggregatedMs ?: 0,
-            aggregatedBackgroundPartialWakelockMs = aggregatedBackgroundMs ?: 0,
+            aggregatedPartialWakelockMs = aggregated.let { if (it == null) 0 else it.first },
+            aggregatedBackgroundPartialWakelockMs = aggregated.let { if (it == null) 0 else it.second },
             wakeupAlarms = alarms.toList(),
             jobs = jobs.toList(),
             jobStopReasons = stopCounts.toList(),
@@ -95,20 +94,22 @@ internal class CheckinUid(
             wifi = wifi ?: ZERO_WIFI,
             bluetooth = bluetooth,
             processStates = states.toList(),
-            foregroundActivityMs = timers["fg"] ?: 0,
-            foregroundServiceMs = timers["fgs"] ?: 0,
-            audioMs = timers["aud"] ?: 0,
-            videoMs = timers["vid"] ?: 0,
-            cameraMs = timers["cam"] ?: 0,
-            flashlightMs = timers["fla"] ?: 0,
-            vibratorMs = timers["vib"] ?: 0,
+            foregroundActivityMs = timer("fg"),
+            foregroundServiceMs = timer("fgs"),
+            audioMs = timer("aud"),
+            videoMs = timer("vid"),
+            cameraMs = timer("cam"),
+            flashlightMs = timer("fla"),
+            vibratorMs = timer("vib"),
             processes = processes.toList(),
         )
 
+    /** Absent line: 0. Line with a bad column: null. */
+    private fun timer(type: String): Long? = if (type in timers) timers[type] else 0
+
     private fun cpu(row: CheckinRow) {
         row.expect(CpuCol.entries.size)
-        cpuUserMs = row.long(CpuCol.USER)
-        cpuSystemMs = row.long(CpuCol.SYSTEM)
+        cpu = row.long(CpuCol.USER) to row.long(CpuCol.SYSTEM)
     }
 
     private fun wakelock(row: CheckinRow) {
@@ -120,13 +121,12 @@ internal class CheckinUid(
         // A missing partial timer prints zeros; either way there is no partial time to show.
         if (total == 0L && count == 0L) return
         val max = row.long(WakelockCol.PARTIAL_MAX)?.takeIf { it >= 0 }
-        wakelocks += WakelockStat(name, TimerStat(total, count, max), row.long(WakelockCol.BG_PARTIAL_TOTAL) ?: 0)
+        wakelocks += WakelockStat(name, TimerStat(total, count, max), row.long(WakelockCol.BG_PARTIAL_TOTAL))
     }
 
     private fun aggregated(row: CheckinRow) {
         row.expect(AggregatedWakelockCol.entries.size)
-        aggregatedMs = row.long(AggregatedWakelockCol.PARTIAL)
-        aggregatedBackgroundMs = row.long(AggregatedWakelockCol.BACKGROUND_PARTIAL)
+        aggregated = row.long(AggregatedWakelockCol.PARTIAL) to row.long(AggregatedWakelockCol.BACKGROUND_PARTIAL)
     }
 
     private fun alarm(row: CheckinRow) {
@@ -169,7 +169,7 @@ internal class CheckinUid(
         val id = row.long(SensorCol.ID)?.toInt() ?: return
         val total = row.long(SensorCol.TOTAL) ?: return
         val count = row.long(SensorCol.COUNT) ?: return
-        sensors += SensorStat(id, TimerStat(total, count), row.long(SensorCol.BG_ACTUAL) ?: 0)
+        sensors += SensorStat(id, TimerStat(total, count), row.long(SensorCol.BG_ACTUAL))
     }
 
     private fun network(row: CheckinRow) {
@@ -198,7 +198,7 @@ internal class CheckinUid(
                 runningMs = row.long(WifiCol.RUNNING_US)?.usToMs(),
                 fullLockMs = row.long(WifiCol.FULL_LOCK_US)?.usToMs(),
                 scan = if (scanMs != null && scanCount != null) TimerStat(scanMs, scanCount) else null,
-                backgroundScanMs = row.long(WifiCol.SCAN_ACTUAL_BG) ?: 0,
+                backgroundScanMs = row.long(WifiCol.SCAN_ACTUAL_BG),
             )
     }
 
@@ -209,9 +209,9 @@ internal class CheckinUid(
         bluetooth =
             BluetoothStat(
                 bleScan = if (total != null && count != null) TimerStat(total, count) else null,
-                backgroundBleScanMs = row.long(BluetoothCol.SCAN_ACTUAL_BG) ?: 0,
-                unoptimizedBleScanMs = row.long(BluetoothCol.UNOPTIMIZED_TOTAL) ?: 0,
-                bleScanResults = row.long(BluetoothCol.RESULT_COUNT) ?: 0,
+                backgroundBleScanMs = row.long(BluetoothCol.SCAN_ACTUAL_BG),
+                unoptimizedBleScanMs = row.long(BluetoothCol.UNOPTIMIZED_TOTAL),
+                bleScanResults = row.long(BluetoothCol.RESULT_COUNT),
             )
     }
 
@@ -225,7 +225,7 @@ internal class CheckinUid(
 
     private fun timer(row: CheckinRow) {
         row.expect(TimerCol.entries.size)
-        row.long(TimerCol.TOTAL)?.let { timers[row.type] = it }
+        timers[row.type] = row.long(TimerCol.TOTAL)
     }
 
     private fun process(row: CheckinRow) {

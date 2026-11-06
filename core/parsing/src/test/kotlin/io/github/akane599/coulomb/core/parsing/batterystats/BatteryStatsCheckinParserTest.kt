@@ -174,12 +174,68 @@ class BatteryStatsCheckinParserTest {
         assertThat(report.issues.joinToString()).doesNotContain("secret")
         val uid = dump.uids.single()
         assertThat(uid.cpuUserMs).isEqualTo(10L)
-        assertThat(uid.cpuSystemMs).isEqualTo(0L)
+        // The line is there, so a bad column is unknown, not zero.
+        assertThat(uid.cpuSystemMs).isNull()
         assertThat(uid.processes.single().name).isEqualTo("name,with,commas")
         assertThat(uid.processes.single().crashes).isNull()
         // -1: no background timer, which is not the same as no background time.
         assertThat(uid.jobs.single().backgroundMs).isNull()
         assertThat(report.issues.first { it.section == "cpu" }.offset).isEqualTo(text.indexOf("9,1000,l,cpu").toLong())
+    }
+
+    /** Pool strings and job names are app-controlled and may hold line breaks (CheckinLines). */
+    @Test
+    fun aLineBreakInsideANameCannotAddRecords() {
+        val text =
+            """
+            9,0,i,vers,36,216,A,A
+            9,hsp,0,10050,"tag
+            9,10050,l,wl,fake,0,f,0,600000,p,9,600000\"
+            9,10050,l,cpu,600000,600000,0"
+            9,0,l,bt,0,1,1,1,1,1,1,1,1,1,1,1
+            9,1000,l,jb,"job
+            9,1000,l,cpu,999,999,0",5,1,-1,-1
+
+            """.trimIndent()
+        val (dump, report) = parse(text)
+        assertWithMessage(report.issues.toString()).that(report.issueCount).isEqualTo(0)
+        assertThat(report.complete).isTrue()
+        val uid = dump.uids.single()
+        assertThat(uid.uid).isEqualTo(1000)
+        assertThat(uid.cpuUserMs).isEqualTo(0L)
+        assertThat(uid.jobs.single().name).isEqualTo("job\n9,1000,l,cpu,999,999,0")
+        assertThat(uid.jobs.single().total).isEqualTo(TimerStat(5, 1))
+    }
+
+    @Test
+    fun aStrayLineIsAnIssueWithoutItsTextAndTheDumpStaysComplete() {
+        val text =
+            """
+            9,0,i,vers,36,216,A,A
+            9,0,l,bt,0,1,1,1,1,1,1,1,1,1,1,1
+            user@example.com,1,2,3
+            java.lang.IllegalStateException: secret
+
+            """.trimIndent()
+        val (_, report) = parse(text)
+        assertThat(report.complete).isTrue()
+        assertThat(report.issues.map { it.message }).containsExactly("not a checkin line", "not a checkin line")
+        assertThat(report.issues.joinToString()).doesNotContain("user")
+        assertThat(report.issues.joinToString()).doesNotContain("secret")
+    }
+
+    @Test
+    fun anOverlongRecordMakesTheDumpIncompleteUnlessItIsHistory() {
+        val long = "x".repeat(LONG_NAME)
+        val head = "9,0,i,vers,36,216,A,A\n9,0,l,bt,0,1,1,1,1,1,1,1,1,1,1,1\n"
+        val (dump, report) = parse(head + "9,1000,l,cpu,1,1,0\n9,1000,l,pr,\"$long\",1,1,1,1,1,1\n9,1001,l,cpu,1,1,0\n")
+        assertThat(report.complete).isFalse()
+        assertThat(dump.uidsComplete).isFalse()
+        assertThat(dump.uids.map { it.uid }).containsExactly(1000, 1001).inOrder()
+        assertThat(report.issues.single().message).startsWith("record longer than")
+        val (history, historyReport) = parse(head + "9,h,0,+Etp=$long\n9,1000,l,cpu,1,1,0\n")
+        assertThat(historyReport.complete).isTrue()
+        assertThat(history.uidsComplete).isTrue()
     }
 
     @Test
@@ -238,6 +294,7 @@ class BatteryStatsCheckinParserTest {
         const val SEED = 9
         const val DAMAGE_RUNS = 30
         const val DAMAGED_BYTES = 16
+        const val LONG_NAME = 70_000
         val NAME_BREAKS = Regex("[,\\n\\r]")
     }
 }
