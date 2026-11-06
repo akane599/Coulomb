@@ -1,0 +1,3 @@
+total 0
+lrwxrwxrwx 1 root root 0 2026-11-06 06:46 ac -> ../../devices/platform/GFSH0001:00/power_supply/ac
+lrwxrwxrwx 1 root root 0 2026-11-06 06:46 battery -> ../../devices/platform/GFSH0001:00/power_supply/battery

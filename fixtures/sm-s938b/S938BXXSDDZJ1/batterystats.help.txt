@@ -1,0 +1,38 @@
+Battery stats (batterystats) dump options:
+  [--checkin] [--proto] [--history] [--history-start] [--charged] [-c]
+  [--daily] [--reset] [--reset-all] [--write] [--new-daily] [--read-daily]
+  [-h] [<package.name>]
+  --checkin: generate output for a checkin report; will write (and clear) the
+             last old completed stats when they had been reset.
+  -c: write the current stats in checkin format.
+  --proto: write the current aggregate stats (without history) in proto format.
+  --history: show only history data.
+  --history-start <num>: show only history data starting at given time offset.
+  --history-create-events <num>: create <num> of battery history events.
+  --charged: only output data since last charged.
+  --daily: only output full daily data.
+  --reset: reset the stats, clearing all current data.
+  --reset-all: reset the stats, clearing all current and past data.
+  --write: force write current collected stats to disk.
+  --new-daily: immediately create and write new daily stats record.
+  --read-daily: read-load last written daily stats.
+  --settings: dump the settings key/values related to batterystats
+  --cpu: dump cpu stats for debugging purpose
+  --wakeups: dump CPU wakeup history and attribution.
+  --power-profile: dump the power profile constants
+  --usage: write battery usage stats. Optional arguments:
+     --proto: output as a binary protobuffer
+     --model power-profile: use the power profile model even if measured energy is available
+     --accumulated: continuously accumulated since setup or reset-all
+  --sample: collect and dump a sample of stats for debugging purpose
+  --sync: wait for delayed processing to finish (for use in tests)
+  <package.name>: optional name of package to filter output by.
+  -h: print this help text.
+Battery stats (batterystats) commands:
+  enable|disable <option>
+    Enable or disable a running option.  Option state is not saved across boots.
+    Options are:
+      full-history: include additional detailed events in battery history:
+          wake_lock_in, alarms and proc events
+      no-auto-reset: don't automatically reset stats when unplugged
+      pretend-screen-off: pretend the screen is off, even if screen state changes

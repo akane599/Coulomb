@@ -1,0 +1,27 @@
+PowerStatsService dumpsys: available PowerEntities
+  PowerEntityId: 0, PowerEntityName: CPU
+    StateId: 0, StateName: Idle
+    StateId: 1, StateName: Active
+  PowerEntityId: 1, PowerEntityName: Display
+    StateId: 0, StateName: Off
+    StateId: 1, StateName: On
+PowerStatsService dumpsys: available Channels
+  ChannelId: 0, ChannelName: Rail1, ChannelSubsystem: Display
+  ChannelId: 1, ChannelName: Rail2, ChannelSubsystem: CPU
+  ChannelId: 2, ChannelName: Rail3, ChannelSubsystem: Modem
+PowerStatsService dumpsys: available EnergyConsumers
+  EnergyConsumerId: 0, Ordinal: 0, Type: 0, Name: GPU
+  EnergyConsumerId: 1, Ordinal: 0, Type: 5, Name: MODEM
+PowerStatsService dumpsys: PowerStatsLogger stats
+  PowerStats Meter Data:
+    Earliest data time : Thu Oct 22 12:13:54 GMT+03:00 2026
+    # files : 2
+    Total data size (B) : 849
+  PowerStats Model Data:
+    Earliest data time : Thu Oct 22 12:13:54 GMT+03:00 2026
+    # files : 2
+    Total data size (B) : 525
+  PowerStats State Residency Data:
+    Failed to parse earliest data time!!!
+    # files : 0
+    Total data size (B) : 0

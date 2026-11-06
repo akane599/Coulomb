@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: The Coulomb contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Fixtures are byte-exact device output; parsers test offsets, so git must never touch line endings.
+fixtures/** -text
+*.bin binary
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf

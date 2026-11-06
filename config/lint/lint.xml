@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  SPEC 15.5: warnings are errors. The checks below compare against releases published
+  after the commit was made, so they would turn a green commit red without any code change.
+  Version currency is enforced by SPEC 0.3.2 (resolve and pin at build time) instead. ADR-0002.
+-->
+<lint>
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="OldTargetApi" severity="ignore" />
+</lint>

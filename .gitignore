@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: The Coulomb contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+.gradle/
+.kotlin/
+build/
+local.properties
+*.iml
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+*.jks
+node_modules/
+
+# Machine-specific agent notes (host names, addresses, paths)
+AGENTS.local.md
+CLAUDE.local.md
+__pycache__/
+*.pyc

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPEC 4.5 "User sees" copy. Sentence case (SPEC 11). -->
+<resources>
+    <string name="privilege_basic_mode_title">Basic mode</string>
+    <string name="privilege_basic_mode_body">Coulomb is using what every app can read. Connect Shizuku or Sui to add per-app drain, wakelocks and battery health.</string>
+    <string name="privilege_basic_mode_action">Get Shizuku or Sui</string>
+
+    <string name="privilege_stopped_title">Shizuku is stopped</string>
+    <string name="privilege_stopped_body">Start it in the Shizuku app and Coulomb reconnects on its own. Permissions you already granted keep working.</string>
+    <string name="privilege_stopped_action">Open Shizuku</string>
+
+    <string name="privilege_denied_title">Shizuku permission was denied</string>
+    <string name="privilege_denied_body">Coulomb uses it to read battery details the system keeps to itself. It never changes a setting without your tap. You can also grant access once over ADB.</string>
+    <string name="privilege_denied_action">Try again</string>
+
+    <string name="privilege_hang_title_android17">Your Shizuku version can\'t authorize apps on Android 17</string>
+    <string name="privilege_hang_title">Shizuku didn\'t answer</string>
+    <string name="privilege_hang_body">Use a Shizuku fork that supports this Android version, or Sui. Until then, grant access once over ADB and Coulomb keeps working.</string>
+
+    <string name="privilege_too_old_title">This Shizuku version is too old</string>
+    <string name="privilege_too_old_body">It can\'t start Coulomb\'s helper. Update Shizuku, or grant access once over ADB.</string>
+
+    <string name="privilege_revoked_title">Re-enable deep stats</string>
+    <string name="privilege_revoked_body">Coulomb\'s saved permissions are gone, usually after a system update. One tap restores them.</string>
+    <string name="privilege_revoked_action">Re-enable</string>
+
+    <string name="privilege_show_adb">Show ADB commands</string>
+
+    <!-- SPEC 4.5: a feature blocked by SELinux at T2. -->
+</resources>

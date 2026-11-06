@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Placeholder: an open gauge arc with a needle. Replaced in P3 by /impeccable craft (SPEC 11.9). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M36,66 A20,20 0 1,1 72,66"
+        android:strokeWidth="5"
+        android:strokeColor="@color/ic_launcher_foreground"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,58 L64,44"
+        android:strokeWidth="5"
+        android:strokeColor="@color/ic_launcher_foreground"
+        android:strokeLineCap="round" />
+</vector>

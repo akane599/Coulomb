@@ -1,0 +1,19 @@
+file	command	exit	bytes	stderr
+probe/id.txt	id	0	276	
+probe/uptime.txt	cat /proc/uptime	0	16	
+batterystats.help.txt	dumpsys batterystats -h	0	2210	
+batterystats.proto.bin	dumpsys batterystats --proto	0	38126	
+batterystats.checkin.txt	dumpsys batterystats -c	0	64655	
+batterystats.history.txt	dumpsys batterystats --history	0	32452	
+alarm.txt	dumpsys alarm	0	47847	
+deviceidle.txt	dumpsys deviceidle	0	3040	
+power.txt	dumpsys power	0	103319	
+jobscheduler.txt	dumpsys jobscheduler	0	625075	
+suspend_control.txt	dumpsys suspend_control_internal	0	0	Can't find service: suspend_control_internal 
+battery.txt	dumpsys battery	0	673	
+thermal.txt	dumpsys thermalservice	0	1004	
+probe/dumpsys-services.txt	dumpsys -l	0	6936	
+probe/powerstats.txt	dumpsys powerstats	0	1086	
+probe/power_supply-ls.txt	ls -l /sys/class/power_supply/	0	216	
+probe/power_supply-values.txt	for d in /sys/class/power_supply/*/; do for f in "$d"*; do [ -f "$f" ] || continue; v=$(timeout 2 head -c 160 "$f" 2>&1 | tr "\n" " ") || v="<error>"; echo "$f=$v"; done; done	0	1195	
+probe/wakeup.txt	ls /sys/class/wakeup 2>&1 | head -5; echo "count=$(ls /sys/class/wakeup 2>/dev/null | wc -l)"; for f in name active_count total_time_ms; do echo "wakeup0/$f=$(cat /sys/class/wakeup/wakeup0/$f 2>&1)"; done	0	287	

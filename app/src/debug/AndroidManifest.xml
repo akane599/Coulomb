@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  LeakCanary (debug only, SPEC 15.3) declares legacy storage permissions. They grant nothing to an
+  app targeting API 37 under scoped storage, and LeakCanary falls back to app-private storage,
+  so debug keeps the same permission set as release. ADR-0003.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:node="remove" />
+
+    <application>
+        <!-- P1 protocol F drill console (debug builds only). Callers need DUMP: adb shell has it; an
+             app gets it only through pm grant over ADB or Shizuku. Drill arguments are bounded. -->
+        <activity
+            android:name=".debug.PrivilegeConsoleActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:permission="android.permission.DUMP" />
+    </application>
+</manifest>

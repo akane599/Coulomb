@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: The Coulomb contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Runs every Gradle task CI runs before anything is pushed; a failing check blocks the push.
+# Enable once per clone: git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/tools/ci/check.sh" all

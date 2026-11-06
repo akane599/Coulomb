@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+
+        <!-- Shizuku client (SPEC 4.2). The manager delivers its binder through this provider; the
+             attributes follow the Shizuku-API README for 13.x: exported so the manager can call it,
+             guarded by INTERACT_ACROSS_USERS_FULL (held by shell/system, not by apps), and
+             multiprocess=false so the binder lands in the main process. ShizukuProvider.onCreate
+             also runs Sui.init(packageName). -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+    </application>
+
+</manifest>

@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: The Coulomb contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Every permission allowed in the merged manifest (SPEC 15.4). The build fails on anything else,
+# and on INTERNET, READ_LOGS, location and phone state even if listed here.
+# Adding a line needs a reason in the commit and, when it comes from a library, an ADR.
+
+# Declared by Coulomb (SPEC 15.4)
+android.permission.POST_NOTIFICATIONS
+android.permission.POST_PROMOTED_NOTIFICATIONS
+android.permission.FOREGROUND_SERVICE
+android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+android.permission.RECEIVE_BOOT_COMPLETED
+android.permission.PACKAGE_USAGE_STATS
+android.permission.BATTERY_STATS
+android.permission.DUMP
+android.permission.WRITE_SECURE_SETTINGS
+android.permission.QUERY_ALL_PACKAGES
+
+# T1 batterystats --proto / -c dumps without the worker (BatteryStatsService lists apps with
+# MATCH_ANY_USER under the caller's identity). Granted only by pm grant over Shizuku or ADB. ADR-0010
+android.permission.INTERACT_ACROSS_USERS
+
+# Sampling wakelocks while charging (SPEC 7.3); also requested by WorkManager. ADR-0003
+android.permission.WAKE_LOCK
+
+# androidx.core: signature permission guarding non-exported dynamic receivers
+${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+
+# Shizuku provider AAR (dev.rikka.shizuku:provider): lets the manager hand Coulomb its binder
+# (SPEC 4.2). A permission the Shizuku manager defines; it grants nothing without the user's
+# authorization in the manager. ADR-0009
+moe.shizuku.manager.permission.API_V23

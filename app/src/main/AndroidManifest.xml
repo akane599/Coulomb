@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  Permissions: SPEC 15.4. Each name and protection level was checked against AOSP
+  frameworks/base/core/res/AndroidManifest.xml at android-16.0.0_r4 (API 36) and
+  android-17.0.0_r1 (API 37); line ranges are given as 16 / 17.
+  INTERNET is never declared; the build fails if any library adds it (SPEC 1.2).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- dangerous; L1932-1936 / L2044-2049 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- normal|appop; L8413-8417 / L9113-9117 -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- normal; L8147-8150 / L8826-8830 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- normal|appop; L8276-8279 / L8969-8973 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- normal; L5023-5026 / L5487-5491 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- normal; short sampling wakelocks while plugged in only (SPEC 7.3, 7.4). Not in 15.4's list: ADR-0003.
+         L2827-2830 / L3014-3018 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- normal; added by WorkManager for network constraints, which Coulomb never uses.
+         Removed so the app holds no network permission at all (SPEC 2 "Privacy"): ADR-0003.
+         L2212-2215 / L2336-2340 -->
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
+    <!-- signature|privileged|development|appop; pm grant plus the appop: DumpUtils checks both (ADR-0010). L7205-7206 / L7797-7799 -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- signature|privileged|development; pm grant via Shizuku or ADB (SPEC 4.4). L7265-7266 / L7860-7862 -->
+    <uses-permission
+        android:name="android.permission.BATTERY_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- signature|privileged|development; L5285-5286 / L5773-5774 -->
+    <uses-permission
+        android:name="android.permission.DUMP"
+        tools:ignore="ProtectedPermissions" />
+    <!-- signature|privileged|development|role; batterystats proto and checkin dumps in Coulomb's own process
+         list apps with MATCH_ANY_USER under the caller's identity (ADR-0010). L3462-3463 / L3821-3822 -->
+    <uses-permission
+        android:name="android.permission.INTERACT_ACROSS_USERS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- signature|privileged|development; granted only when the Action Center is on (SPEC 13). L5280-5281 / L5768-5769 -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- normal; labels for every UID, personal distribution (SPEC 15.4). L8530-8533 / L9232-9236 -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application
+        android:name=".CoulombApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Coulomb">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

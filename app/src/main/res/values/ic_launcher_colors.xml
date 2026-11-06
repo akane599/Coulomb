@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- Placeholder icon until the design lab produces the real one (SPEC 11.9, P3). -->
+    <color name="ic_launcher_background">#F6F8FB</color>
+    <color name="ic_launcher_foreground">#B4602C</color>
+</resources>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="privilege_basic_mode_title">Temel mod</string>
+    <string name="privilege_basic_mode_body">Coulomb şu an her uygulamanın okuyabildiği verileri kullanıyor. Uygulama bazında tüketim, uyanık tutma kilitleri ve pil sağlığı için Shizuku ya da Sui bağlayın.</string>
+    <string name="privilege_basic_mode_action">Shizuku ya da Sui edinin</string>
+
+    <string name="privilege_stopped_title">Shizuku durdu</string>
+    <string name="privilege_stopped_body">Shizuku uygulamasından başlatın, Coulomb kendiliğinden yeniden bağlanır. Daha önce verdiğiniz izinler çalışmaya devam eder.</string>
+    <string name="privilege_stopped_action">Shizuku\'yu aç</string>
+
+    <string name="privilege_denied_title">Shizuku izni reddedildi</string>
+    <string name="privilege_denied_body">Coulomb bu izinle sistemin kendine sakladığı pil ayrıntılarını okur. Siz dokunmadan hiçbir ayarı değiştirmez. Erişimi bir kez ADB ile de verebilirsiniz.</string>
+    <string name="privilege_denied_action">Tekrar dene</string>
+
+    <string name="privilege_hang_title_android17">Shizuku sürümünüz Android 17\'de uygulamalara yetki veremiyor</string>
+    <string name="privilege_hang_title">Shizuku yanıt vermedi</string>
+    <string name="privilege_hang_body">Bu Android sürümünü destekleyen bir Shizuku çatalı ya da Sui kullanın. O zamana kadar erişimi bir kez ADB ile verin, Coulomb çalışmaya devam eder.</string>
+
+    <string name="privilege_too_old_title">Bu Shizuku sürümü çok eski</string>
+    <string name="privilege_too_old_body">Coulomb\'un yardımcı sürecini başlatamıyor. Shizuku\'yu güncelleyin ya da erişimi bir kez ADB ile verin.</string>
+
+    <string name="privilege_revoked_title">Ayrıntılı istatistikleri yeniden aç</string>
+    <string name="privilege_revoked_body">Coulomb\'un kayıtlı izinleri kaldırılmış, genellikle bir sistem güncellemesinden sonra olur. Tek dokunuşla geri gelir.</string>
+    <string name="privilege_revoked_action">Yeniden aç</string>
+
+    <string name="privilege_show_adb">ADB komutlarını göster</string>
+
+</resources>

@@ -1,0 +1,5 @@
+ls: /sys/class/wakeup: Permission denied
+count=0
+wakeup0/name=cat: /sys/class/wakeup/wakeup0/name: Permission denied
+wakeup0/active_count=cat: /sys/class/wakeup/wakeup0/active_count: Permission denied
+wakeup0/total_time_ms=cat: /sys/class/wakeup/wakeup0/total_time_ms: Permission denied

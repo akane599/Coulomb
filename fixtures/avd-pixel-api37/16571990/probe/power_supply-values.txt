@@ -1,0 +1,19 @@
+/sys/class/power_supply/ac/current_max=5000000 
+/sys/class/power_supply/ac/online=1 
+/sys/class/power_supply/ac/type=Mains 
+/sys/class/power_supply/ac/uevent=DEVTYPE=power_supply POWER_SUPPLY_NAME=ac POWER_SUPPLY_TYPE=Mains POWER_SUPPLY_ONLINE=1 POWER_SUPPLY_VOLTAGE_MAX=5000000 POWER_SUPPLY_CURRENT_MAX=5000000 
+/sys/class/power_supply/ac/voltage_max=5000000 
+/sys/class/power_supply/battery/capacity=100 
+/sys/class/power_supply/battery/charge_counter=10000 
+/sys/class/power_supply/battery/charge_full=3000000 
+/sys/class/power_supply/battery/current_avg=900000 
+/sys/class/power_supply/battery/current_now=900000 
+/sys/class/power_supply/battery/cycle_count=10 
+/sys/class/power_supply/battery/health=Good 
+/sys/class/power_supply/battery/present=1 
+/sys/class/power_supply/battery/status=Charging 
+/sys/class/power_supply/battery/technology=Li-ion 
+/sys/class/power_supply/battery/temp=250 
+/sys/class/power_supply/battery/type=Battery 
+/sys/class/power_supply/battery/uevent=DEVTYPE=power_supply POWER_SUPPLY_NAME=battery POWER_SUPPLY_TYPE=Battery POWER_SUPPLY_STATUS=Charging POWER_SUPPLY_HEALTH=Good POWER_SUPPLY_PRESENT=1 POWER_SUPP
+/sys/class/power_supply/battery/voltage_now=5000000 

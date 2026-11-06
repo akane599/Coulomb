@@ -1,0 +1,677 @@
+  Flags:
+    com.android.server.deviceidle.remove_idle_location=true
+    com.android.server.deviceidle.stop_power_save_temp_whitelist_broadcast=false
+
+  Settings:
+    flex_time_short=+1m0s0ms
+    light_after_inactive_to=+30s0ms
+    light_idle_to=+5m0s0ms
+    light_idle_to_initial_flex=+1m0s0ms
+    light_max_idle_to_flex=+15m0s0ms
+    light_idle_factor=2.0
+    light_idle_increase_linearly=false
+    light_idle_linear_increase_factor_ms=300000
+    light_idle_flex_linear_increase_factor_ms=60000
+    light_max_idle_to=+15m0s0ms
+    light_idle_maintenance_min_budget=+1m0s0ms
+    light_idle_maintenance_max_budget=+5m0s0ms
+    min_light_maintenance_time=+5s0ms
+    min_deep_maintenance_time=+30s0ms
+    inactive_to=+3m0s0ms
+    sensing_to=+4m0s0ms
+    locating_to=+30s0ms
+    location_accuracy=20.0m
+    motion_inactive_to=+3m0s0ms
+    motion_inactive_to_flex=+1m0s0ms
+    idle_after_inactive_to=+2m0s0ms
+    idle_pending_to=+5m0s0ms
+    max_idle_pending_to=+10m0s0ms
+    idle_pending_factor=2.0
+    quick_doze_delay_to=+1m0s0ms
+    idle_to=+1h0m0s0ms
+    max_idle_to=+6h0m0s0ms
+    idle_factor=2.0
+    min_time_to_alarm=+10m0s0ms
+    max_temp_app_allowlist_duration_ms=+5m0s0ms
+    mms_temp_app_allowlist_duration_ms=+1m0s0ms
+    sms_temp_app_allowlist_duration_ms=+20s0ms
+    notification_allowlist_duration_ms=+30s0ms
+    wait_for_unlock=true
+    use_window_alarms=true
+    use_mode_manager=false
+    skip_sensing=true
+    skip_locating=true
+    dna_request_version=1
+  Idling history:
+     light-idle: -11h45m51s810ms
+         normal: -11h45m25s190ms (unlocked)
+     light-idle: -10h51m33s801ms
+      deep-idle: -10h46m3s802ms
+         normal: -10h43m45s447ms (unlocked)
+     light-idle: -10h15m3s850ms
+         normal: -10h13m10s443ms (unlocked)
+     light-idle: -10h8m11s552ms
+         normal: -10h5m34s430ms (unlocked)
+     light-idle: -10h2m44s343ms
+         normal: -9h59m23s345ms (unlocked)
+     light-idle: -9h58m14s296ms
+         normal: -9h58m13s460ms (unlocked)
+     light-idle: -9h54m13s283ms
+         normal: -9h54m9s484ms (unlocked)
+     light-idle: -9h49m43s210ms
+         normal: -9h48m18s816ms (unlocked)
+     light-idle: -9h33m22s190ms
+         normal: -9h33m19s454ms (unlocked)
+     light-idle: -9h32m21s321ms
+         normal: -9h32m17s897ms (unlocked)
+     light-idle: -9h30m2s1ms
+         normal: -9h28m49s494ms (unlocked)
+     light-idle: -9h27m18s125ms
+      deep-idle: -9h21m24s818ms
+         normal: -9h20m48s394ms (unlocked)
+     light-idle: -9h6m32s944ms
+         normal: -9h5m58s902ms (unlocked)
+     light-idle: -8h56m7s820ms
+         normal: -8h55m9s837ms (unlocked)
+     light-idle: -8h32m25s75ms
+         normal: -8h32m11s53ms (unlocked)
+     light-idle: -8h18m25s421ms
+         normal: -8h18m4s943ms (unlocked)
+     light-idle: -7h47m18s76ms
+         normal: -7h47m13s863ms (unlocked)
+     light-idle: -7h44m13s293ms
+         normal: -7h41m14s91ms (unlocked)
+     light-idle: -7h38m17s890ms
+         normal: -7h37m5s339ms (unlocked)
+     light-idle: -7h17m36s336ms
+         normal: -7h16m39s461ms (notification interaction)
+     light-idle: -7h14m37s787ms
+         normal: -7h13m1s359ms (unlocked)
+     light-idle: -7h9m58s929ms
+      deep-idle: -7h4m53s306ms
+         normal: -7h4m48s54ms (unlocked)
+     light-idle: -7h3m13s37ms
+      deep-idle: -6h58m42s974ms
+         normal: -6h57m38s807ms (unlocked)
+     light-idle: -6h54m1s290ms
+         normal: -6h52m31s375ms (unlocked)
+     light-idle: -6h49m16s258ms
+         normal: -6h48m44s701ms (unlocked)
+     light-idle: -6h44m17s714ms
+         normal: -6h43m20s22ms (unlocked)
+     light-idle: -6h36m30s238ms
+         normal: -6h36m4s365ms (unlocked)
+     light-idle: -6h34m8s383ms
+         normal: -6h33m51s143ms (unlocked)
+     light-idle: -6h30m47s538ms
+         normal: -6h28m58s619ms (unlocked)
+     light-idle: -6h26m17s458ms
+         normal: -6h24m32s140ms (unlocked)
+     light-idle: -6h17m49s407ms
+         normal: -6h12m44s876ms (charging)
+     light-idle: -5h50m55s895ms
+         normal: -5h46m44s540ms (unlocked)
+     light-idle: -3h18m50s705ms
+         normal: -3h14m54s606ms (unlocked)
+  Whitelist (except idle) system apps:
+    com.sec.vsim.ericssonnsds.webapp
+    com.android.providers.calendar
+    com.osp.app.signin
+    com.samsung.android.service.airviewdictionary
+    com.sec.android.app.safetyassurance
+    com.samsung.android.knox.containercore
+    com.samsung.android.aware.service
+    com.sec.android.easyonehand
+    com.samsung.android.rubin.app
+    com.android.providers.downloads
+    com.sec.android.widgetapp.easymodecontactswidget
+    com.samsung.android.app.parentalcare
+    com.sec.android.app.samsungapps
+    com.samsung.android.inputshare
+    com.android.vending
+    com.samsung.android.hwresourceshare
+    com.samsung.android.intellivoiceservice
+    com.samsung.android.kmxservice
+    com.samsung.ssu
+    com.samsung.android.sm.devicesecurity
+    com.samsung.android.service.stplatform
+    com.samsung.klmsagent
+    com.sec.imsservice
+    com.samsung.android.mobileservice
+    com.samsung.android.mdx.kit
+    com.google.android.aicore
+    com.samsung.android.kgclient
+    com.samsung.android.game.gametools
+    com.samsung.android.app.contacts
+    com.samsung.android.service.peoplestripe
+    com.google.ambient.streaming
+    com.samsung.android.app.smartcapture
+    com.samsung.android.privateaccesstokens
+    com.samsung.android.server.wifi.mobilewips
+    com.google.android.gms
+    com.sec.spp.push
+    com.android.proxyhandler
+    com.samsung.android.app.routines
+    com.google.android.syncadapters.calendar
+    com.android.managedprovisioning
+    com.samsung.android.authfw
+    com.samsung.android.app.interpreter
+    com.samsung.android.dialer
+    com.samsung.android.game.gos
+    com.samsung.android.forest
+    com.samsung.android.sdk.ocr
+    com.samsung.android.app.moments
+    com.samsung.android.callassistant
+    com.samsung.android.mdm
+    com.samsung.android.scs
+    com.sec.unifiedwfc
+    com.samsung.android.audiomirroring
+    com.samsung.android.app.updatecenter
+    com.samsung.android.samsungpass
+    com.samsung.android.app.sharelive
+    com.samsung.android.dbsc
+    com.samsung.android.knox.analytics.uploader
+    com.qualcomm.location
+    com.google.android.apps.turbo
+    com.samsung.android.bluelightfilter
+    com.samsung.android.hwresourceshare.storage
+    com.samsung.android.service.aircommand
+    com.samsung.android.shortcutbackupservice
+    com.samsung.android.mcfserver
+    com.android.shell
+    com.sec.enterprise.knox.cloudmdm.smdms
+    com.samsung.android.sdk.handwriting
+    com.samsung.android.smartsuggestions
+    com.google.android.cellbroadcastreceiver
+    com.samsung.android.cidmanager
+    com.samsung.android.agent.storage
+    com.sec.android.app.camera
+    com.samsung.sec.android.application.csc
+    com.samsung.android.sdm.config
+    com.samsung.android.mcfds
+    com.samsung.android.video
+  Whitelist system apps:
+    com.sec.vsim.ericssonnsds.webapp
+    com.android.providers.calendar
+    com.osp.app.signin
+    com.samsung.android.service.airviewdictionary
+    com.sec.android.app.safetyassurance
+    com.samsung.android.knox.containercore
+    com.samsung.android.aware.service
+    com.sec.android.easyonehand
+    com.samsung.android.rubin.app
+    com.android.providers.downloads
+    com.sec.android.widgetapp.easymodecontactswidget
+    com.samsung.android.app.parentalcare
+    com.sec.android.app.samsungapps
+    com.samsung.android.inputshare
+    com.samsung.android.hwresourceshare
+    com.samsung.android.intellivoiceservice
+    com.samsung.android.kmxservice
+    com.samsung.ssu
+    com.samsung.android.sm.devicesecurity
+    com.samsung.android.service.stplatform
+    com.samsung.klmsagent
+    com.sec.imsservice
+    com.samsung.android.mobileservice
+    com.samsung.android.mdx.kit
+    com.google.android.aicore
+    com.samsung.android.kgclient
+    com.samsung.android.game.gametools
+    com.samsung.android.app.contacts
+    com.samsung.android.service.peoplestripe
+    com.google.ambient.streaming
+    com.samsung.android.app.smartcapture
+    com.samsung.android.privateaccesstokens
+    com.samsung.android.server.wifi.mobilewips
+    com.google.android.gms
+    com.sec.spp.push
+    com.samsung.android.app.routines
+    com.google.android.syncadapters.calendar
+    com.android.managedprovisioning
+    com.samsung.android.authfw
+    com.samsung.android.app.interpreter
+    com.samsung.android.dialer
+    com.samsung.android.game.gos
+    com.samsung.android.forest
+    com.samsung.android.sdk.ocr
+    com.samsung.android.app.moments
+    com.samsung.android.callassistant
+    com.samsung.android.mdm
+    com.samsung.android.scs
+    com.sec.unifiedwfc
+    com.samsung.android.audiomirroring
+    com.samsung.android.app.updatecenter
+    com.samsung.android.samsungpass
+    com.samsung.android.app.sharelive
+    com.samsung.android.dbsc
+    com.samsung.android.knox.analytics.uploader
+    com.qualcomm.location
+    com.samsung.android.bluelightfilter
+    com.samsung.android.hwresourceshare.storage
+    com.samsung.android.service.aircommand
+    com.samsung.android.shortcutbackupservice
+    com.samsung.android.mcfserver
+    com.android.shell
+    com.sec.enterprise.knox.cloudmdm.smdms
+    com.samsung.android.sdk.handwriting
+    com.samsung.android.smartsuggestions
+    com.google.android.cellbroadcastreceiver
+    com.samsung.android.cidmanager
+    com.samsung.android.agent.storage
+    com.sec.android.app.camera
+    com.samsung.sec.android.application.csc
+    com.samsung.android.sdm.config
+    com.samsung.android.mcfds
+    com.samsung.android.video
+  Whitelist user apps:
+    sw.ovbgd.app
+    com.jcwixbqff.eun
+    org.qoezvnila.adojdxtrkvq
+    com.ofeyxxju.iuqjcsi
+    io.github.ezkuhsew.wlzaeluitd
+    com.krgvkxar.nfputlacpxkundwgcl
+    io.github.akane599.umbra
+    com.hnjtrak9hvc.qycaxk
+    com.samsung.android.simagent
+    com.e5ovo.ohi
+    net.bcvhnatvb.android.uijnnnl
+    com.tgdpxfs.android.app.uthivlkkihkg
+    fr.eqfy.pnnxts.ujmmwqzw4
+    fr.eqfy
+    io.github.gpspurwjlhrifdyxgoh.imhprcyzg
+    io.github.udfvjhc.hcunkv
+    px.yufsy.android.xcqthlobyn.ytbb
+    com.nepayxabco
+    com.ulycttx.android
+    com.samsung.android.ipsgeofence
+    me.xjqoee.zuirrvph
+    fr.eqfy.pnnxts.qkgqm
+    com.gnmiz82.caohghcxtxs
+    wa.mayx.rscdoditbqez
+    com.tgdpxfs.android.ddavgexpvnhtvqxz
+    com.tgdpxfs.knotqwri.jeqdasxdvicpmixu
+    com.tqggmn.mifqtfdlq
+    org.ojcgpke.ekzyasw
+    phk.fzujnyed.fuovhqou.kokabet.mwlo
+    com.github.siwuuqru.cnvkxjfn.wynimj.rztodspt
+    fr.eqfy.pnnxts.tuqxlol
+    com.yylsbh
+    com.krgvkxar.yurpdarclwhw.th.tbo
+    mp.jman
+    fr.eqfy.pnnxts.dhbjgxdnzv
+  Whitelist (except idle) all app ids:
+    1000
+    1001
+    2000
+    5022
+    5025
+    5026
+    5250
+    5278
+    10057
+    10060
+    10062
+    10063
+    10068
+    10071
+    10074
+    10077
+    10081
+    10092
+    10095
+    10096
+    10098
+    10101
+    10103
+    10104
+    10109
+    10111
+    10113
+    10114
+    10115
+    10118
+    10122
+    10125
+    10126
+    10127
+    10128
+    10129
+    10132
+    10133
+    10135
+    10136
+    10137
+    10138
+    10140
+    10142
+    10143
+    10144
+    10145
+    10152
+    10157
+    10158
+    10161
+    10163
+    10164
+    10176
+    10179
+    10197
+    10198
+    10205
+    10212
+    10218
+    10220
+    10225
+    10252
+    10253
+    10256
+    10257
+    10264
+    10265
+    10277
+    10285
+    10293
+    10295
+    10301
+    10322
+    10338
+    10346
+    10361
+    10362
+    10365
+    10372
+    10374
+    10389
+    10400
+    10403
+    10410
+    10432
+    10435
+    10456
+    10457
+    10458
+    10466
+    10470
+    10473
+    10474
+    10476
+    10477
+    10478
+    10479
+    10481
+    10483
+    10484
+    10487
+    10492
+    10497
+    10499
+    10504
+    10507
+    10525
+    10526
+  Whitelist user app ids:
+    5022
+    10253
+    10361
+    10362
+    10365
+    10372
+    10374
+    10389
+    10400
+    10403
+    10410
+    10432
+    10435
+    10456
+    10457
+    10458
+    10466
+    10470
+    10473
+    10474
+    10476
+    10477
+    10478
+    10479
+    10481
+    10483
+    10484
+    10487
+    10492
+    10497
+    10499
+    10504
+    10507
+    10525
+    10526
+  Whitelist all app ids:
+    1000
+    1001
+    2000
+    5022
+    5025
+    5026
+    5250
+    5278
+    10057
+    10060
+    10062
+    10063
+    10068
+    10071
+    10074
+    10077
+    10081
+    10092
+    10095
+    10096
+    10098
+    10101
+    10103
+    10104
+    10109
+    10111
+    10113
+    10114
+    10115
+    10118
+    10122
+    10126
+    10127
+    10128
+    10129
+    10132
+    10133
+    10135
+    10136
+    10137
+    10138
+    10140
+    10142
+    10143
+    10144
+    10145
+    10152
+    10157
+    10158
+    10161
+    10163
+    10164
+    10176
+    10179
+    10197
+    10198
+    10205
+    10212
+    10218
+    10220
+    10225
+    10252
+    10253
+    10256
+    10257
+    10264
+    10265
+    10277
+    10285
+    10301
+    10322
+    10338
+    10346
+    10361
+    10362
+    10365
+    10372
+    10374
+    10389
+    10400
+    10403
+    10410
+    10432
+    10435
+    10456
+    10457
+    10458
+    10466
+    10470
+    10473
+    10474
+    10476
+    10477
+    10478
+    10479
+    10481
+    10483
+    10484
+    10487
+    10492
+    10497
+    10499
+    10504
+    10507
+    10525
+    10526
+  Allowlist History:
+  - history count : 100
+    [2026-10-25 09:23:07][remove ] mp.jman(uid/0) by system_server(pid/2932)
+    [2026-10-25 09:26:10][add    ] mp.jman(uid/10473) by com.android.settings(pid/22957)
+    [2026-10-25 09:35:43][remove ] mp.jman(uid/0) by package removed
+    [2026-10-25 09:41:09][add    ] mp.jman(uid/10484) by com.android.settings(pid/9081)
+    [2026-10-25 09:47:59][remove ] mp.jman(uid/0) by package removed
+    [2026-10-26 01:54:31][add    ] com.chiller3.rsaf(uid/10497) by com.android.settings(pid/30724)
+    [2026-10-26 04:17:37][add    ] com.tgdpxfs.android.app.uthivlkkihkg(uid/10457) by com.tgdpxfs.android.app.uthivlkkihkg(pid/32695)
+    [2026-10-26 04:45:42][add    ] com.jcwixbqff.eun(uid/10374) by com.android.settings(pid/12559)
+    [2026-10-26 04:46:06][remove ] com.jcwixbqff.eun(uid/10374) by com.android.settings(pid/12559)
+    [2026-10-26 06:08:24][remove ] sw.ovbgd.app(uid/10483) by com.android.settings(pid/25335)
+    [2026-10-26 06:45:15][add    ] sw.ovbgd.app(uid/10483) by dumpsys
+    [2026-10-26 09:51:31][add    ] mp.jman(uid/10504) by com.android.settings(pid/3726)
+    [2026-10-26 12:37:41][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-10-26 12:37:41][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-10-26 12:37:41][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-10-26 12:38:20][remove ] org.qoezvnila.adojdxtrkvq(uid/0) by system_server(pid/8498)
+    [2026-10-26 12:40:03][add    ] com.hnjtrak9hvc.qycaxk(uid/10473) by com.android.settings(pid/30003)
+    [2026-10-26 13:04:57][add    ] com.nepayxabco(uid/10470) by com.android.settings(pid/28375)
+    [2026-10-26 13:15:46][remove ] com.nepayxabco(uid/10470) by com.android.settings(pid/2426)
+    [2026-10-26 14:17:32][remove ] com.chiller3.rsaf(uid/0) by package removed
+    [2026-10-26 14:48:05][add    ] org.qoezvnila.adojdxtrkvq(uid/10481) by dumpsys
+    [2026-10-26 14:48:05][remove ] org.qoezvnila.adojdxtrkvq(uid/10481) by dumpsys
+    [2026-10-26 14:48:05][add    ] org.qoezvnila.adojdxtrkvq(uid/10481) by dumpsys
+    [2026-10-26 16:32:30][add    ] me.xjqoee.zuirrvph(uid/10505) by com.android.settings(pid/21250)
+    [2026-10-26 16:43:49][remove ] mp.jman(uid/10504) by system_server(pid/2912)
+    [2026-10-26 16:49:48][remove ] me.xjqoee.zuirrvph(uid/0) by system_server(pid/24283)
+    [2026-10-26 19:24:49][add    ] mp.jman(uid/10504) by com.android.settings(pid/25463)
+    [2026-10-26 20:09:02][remove ] mp.jman(uid/10504) by system_server(pid/9068)
+    [2026-10-27 01:44:42][add    ] com.itswxg.hrsfrqv(uid/10366) by com.android.settings(pid/32082)
+    [2026-10-27 02:30:30][remove ] dyz.ngpyubd.veuiasqvvy.lfv(uid/0) by system_server(pid/2895)
+    [2026-10-27 02:31:05][add    ] dyz.ngpyubd.veuiasqvvy.lfv(uid/10474) by com.android.settings(pid/20478)
+    [2026-10-27 02:32:56][remove ] dyz.ngpyubd.veuiasqvvy.lfv(uid/0) by system_server(pid/2895)
+    [2026-10-27 02:34:14][add    ] com.ofeyxxju.iuqjcsi(uid/10484) by com.android.settings(pid/22849)
+    [2026-10-27 04:34:46][remove ] com.itswxg.hrsfrqv(uid/10366) by com.android.settings(pid/18866)
+    [2026-10-27 05:56:10][remove ] org.qoezvnila.adojdxtrkvq(uid/10481) by dumpsys
+    [2026-10-27 05:56:10][add    ] org.qoezvnila.adojdxtrkvq(uid/10481) by dumpsys
+    [2026-10-27 06:01:55][add    ] com.krgvkxar.yurpdarclwhw.th.tbo(uid/10365) by com.krgvkxar.yurpdarclwhw.th.tbo.daemon(pid/14716)
+    [2026-10-27 06:13:53][add    ] com.nepayxabco(uid/10470) by com.android.settings(pid/21706)
+    [2026-10-27 06:28:46][remove ] org.qoezvnila.adojdxtrkvq(uid/10481) by dumpsys
+    [2026-10-27 06:28:46][add    ] org.qoezvnila.adojdxtrkvq(uid/10481) by dumpsys
+    [2026-10-27 07:39:44][remove ] org.qoezvnila.adojdxtrkvq(uid/10481) by com.samsung.android.lool(pid/7946)
+    [2026-10-29 02:38:08][add    ] com.itswxg.hrsfrqv(uid/10366) by com.android.settings(pid/25519)
+    [2026-10-29 03:36:37][add    ] com.dv.adm(uid/10447) by com.android.settings(pid/13999)
+    [2026-10-29 03:40:24][remove ] com.dv.adm(uid/0) by package removed
+    [2026-10-29 03:44:01][add    ] phk.fzujnyed.fuovhqou.kokabet.mwlo(uid/10504) by com.android.settings(pid/13999)
+    [2026-10-29 03:49:11][add    ] org.ojcgpke.ekzyasw(uid/10410) by com.android.settings(pid/13999)
+    [2026-10-29 04:26:42][remove ] phk.fzujnyed.fuovhqou.kokabet.mwlo(uid/10504) by com.android.settings(pid/8591)
+    [2026-10-29 04:27:29][add    ] phk.fzujnyed.fuovhqou.kokabet.mwlo(uid/10504) by com.android.settings(pid/22925)
+    [2026-10-29 04:30:17][remove ] phk.fzujnyed.fuovhqou.kokabet.mwlo(uid/10504) by com.android.settings(pid/22925)
+    [2026-10-29 06:11:58][remove ] com.itswxg.hrsfrqv(uid/10366) by com.android.settings(pid/28141)
+    [2026-11-01 03:57:12][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-01 03:57:12][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-01 03:57:12][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-01 21:43:40][add    ] com.jcwixbqff.eun(uid/10374) by com.android.settings(pid/7907)
+    [2026-11-01 22:36:55][remove ] com.jcwixbqff.eun(uid/10374) by com.android.settings(pid/17656)
+    [2026-11-02 09:37:05][add    ] com.nb4a.throne(uid/10523) by com.android.settings(pid/2858)
+    [2026-11-02 10:27:37][add    ] com.jcwixbqff.eun(uid/10374) by com.android.settings(pid/29798)
+    [2026-11-02 10:33:25][add    ] com.gnmiz82.caohghcxtxs(uid/10526) by com.android.settings(pid/4630)
+    [2026-11-02 10:35:49][remove ] com.akane.inspiration(uid/10487) by com.android.settings(pid/4630)
+    [2026-11-02 10:39:51][remove ] com.gnmiz82.caohghcxtxs(uid/0) by package removed
+    [2026-11-02 13:45:18][add    ] com.github.siwuuqru.cnvkxjfn(uid/10447) by com.android.settings(pid/21999)
+    [2026-11-02 13:51:22][remove ] com.github.siwuuqru.cnvkxjfn(uid/0) by package removed
+    [2026-11-02 13:56:37][add    ] com.e5ovo.ohi(uid/10435) by com.android.settings(pid/6829)
+    [2026-11-02 14:14:15][remove ] com.nb4a.throne(uid/0) by package removed
+    [2026-11-02 15:49:02][add    ] com.gnmiz82.caohghcxtxs(uid/10526) by com.android.settings(pid/779)
+    [2026-11-02 17:09:55][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-02 17:09:55][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-02 19:30:35][add    ] io.github.akane599.paneloff(uid/10472) by dumpsys
+    [2026-11-02 20:34:33][remove ] io.github.akane599.paneloff(uid/0) by system_server(pid/2960)
+    [2026-11-02 20:36:04][add    ] io.github.akane599.umbra(uid/10474) by com.android.settings(pid/11578)
+    [2026-11-02 21:18:50][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-02 21:18:50][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-02 23:17:55][remove ] com.ncote.fjozfzd(uid/0) by system_server(pid/2960)
+    [2026-11-03 02:10:22][add    ] wa.mayx.rscdoditbqez(uid/10481) by com.android.settings(pid/14898)
+    [2026-11-03 17:43:59][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-03 17:43:59][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-03 20:42:51][add    ] io.github.udfvjhc.hcunkv(uid/10492) by com.android.settings(pid/22780)
+    [2026-11-04 02:56:25][add    ] mp.jman(uid/10503) by com.android.settings(pid/9516)
+    [2026-11-04 03:08:36][remove ] mp.jman(uid/0) by package removed
+    [2026-11-04 03:09:15][add    ] mp.jman(uid/10505) by com.android.settings(pid/9516)
+    [2026-11-04 03:32:27][add    ] me.xjqoee.zuirrvph(uid/10507) by com.android.settings(pid/14928)
+    [2026-11-04 04:01:00][remove ] mp.jman(uid/0) by system_server(pid/2830)
+    [2026-11-04 04:04:24][add    ] mp.jman(uid/10497) by com.android.settings(pid/19732)
+    [2026-11-04 04:49:56][add    ] ru.maximoff.sheller(uid/10505) by com.android.settings(pid/7160)
+    [2026-11-04 04:51:39][remove ] ru.maximoff.sheller(uid/0) by system_server(pid/18913)
+    [2026-11-04 07:41:39][add    ] com.itswxg.hrsfrqv(uid/10366) by com.android.settings(pid/4425)
+    [2026-11-04 07:41:40][remove ] com.itswxg.hrsfrqv(uid/10366) by com.android.settings(pid/4425)
+    [2026-11-04 08:30:32][add    ] phk.fzujnyed.fuovhqou.kokabet.mwlo(uid/10504) by com.android.settings(pid/9050)
+    [2026-11-04 10:13:36][remove ] mp.jman(uid/0) by package removed
+    [2026-11-04 10:14:17][add    ] mp.jman(uid/10499) by com.android.settings(pid/10810)
+    [2026-11-04 12:25:59][add    ] io.github.gpspurwjlhrifdyxgoh.imhprcyzg(uid/10432) by com.android.settings(pid/14791)
+    [2026-11-04 12:33:25][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-04 12:33:25][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-05 07:33:08][add    ] px.yufsy.android.xcqthlobyn.ytbb(uid/10497) by com.android.settings(pid/7225)
+    [2026-11-05 09:48:29][add    ] com.tqggmn.mifqtfdlq(uid/10525) by com.android.settings(pid/20270)
+    [2026-11-05 13:03:47][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-05 13:03:47][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-05 14:18:36][add    ] io.github.ezkuhsew.wlzaeluitd(uid/10487) by com.android.settings(pid/9413)
+    [2026-11-05 18:41:04][remove ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+    [2026-11-05 18:41:04][add    ] org.qoezvnila.adojdxtrkvq(uid/10403) by dumpsys
+  Doze Allowlist Gatekeeper: false
+  mLightEnabled=true  mDeepEnabled=true
+  mForceIdle=false
+  mUseMotionSensor=true mMotionSensor={Sensor name="smd  Wakeup", vendor="Samsung", version=1, type=17, maxRange=1.0, resolution=1.0, power=0.001, minDelay=-1}
+  mScreenOn=true
+  mScreenLocked=false
+  mNetworkConnected=true
+  mCharging=true
+  activeEmergencyCall=false
+  mMotionActive=true
+  mNotMoving=false
+  mMotionListener.activatedTimeElapsed=41691967
+  mLastMotionEventElapsed=41541962
+  1 stationary listeners registered
+  Location prefetching disabled
+  mState=ACTIVE mLightState=ACTIVE
+  mInactiveTimeout=+3m0s0ms
+  mNextLightIdleDelay=+5m0s0ms (flex=+1m0s0ms)
+  mCurLightIdleBudget=+1m0s0ms
+  mIsDesktopClosedState=false
