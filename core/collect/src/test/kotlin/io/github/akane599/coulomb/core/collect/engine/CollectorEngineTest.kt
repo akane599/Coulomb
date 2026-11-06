@@ -25,6 +25,9 @@ import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.WindowKind
 import io.github.akane599.coulomb.core.model.history.BatteryHistory
+import io.github.akane599.coulomb.core.model.history.HistoryChange
+import io.github.akane599.coulomb.core.model.history.HistoryKind
+import io.github.akane599.coulomb.core.model.history.HistoryRecord
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import io.github.akane599.coulomb.core.model.stats.DeviceMisc
 import io.github.akane599.coulomb.core.model.stats.DeviceStats
@@ -397,6 +400,53 @@ class CollectorEngineTest {
             assertThat(discharges.single { it.closeReason == null }.startLevel).isEqualTo(80)
             assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)?.snapshotId)
                 .isEqualTo(db.snapshotDao().latest()?.id)
+        }
+
+    @Test
+    fun aPlugChangeInTheHistoryBeforeTheFirstSnapshotEverMovesNoReference() =
+        runTest {
+            // The first catch-up read: a time pairing, plugged at its start, unplugged an hour later.
+            val records =
+                listOf(
+                    HistoryRecord(0, HistoryKind.RESET, HistoryChange.SET, value = START_WALL_MS + hoursMs(0.5)),
+                    HistoryRecord(0, HistoryKind.PLUGGED, HistoryChange.START, baseline = true),
+                    HistoryRecord(hoursMs(1.0), HistoryKind.PLUGGED, HistoryChange.STOP),
+                )
+            val read =
+                BatteryHistory(
+                    null,
+                    nextCursorMs = 1_000_000 + hoursMs(2.0),
+                    firstRecordMs = 1_000_000,
+                    recordCount = 3,
+                    gapBeforeFirstRecord = false,
+                )
+            stats.history = { HistoryRead(records, read, SourceStatus.OK) }
+            device.set(hours = 5.0, level = 60, chargeMah = 3_000.0, screenOn = true)
+            engine().handle(SnapshotTrigger.SERVICE_STARTED)
+
+            assertThat(count("SELECT COUNT(*) FROM history_event")).isGreaterThan(0)
+            assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)).isNull()
+        }
+
+    @Test
+    fun aLevelRiseAcrossARebootIsNotTakenForACharge() =
+        runTest {
+            device.set(hours = 5.0, level = 60, chargeMah = 3_000.0, screenOn = true)
+            engine().handle(SnapshotTrigger.SERVICE_STARTED)
+            device.set(hours = 6.0, level = 59, chargeMah = 2_950.0, screenOn = true, plugged = true)
+            engine().handle(SnapshotTrigger.SERVICE_STARTED)
+            device.set(hours = 7.0, level = 61, chargeMah = 3_050.0, screenOn = true)
+            engine().handle(SnapshotTrigger.SERVICE_STARTED)
+            val unplug = checkNotNull(db.snapshotDao().latest())
+
+            // The gauge re-estimates the level at boot: up 3 points, but no charge was seen.
+            identity.bootCount = identity.bootCount + 1
+            clock.wallOffsetMs += hoursMs(8.0)
+            stats.reboot()
+            device.set(hours = 0.1, level = 64, chargeMah = 3_200.0, screenOn = true)
+            engine().handle(SnapshotTrigger.BOOT_COMPLETED)
+
+            assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)?.snapshotId).isEqualTo(unplug.id)
         }
 
     @Test

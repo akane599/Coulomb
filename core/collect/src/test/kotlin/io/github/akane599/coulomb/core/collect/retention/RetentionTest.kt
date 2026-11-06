@@ -39,10 +39,11 @@ class RetentionTest {
     private suspend fun heavy(
         hour: Int,
         blob: String? = null,
+        bootSeq: Int = 1,
     ): Long =
         db.snapshotDao().insert(
             SnapshotEntity(
-                bootSeq = 1,
+                bootSeq = bootSeq,
                 elapsedNs = hour * hourNs,
                 wallMs = wall0 + hour * hourNs / 1_000_000,
                 trigger = SnapshotTrigger.SCREEN_OFF,
@@ -86,6 +87,28 @@ class RetentionTest {
                 }
             assertThat(kept).containsExactly(ids[2], ids[8], ids[9], ids[10])
             assertThat(pruned).isEqualTo(7)
+        }
+
+    @Test
+    fun aCounterCutReachesBackIntoTheEarlierBoot() =
+        runTest {
+            db.deviceDao().enterBoot(1, "fp", wall0, 0)
+            val ids = (0..10).map { heavy(it) }
+            // Boot 2 is an hour old, so 2 h back is 1 h before boot 1 was last seen (10 h).
+            val boot = db.deviceDao().enterBoot(2, "fp", wall0 + 12 * hourNs / 1_000_000, 0)
+
+            val pruned = Retention(db, Blobs()).pruneCounters(boot, hourNs)
+
+            val kept =
+                ids.filter {
+                    db
+                        .snapshotDao()
+                        .rows(it)
+                        .deviceStats
+                        .isNotEmpty()
+                }
+            assertThat(kept).containsExactly(ids[9], ids[10])
+            assertThat(pruned).isEqualTo(9)
         }
 
     @Test

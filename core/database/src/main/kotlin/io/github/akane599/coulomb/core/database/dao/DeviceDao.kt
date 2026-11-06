@@ -69,15 +69,15 @@ public abstract class DeviceDao {
     public abstract suspend fun boots(): List<BootEntity>
 
     /**
-     * Each boot's last sighting: the latest elapsed time of any snapshot, sample, aggregate or
-     * history event stored in it. The boot ran at least that long; retention counts back with it.
+     * Each boot's last sighting: the latest elapsed time of a snapshot or sample stored in it. The
+     * boot ran at least that long; retention counts back with it. Only the tables with a
+     * `(bootSeq, elapsedNs)` index are read: aggregates and history events would cost a full scan
+     * and could only move the bound later. Snapshot rows are kept for good, so old boots keep one.
      */
     @Query(
         "SELECT bootSeq, MAX(lastNs) AS lastElapsedNs FROM (" +
             "SELECT bootSeq, MAX(elapsedNs) AS lastNs FROM snapshot GROUP BY bootSeq " +
-            "UNION ALL SELECT bootSeq, MAX(elapsedNs) FROM battery_sample GROUP BY bootSeq " +
-            "UNION ALL SELECT bootSeq, MAX(startElapsedNs) FROM sample_aggregate GROUP BY bootSeq " +
-            "UNION ALL SELECT bootSeq, MAX(elapsedNs) FROM history_event GROUP BY bootSeq" +
+            "UNION ALL SELECT bootSeq, MAX(elapsedNs) FROM battery_sample GROUP BY bootSeq" +
             ") GROUP BY bootSeq",
     )
     public abstract suspend fun bootsLastSeen(): List<BootLastSeen>

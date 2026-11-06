@@ -311,12 +311,16 @@ internal class SnapshotWriter(
         val opened: Set<SessionKind> = emptySet(),
         val closed: List<SessionEntity> = emptyList(),
     ) {
-        /** [to] opened after a [from] session closed here, or after the history showed [to] flip unseen. */
+        /**
+         * [to] opened after a [from] session closed here, or after a [to] session closed because
+         * the history showed its state flip unseen. Without a stored session to close, as on the
+         * first snapshot ever, a flip in the history is older than anything Coulomb watched.
+         */
         fun flipped(
             to: SessionKind,
             from: SessionKind,
             unseen: Set<SessionKind>,
-        ): Boolean = to in opened && (closed.any { it.kind == from } || to in unseen)
+        ): Boolean = to in opened && (closed.any { it.kind == from } || (to in unseen && closed.any { it.kind == to }))
     }
 
     private companion object {

@@ -215,7 +215,7 @@ internal class CollectorEngine(
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
         val blob = stats?.let { writeBlob(trigger, reading, boot, it, kind == SnapshotKind.HEAVY) }
-        val unseen = if (firstOfProcess) unseenKinds(ingest) + chargedUnseen(reading) else emptySet()
+        val unseen = if (firstOfProcess) unseenKinds(ingest) + chargedUnseen(reading, boot) else emptySet()
         val entity =
             entity(reading, boot, trigger, kind, dump).copy(
                 historyCursorMs = ingest?.nextCursorMs,
@@ -263,10 +263,14 @@ internal class CollectorEngine(
     }
 
     /**
-     * After a process start, a level well above the last one stored while unplugged: the device
-     * charged while Coulomb was not running, even when the history read does not show it.
+     * After a process start in the same boot, a level well above the last unplugged one stored:
+     * the device charged while Coulomb was not running, even when the history read does not show
+     * it. Across a reboot the gauge may re-estimate the level, so nothing is inferred there.
      */
-    private suspend fun chargedUnseen(reading: LightReading): Set<SessionKind> {
+    private suspend fun chargedUnseen(
+        reading: LightReading,
+        boot: BootEntity,
+    ): Set<SessionKind> {
         val level = reading.levelPct ?: return emptySet()
         if (reading.plugged) return emptySet()
         val snapshot = db.snapshotDao().latest()
@@ -278,8 +282,16 @@ internal class CollectorEngine(
                         sample.bootSeq > snapshot.bootSeq ||
                         (sample.bootSeq == snapshot.bootSeq && sample.elapsedNs > snapshot.elapsedNs)
                 )
-        val last = (if (sampleIsLater) sample.levelPct else snapshot?.levelPct) ?: return emptySet()
-        return if (level > last + LEVEL_NOISE) setOf(SessionKind.CHARGE, SessionKind.DISCHARGE) else emptySet()
+        // The latest stored reading, as (boot, plug type, level).
+        val last =
+            when {
+                sampleIsLater -> Triple(sample.bootSeq, sample.plugType, sample.levelPct)
+                snapshot != null -> Triple(snapshot.bootSeq, snapshot.plugType, snapshot.levelPct)
+                else -> return emptySet()
+            }
+        val (lastBoot, lastPlug, lastLevel) = last
+        if (lastBoot != boot.bootSeq || lastPlug != 0 || lastLevel == null) return emptySet()
+        return if (level > lastLevel + LEVEL_NOISE) setOf(SessionKind.CHARGE, SessionKind.DISCHARGE) else emptySet()
     }
 
     /** The light part of a snapshot row; the caller adds what the reads gave. */

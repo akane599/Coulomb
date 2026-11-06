@@ -55,14 +55,27 @@ internal class Retention(
         nowElapsedNs: Long,
     ): Int = cutter(boot, nowElapsedNs)(COUNTERS_MS)?.let { db.snapshotDao().pruneCounters(it.bootSeq, it.elapsedNs) } ?: 0
 
-    private suspend fun cutter(
+    /**
+     * Cuts for one run. The boots and their last-seen times are read only when a cut reaches back
+     * past the current boot: the hourly 2 h counter cut almost never does.
+     */
+    private fun cutter(
         boot: BootEntity,
         nowElapsedNs: Long,
-    ): (Long) -> Cut? {
-        val devices = db.deviceDao()
-        val boots = devices.boots()
-        val lastSeen = devices.bootsLastSeen().associate { it.bootSeq to it.lastElapsedNs }
-        return { agoMs -> cutKey(boots, lastSeen, boot, nowElapsedNs, agoMs) }
+    ): suspend (Long) -> Cut? {
+        var earlier: Pair<List<BootEntity>, Map<Int, Long>>? = null
+        return { agoMs ->
+            val loaded =
+                if (nowElapsedNs >= agoMs * NS_PER_MS) {
+                    emptyList<BootEntity>() to emptyMap()
+                } else {
+                    earlier ?: run {
+                        val devices = db.deviceDao()
+                        (devices.boots() to devices.bootsLastSeen().associate { it.bootSeq to it.lastElapsedNs }).also { earlier = it }
+                    }
+                }
+            cutKey(loaded.first, loaded.second, boot, nowElapsedNs, agoMs)
+        }
     }
 
     /** ADR-0015: consecutive, reference and charge-session detail goes after 30 days; day and discharge detail stays. */
