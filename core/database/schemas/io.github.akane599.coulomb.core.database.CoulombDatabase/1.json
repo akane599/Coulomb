@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d1d74c331a901e28c61dd2e3de241d56",
+    "identityHash": "e2b91c0b7722c6d50b7424b8a5fc7a47",
     "entities": [
       {
         "tableName": "device_profile",
@@ -939,7 +939,7 @@
       },
       {
         "tableName": "snapshot",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bootSeq` INTEGER NOT NULL, `elapsedNs` INTEGER NOT NULL, `wallMs` INTEGER NOT NULL, `trigger` TEXT NOT NULL, `kind` TEXT NOT NULL, `levelPct` INTEGER, `chargeUah` INTEGER, `currentRaw` INTEGER, `voltageMv` INTEGER, `tempDeciC` INTEGER, `plugType` INTEGER, `status` INTEGER, `statsStartWall` INTEGER, `historyCursorMs` INTEGER, `historyEventId` INTEGER, `sourceStatusJson` TEXT NOT NULL, `blobPath` TEXT, `partial` INTEGER NOT NULL, `countersPruned` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bootSeq` INTEGER NOT NULL, `elapsedNs` INTEGER NOT NULL, `wallMs` INTEGER NOT NULL, `trigger` TEXT NOT NULL, `kind` TEXT NOT NULL, `levelPct` INTEGER, `chargeUah` INTEGER, `currentRaw` INTEGER, `voltageMv` INTEGER, `tempDeciC` INTEGER, `plugType` INTEGER, `status` INTEGER, `statsStartWall` INTEGER, `statsRealtimeMs` INTEGER, `historyCursorMs` INTEGER, `historyEventId` INTEGER, `sourceStatusJson` TEXT NOT NULL, `blobPath` TEXT, `partial` INTEGER NOT NULL, `countersPruned` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1015,6 +1015,11 @@
           {
             "fieldPath": "statsStartWall",
             "columnName": "statsStartWall",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "statsRealtimeMs",
+            "columnName": "statsRealtimeMs",
             "affinity": "INTEGER"
           },
           {
@@ -2587,7 +2592,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd1d74c331a901e28c61dd2e3de241d56')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e2b91c0b7722c6d50b7424b8a5fc7a47')"
     ]
   }
 }

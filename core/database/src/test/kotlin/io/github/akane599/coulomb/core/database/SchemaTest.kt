@@ -15,7 +15,7 @@ class SchemaTest : DatabaseTest() {
         // Changing a v1 table changes this hash. Bump the version and add a tested migration instead
         // (SPEC 8); until the P2 gate the hash may be updated here together with schemas/1.json.
         assertThat(db.openHelper.readableDatabase.version).isEqualTo(1)
-        assertThat(string("SELECT identity_hash FROM room_master_table")).isEqualTo("d1d74c331a901e28c61dd2e3de241d56")
+        assertThat(string("SELECT identity_hash FROM room_master_table")).isEqualTo("e2b91c0b7722c6d50b7424b8a5fc7a47")
     }
 
     @Test

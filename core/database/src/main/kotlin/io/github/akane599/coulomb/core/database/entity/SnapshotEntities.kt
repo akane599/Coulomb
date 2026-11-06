@@ -37,8 +37,13 @@ public data class SnapshotEntity(
     val tempDeciC: Int?,
     val plugType: Int?,
     val status: Int?,
-    /** Wall time the platform's statistics started counting from: the S4 to S6 epoch. */
+    /**
+     * Wall time the platform's statistics started counting from (`start_clock_time_ms`). It moves
+     * with every wall-clock change, so it alone cannot tell a reset (ADR-0017).
+     */
     val statsStartWall: Long?,
+    /** Realtime the statistics have counted since they started (`total_realtime_ms`); restarts at a reset (ADR-0018). */
+    val statsRealtimeMs: Long?,
     /** The history cursor after this snapshot's read: the `NEXT:` value (ADR-0014). */
     val historyCursorMs: Long?,
     /**

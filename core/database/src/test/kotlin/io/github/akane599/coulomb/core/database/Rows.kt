@@ -76,6 +76,7 @@ internal fun snapshot(
     plugType = 0,
     status = 3,
     statsStartWall = null,
+    statsRealtimeMs = null,
     historyCursorMs = 1_234,
     historyEventId = historyEventId,
     sourceStatusJson = """{"S5":"ok"}""",

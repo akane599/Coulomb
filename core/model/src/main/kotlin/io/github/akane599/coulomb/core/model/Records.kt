@@ -87,7 +87,20 @@ public enum class ChargeSource {
 }
 
 /** The automatic references of SPEC 7.6; each has one row that moves rather than a new row each time. */
-public enum class AutoReference { SINCE_BOOT, SINCE_UNPLUGGED, SINCE_FULL_CHARGE, SINCE_SCREEN_OFF, TODAY }
+public enum class AutoReference {
+    SINCE_BOOT,
+    SINCE_UNPLUGGED,
+    SINCE_FULL_CHARGE,
+    SINCE_SCREEN_OFF,
+    TODAY,
+
+    /**
+     * Not shown. The last heavy snapshot before the latest statistics reset, kept so a window that
+     * spans the reset still counts its earlier part (ADR-0018). The platform resets on unplugging
+     * at a high level, so most days have one.
+     */
+    BEFORE_RESET,
+}
 
 /** Why a stretch of the battery history is not known event by event (ADR-0014). */
 public enum class HistoryGapReason {
