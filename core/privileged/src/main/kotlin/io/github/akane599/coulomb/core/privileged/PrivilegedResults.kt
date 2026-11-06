@@ -15,6 +15,20 @@ public enum class Route {
     IN_APP,
 }
 
+/**
+ * Which route a dump tries first. Both give the same output; they differ in cost. The worker is a
+ * separate process that Shizuku starts and that exits after a minute idle, so a background
+ * collector that dumps every few minutes pays for a bind each time. The in-app route runs in
+ * Coulomb's own process with the T1 grants (ADR-0010, ADR-0018).
+ */
+public enum class RoutePreference {
+    /** The worker, then T1 in Coulomb's process (the default, for interactive use). */
+    WORKER_FIRST,
+
+    /** T1 in Coulomb's process when the grants allow it, then the worker. */
+    IN_APP_FIRST,
+}
+
 /** Outcome of a streamed dump. Partial results still carry whatever the consumer parsed (SPEC 4.5). */
 public sealed interface DumpResult<out R> {
     public data class Complete<R>(

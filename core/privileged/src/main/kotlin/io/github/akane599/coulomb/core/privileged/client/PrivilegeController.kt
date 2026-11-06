@@ -28,6 +28,7 @@ import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import io.github.akane599.coulomb.core.privileged.PrivilegedQuery
 import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.Route
+import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SettingsNamespace
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
@@ -427,6 +428,7 @@ internal class PrivilegeController(
         historyStart: Long,
         timeoutMs: Long,
         isComplete: (R) -> Boolean,
+        route: RoutePreference,
         consume: suspend (InputStream) -> R,
     ): DumpResult<R> =
         dump(
@@ -438,6 +440,7 @@ internal class PrivilegeController(
                 },
             timeoutMs = timeoutMs,
             isComplete = isComplete,
+            route = route,
             consume = consume,
         )
 
@@ -445,6 +448,7 @@ internal class PrivilegeController(
         service: SystemService,
         timeoutMs: Long,
         isComplete: (R) -> Boolean,
+        route: RoutePreference,
         consume: suspend (InputStream) -> R,
     ): DumpResult<R> =
         dump(
@@ -452,6 +456,7 @@ internal class PrivilegeController(
             inApp = InAppTarget(service.binderName, emptyArray()) { it.dump },
             timeoutMs = timeoutMs,
             isComplete = isComplete,
+            route = route,
             consume = consume,
         )
 
@@ -482,11 +487,16 @@ internal class PrivilegeController(
         timeoutMs: Long,
         isComplete: (R) -> Boolean,
         consume: suspend (InputStream) -> R,
+        route: RoutePreference = RoutePreference.WORKER_FIRST,
     ): DumpResult<R> {
         val sniffing: suspend (InputStream) -> Sniffed<R> = { raw ->
             val input = BufferedInputStream(raw, SNIFF_BUFFER)
             DumpDenial.check(input)?.let { Sniffed.Denied(it) } ?: Sniffed.Value(consume(input))
         }
+        // In-app first: a result that is not Unavailable is final; otherwise the worker may still
+        // serve it, and the in-app refusal is kept for when it cannot.
+        val inAppFirst = if (route == RoutePreference.IN_APP_FIRST) inApp?.let { dumpInApp(it, timeoutMs, isComplete, sniffing) } else null
+        if (inAppFirst != null && inAppFirst !is DumpResult.Unavailable) return inAppFirst
         // Null when the worker is unavailable (bind timeout, version mismatch) or failed before streaming.
         val fromWorker =
             if (workerUsableNow()) {
@@ -499,7 +509,8 @@ internal class PrivilegeController(
                 null
             }
         return fromWorker
-            ?: inApp?.let { dumpInApp(it, timeoutMs, isComplete, sniffing) }
+            ?: inApp?.takeIf { route == RoutePreference.WORKER_FIRST }?.let { dumpInApp(it, timeoutMs, isComplete, sniffing) }
+            ?: inAppFirst
             ?: DumpResult.Unavailable(FailureReason.NO_ACCESS, noAccessDetail())
     }
 

@@ -19,6 +19,7 @@ import io.github.akane599.coulomb.core.privileged.PartialReason
 import io.github.akane599.coulomb.core.privileged.PrivilegeConfig
 import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.Route
+import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -474,5 +475,23 @@ class PrivilegeControllerTest {
             c.start()
             runCurrent()
             assertThat((c.dumpText() as DumpResult.Complete).value).isEqualTo("Perm")
+        }
+
+    @Test
+    fun inAppFirstSkipsTheWorkerWhenTheGrantsAllowIt() =
+        runTest {
+            api.binderAlive = true
+            api.permissionGranted = true
+            grants.status = allGranted
+            val c = controller()
+            c.start()
+            runCurrent()
+            val inAppFirst = c.dumpBatteryStats(BatteryStatsMode.PROTO, route = RoutePreference.IN_APP_FIRST) { String(it.readBytes()) }
+            assertThat((inAppFirst as DumpResult.Complete).route).isEqualTo(Route.IN_APP)
+            assertThat((c.dumpText() as DumpResult.Complete).route).isEqualTo(Route.WORKER)
+            // Without the grants the worker still serves it.
+            grants.status = allGranted.copy(dump = false, batteryStats = false)
+            val fallback = c.dumpBatteryStats(BatteryStatsMode.PROTO, route = RoutePreference.IN_APP_FIRST) { String(it.readBytes()) }
+            assertThat((fallback as DumpResult.Complete).route).isEqualTo(Route.WORKER)
         }
 }

@@ -46,13 +46,15 @@ public interface PrivilegedAccess {
 
     /**
      * Streams `dumpsys batterystats <mode>` into [consume]. [isComplete] lets a parser that found
-     * the content cut short report a partial result even though the stream ended cleanly.
+     * the content cut short report a partial result even though the stream ended cleanly. [route]
+     * picks which route is tried first; the other is the fallback.
      */
     public suspend fun <R> dumpBatteryStats(
         mode: BatteryStatsMode,
         historyStart: Long = 0L,
         timeoutMs: Long = DEFAULT_DUMP_TIMEOUT_MS,
         isComplete: (R) -> Boolean = { true },
+        route: RoutePreference = RoutePreference.WORKER_FIRST,
         consume: suspend (InputStream) -> R,
     ): DumpResult<R>
 
@@ -60,6 +62,7 @@ public interface PrivilegedAccess {
         service: SystemService,
         timeoutMs: Long = DEFAULT_DUMP_TIMEOUT_MS,
         isComplete: (R) -> Boolean = { true },
+        route: RoutePreference = RoutePreference.WORKER_FIRST,
         consume: suspend (InputStream) -> R,
     ): DumpResult<R>
 
