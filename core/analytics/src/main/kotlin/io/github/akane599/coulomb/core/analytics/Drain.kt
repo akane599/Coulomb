@@ -33,7 +33,15 @@ public sealed interface DrainRate {
         /** Which of the two the UI shows: the level-based one while calibration is incomplete. */
         val shown: Shown,
         val chargeSource: ChargeSource,
-        val provenance: Provenance,
+        /** Of [avgCurrentMa]: Measured only from the charge counter. */
+        val currentProvenance: Provenance,
+        /**
+         * Of the shown %/h. Always Estimated: one rate divides by the estimated capacity, the other
+         * comes from the fuel gauge's level (SPEC 6.7).
+         */
+        val rateProvenance: Provenance,
+        /** 0 to 1 (SPEC 6.7): the charge source times how finely the change was resolved. */
+        val quality: Double,
         val hours: Double,
     ) : DrainRate
 
@@ -44,6 +52,16 @@ public sealed interface DrainRate {
 public object Drain {
     public const val MIN_WINDOW_NS: Long = 15 * 60 * NS_PER_S
     public const val MIN_CHARGE_UAH: Long = 20_000
+
+    /** The charge counter's resolution, and a level step, as the smallest change each can show. */
+    private const val COUNTER_RESOLUTION_UAH = 1_000.0
+    private const val LEVEL_RESOLUTION_PCT = 1.0
+    private val SOURCE_QUALITY =
+        mapOf(
+            ChargeSource.CHARGE_COUNTER to 1.0,
+            ChargeSource.INTEGRATED_CURRENT to 0.8,
+            ChargeSource.LEVEL_DELTA to 0.5,
+        )
 
     /**
      * The drain from [a] to [b]: ΔQ / Δt from the charge counter when [counterReliable], else from
@@ -66,16 +84,43 @@ public object Drain {
         val hours = dtNs.toDouble() / NS_PER_S / SECONDS_PER_HOUR
         val avgMa = deltaUah?.let { it / UAH_PER_MAH / hours }
         val ofCapacity = avgMa?.let { ma -> capacityMah?.takeIf { it > 0 }?.let { PERCENT * abs(ma) / it } }
+        val shown = if (calibrated && ofCapacity != null) DrainRate.Shown.CAPACITY else DrainRate.Shown.LEVEL
+        val levelDelta = abs(b.levelPct - a.levelPct).toDouble()
         return DrainRate.Rate(
             avgCurrentMa = avgMa,
             pctPerHourOfCapacity = ofCapacity,
-            pctPerHourOfLevel = abs(b.levelPct - a.levelPct) / hours,
-            shown = if (calibrated && ofCapacity != null) DrainRate.Shown.CAPACITY else DrainRate.Shown.LEVEL,
+            pctPerHourOfLevel = levelDelta / hours,
+            shown = shown,
             chargeSource = source,
-            provenance = if (source == ChargeSource.CHARGE_COUNTER) Provenance.MEASURED else Provenance.ESTIMATED,
+            currentProvenance = if (source == ChargeSource.CHARGE_COUNTER) Provenance.MEASURED else Provenance.ESTIMATED,
+            rateProvenance = Provenance.ESTIMATED,
+            quality = quality(shown, source, deltaUah, levelDelta),
             hours = hours,
         )
     }
+
+    /**
+     * The shown rate's quality: its charge source (the level when the level-based rate is shown)
+     * times how finely the change was resolved, one counter step or one level step against it.
+     */
+    private fun quality(
+        shown: DrainRate.Shown,
+        source: ChargeSource,
+        deltaUah: Double?,
+        levelDelta: Double,
+    ): Double =
+        if (shown == DrainRate.Shown.CAPACITY && deltaUah != null) {
+            val step = if (source == ChargeSource.CHARGE_COUNTER) COUNTER_RESOLUTION_UAH else 0.0
+            SOURCE_QUALITY.getValue(source) * resolution(abs(deltaUah), step)
+        } else {
+            SOURCE_QUALITY.getValue(ChargeSource.LEVEL_DELTA) * resolution(levelDelta, LEVEL_RESOLUTION_PCT)
+        }
+
+    /** 1 minus the share of [change] that one step of [step] would be; 0 when nothing changed. */
+    private fun resolution(
+        change: Double,
+        step: Double,
+    ): Double = if (change <= 0) 0.0 else (1 - step / change).coerceIn(0.0, 1.0)
 
     /** ΔQ in µAh and where it came from: the counter, else integrated current, else nothing. */
     private fun charge(
@@ -85,7 +130,9 @@ public object Drain {
         calibrated: Boolean,
         integratedUah: Double?,
     ): Pair<Double?, ChargeSource> {
-        val counter = if (counterReliable) b.chargeUah?.let { qb -> a.chargeUah?.let { (qb - it).toDouble() } } else null
+        val qa = a.chargeUah?.takeIf { it > 0 }
+        val qb = b.chargeUah?.takeIf { it > 0 }
+        val counter = if (counterReliable && qa != null && qb != null) (qb - qa).toDouble() else null
         return when {
             counter != null -> counter to ChargeSource.CHARGE_COUNTER
             integratedUah != null && calibrated -> integratedUah to ChargeSource.INTEGRATED_CURRENT

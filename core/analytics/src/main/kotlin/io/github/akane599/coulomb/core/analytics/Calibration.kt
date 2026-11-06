@@ -4,7 +4,6 @@
 package io.github.akane599.coulomb.core.analytics
 
 import kotlin.math.abs
-import kotlin.math.min
 
 /**
  * One battery reading as the sampler took it (S1, S2), before calibration. [chargeUah] is null when
@@ -60,6 +59,9 @@ public object Calibration {
     /** The shortest window the scale is chosen over. */
     public const val SCALE_WINDOW_NS: Long = 10 * 60 * NS_PER_S
 
+    /** Unplugged screen-on time at one level that a real counter cannot sit through unchanged. */
+    public const val QUIET_NS: Long = 10 * 60 * NS_PER_S
+
     private const val STUCK_NS = 15 * 60 * NS_PER_S
     private const val MAX_QUANTUM_UAH = 1_000L
     private const val MIN_COUNTER_STEPS = 5
@@ -70,40 +72,94 @@ public object Calibration {
     /**
      * The sign that makes current negative while unplugged with the screen on, and positive while
      * plugged with the level rising, once the last [SIGN_SAMPLES] readings that show either agree.
-     * Null until then. A reading of zero says nothing.
+     * Null until then. A reading of zero says nothing. A plugged reading counts only once the level
+     * step it belongs to is confirmed as charging: it began with a rise and ended with another rise.
+     * Readings at a level that has not moved on yet, or that later fell, say nothing, so draining
+     * while plugged in (a game on a weak charger) cannot flip the sign.
      */
     public fun sign(readings: List<RawReading>): Int? {
         val implied = mutableListOf<Int>()
-        var lowestPluggedLevel: Int? = null
+        val step = ChargingStep()
         for (r in readings) {
-            lowestPluggedLevel = if (r.plugged) min(lowestPluggedLevel ?: r.levelPct, r.levelPct) else null
+            implied += step.next(r)
             val raw = r.currentRaw.sign()
-            if (raw == 0) continue
-            when {
-                !r.plugged && r.screenOn -> implied += -raw
-                r.plugged && r.levelPct > (lowestPluggedLevel ?: r.levelPct) -> implied += raw
-            }
+            if (raw != 0 && !r.plugged && r.screenOn) implied += -raw
         }
         val last = implied.takeLast(SIGN_SAMPLES)
         return last.firstOrNull()?.takeIf { last.size == SIGN_SAMPLES && last.all { s -> s == it } }
     }
 
     /**
+     * Holds the raw signs of plugged readings at one level until the level moves: a rise after a
+     * rise releases them as evidence, anything else drops them.
+     */
+    private class ChargingStep {
+        private var level: Int? = null
+        private var startedByRise = false
+        private val held = mutableListOf<Int>()
+
+        fun next(r: RawReading): List<Int> {
+            val previous = level
+            if (!r.plugged) {
+                level = null
+                held.clear()
+                return emptyList()
+            }
+            var released = emptyList<Int>()
+            if (previous != null && r.levelPct != previous) {
+                val rise = r.levelPct > previous
+                if (rise && startedByRise) released = held.toList()
+                held.clear()
+                startedByRise = rise
+            } else if (previous == null) {
+                startedByRise = false
+            }
+            level = r.levelPct
+            r.currentRaw
+                .sign()
+                .takeIf { it != 0 }
+                ?.let { held += it }
+            return released
+        }
+    }
+
+    /**
      * Whether the charge counter can be trusted over [readings]: present, never stuck for more than
      * 15 minutes while the level changed, and moving in steps of at most 1 mAh. The step is the
      * greatest common divisor of the counter's changes, so real drain between readings does not
-     * look like coarse steps.
+     * look like coarse steps. A counter that never moves while the level stays put, over at least
+     * [QUIET_NS] of unplugged screen-on use, is derived from the level and counts as coarse too,
+     * whatever its divisor. `Long.MIN_VALUE` and values of 0 or less are the platform's "not
+     * supported" (S2) and count as no counter.
      */
     public fun chargeCounter(readings: List<RawReading>): ChargeCounterVerdict {
-        val counted = readings.mapNotNull { r -> r.chargeUah?.let { r to it } }
+        val counted = readings.mapNotNull { r -> validCharge(r)?.let { r to it } }
         val steps = counted.zipWithNext { a, b -> abs(b.second - a.second) }.filter { it > 0 }
         return when {
             counted.isEmpty() -> if (readings.isEmpty()) ChargeCounterVerdict.UNKNOWN else ChargeCounterVerdict.UNSUPPORTED
             isStuck(counted) -> ChargeCounterVerdict.STUCK
             steps.size < MIN_COUNTER_STEPS -> ChargeCounterVerdict.UNKNOWN
-            steps.reduce(::gcd) > MAX_QUANTUM_UAH -> ChargeCounterVerdict.COARSE
+            steps.reduce(::gcd) > MAX_QUANTUM_UAH || followsLevel(counted) -> ChargeCounterVerdict.COARSE
             else -> ChargeCounterVerdict.RELIABLE
         }
+    }
+
+    /** The counter in µAh, or null when the platform reports it as unsupported. */
+    public fun validCharge(reading: RawReading): Long? = reading.chargeUah?.takeIf { it > 0 }
+
+    /**
+     * The counter stayed the same across every pair of readings at one level, unplugged with the
+     * screen on (so current is far above 1 mAh per interval), for at least [QUIET_NS] in total.
+     */
+    private fun followsLevel(counted: List<Pair<RawReading, Long>>): Boolean {
+        var quietNs = 0L
+        for ((a, b) in counted.zipWithNext()) {
+            val busy = !a.first.plugged && a.first.screenOn && !b.first.plugged && b.first.screenOn
+            if (!busy || a.first.levelPct != b.first.levelPct) continue
+            if (a.second != b.second) return false
+            quietNs += b.first.elapsedNs - a.first.elapsedNs
+        }
+        return quietNs >= QUIET_NS
     }
 
     /** The counter kept one value for more than 15 minutes while the level changed. */
@@ -151,11 +207,9 @@ public object Calibration {
     ): Long? {
         val span = readings.last().elapsedNs - readings.first().elapsedNs
         if (counter != ChargeCounterVerdict.RELIABLE || span < SCALE_WINDOW_NS) return null
-        return readings
-            .last()
-            .chargeUah
-            ?.let { last -> readings.first().chargeUah?.let { last - it } }
-            ?.takeIf { it != 0L }
+        val first = validCharge(readings.first())
+        val last = validCharge(readings.last())
+        return if (first == null || last == null) null else (last - first).takeIf { it != 0L }
     }
 
     /** Charge in µAh from integrating calibrated current over time (trapezoids). */

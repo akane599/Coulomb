@@ -91,6 +91,44 @@ class CalibrationTest {
     }
 
     @Test
+    fun drainingWhilePluggedInDoesNotFlipTheSign() {
+        // AOSP-style: unplugged with the screen on, then charging with the level rising, then a
+        // game on a weak charger that drains while still plugged in.
+        val unplugged = trace(sign = 1, scale = 1, minutes = 20)
+        val t0 = unplugged.last().elapsedNs
+        val rising =
+            (1..20).map { i ->
+                RawReading(t0 + i * 5 * NS_PER_S, 900_000, null, 4_200, 50 + i / 10, plugged = true, screenOn = true)
+            }
+        val t1 = rising.last().elapsedNs
+        val draining =
+            (1..20).map { i ->
+                RawReading(t1 + i * 5 * NS_PER_S, -300_000, null, 4_000, if (i < 10) 52 else 51, plugged = true, screenOn = true)
+            }
+        assertThat(Calibration.sign(unplugged + rising + draining)).isEqualTo(1)
+    }
+
+    @Test
+    fun aCounterDerivedFromTheLevelIsCoarse() {
+        // The counter is the level times a full charge: its steps (48,124 and 48,123 µAh) have no
+        // common divisor, but it never moves between level changes.
+        val readings =
+            (0..240).map { i ->
+                val level = 80 - i / 40
+                RawReading(i * 5 * NS_PER_S, -400_000, 4_812_345L * level / 100, 3_900, level, plugged = false, screenOn = true)
+            }
+        assertThat(Calibration.chargeCounter(readings)).isEqualTo(ChargeCounterVerdict.COARSE)
+    }
+
+    @Test
+    fun theUnsupportedMarkersAreNoCounter() {
+        assertThat(
+            Calibration.chargeCounter(trace(1, 1).map { it.copy(chargeUah = Long.MIN_VALUE) }),
+        ).isEqualTo(ChargeCounterVerdict.UNSUPPORTED)
+        assertThat(Calibration.chargeCounter(trace(1, 1).map { it.copy(chargeUah = 0) })).isEqualTo(ChargeCounterVerdict.UNSUPPORTED)
+    }
+
+    @Test
     fun aCounterThatIsMissingStuckOrCoarseIsNotTrusted() {
         assertThat(Calibration.chargeCounter(trace(1, 1).map { it.copy(chargeUah = null) })).isEqualTo(ChargeCounterVerdict.UNSUPPORTED)
         assertThat(Calibration.chargeCounter(emptyList())).isEqualTo(ChargeCounterVerdict.UNKNOWN)

@@ -31,8 +31,20 @@ class DrainTest {
         assertThat(rate.pctPerHourOfCapacity).isWithin(1e-9).of(0.5)
         assertThat(rate.pctPerHourOfLevel).isWithin(1e-9).of(0.5)
         assertThat(rate.shown).isEqualTo(DrainRate.Shown.CAPACITY)
-        assertThat(rate.provenance).isEqualTo(Provenance.MEASURED)
+        assertThat(rate.currentProvenance).isEqualTo(Provenance.MEASURED)
+        // %/h of capacity divides by an estimate, so the shown rate is Estimated (SPEC 6.7).
+        assertThat(rate.rateProvenance).isEqualTo(Provenance.ESTIMATED)
         assertThat(rate.chargeSource).isEqualTo(ChargeSource.CHARGE_COUNTER)
+        // 200 mAh from a 1 mAh counter.
+        assertThat(rate.quality).isWithin(1e-9).of(0.995)
+    }
+
+    @Test
+    fun unsupportedCounterValuesAndNoTimeGiveNoCounterRate() {
+        val rate = Drain.rate(point(0, 80, Long.MIN_VALUE), point(60, 78, 3_900_000), true, true, 5_000.0)
+        check(rate is DrainRate.Rate)
+        assertThat(rate.chargeSource).isEqualTo(ChargeSource.LEVEL_DELTA)
+        assertThat(Drain.rate(point(10, 80, 4_000_000), point(10, 79, 3_000_000), true, true, 5_000.0)).isEqualTo(DrainRate.Collecting)
     }
 
     @Test
@@ -66,7 +78,7 @@ class DrainTest {
             )
         check(integrated is DrainRate.Rate)
         assertThat(integrated.chargeSource).isEqualTo(ChargeSource.INTEGRATED_CURRENT)
-        assertThat(integrated.provenance).isEqualTo(Provenance.ESTIMATED)
+        assertThat(integrated.currentProvenance).isEqualTo(Provenance.ESTIMATED)
         assertThat(integrated.avgCurrentMa).isWithin(1e-9).of(-100.0)
 
         val levels =
@@ -82,6 +94,8 @@ class DrainTest {
         assertThat(levels.avgCurrentMa).isNull()
         assertThat(levels.pctPerHourOfLevel).isWithin(1e-9).of(2.0)
         assertThat(levels.shown).isEqualTo(DrainRate.Shown.LEVEL)
+        // Two level steps from the level alone: low confidence.
+        assertThat(levels.quality).isWithin(1e-9).of(0.25)
     }
 
     @Test
@@ -96,6 +110,6 @@ class DrainTest {
             )
         check(rate is DrainRate.Rate)
         assertThat(rate.shown).isEqualTo(DrainRate.Shown.LEVEL)
-        assertThat(rate.provenance).isEqualTo(Provenance.MEASURED)
+        assertThat(rate.currentProvenance).isEqualTo(Provenance.MEASURED)
     }
 }

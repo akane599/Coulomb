@@ -25,6 +25,11 @@ public data class DeviceState(
     val watchedSinceLastLook: Boolean = true,
     /** False once the user stops monitoring. */
     val monitoring: Boolean = true,
+    /**
+     * Kinds whose state changed while Coulomb was not watching even though it now looks the same,
+     * as an unplug and replug found in the battery history: their sessions end with a data gap.
+     */
+    val changedUnseen: Set<SessionKind> = emptySet(),
 )
 
 /** What the collector does to the stored sessions. */
@@ -58,9 +63,10 @@ public object SessionRules {
 
     /**
      * Closes, in this order of reasons: sessions from an earlier boot ([SessionCloseReason.REBOOT]);
-     * every session once monitoring stops; a second session of a kind; and sessions the state no
-     * longer wants ([SessionCloseReason.STATE_CHANGED], or [SessionCloseReason.DATA_GAP] when the
-     * change was not watched). Then opens each wanted kind that is not open.
+     * every session once monitoring stops; a second session of a kind, and one whose state changed
+     * unseen ([SessionCloseReason.DATA_GAP]); and sessions the state no longer wants
+     * ([SessionCloseReason.STATE_CHANGED], or [SessionCloseReason.DATA_GAP] when the change was not
+     * watched). Then opens each wanted kind that is not open.
      */
     public fun reconcile(
         open: List<OpenSession>,
@@ -80,7 +86,7 @@ public object SessionRules {
                         SessionCloseReason.MONITORING_STOPPED
                     }
 
-                    session.kind in kept -> {
+                    session.kind in kept || session.kind in state.changedUnseen -> {
                         SessionCloseReason.DATA_GAP
                     }
 

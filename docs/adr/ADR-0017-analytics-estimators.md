@@ -106,5 +106,74 @@ leave two sessions of a kind open.
 
 - The collector feeds these functions with stored samples and snapshots. It stores their results
   with provenance and quality.
-- The independent review of the estimators and attribution diffs (AGENTS.md) runs before the P2
-  gate; its findings amend this ADR.
+- The independent review of the estimators and attribution diffs (AGENTS.md) ran before the P2
+  gate; its findings are in the amendment below.
+
+## Amendment 2026-11-06: independent review
+
+A fresh read-only review checked the module against SPEC 1, 6, 7.2 and 7.8, and reproduced
+cases with a probe against the built classes. It found nine defects and five doubts. All nine are
+fixed, each with a test.
+
+**Calibration**
+- **Sign while plugged.** "The level is above its lowest value since plugging in" let draining
+  while plugged (a game on a weak charger) count as charging, and could flip the sign.
+  - Requiring only that the last level change was upward still failed: at 5 s sampling, about 120
+    readings pass before the level drops.
+  - Now a plugged reading counts only when its level step began with a rise and ended with
+    another rise. Evidence is confirmed by the next level change, never assumed.
+- **Counter derived from the level.** Its steps (48,124 and 48,123 µAh) share no divisor, so it
+  passed as reliable. Now a counter that never moves during at least 10 minutes of unplugged,
+  screen-on use at one level is coarse, whatever its divisor. While unplugged with the screen on,
+  a real counter moves far more than 1 mAh in that time.
+- **Unsupported markers.** `Long.MIN_VALUE` and values of 0 or less count as no counter (S2).
+
+**Drain rate**
+- **Provenance.** The rate now has two provenances:
+  - the mean current's is Measured only from the counter;
+  - the shown %/h is always Estimated, because it divides by the capacity estimate or comes
+    from the fuel gauge's level.
+- **Quality** (SPEC 6.7) is the charge source (counter 1.0, integrated current 0.8, level 0.5)
+  times how finely the change was resolved, which is 1 minus one step over the change.
+
+**Capacity**
+- **Seed.** The bootstrap seed included the windows' ages, so the interval moved between two
+  screen openings. It is now seeded from capacities and static weights only.
+- **Floor after rounding.** The ±1% floor was applied before rounding, which allowed ±30 where 37
+  was the minimum. The bounds are now rounded outward from the rounded estimate, low down and
+  high up.
+- **No design capacity.** The floor is now ±1% of the estimate, never a zero-width interval.
+- **Direction.** A window whose charge or level moves against its direction is rejected
+  (`DIRECTION`).
+- **Quality** is the window count (full at 3) times 1 minus the half-width over 10% of the
+  estimate. One window is low confidence.
+- **Ties.** The weighted median takes the midpoint when exactly half the weight lies on each side,
+  instead of the lower value, which biased few windows low.
+
+**Attribution**
+- **Clock changes are not resets.** The platform moves `start_clock_time_ms` with every
+  wall-clock change (`noteCurrentTimeChangedLocked` → `adjustStartClockTime`, android-16.0.0_r4
+  L4657-4667, android-17.0.0_r1 L4196-4206), so exact equality reported false resets.
+- **How a reset is found.** It now comes from `total_realtime_ms`, which restarts at a reset
+  (`initTimes`, android-17.0.0_r1 L10983-10990):
+  - within one boot, a reset happened when the counted time grew more than 60 s less than
+    elapsed time;
+  - across a reboot, when it grew less than the new boot's uptime minus 5 minutes, since the
+    platform starts counting when system_server starts.
+  - Without it, the start time decides. Within one boot it is measured against the clock offset
+    (start minus (wall − elapsed) stays fixed through clock changes); across a reboot any change
+    counts.
+- **Partial windows.** A window spans the chain of stored snapshots, so two resets add up. A step
+  across a reset is partial unless the reset came within 2 minutes of the earlier snapshot. Before,
+  any snapshot before the reset made the window complete, however much earlier it was.
+- **Removed keys** count in `wentDown`.
+
+**Sessions**
+- Coulomb's process can be dead during an unplug and replug that history shows. The session
+  rules now take the kinds whose state changed unseen, and end those sessions with a data gap.
+  Before, one charge session spanned two charges and could pass as "one continuous charge".
+
+**Doubts left to the collector**
+- Pass null, never the platform's markers, for a missing counter. The rules above also guard
+  against this.
+- Fill `changedUnseen` from the battery history for the span the process was dead.

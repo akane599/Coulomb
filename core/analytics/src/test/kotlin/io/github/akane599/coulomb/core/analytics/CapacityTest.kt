@@ -36,6 +36,17 @@ class CapacityTest {
         assertThat(Capacity.rejection(window(maxTemp = 401))).isEqualTo(CapacityRejection.TEMPERATURE)
         assertThat(Capacity.rejection(window().copy(sameBoot = false))).isEqualTo(CapacityRejection.REBOOT)
         assertThat(Capacity.rejection(window().copy(counterReliable = false))).isEqualTo(CapacityRejection.COUNTER)
+        // The edges of 15 and 40 °C still qualify.
+        assertThat(Capacity.rejection(window(minTemp = 150, maxTemp = 400))).isNull()
+        // A charge that took charge away, or a level that moved the wrong way, cannot be right.
+        assertThat(Capacity.rejection(window().let { it.copy(deltaChargeUah = -it.deltaChargeUah) })).isEqualTo(CapacityRejection.DIRECTION)
+        assertThat(
+            Capacity.rejection(
+                window(charging = false).let {
+                    it.copy(deltaSocPct = -it.deltaSocPct)
+                },
+            ),
+        ).isEqualTo(CapacityRejection.DIRECTION)
         assertThat(Capacity.estimateMah(window(socPct = 50.0, capacityMah = 4_800.0))).isWithin(1e-6).of(4_800.0)
         assertThat(Capacity.estimateMah(window(socPct = 35.0, capacityMah = 4_800.0, charging = false))).isWithin(1e-6).of(4_800.0)
     }
@@ -58,7 +69,9 @@ class CapacityTest {
     fun theWeightedMedianFollowsTheWeights() {
         assertThat(Capacity.weightedMedian(listOf(1.0, 2.0, 3.0), listOf(1.0, 1.0, 1.0))).isEqualTo(2.0)
         assertThat(Capacity.weightedMedian(listOf(1.0, 2.0, 3.0), listOf(1.0, 1.0, 5.0))).isEqualTo(3.0)
-        assertThat(Capacity.weightedMedian(listOf(3.0, 1.0), listOf(1.0, 1.0))).isEqualTo(1.0)
+        // Exactly half the weight on each side: the midpoint, not the lower value.
+        assertThat(Capacity.weightedMedian(listOf(3.0, 1.0), listOf(1.0, 1.0))).isEqualTo(2.0)
+        assertThat(Capacity.weightedMedian(listOf(1.0, 2.0, 3.0, 4.0), listOf(1.0, 1.0, 1.0, 1.0))).isEqualTo(2.5)
     }
 
     @Test
@@ -77,8 +90,12 @@ class CapacityTest {
         assertThat(estimate.ciLowMah).isAtMost(estimate.estimateMah)
         assertThat(estimate.ciHighMah).isAtLeast(estimate.estimateMah)
         assertThat(estimate.healthPct).isWithin(1e-9).of(100 * estimate.estimateMah / 5_000.0)
-        // The resampling is seeded from the inputs: the same readings give the same interval.
+        // The resampling is seeded from the windows: the same readings give the same interval,
+        // also minutes later, when every age has moved a little.
         assertThat(Capacity.estimate(readings, designMah = 5_000.0)).isEqualTo(estimate)
+        val later = readings.map { it.copy(ageDays = it.ageDays + 0.002) }
+        assertThat(checkNotNull(Capacity.estimate(later, designMah = 5_000.0)).ciLowMah).isEqualTo(estimate.ciLowMah)
+        assertThat(estimate.quality).isGreaterThan(0.5)
     }
 
     @Test
@@ -90,6 +107,24 @@ class CapacityTest {
         assertThat(estimate.ciHighMah).isEqualTo(4_850.0)
         assertThat(Capacity.estimate(emptyList(), 5_000.0)).isNull()
         assertThat(Capacity.estimate(same, designMah = null)?.healthPct).isNull()
+    }
+
+    @Test
+    fun theFloorHoldsAfterRounding() {
+        // 1% of 3,700 is 37: rounded outward from 4,000 the bounds are 3,960 and 4,040, not ±30.
+        val one = listOf(CapacityReading(4_004.0, staticWeight = 50.0, ageDays = 0.0))
+        val estimate = checkNotNull(Capacity.estimate(one, designMah = 3_700.0))
+        assertThat(estimate.estimateMah).isEqualTo(4_000.0)
+        assertThat(estimate.estimateMah - estimate.ciLowMah).isAtLeast(37.0)
+        assertThat(estimate.ciHighMah - estimate.estimateMah).isAtLeast(37.0)
+        assertThat(estimate.ciLowMah % 10).isEqualTo(0.0)
+        // Without a design capacity the floor is 1% of the estimate, never a zero-width interval.
+        val noDesign = checkNotNull(Capacity.estimate(one, designMah = null))
+        assertThat(noDesign.ciHighMah - noDesign.ciLowMah).isAtLeast(80.0)
+        // One window is low confidence (SPEC 6.7).
+        assertThat(estimate.quality).isLessThan(0.5)
+        // No weight at all gives no estimate.
+        assertThat(Capacity.estimate(listOf(CapacityReading(4_000.0, staticWeight = 0.0, ageDays = 0.0)), 3_700.0)).isNull()
     }
 
     @Test

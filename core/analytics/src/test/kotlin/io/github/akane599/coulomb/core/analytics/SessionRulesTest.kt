@@ -62,4 +62,13 @@ class SessionRulesTest {
         val open = listOf(OpenSession(1, DISCHARGE, 1), OpenSession(3, DISCHARGE, 1), OpenSession(2, SCREEN_ON, 1))
         assertThat(SessionRules.reconcile(open, unpluggedScreenOn)).containsExactly(Close(3, SessionCloseReason.DATA_GAP))
     }
+
+    @Test
+    fun anUnplugAndReplugNobodySawEndsTheChargeSession() {
+        val open = listOf(OpenSession(1, CHARGE, 1), OpenSession(2, SCREEN_ON, 1))
+        val state = unpluggedScreenOn.copy(plugged = true, watchedSinceLastLook = false, changedUnseen = setOf(CHARGE))
+        assertThat(SessionRules.reconcile(open, state))
+            .containsExactly(Close(1, SessionCloseReason.DATA_GAP), Open(CHARGE))
+            .inOrder()
+    }
 }
