@@ -314,7 +314,7 @@ Every number in Coulomb comes from one of the sources below; the agent MUST NOT 
 | S4 | `BatteryUsageStats` via `BatteryStatsManager` / `IBatteryStats` | T2 (T1 fallback) | Heavy snapshots | Per-UID mAh by power component and process state; device totals; stats start timestamp |
 | S5 | `dumpsys batterystats --proto` | T2 | Heavy snapshots | Partial wakelocks, kernel wakelocks, wakeup reasons, alarms, jobs, syncs, sensors, network, CPU, radio activity, signal and brightness bins, Doze times |
 | S6 | `dumpsys batterystats --checkin` | T2 | Fallback when proto is missing | Same fields as S5, CSV form |
-| S7 | `dumpsys batterystats --history-start <index>` (or `--history`) | T2 | After each heavy snapshot, incremental from the last index | Event timeline: screen, plug, top app, wakelock, job, sync, alarm, GPS, radios, Doze, wakeup reasons |
+| S7 | `dumpsys batterystats -c --history-start <cursor>` (checkin form, ADR-0014) | T2 | After each heavy snapshot, incremental from the last `NEXT:` cursor | Event timeline: screen, plug, top app, wakelock, job, sync, alarm, GPS, radios, Doze, wakeup reasons |
 | S8 | Kernel wakelock dump (`dumpsys suspend_control_internal`, probe) | T2 | Heavy snapshots | Kernel wakelocks and suspend stats without root |
 | S9 | `/sys/class/wakeup/*`, wakeup sources | T3 | Heavy snapshots | Kernel wakelock fallback with full detail |
 | S10 | `dumpsys alarm` | T2 | Heavy snapshots | Per-app wakeup alarm counts, pending alarms, top alarms |
@@ -514,7 +514,7 @@ entity ChargeDetail(sessionId PK/FK, plugType, chargerProfileId?, peakW, avgW,
   ccToCvLevel?, minutesAbove80, minutesAbove38C, targetLevel?, protectionMode?)
 
 entity Snapshot(id PK, elapsedNs, bootCount, wallMs, trigger, kind /*LIGHT|HEAVY*/,
-  statsStartWall?, historyEndIndex?, blobPath?, partial, durationMs)
+  statsStartWall?, historyCursorMs? /*NEXT: value, ADR-0014*/, blobPath?, partial, durationMs)
 
 entity UidPower(snapshotId FK, uid, component, processState, mAh, provenance)
 entity UidMeta(uid PK, packages /*json*/, label, isSystem, iconCacheKey, updatedWall)
@@ -1191,7 +1191,7 @@ The complete set of shell operations the UserService may run. Anything else requ
 
 | Group | Operations |
 | --- | --- |
-| Read | `dumpsys batterystats` (`-h`, `--proto`, `--checkin`, `--history`, `--history-start`), `dumpsys alarm`, `deviceidle`, `power`, `jobscheduler`, `battery`, `thermalservice`, kernel wakelock dump (probe), `am get-standby-bucket`, `appops get`, `settings get` (allowlisted keys), `cmd deviceidle whitelist`, sysfs reads under `/sys/class/power_supply` and `/sys/class/wakeup` |
+| Read | `dumpsys batterystats` (`-h`, `--proto`, `-c`, `--history`, `-c --history-start`; ADR-0005, ADR-0014), `dumpsys alarm`, `deviceidle`, `power`, `jobscheduler`, `battery`, `thermalservice`, kernel wakelock dump (probe), `am get-standby-bucket`, `appops get`, `settings get` (allowlisted keys), `cmd deviceidle whitelist`, sysfs reads under `/sys/class/power_supply` and `/sys/class/wakeup` |
 | Bootstrap | `pm grant` for the permissions in 4.4 only (BATTERY\_STATS, DUMP, PACKAGE\_USAGE\_STATS, INTERACT\_ACROSS\_USERS, and WRITE\_SECURE\_SETTINGS with the Action Center; ADR-0010), Coulomb's package only, `appops set` for Coulomb's `GET_USAGE_STATS` |
 | Actions | The operations in 13.2, each with its inverse |
 | Advanced | `dumpsys batterystats --reset` (two confirmations). Charge-control writes are out of v1 scope (ADR-0007) |
