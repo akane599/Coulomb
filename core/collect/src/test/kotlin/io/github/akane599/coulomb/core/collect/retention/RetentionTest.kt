@@ -74,7 +74,7 @@ class RetentionTest {
             val ids = (0..10).map { heavy(it) }
             db.snapshotDao().moveAutoReference(AutoReference.BEFORE_RESET, ids[2], wall0)
 
-            val report = Retention(db, Blobs()).run(boot, 10 * hourNs, wall0 + 10 * hourNs / 1_000_000)
+            val pruned = Retention(db, Blobs()).pruneCounters(boot, 10 * hourNs)
 
             val kept =
                 ids.filter {
@@ -85,7 +85,7 @@ class RetentionTest {
                         .isNotEmpty()
                 }
             assertThat(kept).containsExactly(ids[2], ids[8], ids[9], ids[10])
-            assertThat(report.countersPruned).isEqualTo(7)
+            assertThat(pruned).isEqualTo(7)
         }
 
     @Test
@@ -97,7 +97,7 @@ class RetentionTest {
             val a = heavy(1, "snapshots/a")
             val b = heavy(2, "snapshots/b")
 
-            val report = Retention(db, blobs).run(boot, 3 * hourNs, wall0 + 3 * hourNs / 1_000_000)
+            val report = Retention(db, blobs).run(boot, 3 * hourNs)
 
             assertThat(blobs.stored.map { it.first }).containsExactly("snapshots/b")
             assertThat(db.snapshotDao().snapshot(a)?.blobPath).isNull()

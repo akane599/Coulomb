@@ -15,27 +15,27 @@ class PoliciesTest {
 
     private fun decide(
         trigger: SnapshotTrigger,
-        lastHeavyMinutesAgo: Long? = null,
+        lastSnapshotMinutesAgo: Long? = null,
         available: Boolean = true,
         first: Boolean = false,
         owed: Boolean = false,
     ) = TriggerPolicy.decide(
-        PolicyInput(trigger, 100 * minuteNs, lastHeavyMinutesAgo?.let { (100 - it) * minuteNs }, available, first, owed),
+        PolicyInput(trigger, 100 * minuteNs, lastSnapshotMinutesAgo?.let { (100 - it) * minuteNs }, available, first, owed),
     )
 
     @Test
     fun spec72Kinds() {
         assertThat(decide(SnapshotTrigger.SCREEN_OFF).action).isEqualTo(Action.HEAVY)
-        assertThat(decide(SnapshotTrigger.POWER_CONNECTED, lastHeavyMinutesAgo = 0).action).isEqualTo(Action.HEAVY)
+        assertThat(decide(SnapshotTrigger.POWER_CONNECTED, lastSnapshotMinutesAgo = 0).action).isEqualTo(Action.HEAVY)
         assertThat(decide(SnapshotTrigger.LEVEL_CHANGED).action).isEqualTo(Action.SAMPLE)
         assertThat(decide(SnapshotTrigger.PACKAGE_CHANGED).action).isEqualTo(Action.LIGHT)
     }
 
     @Test
     fun appOpenRefreshAndUnlockAreDebouncedToOneAMinute() {
-        assertThat(decide(SnapshotTrigger.APP_OPENED, lastHeavyMinutesAgo = 0).action).isEqualTo(Action.NONE)
-        assertThat(decide(SnapshotTrigger.USER_PRESENT, lastHeavyMinutesAgo = 0).action).isEqualTo(Action.NONE)
-        assertThat(decide(SnapshotTrigger.PULL_TO_REFRESH, lastHeavyMinutesAgo = 1).action).isEqualTo(Action.HEAVY)
+        assertThat(decide(SnapshotTrigger.APP_OPENED, lastSnapshotMinutesAgo = 0).action).isEqualTo(Action.NONE)
+        assertThat(decide(SnapshotTrigger.USER_PRESENT, lastSnapshotMinutesAgo = 0).action).isEqualTo(Action.NONE)
+        assertThat(decide(SnapshotTrigger.PULL_TO_REFRESH, lastSnapshotMinutesAgo = 1).action).isEqualTo(Action.HEAVY)
         assertThat(decide(SnapshotTrigger.APP_OPENED).action).isEqualTo(Action.HEAVY)
     }
 
@@ -45,7 +45,21 @@ class PoliciesTest {
         assertThat(owed).isEqualTo(Decision(Action.LIGHT, heavyOwed = true))
         // A level change pays the debt once dumps work; a debounced trigger does not swallow it.
         assertThat(decide(SnapshotTrigger.LEVEL_CHANGED, owed = true)).isEqualTo(Decision(Action.HEAVY, heavyOwed = false))
-        assertThat(decide(SnapshotTrigger.APP_OPENED, lastHeavyMinutesAgo = 0, owed = true).action).isEqualTo(Action.HEAVY)
+        assertThat(decide(SnapshotTrigger.APP_OPENED, lastSnapshotMinutesAgo = 0, owed = true).action).isEqualTo(Action.HEAVY)
+    }
+
+    @Test
+    fun aDebtThatCannotBePaidYetChangesNothing() {
+        // Still no access: a level change stays a sample, a package change a light snapshot, and
+        // the debounce holds, so the debt does not turn every broadcast into a snapshot.
+        assertThat(
+            decide(SnapshotTrigger.LEVEL_CHANGED, available = false, owed = true),
+        ).isEqualTo(Decision(Action.SAMPLE, heavyOwed = true))
+        assertThat(
+            decide(SnapshotTrigger.PACKAGE_CHANGED, available = false, owed = true),
+        ).isEqualTo(Decision(Action.LIGHT, heavyOwed = true))
+        assertThat(decide(SnapshotTrigger.APP_OPENED, lastSnapshotMinutesAgo = 0, available = false, owed = true).action)
+            .isEqualTo(Action.NONE)
     }
 
     @Test
@@ -65,23 +79,25 @@ class PoliciesTest {
     }
 
     @Test
-    fun aRetentionCutUsesElapsedTimeInTheCurrentBootAndTheBootTableBeforeIt() {
+    fun aRetentionCutCountsBackInElapsedTimeOverTheBoots() {
+        val hourNs = 3_600_000_000_000L
         val hourMs = 3_600_000L
-        val old = BootEntity(7, 7, "fp", firstWallMs = 1_000_000_000_000, firstElapsedNs = 5_000_000_000, null, imported = false)
-        val current =
-            BootEntity(8, 8, "fp", firstWallMs = 1_000_000_000_000 + 48 * hourMs, firstElapsedNs = 30_000_000_000, null, imported = false)
-        val now = 1_000_000_000_000 + 50 * hourMs
-        val nowElapsedNs = 2 * hourMs * 1_000_000 + 30_000_000_000
+        // The wall clock is deliberately useless: a cut never reads it.
+        val older = BootEntity(5, 5, "fp", firstWallMs = 0, firstElapsedNs = 1 * hourNs, null, imported = false)
+        val old = BootEntity(7, 7, "fp", firstWallMs = 0, firstElapsedNs = 2 * hourNs, null, imported = false)
+        val current = BootEntity(8, 8, "fp", firstWallMs = 0, firstElapsedNs = hourNs / 2, null, imported = false)
+        val boots = listOf(older, old, current)
+        val lastSeen = mapOf(7 to 30 * hourNs, 8 to 3 * hourNs)
+        val now = 3 * hourNs
 
-        assertThat(Retention.cutKey(listOf(old, current), current, nowElapsedNs, now, hourMs)).isEqualTo(
-            Cut(
-                8,
-                nowElapsedNs - hourMs * 1_000_000,
-            ),
-        )
-        // Ten hours ago is before this boot: the earlier boot's first sighting plus the wall-clock offset.
-        assertThat(Retention.cutKey(listOf(old, current), current, nowElapsedNs, now, 10 * hourMs))
-            .isEqualTo(Cut(7, old.firstElapsedNs + 40 * hourMs * 1_000_000))
-        assertThat(Retention.cutKey(listOf(old, current), current, nowElapsedNs, now, 100 * hourMs)).isNull()
+        fun cut(hours: Long) = Retention.cutKey(boots, lastSeen, current, now, hours * hourMs)
+
+        assertThat(cut(1)).isEqualTo(Cut(8, 2 * hourNs))
+        assertThat(cut(3)).isEqualTo(Cut(8, 0))
+        // Ten hours ago: three in this boot, then seven back from boot 7's last sighting.
+        assertThat(cut(10)).isEqualTo(Cut(7, 23 * hourNs))
+        // Boot 6 was never stored and boot 5 has no rows: each counts only what it is known to have run.
+        assertThat(cut(34)).isEqualTo(Cut(5, 0))
+        assertThat(cut(35)).isNull()
     }
 }

@@ -21,6 +21,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.collect.snapshot.LightSource
 import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
+import io.github.akane599.coulomb.core.collect.snapshot.counterSource
 import io.github.akane599.coulomb.core.collect.snapshot.sourceStatusJson
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
@@ -35,6 +36,7 @@ import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.history.HistoryKind
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import java.time.Instant
+import kotlin.math.abs
 
 /**
  * The collector's single consumer (SPEC 7.5, ADR-0018). Each call handles one trigger or sample
@@ -62,8 +64,9 @@ internal class CollectorEngine(
     private var firstOfProcess = true
     private var heavyOwed = false
     private var owedTrigger: SnapshotTrigger? = null
-    private var lastHeavyElapsedNs: Long? = null
+    private var lastSnapshotElapsedNs: Long? = null
     private var lastRetentionElapsedNs: Long? = null
+    private var lastCounterPruneElapsedNs: Long? = null
     private var capacityMah: Double? = null
     private var knownPackages: Map<Int, List<String>> = emptyMap()
     private var packagesDay: Long? = null
@@ -76,10 +79,11 @@ internal class CollectorEngine(
     /** Handles one trigger and returns what it did. */
     suspend fun handle(trigger: SnapshotTrigger): Action {
         val reading = light.read()
+        val uptimeAtReadMs = clock.uptimeMs()
         val boot = enterBoot(reading)
         val decision =
             TriggerPolicy.decide(
-                PolicyInput(trigger, reading.elapsedNs, lastHeavyElapsedNs, heavy.available(), firstOfProcess, heavyOwed),
+                PolicyInput(trigger, reading.elapsedNs, lastSnapshotElapsedNs, heavy.available(), firstOfProcess, heavyOwed),
             )
         if (decision.heavyOwed && !heavyOwed) owedTrigger = trigger
         heavyOwed = decision.heavyOwed
@@ -90,7 +94,7 @@ internal class CollectorEngine(
         when (action) {
             Action.NONE -> return action
             Action.SAMPLE -> storeSample(reading, boot)
-            Action.LIGHT, Action.HEAVY -> snapshot(trigger, reading, boot, action == Action.HEAVY)
+            Action.LIGHT, Action.HEAVY -> snapshot(trigger, Read(reading, uptimeAtReadMs), boot, action == Action.HEAVY)
         }
         firstOfProcess = false
         return action
@@ -177,15 +181,27 @@ internal class CollectorEngine(
         )
     }
 
+    /** The light reading a trigger started with, and the uptime clock just after it. */
+    private data class Read(
+        val reading: LightReading,
+        val uptimeMs: Long,
+    )
+
+    /**
+     * One snapshot row, its counters and what follows from them, in one transaction (SPEC 7.5). It
+     * is heavy only when the counters' source ([counterSource]) was read whole without the CPU
+     * sleeping; otherwise it is stored light, without counters, and the statuses say why.
+     */
     private suspend fun snapshot(
         trigger: SnapshotTrigger,
-        reading: LightReading,
+        read: Read,
         boot: BootEntity,
         wantHeavy: Boolean,
     ) {
+        val reading = read.reading
         val startNs = clock.elapsedNs()
-        val stats = if (wantHeavy) heavy.stats(SOURCE_TIMEOUT_MS) else null
-        val dump = stats?.dump
+        val stats = if (wantHeavy) sleepChecked(heavy.stats(SOURCE_TIMEOUT_MS), read) else null
+        val dump = stats?.dump?.takeIf { counterSource(stats.statuses) != null }
         dump
             ?.device
             ?.powerSummary
@@ -198,7 +214,8 @@ internal class CollectorEngine(
         val rows = dump?.let(CounterMapper::rows) ?: SnapshotRows()
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
-        val blob = if (kind == SnapshotKind.HEAVY) writeBlob(trigger, reading, boot, stats) else null
+        val blob = stats?.let { writeBlob(trigger, reading, boot, it, kind == SnapshotKind.HEAVY) }
+        val unseen = if (firstOfProcess) unseenKinds(ingest) + chargedUnseen(reading) else emptySet()
         val entity =
             entity(reading, boot, trigger, kind, dump).copy(
                 historyCursorMs = ingest?.nextCursorMs,
@@ -212,20 +229,57 @@ internal class CollectorEngine(
                 reading = reading,
                 previousHeavy = previousHeavy,
                 watched = !firstOfProcess,
-                changedUnseen = if (firstOfProcess) unseenKinds(ingest) else emptySet(),
+                changedUnseen = unseen,
                 counterReliable = profile?.chargeCounterReliable == true,
                 capacityMah = capacityMah,
                 currentUa = calibration?.let { c -> c::currentUa },
                 zone = identity.zone(),
+                ownUid = identity.appUid,
             )
         db.withTransaction {
-            val eventId = ingest?.let { db.historyDao().insertRead(it.events, it.gaps) }
+            // A read that set no cursor stored nothing: the events before this snapshot are not all in.
+            val eventId = ingest?.takeIf { it.nextCursorMs != null }?.let { db.historyDao().insertRead(it.events, it.gaps) }
             val id = db.snapshotDao().insert(entity.copy(historyEventId = eventId), rows)
             ingest?.newOffsetMs?.let { db.deviceDao().setHistoryOffset(boot.bootSeq, it) }
             writer.afterSnapshot(entity.copy(id = id, historyEventId = eventId), rows, context)
             if (dump != null) recordPackages(dump, reading)
         }
-        afterCommit(history, ingest, boot, kind, reading)
+        afterCommit(history, ingest, boot, reading)
+    }
+
+    /**
+     * Marks the counters' source [SourceStatus.SLEPT] when the CPU slept between the light read
+     * and the dump's end: the instant the counters describe is then unknown by up to the sleep, so
+     * they cannot end a window. Coulomb holds no wakelock on battery to prevent it (SPEC 7.4).
+     */
+    private fun sleepChecked(
+        stats: StatsRead,
+        read: Read,
+    ): StatsRead {
+        val source = counterSource(stats.statuses) ?: return stats
+        val elapsedMs = (clock.elapsedNs() - read.reading.elapsedNs) / NS_PER_MS
+        val awakeMs = clock.uptimeMs() - read.uptimeMs
+        return if (elapsedMs - awakeMs <= MAX_SLEEP_MS) stats else stats.copy(statuses = stats.statuses + (source to SourceStatus.SLEPT))
+    }
+
+    /**
+     * After a process start, a level well above the last one stored while unplugged: the device
+     * charged while Coulomb was not running, even when the history read does not show it.
+     */
+    private suspend fun chargedUnseen(reading: LightReading): Set<SessionKind> {
+        val level = reading.levelPct ?: return emptySet()
+        if (reading.plugged) return emptySet()
+        val snapshot = db.snapshotDao().latest()
+        val sample = db.sampleDao().latest()
+        val sampleIsLater =
+            sample != null &&
+                (
+                    snapshot == null ||
+                        sample.bootSeq > snapshot.bootSeq ||
+                        (sample.bootSeq == snapshot.bootSeq && sample.elapsedNs > snapshot.elapsedNs)
+                )
+        val last = (if (sampleIsLater) sample.levelPct else snapshot?.levelPct) ?: return emptySet()
+        return if (level > last + LEVEL_NOISE) setOf(SessionKind.CHARGE, SessionKind.DISCHARGE) else emptySet()
     }
 
     /** The light part of a snapshot row; the caller adds what the reads gave. */
@@ -309,10 +363,12 @@ internal class CollectorEngine(
     ): HistoryOutcome.Read {
         val cursor = cursorAt?.historyCursorMs ?: 0
         val before = clock.wallChanges()
+        val offsetBefore = clock.wallMs() - clock.elapsedNs() / NS_PER_MS
         val read = heavy.history(cursor, timeoutMs)
         val nowNs = clock.elapsedNs()
         val wallMinusElapsed = clock.wallMs() - nowNs / NS_PER_MS
-        val changed = clock.wallChanges() != before
+        // The broadcast can arrive after the read; the clocks' own offset shows the change at once.
+        val changed = clock.wallChanges() != before || abs(wallMinusElapsed - offsetBefore) > MAX_CLOCK_DRIFT_MS
         val parsed = read.history ?: return HistoryOutcome.Read(read, null)
         if (!historyEndLoaded) {
             historyEnd = cursorAt?.let { storedHistoryEnd(it, cursor) }
@@ -356,16 +412,20 @@ internal class CollectorEngine(
         }
     }
 
-    /** The raw proto, kept for plug, boot, first-of-day and incomplete snapshots (ADR-0018). */
+    /**
+     * The raw proto, kept for plug, boot and first-of-day heavy snapshots, and the raw text of an
+     * incomplete read for diagnosis (ADR-0018).
+     */
     private suspend fun writeBlob(
         trigger: SnapshotTrigger,
         reading: LightReading,
         boot: BootEntity,
-        stats: StatsRead?,
+        stats: StatsRead,
+        heavy: Boolean,
     ): String? {
-        val proto = stats?.rawProto
-        val incomplete = stats?.rawIncomplete
-        val wanted = trigger in BLOB_TRIGGERS || incomplete != null || firstHeavyOfDay(reading)
+        val proto = stats.rawProto
+        val incomplete = stats.rawIncomplete
+        val wanted = incomplete != null || (heavy && (trigger in BLOB_TRIGGERS || firstHeavyOfDay(reading)))
         if (!wanted || (proto == null && incomplete == null)) return null
         val parts =
             buildMap {
@@ -402,20 +462,20 @@ internal class CollectorEngine(
         packagesDay = day
     }
 
+    /** Work after any snapshot, light or heavy: a light one still brings samples to calibrate with. */
     private suspend fun afterCommit(
         history: HistoryOutcome?,
         ingest: ReadResult?,
         boot: BootEntity,
-        kind: SnapshotKind,
         reading: LightReading,
     ) {
-        if (history is HistoryOutcome.Read) lastHistoryFailed = history.status == SourceStatus.FAILED
+        // A read that set no cursor (failed, or cut short before NEXT:) gets the catch-up again.
+        if (history is HistoryOutcome.Read) lastHistoryFailed = history.result?.nextCursorMs == null
         if (ingest != null) {
             historyEnd = ingest.end
             ingest.newOffsetMs?.let { this.boot = boot.copy(historyOffsetMs = it) }
         }
-        if (kind != SnapshotKind.HEAVY) return
-        lastHeavyElapsedNs = reading.elapsedNs
+        lastSnapshotElapsedNs = reading.elapsedNs
         profile?.let { p ->
             val updated = calibrator.update(p, boot.bootSeq, reading.elapsedNs, reading.wallMs)
             if (updated !== p) {
@@ -423,12 +483,23 @@ internal class CollectorEngine(
                 calibration = calibrator.stored(updated)
             }
         }
-        val last = lastRetentionElapsedNs
-        if (reading.plugged && (last == null || reading.elapsedNs - last >= RETENTION_EVERY_NS)) {
-            retention.run(this.boot ?: boot, reading.elapsedNs, reading.wallMs)
+        val current = this.boot ?: boot
+        if (due(lastCounterPruneElapsedNs, reading, COUNTER_PRUNE_EVERY_NS)) {
+            retention.pruneCounters(current, reading.elapsedNs)
+            lastCounterPruneElapsedNs = reading.elapsedNs
+        }
+        // SPEC 7.7: compaction and VACUUM only while charging and idle (the screen off).
+        if (reading.plugged && !reading.screenOn && due(lastRetentionElapsedNs, reading, RETENTION_EVERY_NS)) {
+            retention.run(current, reading.elapsedNs)
             lastRetentionElapsedNs = reading.elapsedNs
         }
     }
+
+    private fun due(
+        last: Long?,
+        reading: LightReading,
+        everyNs: Long,
+    ) = last == null || reading.elapsedNs - last >= everyNs
 
     companion object {
         /** SPEC 7.5: 2 s per source. */
@@ -443,6 +514,16 @@ internal class CollectorEngine(
         /** SPEC 7.5: a heavy snapshot is capped at 4 s; past it the history read is skipped. */
         const val BUDGET_NS: Long = 4_000_000_000L
         const val RETENTION_EVERY_NS: Long = 24 * 3_600_000_000_000L
+        const val COUNTER_PRUNE_EVERY_NS: Long = 3_600_000_000_000L
+
+        /** More sleep than this inside a read and its counters are not used (ADR-0018). */
+        const val MAX_SLEEP_MS: Long = 1_000
+
+        /** A wall-minus-elapsed change past this inside a read is a clock change, not rounding. */
+        const val MAX_CLOCK_DRIFT_MS: Long = 1_000
+
+        /** A level this far above the last one stored is a charge, not gauge noise. */
+        private const val LEVEL_NOISE = 1
         private const val NS_PER_MS = 1_000_000L
 
         private val BLOB_TRIGGERS =

@@ -60,7 +60,7 @@ internal class HeavyReader(
             ) { BatteryStatsProtoParser.parse(copy.wrap(it)) }
         val protoValue = proto.parsed()
         if (protoValue?.value?.device != null) {
-            val status = if (proto is DumpResult.Complete) SourceStatus.OK else SourceStatus.PARTIAL
+            val status = if (proto is DumpResult.Complete && protoValue.value.uidsComplete) SourceStatus.OK else SourceStatus.PARTIAL
             return StatsRead(protoValue.value, mapOf(S5 to status), copy.bytes(), copy.bytes().takeIf { status != SourceStatus.OK })
         }
         val textCopy = CappedCopy(MAX_RAW_BYTES)
@@ -75,7 +75,7 @@ internal class HeavyReader(
         val s6 =
             when {
                 checkinValue?.value?.device == null -> SourceStatus.FAILED
-                checkin is DumpResult.Complete -> SourceStatus.OK
+                checkin is DumpResult.Complete && checkinValue.value.uidsComplete -> SourceStatus.OK
                 else -> SourceStatus.PARTIAL
             }
         return StatsRead(

@@ -24,6 +24,7 @@ import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.history.BatteryHistory
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import io.github.akane599.coulomb.core.model.stats.DeviceMisc
 import io.github.akane599.coulomb.core.model.stats.DeviceStats
@@ -233,6 +234,185 @@ class CollectorEngineTest {
                 ).inOrder()
         }
 
+    @Test
+    fun aDumpDuringWhichTheCpuSleptIsStoredLightAndEndsNoWindow() =
+        runTest {
+            reliableCounter()
+            val engine = engine()
+            device.set(hours = 1.0, level = 50, chargeMah = 2_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            stats.sleepMs = 5_000
+            device.set(hours = 1.5, level = 49, chargeMah = 2_450.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+
+            val slept = checkNotNull(db.snapshotDao().latest())
+            assertThat(slept.kind).isEqualTo(SnapshotKind.LIGHT)
+            assertThat(slept.sourceStatusJson).isEqualTo("""{"S5":"slept","S7":"failed"}""")
+            assertThat(count("SELECT COUNT(*) FROM uid_power WHERE snapshotId = ${slept.id}")).isEqualTo(0)
+            assertThat(db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()).isEmpty()
+            // The moment is still marked: the screen-off session and its reference start here.
+            assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_SCREEN_OFF)?.snapshotId).isEqualTo(slept.id)
+        }
+
+    @Test
+    fun anIncompleteDumpIsLightAndCheckinSnapshotsNeverJoinProtoOnes() =
+        runTest {
+            val engine = engine()
+            device.set(hours = 1.0, level = 50, chargeMah = 2_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            stats.statuses = mapOf("S5" to SourceStatus.PARTIAL)
+            device.set(hours = 1.5, level = 49, chargeMah = 2_450.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SCREEN_ON_PERIODIC)
+            val partial = checkNotNull(db.snapshotDao().latest())
+            assertThat(partial.kind).isEqualTo(SnapshotKind.LIGHT)
+            assertThat(partial.blobPath).isNotNull()
+
+            stats.statuses = mapOf("S5" to SourceStatus.FAILED, "S6" to SourceStatus.OK)
+            device.set(hours = 2.0, level = 48, chargeMah = 2_400.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SCREEN_ON_PERIODIC)
+            assertThat(db.snapshotDao().latest()?.kind).isEqualTo(SnapshotKind.HEAVY)
+            assertThat(db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()).isEmpty()
+
+            device.set(hours = 2.5, level = 47, chargeMah = 2_350.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SCREEN_ON_PERIODIC)
+            assertThat(db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()).hasSize(1)
+        }
+
+    @Test
+    fun aHistoryReadCutShortGetsTheCatchUpAgainAndClaimsNoEvents() =
+        runTest {
+            val engine = engine()
+            val placed = BatteryHistory(null, nextCursorMs = 1_000, firstRecordMs = null, recordCount = 0, gapBeforeFirstRecord = false)
+            val cutShort = placed.copy(nextCursorMs = null)
+            stats.history = { HistoryRead(emptyList(), placed, SourceStatus.OK) }
+            device.set(hours = 1.0, level = 50, chargeMah = 2_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SCREEN_ON)
+            stats.history = { HistoryRead(emptyList(), cutShort, SourceStatus.PARTIAL) }
+            for (minutes in listOf(10, 20, 31)) {
+                device.set(hours = 1.0 + minutes / 60.0, level = 50, chargeMah = 2_500.0, screenOn = true)
+                engine.handle(SnapshotTrigger.SCREEN_ON)
+            }
+
+            assertThat(stats.historyTimeoutsMs)
+                .containsExactly(
+                    CollectorEngine.CATCH_UP_TIMEOUT_MS,
+                    CollectorEngine.SOURCE_TIMEOUT_MS,
+                    CollectorEngine.SOURCE_TIMEOUT_MS,
+                    CollectorEngine.CATCH_UP_TIMEOUT_MS,
+                ).inOrder()
+            val latest = checkNotNull(db.snapshotDao().latest())
+            assertThat(latest.historyCursorMs).isNull()
+            assertThat(latest.historyEventId).isNull()
+        }
+
+    @Test
+    fun withoutAccessLevelChangesStaySamplesWhileTheHeavySnapshotIsOwed() =
+        runTest {
+            stats.available = false
+            val engine = engine()
+            device.set(hours = 1.0, level = 50, chargeMah = 2_500.0, screenOn = true)
+            assertThat(engine.handle(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(Action.LIGHT)
+            for ((i, level) in (49 downTo 46).withIndex()) {
+                device.set(hours = 1.1 + i / 10.0, level = level, chargeMah = 2_400.0 - 50 * i, screenOn = true)
+                assertThat(engine.handle(SnapshotTrigger.LEVEL_CHANGED)).isEqualTo(Action.SAMPLE)
+            }
+            assertThat(count("SELECT COUNT(*) FROM snapshot")).isEqualTo(1)
+            assertThat(count("SELECT COUNT(*) FROM battery_sample")).isEqualTo(4)
+        }
+
+    @Test
+    fun aSessionClosedByARebootKeepsItsWindowWhenTheOldBootEndedOnALightSnapshot() =
+        runTest {
+            val before = engine()
+            device.set(hours = 5.0, level = 60, chargeMah = 3_000.0, screenOn = true)
+            before.handle(SnapshotTrigger.SERVICE_STARTED)
+            device.set(hours = 5.5, level = 59, chargeMah = 2_950.0, screenOn = true)
+            before.handle(SnapshotTrigger.SCREEN_ON_PERIODIC)
+            val lastHeavy = checkNotNull(db.snapshotDao().latestHeavy())
+            stats.available = false
+            device.set(hours = 5.6, level = 59, chargeMah = 2_940.0, screenOn = true)
+            assertThat(before.handle(SnapshotTrigger.APP_OPENED)).isEqualTo(Action.LIGHT)
+
+            identity.bootCount = identity.bootCount + 1
+            clock.wallOffsetMs += hoursMs(6.0)
+            stats.reboot()
+            stats.available = true
+            val after = engine()
+            device.set(hours = 0.1, level = 58, chargeMah = 2_900.0, screenOn = true)
+            after.handle(SnapshotTrigger.BOOT_COMPLETED)
+
+            val old =
+                db
+                    .sessionDao()
+                    .observeRecent(SessionKind.DISCHARGE, 10)
+                    .first()
+                    .single { it.closeReason != null }
+            assertThat(old.endElapsedNs).isEqualTo(hoursNs(5.6))
+            assertThat(old.endSnapshotId).isEqualTo(lastHeavy.id)
+            assertThat(db.windowDao().forSession(old.id)).isNotNull()
+        }
+
+    @Test
+    fun referencesMoveOnlyOnARealUnplugOrScreenOff() =
+        runTest {
+            val before = engine()
+            device.set(hours = 5.0, level = 60, chargeMah = 3_000.0, screenOn = true)
+            before.handle(SnapshotTrigger.SERVICE_STARTED)
+            // The first snapshot ever is no unplug.
+            assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)).isNull()
+            device.set(hours = 5.5, level = 59, chargeMah = 2_950.0, screenOn = true, plugged = true)
+            before.handle(SnapshotTrigger.POWER_CONNECTED)
+            device.set(hours = 6.0, level = 70, chargeMah = 3_500.0, screenOn = true)
+            before.handle(SnapshotTrigger.POWER_DISCONNECTED)
+            val unplug = checkNotNull(db.snapshotDao().latest())
+            device.set(hours = 6.5, level = 69, chargeMah = 3_450.0, screenOn = false)
+            before.handle(SnapshotTrigger.SCREEN_OFF)
+            val screenOff = checkNotNull(db.snapshotDao().latest())
+
+            // A reboot reopens both sessions, but nothing was plugged in and the screen stayed off.
+            identity.bootCount = identity.bootCount + 1
+            clock.wallOffsetMs += hoursMs(7.0)
+            stats.reboot()
+            device.set(hours = 0.1, level = 68, chargeMah = 3_400.0, screenOn = false)
+            engine().handle(SnapshotTrigger.BOOT_COMPLETED)
+
+            val references = db.snapshotDao()
+            assertThat(references.autoReference(AutoReference.SINCE_UNPLUGGED)?.snapshotId).isEqualTo(unplug.id)
+            assertThat(references.autoReference(AutoReference.SINCE_SCREEN_OFF)?.snapshotId).isEqualTo(screenOff.id)
+            assertThat(references.autoReference(AutoReference.SINCE_BOOT)?.snapshotId).isEqualTo(references.latest()?.id)
+        }
+
+    @Test
+    fun aChargeWhileCoulombWasNotRunningEndsTheDischargeSession() =
+        runTest {
+            device.set(hours = 1.0, level = 30, chargeMah = 1_500.0, screenOn = true)
+            engine().handle(SnapshotTrigger.SERVICE_STARTED)
+
+            // A new process in the same boot, unplugged again, with no history to show the charge.
+            device.set(hours = 3.0, level = 80, chargeMah = 4_000.0, screenOn = true)
+            engine().handle(SnapshotTrigger.SERVICE_STARTED)
+
+            val discharges = db.sessionDao().observeRecent(SessionKind.DISCHARGE, 10).first()
+            assertThat(discharges.single { it.closeReason != null }.closeReason).isEqualTo(SessionCloseReason.DATA_GAP)
+            assertThat(discharges.single { it.closeReason == null }.startLevel).isEqualTo(80)
+            assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)?.snapshotId)
+                .isEqualTo(db.snapshotDao().latest()?.id)
+        }
+
+    @Test
+    fun countersArePrunedHourlyOnBatteryToo() =
+        runTest {
+            val engine = engine()
+            device.set(hours = 1.0, level = 90, chargeMah = 4_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            for (i in 1..8) {
+                device.set(hours = 1.0 + i / 2.0, level = 90 - i, chargeMah = 4_500.0 - 50 * i, screenOn = true)
+                engine.handle(SnapshotTrigger.SCREEN_ON_PERIODIC)
+            }
+            // At 5 h the cut is 3 h: 1.5, 2 and 2.5 h go; 1 h starts the open sessions and stays.
+            assertThat(count("SELECT COUNT(*) FROM snapshot WHERE countersPruned = 1")).isEqualTo(3)
+        }
+
     private fun count(query: String): Long =
         db.openHelper.readableDatabase.query(query).use {
             it.moveToFirst()
@@ -242,12 +422,21 @@ class CollectorEngineTest {
     private class FakeClock : CollectorClock {
         var elapsedNs = 0L
         var wallOffsetMs = START_WALL_MS
+        private var sleptMs = 0L
 
         override fun elapsedNs(): Long = elapsedNs
+
+        override fun uptimeMs(): Long = elapsedNs / NS_PER_MS - sleptMs
 
         override fun wallMs(): Long = wallOffsetMs + elapsedNs / NS_PER_MS
 
         override fun wallChanges(): Int = 0
+
+        /** The CPU sleeps: elapsed time goes on, uptime does not. */
+        fun sleep(ms: Long) {
+            elapsedNs += ms * NS_PER_MS
+            sleptMs += ms
+        }
     }
 
     /** The battery: its reading, with the clock set to the same instant. */
@@ -294,6 +483,15 @@ class CollectorEngineTest {
     private inner class FakeStats : HeavySource {
         var available = true
         val historyTimeoutsMs = mutableListOf<Long>()
+
+        /** How long the CPU sleeps inside the next dump. */
+        var sleepMs = 0L
+
+        /** The statuses the next dump reports; S5 whole by default. */
+        var statuses = mapOf("S5" to SourceStatus.OK)
+
+        /** What the next history read returns. */
+        var history: () -> HistoryRead = { HistoryRead(emptyList(), null, SourceStatus.FAILED) }
         private var countedFromNs = 0L
         private var startWallMs = START_WALL_MS
 
@@ -323,7 +521,9 @@ class CollectorEngineTest {
                     uids = listOf(UidStats(10_100, packages = listOf("com.example.video"), powerMah = sinceMs / 60_000.0)),
                     uidsComplete = true,
                 )
-            return StatsRead(dump, mapOf("S5" to SourceStatus.OK), rawProto = byteArrayOf(1), rawIncomplete = null)
+            clock.sleep(sleepMs)
+            val whole = statuses.values.all { it == SourceStatus.OK }
+            return StatsRead(dump, statuses, rawProto = byteArrayOf(1), rawIncomplete = byteArrayOf(2).takeUnless { whole })
         }
 
         override suspend fun history(
@@ -331,7 +531,7 @@ class CollectorEngineTest {
             timeoutMs: Long,
         ): HistoryRead {
             historyTimeoutsMs += timeoutMs
-            return HistoryRead(emptyList(), null, SourceStatus.FAILED)
+            return history()
         }
     }
 
@@ -342,6 +542,7 @@ class CollectorEngineTest {
         override val oem = "test"
         override val sdkInt = 37
         override val sdkIntFull = 3_700_000
+        override val appUid = OWN_UID
 
         override fun bootCount(): Int = bootCount
 
@@ -368,6 +569,7 @@ class CollectorEngineTest {
 
     private companion object {
         const val NS_PER_MS = 1_000_000L
+        const val OWN_UID = 10_250
 
         /** 2026-11-01 00:00 UTC. */
         const val START_WALL_MS = 1_793_491_200_000L

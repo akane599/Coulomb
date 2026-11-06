@@ -18,6 +18,7 @@ import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.DeviceStats
 import io.github.akane599.coulomb.core.model.stats.NamedTimer
 import io.github.akane599.coulomb.core.model.stats.SensorStat
+import io.github.akane599.coulomb.core.model.stats.SipperKind
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import io.github.akane599.coulomb.core.model.stats.UidStats
 import kotlin.math.roundToLong
@@ -117,10 +118,19 @@ internal object CounterMapper {
                 )
             }
 
-    /** Device-wide entries of the power model (screen, idle, radios), per component. */
+    /**
+     * The power model's device total per component, apps included: the system-level power items
+     * are the device-scope aggregate consumer (`AGGREGATE_BATTERY_CONSUMER_SCOPE_DEVICE`), one per
+     * component below `POWER_COMPONENT_COUNT` (BatteryStats android-17.0.0_r1 L8733-8782 for the
+     * proto and L4529-4540 for checkin; android-16.0.0_r4 L8701-8750 and L4508-4519). Both writers
+     * give them uid 0, so they are told apart from the per-UID totals by where they are printed,
+     * not by uid. They are never added to the UID rows. Components the proto has no name for share
+     * `UNKNOWN_SIPPER` and are summed into one row. Their sum is the model's total; the summary's
+     * `computed_power_mah` is the measured discharge instead ([DeviceKeys.STATS_DISCHARGE_UAH]).
+     */
     private fun devicePower(device: DeviceStats): List<UidPowerEntity> =
         device.powerUse
-            .filter { it.uid == null && it.mah > 0 }
+            .filter { it.kind != SipperKind.USER && it.mah > 0 }
             .groupBy { it.kind.name }
             .map { (component, sippers) ->
                 UidPowerEntity(
@@ -237,7 +247,7 @@ internal object CounterMapper {
         }
         for (bin in device.phoneSignalStrength) values[DeviceKeys.signalBin(bin.bin)] = bin.totalMs
         for (bin in device.screenBrightness) values[DeviceKeys.brightnessBin(bin.bin)] = bin.totalMs
-        device.powerSummary?.computedMah?.let { values[DeviceKeys.MODELED_UAH] = (it * UAH_PER_MAH).roundToLong() }
+        device.powerSummary?.computedMah?.let { values[DeviceKeys.STATS_DISCHARGE_UAH] = (it * UAH_PER_MAH).roundToLong() }
         return values.filterValues { it != null && it > 0 }.mapValues { checkNotNull(it.value) }
     }
 

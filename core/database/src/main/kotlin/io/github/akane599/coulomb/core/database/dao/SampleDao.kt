@@ -29,6 +29,9 @@ public abstract class SampleDao {
     @Query("SELECT * FROM battery_sample ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
     public abstract fun observeLatest(): Flow<BatterySampleEntity?>
 
+    @Query("SELECT * FROM battery_sample ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
+    public abstract suspend fun latest(): BatterySampleEntity?
+
     /** Samples of [bootSeq] in `[fromElapsedNs, toElapsedNs)`, as a session reads them. */
     @Query(
         "SELECT * FROM battery_sample WHERE bootSeq = :bootSeq " +

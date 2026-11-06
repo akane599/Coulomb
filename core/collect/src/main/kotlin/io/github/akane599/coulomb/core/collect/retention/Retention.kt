@@ -16,8 +16,9 @@ internal data class Cut(
 )
 
 /**
- * SPEC 7.7 retention, as ADR-0018 schedules it: once a day while charging, in the actor. Each "N
- * days ago" becomes a `(bootSeq, elapsedNs)` key, so a clock change cannot prune the wrong rows.
+ * SPEC 7.7 retention, as ADR-0018 schedules it, in the actor: [run] once a day while charging with
+ * the screen off, [pruneCounters] at most hourly. Each "N days ago" becomes a `(bootSeq, elapsedNs)`
+ * key counted back in elapsed time, so a wall-clock change cannot prune the wrong rows.
  */
 internal class Retention(
     private val db: CoulombDatabase,
@@ -25,27 +26,43 @@ internal class Retention(
 ) {
     data class Report(
         val samplesCompacted: Int,
-        val countersPruned: Int,
         val blobsDeleted: Int,
         val vacuumed: Boolean,
     )
 
+    /** Compaction, expiry and `VACUUM` (SPEC 7.7: only while charging and idle; the caller checks). */
     suspend fun run(
         boot: BootEntity,
         nowElapsedNs: Long,
-        nowWallMs: Long,
     ): Report {
-        val boots = db.deviceDao().boots()
-
-        fun cut(agoMs: Long) = cutKey(boots, boot, nowElapsedNs, nowWallMs, agoMs)
+        val cut = cutter(boot, nowElapsedNs)
         val samples = db.sampleDao()
         val compacted = cut(SAMPLES_MS)?.let { samples.compactSamples(it.bootSeq, it.elapsedNs, MINUTE_S) } ?: 0
         cut(AGGREGATES_MS)?.let { samples.compactAggregates(it.bootSeq, it.elapsedNs, MINUTE_S, HOUR_S) }
         cut(HISTORY_MS)?.let { db.historyDao().deleteBefore(it.bootSeq, it.elapsedNs) }
         cut(DETAIL_MS)?.let { pruneDetail(it) }
-        val counters = cut(COUNTERS_MS)?.let { db.snapshotDao().pruneCounters(it.bootSeq, it.elapsedNs) } ?: 0
         val deleted = pruneBlobs(cut(BLOBS_MS))
-        return Report(compacted, counters, deleted, vacuumIfWorthIt())
+        return Report(compacted, deleted, vacuumIfWorthIt())
+    }
+
+    /**
+     * Deletes the counters no window can start at any more (ADR-0015: kept 2 h). Cheap, so it runs
+     * on battery too: a day of heavy snapshots would otherwise keep every counter until the charger.
+     * Returns the snapshots pruned.
+     */
+    suspend fun pruneCounters(
+        boot: BootEntity,
+        nowElapsedNs: Long,
+    ): Int = cutter(boot, nowElapsedNs)(COUNTERS_MS)?.let { db.snapshotDao().pruneCounters(it.bootSeq, it.elapsedNs) } ?: 0
+
+    private suspend fun cutter(
+        boot: BootEntity,
+        nowElapsedNs: Long,
+    ): (Long) -> Cut? {
+        val devices = db.deviceDao()
+        val boots = devices.boots()
+        val lastSeen = devices.bootsLastSeen().associate { it.bootSeq to it.lastElapsedNs }
+        return { agoMs -> cutKey(boots, lastSeen, boot, nowElapsedNs, agoMs) }
     }
 
     /** ADR-0015: consecutive, reference and charge-session detail goes after 30 days; day and discharge detail stays. */
@@ -108,22 +125,28 @@ internal class Retention(
         private const val FREE_SHARE_DENOMINATOR = 10
 
         /**
-         * The key [agoMs] before now. In the current boot elapsed time gives it exactly; before
-         * that, the wall clock picks the boot and the offset from its first sighting. Null when it
-         * falls before every stored boot: there is nothing to cut.
+         * The key [agoMs] before now, counted back in elapsed time: the current boot ran for
+         * [nowElapsedNs], each earlier boot for at least its [lastSeen] elapsed time (or its first
+         * sighting). The time a boot ran unseen, and boots never stored, count as nothing, so the
+         * cut can only fall earlier than the true instant: rows are kept too long, never pruned
+         * early. Null when it falls before every stored boot: there is nothing to cut.
          */
         fun cutKey(
             boots: List<BootEntity>,
+            lastSeen: Map<Int, Long>,
             current: BootEntity,
             nowElapsedNs: Long,
-            nowWallMs: Long,
             agoMs: Long,
         ): Cut? {
-            val inCurrent = nowElapsedNs - agoMs * NS_PER_MS
-            if (inCurrent >= 0) return Cut(current.bootSeq, inCurrent)
-            val target = nowWallMs - agoMs
-            val boot = boots.filter { it.bootSeq < current.bootSeq && it.firstWallMs <= target }.maxByOrNull { it.bootSeq } ?: return null
-            return Cut(boot.bootSeq, boot.firstElapsedNs + (target - boot.firstWallMs) * NS_PER_MS)
+            var left = agoMs * NS_PER_MS
+            if (nowElapsedNs >= left) return Cut(current.bootSeq, nowElapsedNs - left)
+            left -= nowElapsedNs
+            for (boot in boots.filter { it.bootSeq < current.bootSeq }.sortedByDescending { it.bootSeq }) {
+                val ran = maxOf(lastSeen[boot.bootSeq] ?: 0, boot.firstElapsedNs)
+                if (ran >= left) return Cut(boot.bootSeq, ran - left)
+                left -= ran
+            }
+            return null
         }
     }
 }

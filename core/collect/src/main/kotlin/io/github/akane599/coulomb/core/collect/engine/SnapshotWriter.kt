@@ -12,6 +12,8 @@ import io.github.akane599.coulomb.core.analytics.SessionRules
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.collect.snapshot.WindowBuilder
 import io.github.akane599.coulomb.core.collect.snapshot.WindowEnd
+import io.github.akane599.coulomb.core.collect.snapshot.WindowSettings
+import io.github.akane599.coulomb.core.collect.snapshot.counterSource
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
@@ -40,11 +42,15 @@ internal data class WriteContext(
     /** Turns raw current into calibrated µA; null before calibration. */
     val currentUa: ((Long) -> Long)?,
     val zone: ZoneId,
+    /** Coulomb's own UID (SPEC 6.9). */
+    val ownUid: Int,
 )
 
 /**
  * The part of a snapshot's transaction after the snapshot row (ADR-0018): sessions, windows and
- * automatic references. Runs inside the caller's `withTransaction`.
+ * automatic references. Runs inside the caller's `withTransaction`. A window joins only heavy
+ * snapshots whose counters came from the same source ([counterSource]): S5 and S6 disagree at the
+ * same instant.
  */
 internal class SnapshotWriter(
     db: CoulombDatabase,
@@ -60,8 +66,9 @@ internal class SnapshotWriter(
         context: WriteContext,
     ) {
         val changes = reconcileSessions(stored, rows, context)
+        moveReferences(stored, context, changes)
         if (stored.kind != SnapshotKind.HEAVY) return
-        val previous = context.previousHeavy?.takeIf { it.kind == SnapshotKind.HEAVY && !it.countersPruned }
+        val previous = context.previousHeavy?.takeIf { hasCounters(it) && sameSource(it, stored) }
         if (previous != null) {
             insertWindow(
                 WindowKind.CONSECUTIVE,
@@ -72,7 +79,6 @@ internal class SnapshotWriter(
             )
         }
         day(stored, rows, context)
-        moveReferences(stored, context, changes)
     }
 
     /** Applies [SessionRules] to the open sessions; returns the kinds opened and the sessions closed. */
@@ -143,7 +149,8 @@ internal class SnapshotWriter(
 
     /**
      * A session of an earlier boot ends at the last thing Coulomb saw in that boot (SPEC 7.8). Its
-     * window ends at that boot's last heavy snapshot, even when a later sample sets the end time.
+     * window ends at that boot's last heavy snapshot, even when a later sample or light snapshot
+     * sets the end time.
      */
     private suspend fun lastSeenIn(
         session: SessionEntity,
@@ -151,11 +158,12 @@ internal class SnapshotWriter(
         change: SessionChange.Close,
     ): SessionEnd {
         val snapshot = snapshots.latestInBoot(session.bootSeq)?.takeIf { it.elapsedNs >= session.startElapsedNs }
+        val heavy = snapshots.latestHeavyInBoot(session.bootSeq)?.takeIf { it.elapsedNs >= session.startElapsedNs }
         return if (lastSample != null && (snapshot == null || lastSample.elapsedNs > snapshot.elapsedNs)) {
             SessionEnd(
                 lastSample.elapsedNs,
                 lastSample.wallMs,
-                snapshot?.takeIf { it.kind == SnapshotKind.HEAVY },
+                heavy,
                 lastSample.levelPct,
                 lastSample.chargeUah,
                 lastSample.tempDeciC,
@@ -165,7 +173,7 @@ internal class SnapshotWriter(
             SessionEnd(
                 snapshot.elapsedNs,
                 snapshot.wallMs,
-                snapshot.takeIf { it.kind == SnapshotKind.HEAVY },
+                heavy,
                 snapshot.levelPct,
                 snapshot.chargeUah,
                 snapshot.tempDeciC,
@@ -212,6 +220,14 @@ internal class SnapshotWriter(
         snapshots.moveAutoReference(AutoReference.TODAY, stored.id, stored.wallMs)
     }
 
+    /**
+     * SPEC 7.6 references, on light snapshots too: a reference marks a moment, and one left on an
+     * earlier unplug would be wrong, not just less detailed. Since unplugged and since screen off
+     * move only on a real transition: a session of the opposite kind closed in the same reconcile,
+     * or the history showed the state flip while Coulomb was not watching. A reopen after a reboot
+     * or a data gap, or the first snapshot ever, leaves them where they are. Before reset needs
+     * counters at both ends; today moves with the day window ([day]).
+     */
     private suspend fun moveReferences(
         stored: SnapshotEntity,
         context: WriteContext,
@@ -219,7 +235,7 @@ internal class SnapshotWriter(
     ) {
         val sinceBoot = snapshots.autoReference(AutoReference.SINCE_BOOT)?.let { snapshots.snapshot(it.snapshotId) }
         if (sinceBoot == null || sinceBoot.bootSeq != stored.bootSeq) move(AutoReference.SINCE_BOOT, stored)
-        if (SessionKind.DISCHARGE in changes.opened) {
+        if (changes.flipped(SessionKind.DISCHARGE, from = SessionKind.CHARGE, context.changedUnseen)) {
             move(AutoReference.SINCE_UNPLUGGED, stored)
             val charge = changes.closed.lastOrNull { it.kind == SessionKind.CHARGE }
             val full = charge != null && (charge.endLevel ?: 0) >= FULL_LEVEL
@@ -227,7 +243,9 @@ internal class SnapshotWriter(
                 move(AutoReference.SINCE_FULL_CHARGE, stored)
             }
         }
-        if (SessionKind.SCREEN_OFF in changes.opened) move(AutoReference.SINCE_SCREEN_OFF, stored)
+        if (changes.flipped(SessionKind.SCREEN_OFF, from = SessionKind.SCREEN_ON, context.changedUnseen)) {
+            move(AutoReference.SINCE_SCREEN_OFF, stored)
+        }
         context.previousHeavy?.takeIf { resetBetween(it, stored) }?.let { move(AutoReference.BEFORE_RESET, it) }
     }
 
@@ -235,7 +253,15 @@ internal class SnapshotWriter(
         previous: SnapshotEntity,
         stored: SnapshotEntity,
     ): Boolean =
-        previous.kind == SnapshotKind.HEAVY && Attribution.resetBetween(WindowBuilder.epochOf(previous), WindowBuilder.epochOf(stored))
+        hasCounters(previous) &&
+            hasCounters(stored) &&
+            sameSource(previous, stored) &&
+            Attribution.resetBetween(WindowBuilder.epochOf(previous), WindowBuilder.epochOf(stored))
+
+    private fun sameSource(
+        a: SnapshotEntity,
+        b: SnapshotEntity,
+    ): Boolean = counterSource(a.sourceStatusJson).let { it != null && it == counterSource(b.sourceStatusJson) }
 
     private suspend fun move(
         kind: AutoReference,
@@ -251,8 +277,12 @@ internal class SnapshotWriter(
         end: SnapshotEntity,
         endRows: SnapshotRows? = null,
     ): List<WindowEnd>? {
-        if (!hasCounters(start) || !hasCounters(end)) return null
-        val between = snapshots.heavyWithCountersBetween(start.bootSeq, start.elapsedNs, end.bootSeq, end.elapsedNs)
+        if (!hasCounters(start) || !hasCounters(end) || !sameSource(start, end)) return null
+        // A link from the other source is left out; a reset next to it then makes the window partial.
+        val between =
+            snapshots
+                .heavyWithCountersBetween(start.bootSeq, start.elapsedNs, end.bootSeq, end.elapsedNs)
+                .filter { sameSource(it, end) }
         return WindowBuilder.links(listOf(start) + between + end).map { s ->
             WindowEnd(s, if (s.id == end.id && endRows != null) endRows else snapshots.rows(s.id))
         }
@@ -267,7 +297,8 @@ internal class SnapshotWriter(
         context: WriteContext,
         detail: Boolean,
     ) {
-        val (window, rows) = WindowBuilder.build(kind, sessionId, chain, context.counterReliable, context.capacityMah, detail)
+        val settings = WindowSettings(context.counterReliable, context.capacityMah, context.ownUid)
+        val (window, rows) = WindowBuilder.build(kind, sessionId, chain, settings, detail)
         windows.insert(window, rows)
     }
 
@@ -279,7 +310,14 @@ internal class SnapshotWriter(
     private data class Changes(
         val opened: Set<SessionKind> = emptySet(),
         val closed: List<SessionEntity> = emptyList(),
-    )
+    ) {
+        /** [to] opened after a [from] session closed here, or after the history showed [to] flip unseen. */
+        fun flipped(
+            to: SessionKind,
+            from: SessionKind,
+            unseen: Set<SessionKind>,
+        ): Boolean = to in opened && (closed.any { it.kind == from } || to in unseen)
+    }
 
     private companion object {
         const val FULL_LEVEL = 100

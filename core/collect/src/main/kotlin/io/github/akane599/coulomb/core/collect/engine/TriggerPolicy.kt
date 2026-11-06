@@ -24,8 +24,8 @@ internal enum class Action {
 internal data class PolicyInput(
     val trigger: SnapshotTrigger,
     val nowElapsedNs: Long,
-    /** The last heavy snapshot of this process, in the current boot; null when none was taken. */
-    val lastHeavyElapsedNs: Long?,
+    /** The last snapshot of this process, light or heavy, in the current boot; null when none was taken. */
+    val lastSnapshotElapsedNs: Long?,
     /** A dump can run now. */
     val heavyAvailable: Boolean,
     /** Nothing was collected yet in this process, so changes since may have been missed. */
@@ -42,24 +42,27 @@ internal data class Decision(
 
 /**
  * SPEC 7.2 triggers. Pure. A heavy snapshot that cannot run now becomes a light one and is owed:
- * the next trigger once dumps work takes it. A process start's first trigger is heavy, so the
- * history read shows what changed while Coulomb was not running.
+ * the next trigger once dumps work takes it. While dumps still do not work, a level change stays
+ * a sample and a package change a light snapshot, so the debt never turns every broadcast into a
+ * snapshot. A process start's first trigger is heavy, so the history read shows what changed
+ * while Coulomb was not running.
  */
 internal object TriggerPolicy {
-    /** App open, refresh and unlock are debounced to one heavy snapshot per minute (SPEC 7.2). */
+    /** App open, refresh and unlock are debounced to one snapshot per minute (SPEC 7.2). */
     const val DEBOUNCE_NS: Long = 60_000_000_000L
 
     fun decide(input: PolicyInput): Decision {
+        val payDebt = input.heavyOwed && input.heavyAvailable
         val wanted =
             when (input.trigger) {
-                SnapshotTrigger.LEVEL_CHANGED -> if (input.firstOfProcess || input.heavyOwed) Action.HEAVY else Action.SAMPLE
+                SnapshotTrigger.LEVEL_CHANGED -> if (input.firstOfProcess || payDebt) Action.HEAVY else Action.SAMPLE
 
-                SnapshotTrigger.PACKAGE_CHANGED -> if (input.firstOfProcess || input.heavyOwed) Action.HEAVY else Action.LIGHT
+                SnapshotTrigger.PACKAGE_CHANGED -> if (input.firstOfProcess || payDebt) Action.HEAVY else Action.LIGHT
 
                 SnapshotTrigger.APP_OPENED,
                 SnapshotTrigger.PULL_TO_REFRESH,
                 SnapshotTrigger.USER_PRESENT,
-                -> if (recent(input) && !input.heavyOwed) Action.NONE else Action.HEAVY
+                -> if (recent(input) && !payDebt) Action.NONE else Action.HEAVY
 
                 SnapshotTrigger.SCREEN_OFF,
                 SnapshotTrigger.SCREEN_ON,
@@ -80,7 +83,7 @@ internal object TriggerPolicy {
     }
 
     private fun recent(input: PolicyInput): Boolean {
-        val last = input.lastHeavyElapsedNs ?: return false
+        val last = input.lastSnapshotElapsedNs ?: return false
         return input.nowElapsedNs - last in 0 until DEBOUNCE_NS
     }
 }

@@ -68,6 +68,20 @@ public abstract class DeviceDao {
     @Query("SELECT * FROM boot ORDER BY bootSeq")
     public abstract suspend fun boots(): List<BootEntity>
 
+    /**
+     * Each boot's last sighting: the latest elapsed time of any snapshot, sample, aggregate or
+     * history event stored in it. The boot ran at least that long; retention counts back with it.
+     */
+    @Query(
+        "SELECT bootSeq, MAX(lastNs) AS lastElapsedNs FROM (" +
+            "SELECT bootSeq, MAX(elapsedNs) AS lastNs FROM snapshot GROUP BY bootSeq " +
+            "UNION ALL SELECT bootSeq, MAX(elapsedNs) FROM battery_sample GROUP BY bootSeq " +
+            "UNION ALL SELECT bootSeq, MAX(startElapsedNs) FROM sample_aggregate GROUP BY bootSeq " +
+            "UNION ALL SELECT bootSeq, MAX(elapsedNs) FROM history_event GROUP BY bootSeq" +
+            ") GROUP BY bootSeq",
+    )
+    public abstract suspend fun bootsLastSeen(): List<BootLastSeen>
+
     /** Records how this boot's history clock maps to elapsed time (ADR-0014). */
     @Query("UPDATE boot SET historyOffsetMs = :offsetMs WHERE bootSeq = :bootSeq")
     public abstract suspend fun setHistoryOffset(
@@ -127,3 +141,9 @@ public abstract class DeviceDao {
         wall: Long,
     )
 }
+
+/** The latest elapsed time stored for [bootSeq] ([DeviceDao.bootsLastSeen]). */
+public data class BootLastSeen(
+    val bootSeq: Int,
+    val lastElapsedNs: Long,
+)

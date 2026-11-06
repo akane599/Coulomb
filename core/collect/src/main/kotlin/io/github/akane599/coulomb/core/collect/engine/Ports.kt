@@ -29,6 +29,9 @@ public interface DeviceIdentity {
     public val sdkInt: Int
     public val sdkIntFull: Int
 
+    /** Coulomb's own UID (`Process.myUid()`), whose cost SPEC 6.9 records. */
+    public val appUid: Int
+
     /** `Settings.Global.BOOT_COUNT`, or null when it cannot be read (SPEC 7.2). */
     public fun bootCount(): Int?
 

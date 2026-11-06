@@ -81,8 +81,11 @@ public object DeviceKeys {
     public const val DISCHARGE_LIGHT_DOZE_MAH: String = "discharge_light_doze_mah"
     public const val DISCHARGE_DEEP_DOZE_MAH: String = "discharge_deep_doze_mah"
 
-    /** The power model's total of everything it computed, in µAh. */
-    public const val MODELED_UAH: String = "modeled_uah"
+    /**
+     * The discharge since the statistics reset as the platform's usage stats report it, in µAh
+     * (`PowerSummary.computedMah`: measured, not modeled, on Android 16 and 17).
+     */
+    public const val STATS_DISCHARGE_UAH: String = "stats_discharge_uah"
 
     /** Time in one phone signal bin, 0 (none) to 4 (great). */
     public fun signalBin(bin: Int): String = "signal_bin_${bin}_ms"

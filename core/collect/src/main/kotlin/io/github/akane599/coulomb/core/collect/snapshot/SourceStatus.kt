@@ -17,7 +17,25 @@ internal enum class SourceStatus(
 
     /** Not tried: the snapshot's time budget had run out (ADR-0018). */
     SKIPPED("skipped"),
+
+    /**
+     * Read whole, but the CPU slept during the read, so the instant its counters describe is
+     * unknown and they cannot end a window (ADR-0018).
+     */
+    SLEPT("slept"),
 }
+
+/**
+ * The source whose counters a snapshot holds: S5, or S6 when S5 failed, and only when that read is
+ * [SourceStatus.OK]. Windows join only snapshots with the same source, since the two disagree at
+ * the same instant (ADR-0018). Null when neither read is usable: the snapshot is light.
+ */
+internal fun counterSource(statuses: Map<String, SourceStatus>): String? = COUNTER_SOURCES.firstOrNull { statuses[it] == SourceStatus.OK }
+
+/** [counterSource] of a stored snapshot, from its `sourceStatusJson`. */
+internal fun counterSource(json: String): String? = COUNTER_SOURCES.firstOrNull { "\"$it\":\"${SourceStatus.OK.text}\"" in json }
+
+private val COUNTER_SOURCES = listOf(HeavyReader.S5, HeavyReader.S6)
 
 /** `{"S5":"ok","S7":"partial"}`: source ids and statuses only, never values (ADR-0015). */
 internal fun sourceStatusJson(statuses: Map<String, SourceStatus>): String =

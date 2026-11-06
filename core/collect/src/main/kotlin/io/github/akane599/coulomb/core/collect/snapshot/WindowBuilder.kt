@@ -30,15 +30,26 @@ internal data class WindowEnd(
     val rows: SnapshotRows,
 )
 
+/** What a window needs besides its chain. */
+internal data class WindowSettings(
+    /** The charge counter tracks charge on this build (SPEC 6.1 calibration). */
+    val counterReliable: Boolean,
+    /** For level-based drain (ADR-0018): the platform's own capacity estimate. */
+    val capacityMah: Double?,
+    /** Coulomb's own UID, whose detail rows are always kept (SPEC 6.9). */
+    val ownUid: Int,
+)
+
 /**
  * Builds a stored window over a chain of heavy snapshots (SPEC 6.2, 6.5; ADR-0015, ADR-0018). Pure.
  *
  * The chain runs from the window's start to its end and holds every snapshot in between whose
  * counters are still stored; [Attribution.window] splits the counters at each reset. Measured
  * drain is the charge counter's change when it is reliable and both ends are in one boot, else
- * the level change times the capacity (Estimated). Modeled drain is the power model's per-UID
- * total change. Detail rows keep the UIDs above [MIN_UID_MAH] (at most [MAX_UIDS]); the rest are
- * summed into [WindowUidEntity.OTHER_UID].
+ * the level change times the capacity (Estimated). Modeled drain is the change in the power
+ * model's device total (the [UidPowerEntity.DEVICE_UID] rows). Detail rows keep the UIDs above
+ * [MIN_UID_MAH] (at most [MAX_UIDS]) and Coulomb's own; the rest are summed into
+ * [WindowUidEntity.OTHER_UID].
  */
 internal object WindowBuilder {
     const val MIN_UID_MAH: Double = 0.1
@@ -57,8 +68,7 @@ internal object WindowBuilder {
         kind: WindowKind,
         sessionId: Long?,
         chain: List<WindowEnd>,
-        counterReliable: Boolean,
-        capacityMah: Double?,
+        settings: WindowSettings,
         withDetail: Boolean,
     ): Pair<WindowResultEntity, WindowRows> {
         require(chain.size >= 2) { "a window needs two snapshots" }
@@ -66,11 +76,8 @@ internal object WindowBuilder {
         val to = chain.last()
         val power = window(chain) { rows -> rows.uidPower.associate { PowerKey(it.uid, it.component, it.processState) to it.mAh } }
         val device = window(chain) { rows -> rows.deviceStats.associate { it.key to it.value.toDouble() } }
-        val modeled =
-            power.values.values
-                .sum()
-                .takeIf { from.rows.uidPower.isNotEmpty() && to.rows.uidPower.isNotEmpty() }
-        val (measured, source) = measured(from.snapshot, to.snapshot, counterReliable, capacityMah)
+        val modeled = modeled(from, to, power)
+        val (measured, source) = measured(from.snapshot, to.snapshot, settings)
         val screenOn = device.values[DeviceKeys.SCREEN_ON_MS]?.roundToLong() ?: 0
         val realtime =
             device.values[DeviceKeys.TOTAL_REALTIME_MS]?.roundToLong()
@@ -94,7 +101,24 @@ internal object WindowBuilder {
                 quality = quality(measured, source, from.snapshot, to.snapshot, power.partial || device.partial),
                 detailPruned = !withDetail,
             )
-        return window to if (withDetail) detail(chain, power) else WindowRows()
+        return window to if (withDetail) detail(chain, power, settings.ownUid) else WindowRows()
+    }
+
+    /**
+     * The model's device total: the device rows, which hold the apps' power and what no app was
+     * charged for (CounterMapper.devicePower). The UID rows alone leave the latter out, and the
+     * summary's total is the measured discharge, not the model's. Null without the device section
+     * at both ends; with it, the mapper omits a zero component, so a missing row is 0.
+     */
+    private fun modeled(
+        from: WindowEnd,
+        to: WindowEnd,
+        power: CounterWindow<PowerKey>,
+    ): Double? {
+        if (!hasDevice(from) || !hasDevice(to)) return null
+        return power.values.entries
+            .filter { it.key.uid == UidPowerEntity.DEVICE_UID }
+            .sumOf { it.value }
     }
 
     /**
@@ -160,19 +184,23 @@ internal object WindowBuilder {
         values = values,
     )
 
-    /** Drain as positive mAh (negative while charging) and its source; null when neither is known. */
+    /**
+     * Drain as positive mAh (negative while charging) and its source; null when neither is known.
+     * The charge counter counts from where the fuel gauge stood at boot, so it is compared within
+     * one boot only.
+     */
     private fun measured(
         a: SnapshotEntity,
         b: SnapshotEntity,
-        counterReliable: Boolean,
-        capacityMah: Double?,
+        settings: WindowSettings,
     ): Pair<Double?, ChargeSource?> {
         val qa = a.chargeUah?.takeIf { it > 0 }
         val qb = b.chargeUah?.takeIf { it > 0 }
         val la = a.levelPct
         val lb = b.levelPct
+        val capacityMah = settings.capacityMah
         return when {
-            counterReliable && qa != null && qb != null -> {
+            settings.counterReliable && a.bootSeq == b.bootSeq && qa != null && qb != null -> {
                 (qa - qb) / UAH_PER_MAH to ChargeSource.CHARGE_COUNTER
             }
 
@@ -221,6 +249,7 @@ internal object WindowBuilder {
     private fun detail(
         chain: List<WindowEnd>,
         power: CounterWindow<PowerKey>,
+        ownUid: Int,
     ): WindowRows {
         val perUid =
             power.values.entries
@@ -233,7 +262,7 @@ internal object WindowBuilder {
                 .sortedByDescending { it.value }
                 .take(MAX_UIDS)
                 .map { it.key }
-                .toSet()
+                .toSet() + ownUid
         val uids = HashMap<PowerKey, Double>()
         for ((key, mah) in power.values) {
             val target = if (key.uid < 0 || key.uid in kept) key else key.copy(uid = WindowUidEntity.OTHER_UID)
@@ -243,17 +272,23 @@ internal object WindowBuilder {
             uids.map { (key, mah) ->
                 WindowUidEntity(0, key.uid, key.component, key.processState, WindowUidEntity.WHOLE_UID, mah, Provenance.MODELED)
             }
-        return WindowRows(uids = uidRows, wakes = wakes(chain), stats = stats(chain, kept))
+        return WindowRows(uids = uidRows, wakes = wakes(chain, ownUid), stats = stats(chain, kept))
     }
 
-    private fun wakes(chain: List<WindowEnd>): List<WindowWakeEntity> {
+    /** The longest holds of each kind, and every one of Coulomb's own (SPEC 6.9, protocol E). */
+    private fun wakes(
+        chain: List<WindowEnd>,
+        ownUid: Int,
+    ): List<WindowWakeEntity> {
         val totals = window(chain) { rows -> rows.wakeStats.associate { WakeKey(it.uid, it.tag, it.kind) to it.totalMs.toDouble() } }
         val counts = window(chain) { rows -> rows.wakeStats.associate { WakeKey(it.uid, it.tag, it.kind) to it.count.toDouble() } }
         return totals.values.entries
-            .filter { it.value >= MIN_WAKE_MS }
+            .filter { it.value > 0 }
             .groupBy { it.key.kind }
-            .flatMap { (_, entries) -> entries.sortedByDescending { it.value }.take(MAX_WAKES_PER_KIND) }
-            .map { (key, ms) ->
+            .flatMap { (_, entries) ->
+                val (own, others) = entries.partition { it.key.uid == ownUid }
+                own + others.filter { it.value >= MIN_WAKE_MS }.sortedByDescending { it.value }.take(MAX_WAKES_PER_KIND)
+            }.map { (key, ms) ->
                 WindowWakeEntity(
                     0,
                     0,

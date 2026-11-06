@@ -148,6 +148,14 @@ public enum class SipperKind {
 
 public data class PowerSummary(
     val capacityMah: Double? = null,
+    /**
+     * `computed_power_mah` (proto) or `pws` (checkin). On Android 16 and 17 it is the battery
+     * discharge the platform measured since the reset, not a total of the power model: the
+     * exporter adds `batteryDischargeMah` to the device aggregate and to the drained range alike
+     * (PowerStatsExporter.populateBatteryLevelInfo, android-16.0.0_r4 and android-17.0.0_r1
+     * L245-254), so it equals [minDrainedMah] and [maxDrainedMah]. The model's per-component
+     * device totals are the [DeviceStats.powerUse] items.
+     */
     val computedMah: Double? = null,
     val minDrainedMah: Double? = null,
     val maxDrainedMah: Double? = null,

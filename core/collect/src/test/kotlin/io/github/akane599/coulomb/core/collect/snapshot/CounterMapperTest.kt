@@ -4,6 +4,8 @@
 package io.github.akane599.coulomb.core.collect.snapshot
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
+import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.UidKeys
@@ -55,6 +57,26 @@ class CounterMapperTest {
                 rows.deviceStats.size
         println("counter rows from the phone fixture: $total")
         assertThat(total).isGreaterThan(100)
+    }
+
+    /**
+     * The device rows are the power model's device total per component, kept apart from the UIDs;
+     * the summary's "computed" total is the measured discharge (`PowerSummary.computedMah`).
+     */
+    @Test
+    fun theDeviceRowsAreTheModelAndTheSummaryIsTheDischarge() {
+        for (device in fixtures.listFiles().orEmpty().filter { it.isDirectory }) {
+            val set = device.listFiles().orEmpty().single { it.isDirectory }
+            val dump = File(set, "batterystats.proto.bin").inputStream().use { BatteryStatsProtoParser.parse(it) }.value
+            val summary = checkNotNull(dump.device?.powerSummary) { "${device.name}: no power summary" }
+            assertWithMessage(device.name).that(summary.computedMah).isEqualTo(summary.maxDrainedMah)
+            val rows = CounterMapper.rows(dump)
+            val devicePower = rows.uidPower.filter { it.uid == UidPowerEntity.DEVICE_UID }
+            assertWithMessage(device.name).that(devicePower).isNotEmpty()
+            assertWithMessage(device.name).that(devicePower.map { it.component }).containsNoDuplicates()
+            val uidTotal = rows.uidPower.filter { it.uid >= 0 }.sumOf { it.mAh }
+            assertWithMessage(device.name).that(devicePower.sumOf { it.mAh }).isAtLeast(uidTotal - 0.01)
+        }
     }
 
     @Test

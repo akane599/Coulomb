@@ -70,7 +70,8 @@ public data class SnapshotEntity(
  * SPEC 8 `UidPower`: one UID's energy by power component and process state. [component] and
  * [processState] keep the platform's names; [processState] is [ANY_STATE] where the source does
  * not split by process state. A component has either one [ANY_STATE] row or rows per process
- * state, never both. Device-level consumers (screen, idle) use [DEVICE_UID].
+ * state, never both. [DEVICE_UID] rows hold the device's total per standard component, apps
+ * included (the platform's device-scope aggregate): never add them to the UID rows.
  */
 @Entity(
     tableName = "uid_power",
@@ -96,7 +97,7 @@ public data class UidPowerEntity(
     public companion object {
         public const val ANY_STATE: String = "any"
 
-        /** Rows that belong to the device, not to an app. */
+        /** The device's per-component totals, apps included. */
         public const val DEVICE_UID: Int = -1
     }
 }

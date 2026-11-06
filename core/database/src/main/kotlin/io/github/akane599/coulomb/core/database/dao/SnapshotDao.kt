@@ -88,6 +88,10 @@ public abstract class SnapshotDao {
     @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq ORDER BY elapsedNs DESC LIMIT 1")
     public abstract suspend fun latestInBoot(bootSeq: Int): SnapshotEntity?
 
+    /** The latest heavy snapshot of [bootSeq]: where the window of a session closed by a reboot ends. */
+    @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq AND kind = 'HEAVY' ORDER BY elapsedNs DESC LIMIT 1")
+    public abstract suspend fun latestHeavyInBoot(bootSeq: Int): SnapshotEntity?
+
     /** The latest snapshot whose history read set a cursor: where the next read starts (ADR-0014). */
     @Query("SELECT * FROM snapshot WHERE historyCursorMs IS NOT NULL ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
     public abstract suspend fun latestWithHistoryCursor(): SnapshotEntity?

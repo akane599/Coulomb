@@ -11,6 +11,12 @@ public interface CollectorClock {
     /** `SystemClock.elapsedRealtimeNanos()`: counts through sleep, restarts at boot. */
     public fun elapsedNs(): Long
 
+    /**
+     * `SystemClock.uptimeMillis()`: stops while the CPU is in deep sleep. When [elapsedNs] moves
+     * further than it over a read, the device slept during the read (ADR-0018).
+     */
+    public fun uptimeMs(): Long
+
     public fun wallMs(): Long
 
     /**
@@ -25,6 +31,8 @@ internal object SystemCollectorClock : CollectorClock {
     private val changes = AtomicInteger()
 
     override fun elapsedNs(): Long = SystemClock.elapsedRealtimeNanos()
+
+    override fun uptimeMs(): Long = SystemClock.uptimeMillis()
 
     override fun wallMs(): Long = System.currentTimeMillis()
 

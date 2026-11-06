@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.collect.android
 
 import android.content.Context
 import android.os.Build
+import android.os.Process
 import android.provider.Settings
 import io.github.akane599.coulomb.core.collect.engine.BlobStore
 import io.github.akane599.coulomb.core.collect.engine.DeviceIdentity
@@ -22,6 +23,7 @@ internal class AndroidDeviceIdentity(
     override val oem: String = Build.MANUFACTURER
     override val sdkInt: Int = Build.VERSION.SDK_INT
     override val sdkIntFull: Int = Build.VERSION.SDK_INT_FULL
+    override val appUid: Int = Process.myUid()
 
     override fun bootCount(): Int? =
         runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT) }
