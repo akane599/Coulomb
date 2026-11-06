@@ -110,7 +110,13 @@ The owner answered all open questions on 2026-11-06 (`docs/questions.md`, Answer
 
 ## Pre-publication audit (2026-11-06, owner request)
 
-The owner plans to make the repository public. Findings and what was done; visibility is not changed.
+The owner planned to make the repository public. Findings and what was done are below.
+
+Published on 2026-11-06 after the owner confirmed the audit:
+- `akane599/Coulomb` is public and starts from one clean commit (`cfeef0c`) whose tree is byte-identical
+  to the audited `84ac59a`;
+- the private development repository was renamed `akane599/Coulomb-archive`, archived and kept private;
+- CI now also runs on pushes to `main`.
 
 | Item | Where | State |
 | --- | --- | --- |
@@ -132,7 +138,7 @@ The owner plans to make the repository public. Findings and what was done; visib
 
 ### Shipped
 
-- **Repository** on `main`, private GitHub remote `akane599/Coulomb`; Conventional Commits.
+- **Repository** on `main`, then a private GitHub remote (archived as `akane599/Coulomb-archive` when the project went public); Conventional Commits.
 - **Build**: Gradle 9.8.2 wrapper (checksum pinned), AGP 9.5.1, Kotlin 2.4.21, KSP 2.3.13, JDK 21. Every
   version in `gradle/libs.versions.toml` was resolved from Maven metadata on 2026-11-06 as the newest
   stable (SPEC 0.3.2). Navigation 3 1.2.1 is stable, so it replaces Navigation Compose (SPEC 15.3).
