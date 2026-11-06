@@ -45,6 +45,7 @@ if [ -n "$pid" ]; then app cat "/proc/$pid/stat" > "$out/proc_stat.txt"; fi
 sh_ dumpsys activity services "$pkg" > "$out/services.txt" 2>&1 || true
 sh_ dumpsys alarm | grep -n -F "$pkg" > "$out/alarm_coulomb.txt" || true
 sh_ dumpsys batterystats -c > "$out/batterystats.checkin.txt"
-sh_ dumpsys package "$pkg" | grep -E '^\s+(userId|versionName|versionCode|lastUpdateTime)=' > "$out/package.txt" || true
+# The UID line is `appId=` on Android 17 (seen on the API 37 emulator) and `userId=` before it.
+sh_ dumpsys package "$pkg" | grep -E '^\s+(userId|appId|versionName|versionCode|lastUpdateTime)=' > "$out/package.txt" || true
 
 ls -l "$out"

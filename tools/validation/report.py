@@ -71,7 +71,7 @@ def read(capture, name):
 
 def own_uid(capture, db):
     text = read(capture, "package.txt") or ""
-    match = re.search(r"userId=(\d+)", text)
+    match = re.search(r"(?:userId|appId)=(\d+)", text)
     if match:
         return int(match.group(1))
     row = db.execute("SELECT uid FROM uid_package WHERE packageName = ? ORDER BY lastSeenWall DESC", (PACKAGE,)).fetchone()
