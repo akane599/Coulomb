@@ -7,6 +7,11 @@ plugins {
     alias(libs.plugins.coulomb.android.hilt)
 }
 
+android {
+    // Instrumented tests run in Coulomb's own process, where Shizuku has authorized the app.
+    defaultConfig.testInstrumentationRunner = "io.github.akane599.coulomb.HiltTestRunner"
+}
+
 dependencies {
     implementation(projects.core.model)
     implementation(projects.core.common)
@@ -35,4 +40,10 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
 
     debugImplementation(libs.leakcanary.android)
+
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(libs.truth)
+    kspAndroidTest(libs.hilt.compiler)
 }
