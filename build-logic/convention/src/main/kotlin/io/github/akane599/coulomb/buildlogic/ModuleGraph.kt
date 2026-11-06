@@ -43,6 +43,8 @@ public object ModuleGraph {
             ":widget" to setOf(ANY_CORE),
             ":wear" to setOf(":core:model"),
             ":benchmark" to setOf(":app"),
+            // Build tooling outside SPEC 15.2: Android Lint checks (SPEC 7.4), used only by `lintChecks`.
+            LINT_CHECKS_MODULE to emptySet(),
         )
 
     /** Returns the dependencies of [module] that SPEC 15.2 does not allow. */
@@ -110,11 +112,15 @@ public abstract class CheckModuleBoundariesTask : DefaultTask() {
     }
 }
 
+/** The module that holds Coulomb's lint checks; a `lintChecks` dependency is tooling, not code. */
+internal const val LINT_CHECKS_MODULE = ":lint"
+
 internal fun Project.configureModuleBoundaries() {
     val projectPath = path
     val deps =
         provider {
             configurations
+                .filterNot { it.name == "lintChecks" }
                 .flatMap { configuration -> configuration.dependencies.withType<ProjectDependency>().map { it.path } }
                 .toSet()
         }

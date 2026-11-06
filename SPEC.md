@@ -1008,6 +1008,7 @@ Coulomb is a multi-module Kotlin and Jetpack Compose app with a strict one-way f
 | `:widget` | Glance widgets, tile | core modules |
 | `:wear` (optional) | Watch tile and complication | `:core:model` |
 | `:benchmark` | Macrobenchmark, baseline profile generator | `:app` |
+| `:lint` (build tooling, ADR-0016) | Android Lint checks for the no-wakeup policy (7.4), loaded by every Android module through `lintChecks` | Nothing |
 
 `design-lab/` (HTML) sits outside Gradle.
 

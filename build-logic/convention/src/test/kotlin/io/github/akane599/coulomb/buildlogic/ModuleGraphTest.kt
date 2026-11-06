@@ -40,4 +40,10 @@ class ModuleGraphTest {
     fun `nothing may depend on the benchmark module`() {
         assertThat(ModuleGraph.violations(":app", setOf(":benchmark"))).containsExactly(":benchmark")
     }
+
+    @Test
+    fun `the lint checks depend on no app module`() {
+        assertThat(ModuleGraph.violations(":lint", setOf(":core:model"))).containsExactly(":core:model")
+        assertThat(ModuleGraph.violations(":app", setOf(":lint"))).isEmpty()
+    }
 }

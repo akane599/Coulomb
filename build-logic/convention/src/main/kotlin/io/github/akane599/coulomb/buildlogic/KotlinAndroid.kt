@@ -31,6 +31,9 @@ internal fun Project.configureAndroidCommon(extension: CommonExtension) {
     configureKotlin()
     configureStaticAnalysis()
     configureModuleBoundaries()
+    // SPEC 7.4 lint checks. Lint analyses each module with its own checks, even under the app's
+    // `checkDependencies`, so every Android module loads them.
+    dependencies.add("lintChecks", project(LINT_CHECKS_MODULE))
 }
 
 /** Host (JVM) unit tests run for one build type only, so `./gradlew test` runs each test once. */

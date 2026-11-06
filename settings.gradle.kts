@@ -49,3 +49,6 @@ include(":feature:onboarding")
 include(":feature:settings")
 include(":widget")
 include(":benchmark")
+
+// Build tooling, not part of the app: the SPEC 7.4 lint checks, consumed through `lintChecks`.
+include(":lint")
