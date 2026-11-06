@@ -60,14 +60,15 @@ This file uses role names only.
 
 ## CI and pushing
 
-- GitHub-hosted runners only, never a self-hosted runner. While the repository is private, CI runs on
-  pull requests and manual dispatch (`gh workflow run ci.yml`); once public, also on push to `main`.
-  `*.md` and `docs/**` changes do not trigger CI.
+- GitHub-hosted runners only, never a self-hosted runner. The repository is public (since 2026-11-06):
+  CI runs on push to `main`, pull requests and manual dispatch (`gh workflow run ci.yml`).
+  `*.md` and `docs/**` changes do not trigger CI. The private development history is archived in a
+  separate private repository; never push it to the public remote.
 - Before every push, run `tools/ci/check.sh all` (the exact Gradle tasks CI runs, in CI's order). Do not push
   if it fails. The tracked pre-push hook enforces this: `git config core.hooksPath .githooks` once per clone.
 - Instrumented tests run locally on the emulator host, not in CI.
-- The repository will become public later: never commit host names, addresses, home paths, volume ids or
-  personal data (ADR-0004, ADR-0008). Visibility changes and license choice are the owner's.
+- The repository is public: never commit host names, addresses, home paths, volume ids or personal data
+  (ADR-0004, ADR-0008). License changes and repository settings are the owner's.
 
 ## Commands
 

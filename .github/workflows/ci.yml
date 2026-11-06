@@ -5,10 +5,13 @@
 # manifest permission check, release assemble. Screenshot diff joins in P3/P4 when screens exist.
 name: CI
 
-# GitHub-hosted runners only. While the repository is private, CI runs on pull requests and manual
-# dispatch; once it is public, add a `push` trigger for `main` with the same paths-ignore
-# (owner decision 2026-11-06). Every push is preceded by tools/ci/check.sh on the build server.
+# GitHub-hosted runners only. The repository is public, so CI runs on pushes to `main`, pull
+# requests and manual dispatch (owner decision 2026-11-06). Every push is preceded by
+# tools/ci/check.sh on the build server.
 on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**']
   pull_request:
     paths-ignore: ['**/*.md', 'docs/**']
   workflow_dispatch:
