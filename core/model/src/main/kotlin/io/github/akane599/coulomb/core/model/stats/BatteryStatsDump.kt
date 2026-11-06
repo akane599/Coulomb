@@ -45,10 +45,15 @@ public data class NamedCount(
     val count: Long,
 )
 
-/** Time spent in one bin (signal strength, screen brightness). [bin] is the platform's bin index. */
+/**
+ * Time spent in one bin (signal strength, screen brightness). [bin] is the platform's bin index.
+ * [count] is how often the bin was entered; null when the source does not report it (checkin
+ * screen brightness).
+ */
 public data class BinTime(
     val bin: Int,
-    val timer: TimerStat,
+    val totalMs: Long,
+    val count: Long?,
 )
 
 public data class DeviceStats(
@@ -72,7 +77,8 @@ public data class DeviceStats(
     val phoneSignalStrength: List<BinTime> = emptyList(),
     /** `ScreenBrightness` bins 0 (dark) to 4 (bright). */
     val screenBrightness: List<BinTime> = emptyList(),
-    val signalScanning: TimerStat? = null,
+    /** Time the modem spent scanning for a signal. */
+    val signalScanningMs: Long? = null,
     val powerUse: List<SipperPower> = emptyList(),
     val powerSummary: PowerSummary? = null,
 )
@@ -110,7 +116,10 @@ public data class DeviceMisc(
     val longestLightDozeMs: Long? = null,
 )
 
-/** One entry of the platform power model's per-consumer list (the legacy "sippers"). */
+/**
+ * One device-wide entry of the platform power model, per power component (the legacy "sippers").
+ * Each app's own total is [UidStats.powerMah].
+ */
 public data class SipperPower(
     val kind: SipperKind,
     val uid: Int?,
@@ -135,9 +144,6 @@ public enum class SipperKind {
     CAMERA,
     MEMORY,
     AMBIENT_DISPLAY,
-
-    /** An app's own entry (checkin `pwi` label `uid`). */
-    UID,
 }
 
 public data class PowerSummary(

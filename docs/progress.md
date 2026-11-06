@@ -2,6 +2,26 @@
 
 One section per phase (SPEC 0.3.9, 17). Newest phase first.
 
+## P2 Data engine (in progress)
+
+### Shipped so far
+
+- S5 proto parser (`BatteryStatsProtoParser`): Wire 7.1.2 classes from the AOSP protos, walked
+  field by field so a cut stream keeps every complete UID (ADR-0013).
+- Shared line layer: `LineReader` (Okio, byte offsets, 64 KiB line cap, CRLF) and quote-aware
+  `Csv.split`.
+- S6 checkin parser (`BatteryStatsCheckinParser`, `-c`) producing the same records as S5. It is
+  checked against S5 on both fixture sets; the agreement and the known gaps are recorded in the
+  ADR-0013 amendment.
+- The zero rule in both parsers (ADR-0013 amendment): `ProtoOutputStream` drops empty nested
+  messages, so an absent counter is 0, not "not reported".
+
+### Open findings
+
+- Power estimates in the phone's checkin dump are above those in its proto dump taken 0.3 s
+  earlier, while CPU times match. The cause is not established (ADR-0013 amendment); `powerMah`
+  must not be compared across sources until it is.
+
 ## P1 Privileged core (2026-11-06)
 
 ### Shipped

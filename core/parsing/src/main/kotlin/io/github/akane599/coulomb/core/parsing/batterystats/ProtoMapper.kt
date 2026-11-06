@@ -39,14 +39,20 @@ import okio.ByteString
 /**
  * Wire classes to the source-neutral model (ADR-0013).
  *
- * `ProtoOutputStream` never writes a zero, false, empty string or zero enum value
+ * `ProtoOutputStream` never writes a zero, false, empty string or zero enum value, and drops a
+ * nested message that ends up empty unless it is a repeated entry
  * (core/java/android/util/proto/ProtoOutputStream.java, android-16.0.0_r4 and android-17.0.0_r1:
  * writeInt32Impl L1062-1067, writeInt64Impl L1143-1147, writeDoubleImpl L905-909, writeBoolImpl
- * L1769-1773, writeStringImpl L1841-1845, writeEnumImpl L1952-1956). So inside a message that is
- * present, an absent field is that zero: root's entry has no uid, a top-state entry has no state.
- * A message that is absent stays null in the model. An enum value the schema does not know (an OEM
- * addition such as Samsung's job stop reason 100) also decodes as absent; it is told apart from
- * zero by the unknown field it leaves behind, and counted.
+ * L1769-1773, writeStringImpl L1841-1845, writeEnumImpl L1952-1956, endObjectImpl L2088-2135).
+ * So an absent field is its zero (root's entry has no uid, a top-state entry has no state), and
+ * so is an absent message the writer always starts (`cpu`, `network`, `wifi`, `battery`, `misc`,
+ * ...) or starts for an existing timer: an all-zero counter and a missing one both read as 0.
+ * Only `bluetooth_misc` and `power_use_item`, which the writer may skip, stay null when absent.
+ * Entries with no time (wakelocks, jobs, syncs, sensors, processes) and zero stop-reason counts are
+ * dropped, as the checkin writer drops them, so [BatteryStatsCheckinParser] gives the same lists.
+ * An enum value the schema does not know (an OEM addition such as Samsung's job stop reason 100)
+ * also decodes as absent; it is told apart from zero by the unknown field it leaves behind, and
+ * counted.
  */
 internal class ProtoMapper(
     private val ctx: ParseContext,
@@ -61,74 +67,83 @@ internal class ProtoMapper(
                     unknown("UidProto.PowerUseItem", it)
                     it.computed_power_mah.orZero()
                 },
-            cpuUserMs = p.cpu?.let { it.user_duration_ms.orZero() },
-            cpuSystemMs = p.cpu?.let { it.system_duration_ms.orZero() },
-            partialWakelocks =
-                p.wakelocks.mapNotNull { w ->
-                    unknown("UidProto.Wakelock", w)
-                    w.partial?.let { WakelockStat(w.name.orEmpty(), timer(it), w.background_partial?.let(::duration)) }
-                },
-            aggregatedPartialWakelockMs = p.aggregated_wakelock?.let { it.partial_duration_ms.orZero() },
-            aggregatedBackgroundPartialWakelockMs = p.aggregated_wakelock?.let { it.background_partial_duration_ms.orZero() },
+            cpuUserMs = (p.cpu?.user_duration_ms).orZero(),
+            cpuSystemMs = (p.cpu?.system_duration_ms).orZero(),
+            partialWakelocks = p.wakelocks.mapNotNull(::wakelock),
+            aggregatedPartialWakelockMs = (p.aggregated_wakelock?.partial_duration_ms).orZero(),
+            aggregatedBackgroundPartialWakelockMs = (p.aggregated_wakelock?.background_partial_duration_ms).orZero(),
             wakeupAlarms = p.wakeup_alarm.map { NamedCount(it.name.orEmpty(), it.count.orZeroLong()) },
             jobs =
-                p.jobs.map {
+                p.jobs.mapNotNull {
                     unknown("UidProto.Job", it)
-                    JobTimer(it.name.orEmpty(), timer(it.total), it.background?.let(::duration))
+                    timer(it.total).takeIf(::hasTime)?.let { total -> JobTimer(it.name.orEmpty(), total, duration(it.background)) }
                 },
             jobStopReasons = p.job_completion.flatMap(::stopCounts),
-            syncs = p.syncs.map { SyncTimer(it.name.orEmpty(), timer(it.total), it.background?.let(::duration)) },
-            sensors = p.sensors.map { SensorStat(it.id.orZero(), timer(it.apportioned), it.background?.let(::duration)) },
-            network = p.network?.let(::network),
-            wifi = p.wifi?.let(::wifi),
+            syncs =
+                p.syncs.mapNotNull {
+                    timer(it.total).takeIf(::hasTime)?.let { total -> SyncTimer(it.name.orEmpty(), total, duration(it.background)) }
+                },
+            sensors =
+                p.sensors.mapNotNull {
+                    timer(it.apportioned).takeIf(::hasTime)?.let { total -> SensorStat(it.id.orZero(), total, duration(it.background)) }
+                },
+            network = network(p.network ?: UidProto.Network()),
+            wifi = wifi(p.wifi ?: UidProto.Wifi()),
             bluetooth = p.bluetooth_misc?.let(::bluetooth),
             processStates =
                 p.states.map {
                     unknown("UidProto.StateTime", it)
                     ProcessStateTime(processState(it), it.duration_ms.orZero())
                 },
-            foregroundActivityMs = p.foreground_activity?.let(::duration),
-            foregroundServiceMs = p.foreground_service?.let(::duration),
-            audioMs = p.audio?.let(::duration),
-            videoMs = p.video?.let(::duration),
-            cameraMs = p.camera?.let(::duration),
-            flashlightMs = p.flashlight?.let(::duration),
-            vibratorMs = p.vibrator?.let(::duration),
-            processes = p.process.map(::process),
+            foregroundActivityMs = duration(p.foreground_activity),
+            foregroundServiceMs = duration(p.foreground_service),
+            audioMs = duration(p.audio),
+            videoMs = duration(p.video),
+            cameraMs = duration(p.camera),
+            flashlightMs = duration(p.flashlight),
+            vibratorMs = duration(p.vibrator),
+            processes = p.process.map(::process).filter(::hasData),
         )
+    }
+
+    private fun wakelock(w: UidProto.Wakelock): WakelockStat? {
+        unknown("UidProto.Wakelock", w)
+        // An empty partial timer is not written; such a wakelock has no partial time to show.
+        val partial = w.partial ?: return null
+        return WakelockStat(w.name.orEmpty(), timer(partial), duration(w.background_partial))
     }
 
     fun system(p: SystemProto): DeviceStats {
         unknown("SystemProto", p)
-        val battery = p.battery?.also { unknown("SystemProto.Battery", it) }
+        val battery = (p.battery ?: SystemProto.Battery()).also { unknown("SystemProto.Battery", it) }
         return DeviceStats(
-            startClockTimeWallMs = battery.field { it.start_clock_time_ms },
-            startCount = battery.field { it.start_count },
-            totalRealtimeMs = battery.field { it.total_realtime_ms },
-            totalUptimeMs = battery.field { it.total_uptime_ms },
-            batteryRealtimeMs = battery.field { it.battery_realtime_ms },
-            batteryUptimeMs = battery.field { it.battery_uptime_ms },
-            screenOffRealtimeMs = battery.field { it.screen_off_realtime_ms },
-            screenOffUptimeMs = battery.field { it.screen_off_uptime_ms },
-            screenDozeMs = battery.field { it.screen_doze_duration_ms },
-            estimatedCapacityMah = battery.field { it.estimated_battery_capacity_mah },
-            minLearnedCapacityUah = battery.field { it.min_learned_battery_capacity_uah },
-            maxLearnedCapacityUah = battery.field { it.max_learned_battery_capacity_uah },
-            discharge = p.battery_discharge?.let(::discharge),
-            misc = p.misc?.let(::misc),
+            startClockTimeWallMs = battery.start_clock_time_ms.orZero(),
+            startCount = battery.start_count.orZero(),
+            totalRealtimeMs = battery.total_realtime_ms.orZero(),
+            totalUptimeMs = battery.total_uptime_ms.orZero(),
+            batteryRealtimeMs = battery.battery_realtime_ms.orZero(),
+            batteryUptimeMs = battery.battery_uptime_ms.orZero(),
+            screenOffRealtimeMs = battery.screen_off_realtime_ms.orZero(),
+            screenOffUptimeMs = battery.screen_off_uptime_ms.orZero(),
+            screenDozeMs = battery.screen_doze_duration_ms.orZero(),
+            estimatedCapacityMah = battery.estimated_battery_capacity_mah.orZero(),
+            minLearnedCapacityUah = battery.min_learned_battery_capacity_uah.orZero(),
+            maxLearnedCapacityUah = battery.max_learned_battery_capacity_uah.orZero(),
+            discharge = discharge(p.battery_discharge ?: SystemProto.BatteryDischarge()),
+            misc = misc(p.misc ?: SystemProto.Misc()),
             kernelWakelocks = p.kernel_wakelock.map { NamedTimer(it.name.orEmpty(), timer(it.total)) },
             wakeupReasons = p.wakeup_reason.map { NamedTimer(it.name.orEmpty(), timer(it.total)) },
             phoneSignalStrength =
                 p.phone_signal_strength.map {
                     unknown("SystemProto.PhoneSignalStrength", it)
-                    BinTime(it.name?.value ?: unknownVarint(it, NAME_TAG)?.toInt() ?: 0, timer(it.total))
+                    bin(it.name?.value ?: unknownVarint(it, NAME_TAG)?.toInt() ?: 0, timer(it.total))
                 },
             screenBrightness =
                 p.screen_brightness.map {
                     unknown("SystemProto.ScreenBrightness", it)
-                    BinTime(it.name?.value ?: unknownVarint(it, NAME_TAG)?.toInt() ?: 0, timer(it.total))
+                    bin(it.name?.value ?: unknownVarint(it, NAME_TAG)?.toInt() ?: 0, timer(it.total))
                 },
-            signalScanning = p.signal_scanning?.let(::timer),
+            signalScanningMs = duration(p.signal_scanning),
             powerUse =
                 p.power_use_item.map {
                     unknown("SystemProto.PowerUseItem", it)
@@ -142,7 +157,7 @@ internal class ProtoMapper(
                     )
                 },
             powerSummary =
-                p.power_use_summary?.let {
+                (p.power_use_summary ?: SystemProto.PowerUseSummary()).let {
                     PowerSummary(
                         capacityMah = it.battery_capacity_mah.orZero(),
                         computedMah = it.computed_power_mah.orZero(),
@@ -157,15 +172,15 @@ internal class ProtoMapper(
         WifiStat(
             runningMs = w.running_duration_ms.orZero(),
             fullLockMs = w.full_wifi_lock_duration_ms.orZero(),
-            scan = w.apportioned_scan?.let(::timer),
-            backgroundScanMs = w.background_scan?.let(::duration),
+            scan = timer(w.apportioned_scan),
+            backgroundScanMs = duration(w.background_scan),
         )
 
     private fun bluetooth(b: UidProto.BluetoothMisc): BluetoothStat =
         BluetoothStat(
-            bleScan = b.apportioned_ble_scan?.let(::timer),
-            backgroundBleScanMs = b.background_ble_scan?.let(::duration),
-            unoptimizedBleScanMs = b.unoptimized_ble_scan?.let(::duration),
+            bleScan = timer(b.apportioned_ble_scan),
+            backgroundBleScanMs = duration(b.background_ble_scan),
+            unoptimizedBleScanMs = duration(b.unoptimized_ble_scan),
             bleScanResults = b.ble_scan_result_count.orZeroLong(),
         )
 
@@ -181,9 +196,10 @@ internal class ProtoMapper(
         )
 
     private fun stopCounts(completion: UidProto.JobCompletion): List<JobStopCount> =
-        completion.reason_count.map {
+        completion.reason_count.mapNotNull {
             unknown("UidProto.JobCompletion.ReasonCount", it)
-            JobStopCount(completion.name.orEmpty(), stopReason(it), it.count.orZeroLong())
+            // Every code is listed for every job; most counts are zero.
+            it.count?.takeIf { n -> n != 0 }?.let { n -> JobStopCount(completion.name.orEmpty(), stopReason(it), n.toLong()) }
         }
 
     private fun discharge(d: SystemProto.BatteryDischarge): Discharge {
@@ -248,11 +264,22 @@ internal class ProtoMapper(
         return TimerStat(totalMs = t.duration_ms.orZero(), count = t.count.orZero(), maxMs = t.max_duration_ms?.takeIf { it >= 0 })
     }
 
-    private fun duration(t: TimerProto): Long = t.duration_ms.orZero()
+    /** An absent timer has no time: the writer skips empty ones. */
+    private fun duration(t: TimerProto?): Long = t?.duration_ms.orZero()
+
+    private fun hasTime(t: TimerStat): Boolean = t.totalMs != 0L
+
+    private fun hasData(p: ProcessStat): Boolean =
+        listOf(p.userMs, p.systemMs, p.foregroundMs, p.starts, p.anrs, p.crashes).any { it != null && it != 0L }
+
+    private fun bin(
+        bin: Int,
+        timer: TimerStat,
+    ): BinTime = BinTime(bin, timer.totalMs, timer.count)
 
     private fun stopReason(r: UidProto.JobCompletion.ReasonCount): String =
         r.name?.name
-            ?: unknownVarint(r, NAME_TAG)?.let { "$OEM_PREFIX$it" }
+            ?: unknownVarint(r, NAME_TAG)?.let { JobStopReasons.name(it.toInt()) }
             ?: InternalStopReasonEnum.INTERNAL_STOP_REASON_CANCELLED.name
 
     private fun processState(s: UidProto.StateTime): UidProcessState =
@@ -341,16 +368,10 @@ internal class ProtoMapper(
 
         /** The `state` field of UidProto.StateTime. */
         const val STATE_TAG = 1
-
-        /** Prefix for a job stop reason the AOSP enum does not define. */
-        const val OEM_PREFIX = "OEM_"
     }
 }
 
 private fun Long?.orZero(): Long = this ?: 0L
-
-/** A field of a message that may be absent: null when the message is, its zero when only the field is. */
-private inline fun SystemProto.Battery?.field(get: (SystemProto.Battery) -> Long?): Long? = this?.let { get(it) ?: 0L }
 
 private fun Int?.orZero(): Int = this ?: 0
 

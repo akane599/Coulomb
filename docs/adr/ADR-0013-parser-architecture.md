@@ -68,3 +68,48 @@ inputs are in `fixtures/`.
 - **Collector cost:** formatting the text dumps costs system_server CPU, which is drain Coulomb
   causes. Per-UID alarm and job counts already arrive in S5, so the collector (P2, own ADR) reads
   the alarm and jobscheduler text dumps less often than every heavy snapshot.
+
+## Amendment 2026-11-06: zeros, and the checkin parser (S6)
+
+Found while writing the S6 parser and checking it against S5 on the same capture.
+
+- **An absent message is often a zero.** `ProtoOutputStream.endObjectImpl` drops a nested
+  message that ends up empty, unless it is a repeated entry (android-16.0.0_r4 and
+  android-17.0.0_r1 L2088-2135). So an all-zero `cpu`, `network`, `wifi`, `battery`, `misc` or
+  `battery_discharge`, or an all-zero timer, simply disappears. The first S5 mapper read those as
+  null ("not reported"); on the emulator that gave `cpu = null` and `discharge = null`.
+- **The zero rule, in both parsers.** A counter the writer always covers is 0 when absent, so a
+  missing value and a written zero read the same. `bluetooth` and the per-UID `powerMah`, which
+  the writer may skip, stay null when absent. Entries with no time are dropped, as the checkin
+  writer drops them: wakelocks without partial time, and jobs, syncs, sensors and processes with
+  zero totals. Zero stop-reason counts are dropped too.
+- **Model changes.**
+  - `BinTime` holds `totalMs` and a nullable `count`: checkin prints brightness times without
+    counts.
+  - `signalScanningMs` replaces a timer the checkin form cannot fill.
+  - `SipperKind.UID` is gone: an app's own power is `UidStats.powerMah` in both sources.
+- **S6 design.**
+  - Each mapped section is an enum of its columns in the writer's order. The writer
+    (`BatteryStats.dumpCheckinLocked`) is identical in android-16.0.0_r4 and android-17.0.0_r1.
+  - Only the `jbc` columns depend on the SDK level: `JobParameters.JOB_STOP_REASON_CODES` has 15
+    codes in 16 and 16 in 17. The parser therefore takes `sdkInt`.
+  - Checkin prints counts without their codes, so an OEM's extra stop reason (One UI 9: code 100)
+    is counted as unknown column `jbc.18` instead of being named.
+  - Known sections the model does not use are skipped without counting them as unknown; unknown
+    section ids and extra columns are counted.
+- **Cross-check.** On both fixture sets the two parsers agree exactly on every UID they share, and
+  on the device totals apart from the realtime clocks (the two dumps are about 0.3 s apart). The
+  remaining differences are what checkin cannot carry:
+  - CPU times truncated to the millisecond where the proto rounds;
+  - no timer maxima for jobs, syncs, sensors and scans;
+  - no brightness counts;
+  - commas in wakelock and alarm names replaced by `_`;
+  - no line for an all-zero UID (345 of 557 on the phone), but extra UIDs that have only a power
+    entry (19 on the emulator), which the proto leaves out;
+  - an OEM's unnamed stop reasons.
+- **Power estimates differ between the two dumps.** The power figures in the phone's checkin dump
+  are above those in the proto dump taken 0.3 s earlier (CPU 1045 vs 927 mAh, Bluetooth 1.6 vs
+  0.15 mAh), while the per-UID CPU times match. Both paths call `prepareForDumpLocked` and the same
+  dump helper (BatteryStatsService.java android-17.0.0_r1 L3374-3456; BatteryStats.java L7835 and
+  L7915), so the format does not explain the gap. The cause is not established. Until it is, estimators must not compare
+  `powerMah` across the two sources, and the cross-check test leaves power out.
