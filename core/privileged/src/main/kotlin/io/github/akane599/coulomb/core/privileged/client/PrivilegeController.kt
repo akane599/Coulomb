@@ -453,7 +453,8 @@ internal class PrivilegeController(
     ): DumpResult<R> =
         dump(
             viaWorker = { w, sink -> w.dumpService(service.id, sink) },
-            inApp = InAppTarget(service.binderName, emptyArray()) { it.dump },
+            // A service apps cannot look up needs the worker; without it the result is NO_ACCESS.
+            inApp = InAppTarget(service.binderName, emptyArray()) { it.dump }.takeIf { service.inApp },
             timeoutMs = timeoutMs,
             isComplete = isComplete,
             route = route,

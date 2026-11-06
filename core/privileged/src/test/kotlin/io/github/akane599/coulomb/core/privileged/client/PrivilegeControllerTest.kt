@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.privileged.client
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import io.github.akane599.coulomb.core.model.AccessTier
 import io.github.akane599.coulomb.core.model.GrantStatus
 import io.github.akane599.coulomb.core.model.ManagerPermission
@@ -21,6 +22,7 @@ import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.Route
 import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
+import io.github.akane599.coulomb.core.privileged.SystemService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -464,6 +466,22 @@ class PrivilegeControllerTest {
             grants.status = allGranted.copy(usageStatsPermission = false)
             val noPermission = c.dumpBatteryStats(BatteryStatsMode.HISTORY) { String(it.readBytes()) }
             assertThat((noPermission as DumpResult.Unavailable).reason).isEqualTo(FailureReason.NO_ACCESS)
+        }
+
+    @Test
+    fun servicesAppsCannotLookUpAreNeverDumpedInApp() =
+        runTest {
+            grants.status = allGranted
+            val c = controller()
+            c.start()
+            runCurrent()
+            for (service in listOf(SystemService.BATTERY, SystemService.SUSPEND_CONTROL_INTERNAL)) {
+                val result = c.dumpService(service, route = RoutePreference.IN_APP_FIRST) { String(it.readBytes()) }
+                assertWithMessage("$service").that((result as DumpResult.Unavailable).reason).isEqualTo(FailureReason.NO_ACCESS)
+            }
+            assertThat(inApp.calls).isEqualTo(0)
+            val alarm = c.dumpService(SystemService.ALARM, route = RoutePreference.IN_APP_FIRST) { String(it.readBytes()) }
+            assertThat((alarm as DumpResult.Complete).route).isEqualTo(Route.IN_APP)
         }
 
     @Test

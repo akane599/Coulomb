@@ -67,18 +67,26 @@ public enum class BatteryStatsMode(
  * System services the worker may dump without arguments (SPEC 19.1 read group). Binder names were
  * checked in `dumpsys -l` on both P0 devices (`fixtures/<device>/<build>/probe/dumpsys-services.txt`);
  * `suspend_control_internal` is a probe and is missing on both (S8).
+ *
+ * [inApp]: whether an app may look the service up at all, which the T1 route needs. SELinux lets
+ * `untrusted_app` find only `app_api_service` types. `battery` is `battery_service` and
+ * `suspend_control_internal` is `system_suspend_control_internal_service`, neither of them one
+ * (system/sepolicy private/service_contexts android-16.0.0_r4 L231 and L478, android-17.0.0_r1
+ * L252 and L508; public/service.te android-16.0.0_r4 L58 and L93, android-17.0.0_r1 L56 and L91).
+ * Seen on the API 37 AVD: `Debug.dumpService("battery")` returns false with DUMP granted.
  */
 public enum class SystemService(
     internal val id: Int,
     internal val binderName: String,
+    internal val inApp: Boolean,
 ) {
-    ALARM(1, "alarm"),
-    DEVICE_IDLE(2, "deviceidle"),
-    POWER(3, "power"),
-    JOB_SCHEDULER(4, "jobscheduler"),
-    BATTERY(5, "battery"),
-    THERMAL(6, "thermalservice"),
-    SUSPEND_CONTROL_INTERNAL(7, "suspend_control_internal"),
+    ALARM(1, "alarm", inApp = true),
+    DEVICE_IDLE(2, "deviceidle", inApp = true),
+    POWER(3, "power", inApp = true),
+    JOB_SCHEDULER(4, "jobscheduler", inApp = true),
+    BATTERY(5, "battery", inApp = false),
+    THERMAL(6, "thermalservice", inApp = true),
+    SUSPEND_CONTROL_INTERNAL(7, "suspend_control_internal", inApp = false),
     ;
 
     internal companion object {
