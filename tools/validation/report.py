@@ -180,14 +180,30 @@ def heavy_cost(db, capture, checkin, out):
         f"p90 {fmt(p90, 0, ' ms')}, max {fmt(max(durations) if durations else None, 0, ' ms')} "
         f"(target < {HEAVY_WALL_MS} ms: {verdict(None if p90 is None else p90 < HEAVY_WALL_MS)} at p90).\n",
     )
+    # A read that slept or failed is stored as a light snapshot, so outcomes count every attempt:
+    # any snapshot whose sources were read (ADR-0018, heavy only when whole).
     statuses = Counter()
-    for (text,) in db.execute("SELECT sourceStatusJson FROM snapshot WHERE kind = 'HEAVY'"):
-        for source, status in json.loads(text or "{}").items():
+    attempts = slept = screen_off = screen_off_slept = 0
+    for text, trigger in db.execute("SELECT sourceStatusJson, trigger FROM snapshot"):
+        outcome = json.loads(text or "{}")
+        if not outcome:
+            continue
+        attempts += 1
+        did_sleep = "slept" in outcome.values()
+        slept += did_sleep
+        if trigger == "SCREEN_OFF":
+            screen_off += 1
+            screen_off_slept += did_sleep
+        for source, status in outcome.items():
             statuses[(source, status)] += 1
-    out.append("| Source | Outcome | Snapshots |\n| --- | --- | ---: |")
+    out.append("| Source | Outcome | Reads |\n| --- | --- | ---: |")
     for (source, status), count in sorted(statuses.items()):
         out.append(f"| {source} | {status} | {count:,} |")
     out.append("")
+    out.append(
+        f"The CPU slept during {slept:,} of {attempts:,} reads, stored light. "
+        f"At screen off: {screen_off_slept:,} of {screen_off:,}.\n",
+    )
 
     stat, uptime, tck = read(capture, "proc_stat.txt"), read(capture, "uptime.txt"), read(capture, "clk_tck.txt")
     if stat and uptime and tck:
