@@ -20,7 +20,8 @@ public data class BatteryHistory(
     /**
      * Monotonic time of the first record, which [HistoryRecord.offsetMs] counts from. Null when it
      * cannot be known: the read has no `NEXT:` line, a record failed to print, a record's time step
-     * was unreadable, or there were no records.
+     * was unreadable, where a record ended was lost (its records were then not read), or there were
+     * no records.
      */
     val firstRecordMs: Long?,
     val recordCount: Long,

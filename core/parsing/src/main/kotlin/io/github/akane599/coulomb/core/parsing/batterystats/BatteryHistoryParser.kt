@@ -41,6 +41,10 @@ public fun interface HistorySink {
  *   counts the failed record, so times are not placed ([BatteryHistory.firstRecordMs] is null).
  * - `9,h,0,Dcpu=` and `9,h,0,Dpst=` lines are step details of the previous record, not records;
  *   Coulomb does not use them.
+ * - App-controlled tags can hold line breaks; [CheckinLines] keeps them inside their record. Where
+ *   it loses a record's end, nothing after it is read as a record, because an app could have
+ *   forged it: the read is incomplete and unplaced, and only a `NEXT:` that is the last line is
+ *   kept, which no tag can follow, so the next read can go on from there.
  *
  * Plain `-c` output (the history followed by the since-charged data) is accepted too: the other
  * checkin lines are skipped, and without `NEXT:` the read is incomplete.
@@ -97,19 +101,33 @@ private class HistoryWalk(
     /** A record's step is missing, so the offsets after it are wrong. */
     private var timingLost = false
 
+    /** Record boundaries are lost ([CheckinLines.desync]): later lines are only checked for a last `NEXT:`. */
+    private var desynced = false
+
+    /** The cursor on the last line read while [desynced], or null when that line was something else. */
+    private var lastLineNext: Long? = null
+
     fun run(): Boolean {
         var line = guard { lines.next() }
         while (line != null && line.terminated) {
             val current = line
-            guard { read(current) } ?: break
+            guard { accept(current) } ?: break
             flush(all = false)
             line = guard { lines.next() }
         }
         if (line != null && !line.terminated) {
             cut = true
+            lastLineNext = null
             issue(line.offset, BatteryHistoryParser.SOURCE, "ended inside a line")
         }
         flush(all = true)
+        return finish()
+    }
+
+    private fun accept(line: Line) = if (desynced) afterDesync(line) else read(line)
+
+    private fun finish(): Boolean {
+        if (desynced) next = lastLineNext
         if (header == null) issue(lines.offset, BatteryHistoryParser.SOURCE, "no vers line")
         if (next == null && !cut) issue(lines.offset, BatteryHistoryParser.SOURCE, "no NEXT line")
         return !cut && !failed && !lost && header != null && next != null
@@ -170,15 +188,33 @@ private class HistoryWalk(
 
     private fun read(line: Line) {
         val text = line.text
-        // The rest of a plain `-c` dump belongs to S6.
-        if (text.isEmpty() || isOtherCheckin(text)) return
         when {
-            line.truncated -> truncated(line)
-            text.startsWith(CheckinLines.POOL_PREFIX) -> pool(line)
-            text.startsWith(CheckinLines.HISTORY_PREFIX) -> record(line)
-            text.startsWith(NEXT_PREFIX) -> nextCursor(line)
-            text.startsWith(VERS_PREFIX) -> version(line)
-            else -> stray(line)
+            line.truncated -> {
+                desync(line)
+            }
+
+            // The rest of a plain `-c` dump belongs to S6.
+            text.isEmpty() || isOtherCheckin(text) -> {}
+
+            text.startsWith(CheckinLines.POOL_PREFIX) -> {
+                pool(line)
+            }
+
+            text.startsWith(CheckinLines.HISTORY_PREFIX) -> {
+                record(line)
+            }
+
+            text.startsWith(NEXT_PREFIX) -> {
+                nextCursor(line)
+            }
+
+            text.startsWith(VERS_PREFIX) -> {
+                version(line)
+            }
+
+            else -> {
+                stray(line)
+            }
         }
     }
 
@@ -188,10 +224,22 @@ private class HistoryWalk(
             !text.startsWith(CheckinLines.HISTORY_PREFIX) &&
             !text.startsWith(VERS_PREFIX)
 
-    private fun truncated(line: Line) {
-        issue(line.offset, BatteryHistoryParser.SOURCE, "record longer than ${LineReader.MAX_LINE_BYTES} bytes")
+    private fun desync(line: Line) {
+        val why =
+            when (lines.desync) {
+                CheckinLines.Desync.UNESCAPED_TAG -> "wakelock tag printed without escaping"
+                else -> "record longer than ${LineReader.MAX_LINE_BYTES} characters"
+            }
+        issue(line.offset, BatteryHistoryParser.SOURCE, "$why; the rest of the read is not used")
         lost = true
-        if (line.text.startsWith(CheckinLines.HISTORY_PREFIX)) timingLost = true
+        timingLost = true
+        desynced = true
+    }
+
+    /** No line is a record any more; only a `NEXT:` on the very last line counts. */
+    private fun afterDesync(line: Line) {
+        val text = line.text
+        lastLineNext = if (text.startsWith(NEXT_PREFIX)) text.substring(NEXT_PREFIX.length).trim().toLongOrNull() else null
     }
 
     /** A stack trace from a record that failed to print, or other text the history never holds. Its text is not kept. */
@@ -491,7 +539,11 @@ private class HistoryWalk(
             }
 
             index != null -> {
-                pool[index] ?: null.also { issue(line.offset, "h", "tag not in the pool") }
+                // A tag added after the pool was printed: the record is read without it.
+                pool[index] ?: null.also {
+                    issue(line.offset, "h", "tag not in the pool")
+                    lost = true
+                }
             }
 
             colon > 0 && ref.length >= colon + INLINE_MARKS && ref.endsWith('"') -> {

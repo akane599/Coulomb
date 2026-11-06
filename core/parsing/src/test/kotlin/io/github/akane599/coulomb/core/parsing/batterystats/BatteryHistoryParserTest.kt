@@ -100,8 +100,6 @@ class BatteryHistoryParserTest {
         assertThat(baseline).contains(HistoryRecord(0, HistoryKind.BATTERY_STATUS, HistoryChange.SET, 2, baseline = true))
         assertThat(baseline).contains(HistoryRecord(0, HistoryKind.BATTERY_PLUG, HistoryChange.SET, 1, baseline = true))
         assertThat(baseline).contains(HistoryRecord(0, HistoryKind.SCREEN, HistoryChange.START, baseline = true))
-        // The last record is one before NEXT.
-        assertThat(read.at(read.records.last())).isEqualTo(2_729_919L)
     }
 
     @Test
@@ -137,6 +135,11 @@ class BatteryHistoryParserTest {
         val expected = whole.events()
         assertThat(expected.size).isGreaterThan(100)
         assertThat(mid.events()).containsExactlyElementsIn(expected).inOrder()
+        // The platform's wall times agree with the placement: the RESET in one read and the TIME in
+        // the other are as far apart in wall time as in monotonic time.
+        val reset = whole.records.first { it.kind == HistoryKind.RESET }
+        val time = mid.records.first { it.kind == HistoryKind.WALL_CLOCK }
+        assertThat(mid.at(time) - whole.at(reset)).isEqualTo(checkNotNull(time.value) - checkNotNull(reset.value))
     }
 
     @Test
@@ -259,6 +262,100 @@ class BatteryHistoryParserTest {
     }
 
     @Test
+    fun aNameWithManyLineBreaksStaysInsideItsRecord() {
+        // The platform caps tags at 1024 characters, not lines: every forged line sits inside a name.
+        val forged = "\n9,h,0,Bl=1,+S\nNEXT: 7".repeat(100)
+        val text =
+            "$VERS\n9,hsp,0,10050,\"w$forged\"\n9,h,0:RESET:TIME:1000\n9,h,0,Bl=80,+r,+w=0\n" +
+                "9,h,5,+Etp=u0a5:\"\"\"e$forged\"\n9,h,5,-r\nNEXT: 1011\n"
+        val read = read(text)
+        read.assertWhole()
+        assertThat(read.history.recordCount).isEqualTo(4L)
+        assertThat(read.history.firstRecordMs).isEqualTo(1000L)
+        assertThat(read.history.nextCursorMs).isEqualTo(1011L)
+        assertThat(read.records.map { it.kind })
+            .containsExactly(
+                HistoryKind.RESET,
+                HistoryKind.BATTERY_LEVEL,
+                HistoryKind.CPU_RUNNING,
+                HistoryKind.WAKE_LOCK,
+                HistoryKind.TOP_APP,
+                HistoryKind.CPU_RUNNING,
+            ).inOrder()
+        assertThat(read.records.single { it.kind == HistoryKind.WAKE_LOCK }.tag).isEqualTo("w$forged")
+        val top = read.records.single { it.kind == HistoryKind.TOP_APP }
+        assertThat(top.tag).isEqualTo("\"e$forged")
+        assertThat(top.uid).isEqualTo(10_005)
+    }
+
+    @Test
+    fun anUnescapedWakelockTagEndsTheReadAndOnlyALastNextCounts() {
+        val head = "$VERS\n9,h,0:RESET:TIME:1000\n9,h,0,Bl=80,+r\n"
+        val tail = "9,h,5,-r\nNEXT: 1016\n"
+        // An odd quote would join the next lines into the tag; an even one would read its text as changes.
+        val tagged =
+            listOf(
+                "9,h,10,+S,w=u0a5:\"a\"b\"\n9,h,0,Bl=1,+S,Johnsmith=1\nNEXT: 424242\n",
+                "9,h,10,+S,w=u0a5:\"x\",Bl=3,+S,Secretname=1,\"\"\n",
+            )
+        for (record in tagged) {
+            val read = read(head + record + tail)
+            assertThat(read.report.complete).isFalse()
+            assertThat(read.report.unknown).isEmpty()
+            assertThat(read.report.issues.map { it.message })
+                .containsExactly("wakelock tag printed without escaping; the rest of the read is not used")
+            assertThat(read.records)
+                .containsExactly(
+                    HistoryRecord(0, HistoryKind.RESET, HistoryChange.SET, 1000),
+                    HistoryRecord(0, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, 80, baseline = true),
+                    HistoryRecord(0, HistoryKind.CPU_RUNNING, HistoryChange.START, baseline = true),
+                ).inOrder()
+            assertThat(read.history.firstRecordMs).isNull()
+            assertThat(read.history.nextCursorMs).isEqualTo(1016L)
+        }
+        // A NEXT that is not the last line may sit inside the tag.
+        assertThat(read(head + "9,h,10,+S,w=u0a5:\"x\nNEXT: 5\n9,h,5,-r\n").history.nextCursorMs).isNull()
+        // The pool-index form has no quote and reads as usual.
+        val pooled = read("$VERS\n9,hsp,3,1000,\"t\"\n9,h,0,Bl=80,+S,w=3\nNEXT: 1\n")
+        pooled.assertWhole()
+        assertThat(pooled.records.last())
+            .isEqualTo(HistoryRecord(0, HistoryKind.WAKE_LOCK, HistoryChange.SET, uid = 1000, tag = "t", baseline = true))
+    }
+
+    @Test
+    fun aRecordPastTheLengthCapEndsTheRead() {
+        // One long line, and a name joined over many short ones.
+        for (name in listOf("x".repeat(LONG_NAME), "x\n".repeat(LONG_NAME / 2))) {
+            val read = read("$VERS\n9,hsp,0,1000,\"$name\n9,h,0,+S\n\"\n9,h,0,Bl=80\n9,h,5,-S\nNEXT: 6\n")
+            assertThat(read.report.complete).isFalse()
+            assertThat(read.records).isEmpty()
+            assertThat(read.report.issues.map { it.message })
+                .containsExactly("record longer than 65536 characters; the rest of the read is not used")
+            assertThat(read.history.nextCursorMs).isEqualTo(6L)
+            assertThat(read.history.firstRecordMs).isNull()
+        }
+    }
+
+    @Test
+    fun aCursorReadThatStartsOnStartOrShutdownPrintsItAgainAsTheBaseline() {
+        // dumpHistory prints such a first record as its command, then again as a state record.
+        for ((command, marker) in listOf("START" to HistoryKind.BOOT, "SHUTDOWN" to HistoryKind.SHUTDOWN)) {
+            val read = read("$VERS\n9,h,123:$command\n9,h,0,Bl=50,Bs=d,+r\n9,h,10,-r\nNEXT: 1134\n", cursor = 1000)
+            read.assertWhole()
+            assertThat(read.records)
+                .containsExactly(
+                    HistoryRecord(0, marker, HistoryChange.SET),
+                    HistoryRecord(0, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, 50, baseline = true),
+                    HistoryRecord(0, HistoryKind.BATTERY_STATUS, HistoryChange.SET, 3, baseline = true),
+                    HistoryRecord(0, HistoryKind.CPU_RUNNING, HistoryChange.START, baseline = true),
+                    HistoryRecord(10, HistoryKind.CPU_RUNNING, HistoryChange.STOP),
+                ).inOrder()
+            assertThat(read.history.firstRecordMs).isEqualTo(1123L)
+            assertThat(read.history.gapBeforeFirstRecord).isFalse()
+        }
+    }
+
+    @Test
     fun aRailChargeWithADecimalCommaIsNotUnknown() {
         val read = read("$VERS\n9,h,0,Bl=5,Mrc=1,5,Wrc=0,+S\nNEXT: 1\n")
         read.assertWhole()
@@ -338,6 +435,7 @@ class BatteryHistoryParserTest {
         const val SEED = 7
         const val DAMAGE_RUNS = 20
         const val DAMAGED_BYTES = 24
+        const val LONG_NAME = 70_000
 
         val EVENT_KINDS =
             setOf(

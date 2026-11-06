@@ -31,7 +31,9 @@ import java.util.TreeMap
  *
  * The device section comes before the UIDs. A stream cut inside a line keeps the device totals if
  * the UID section had started, and every UID before the one being read. A cut exactly at a line
- * boundary is invisible here; the transport reports it (ADR-0009).
+ * boundary is invisible here; the transport reports it (ADR-0009). Where [CheckinLines] loses the
+ * end of a record, reading stops the same way, since a later line may be an app's name dressed as
+ * a row.
  */
 public object BatteryStatsCheckinParser {
     public const val SOURCE: String = "batterystats.checkin"
@@ -64,22 +66,19 @@ private class CheckinWalk(
     private var cut = false
     private var otherVersion = false
 
-    /** A record was too long to read, so some data is missing. */
-    private var lost = false
-
     @Suppress("TooGenericExceptionCaught") // The parser boundary: bad input must never throw (SPEC 5.1).
     fun run(): Boolean {
         try {
             var line = lines.next()
-            while (line != null && line.terminated) {
-                if (line.truncated) {
-                    truncated(line)
-                } else {
-                    read(line)
-                }
+            while (line != null && line.terminated && !line.truncated) {
+                read(line)
                 line = lines.next()
             }
-            if (line != null) {
+            if (line != null && line.truncated) {
+                desync(line)
+                // Drained, not read, so the writer is not left blocked and the byte count is whole.
+                while (lines.next() != null) continue
+            } else if (line != null) {
                 cut = true
                 ctx.issue(line.offset, BatteryStatsCheckinParser.SOURCE, "ended inside a line")
             }
@@ -96,12 +95,20 @@ private class CheckinWalk(
     }
 
     /** Read to the end, in the known format, with the version and device sections present. */
-    private val complete: Boolean get() = !cut && !otherVersion && !lost && header != null && device.sawBattery
+    private val complete: Boolean get() = !cut && !otherVersion && header != null && device.sawBattery
 
-    /** History records belong to S7; any other record lost makes the dump incomplete. */
-    private fun truncated(line: Line) {
-        ctx.issue(line.offset, BatteryStatsCheckinParser.SOURCE, "record longer than ${LineReader.MAX_LINE_BYTES} bytes")
-        if (!isHistory(line.text)) lost = true
+    /**
+     * Where a record ends is lost ([CheckinLines.desync]), so a later line may be part of an
+     * app-controlled name dressed as a row: reading stops there, as at a cut.
+     */
+    private fun desync(line: Line) {
+        val why =
+            when (lines.desync) {
+                CheckinLines.Desync.UNESCAPED_TAG -> "history wakelock tag printed without escaping"
+                else -> "record longer than ${LineReader.MAX_LINE_BYTES} characters"
+            }
+        ctx.issue(line.offset, BatteryStatsCheckinParser.SOURCE, "$why; the rest of the dump is not read")
+        cut = true
     }
 
     private fun isHistory(text: String) = text.startsWith(CheckinLines.HISTORY_PREFIX) || text.startsWith(CheckinLines.POOL_PREFIX)

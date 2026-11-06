@@ -81,3 +81,36 @@ through, and from the first read's `NEXT:`).
 - **Time base.** History times are `MonotonicClock` milliseconds, which keep counting across
   reboots. Mapping them to `HistoryEvent(elapsedNs, bootCount, …)` is part of the Room schema
   decision (P2), not of the parser.
+
+## Amendment 2026-11-06: independent review of the S7 parser
+
+A fresh read-only review traced the parser against the printer in both tags and tried to break it
+with crafted input. The name tables, steps, placing, gaps, baselines and other read shapes held.
+These findings changed the parser, or the collector still has to act on them:
+
+- **Names with many line breaks.** The platform caps tag length at 1024 characters, not lines
+  (`BatteryStatsHistory` L352, and L2199-2201 in android-16.0.0_r4, L2196-2198 in android-17.0.0_r1), so one tag can hold about 1000 line
+  breaks. The old cap of 64 joined lines let the rest of such a name pass as records. Joins are now
+  bounded only by the 64 KB character cap.
+- **Lost boundaries.** A record or join longer than the cap, and an inline wakelock tag from the
+  one branch that does not double its quotes (`,w=<uid>:"<tag>"`, android-17.0.0_r1 L6723-6733,
+  android-16.0.0_r4 L6691-6701), hide where a record ends. An app can then forge records,
+  including a `NEXT:`. From that line on nothing is read as a record. The read is incomplete and
+  unplaced, and only a `NEXT:` on the last line is kept: the platform prints it after everything
+  else, so no tag can follow it. The collector can then continue from that `NEXT:` and record the
+  read's span as a gap. The unescaped form needs a full pool and a wakelock tag on a record whose
+  wakelock bit did not change; it never appears in the phone's 40,330 records (885 pool tags
+  against a limit of 32,766). The S6 parser stops reading at the same point, as at a cut.
+- **A tag added after the pool was printed** comes out as "tag not in the pool". The record is
+  kept without the tag, and the read is incomplete.
+- **A change merged into the last record (collector).** Until the dump commits the history batch
+  (`commitCurrentHistoryBatchLocked`, after printing), a state change within a second of the last
+  record can be merged into that record at the same time T. `NEXT:` is T + 1, so no later read
+  prints the change. Only the next read's baseline shows the new state, with no transition time.
+  The collector must compare each read's baseline with the state it has stored. On a difference
+  it records "changed somewhere in (T, first record]" instead of a transition at the first record.
+  An emulator experiment (toggle Wi-Fi during a long read) is queued with the P2 instrumented work.
+- **Times that go backwards.** The platform logs an error only when a record is more than 60 s
+  earlier than the one before it (`BatteryStatsHistory` L1810-1814, both tags). A record written with a
+  time below an earlier read's cursor is never printed. How often this happens on the phone is an
+  open question for protocol A.

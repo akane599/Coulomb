@@ -24,7 +24,19 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   a sink in batches of 512, places them from `NEXT:`, flags gaps and marks the restated state after
   each read start, `START` and `RESET` (ADR-0014 amendment). Golden tests use three real emulator
   reads (from 0, from mid-buffer, from `NEXT:`) that agree on every event they share, and the phone's
-  40 064 records.
+  40 064 records. The `CHECKIN_HISTORY` worker mode runs the read, and the S7 probe checks for `NEXT:`.
+- Independent review of S7 (ADR-0014 second amendment), parser findings fixed:
+  - names with up to about 1000 line breaks stay inside their record (the 64-line join cap is gone);
+  - after a record whose end is lost (past the 64 KB cap, or a wakelock tag the platform prints
+    without doubling its quotes), nothing is read as a record and only a last-line `NEXT:` is kept;
+    S6 stops at the same point;
+  - a tag missing from the pool marks the read incomplete;
+  - a test that could not fail now checks placement against the platform's wall times.
+- S21 `dumpsys battery` (`BatteryServiceParser`): AOSP fields typed, OEM `key: value` lines kept
+  as a raw map and counted by key, OEM log buffers skipped (they hold the battery's QR code) and
+  counted by name. A "values frozen by `dumpsys battery set`" flag.
+- S19 `dumpsys thermalservice` (`ThermalServiceParser`): cached and current temperatures, cooling
+  devices, static thresholds, the status-override flag; Android 17's per-device lines skipped.
 
 ### Open findings
 
@@ -35,6 +47,10 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 - `--history-start` makes system_server walk the whole history buffer and print the whole tag
   pool on every read, and it starts an asynchronous stats write. The collector keeps to one read
   per heavy snapshot; the on-device cost is measured in the P2 performance gate.
+- A state change within a second of a read's last record can be merged into that record after the
+  read, and no later read prints it (ADR-0014 second amendment). The collector must compare each
+  read's baseline with the stored state and record an uncertain span. This will be checked on the
+  emulator with the instrumented tests.
 
 ## P1 Privileged core (2026-11-06)
 

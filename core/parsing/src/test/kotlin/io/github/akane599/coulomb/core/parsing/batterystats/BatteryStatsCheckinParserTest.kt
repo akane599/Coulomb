@@ -225,17 +225,22 @@ class BatteryStatsCheckinParserTest {
     }
 
     @Test
-    fun anOverlongRecordMakesTheDumpIncompleteUnlessItIsHistory() {
+    fun readingStopsWhereARecordsEndIsLost() {
         val long = "x".repeat(LONG_NAME)
         val head = "9,0,i,vers,36,216,A,A\n9,0,l,bt,0,1,1,1,1,1,1,1,1,1,1,1\n"
-        val (dump, report) = parse(head + "9,1000,l,cpu,1,1,0\n9,1000,l,pr,\"$long\",1,1,1,1,1,1\n9,1001,l,cpu,1,1,0\n")
+        val (dump, report) =
+            parse(head + "9,1000,l,cpu,1,1,0\n9,1001,l,cpu,1,1,0\n9,1001,l,pr,\"$long\",1,1,1,1,1,1\n9,1002,l,cpu,1,1,0\n")
         assertThat(report.complete).isFalse()
         assertThat(dump.uidsComplete).isFalse()
-        assertThat(dump.uids.map { it.uid }).containsExactly(1000, 1001).inOrder()
-        assertThat(report.issues.single().message).startsWith("record longer than")
-        val (history, historyReport) = parse(head + "9,h,0,+Etp=$long\n9,1000,l,cpu,1,1,0\n")
-        assertThat(historyReport.complete).isTrue()
-        assertThat(history.uidsComplete).isTrue()
+        assertThat(dump.device).isNotNull()
+        // UIDs come in order, so the one being read is dropped and those before it are whole.
+        assertThat(dump.uids.map { it.uid }).containsExactly(1000)
+        assertThat(report.issues.single().message).isEqualTo("record longer than 65536 characters; the rest of the dump is not read")
+        // An unescaped inline wakelock tag hides where its history record ends; a row after it may be forged.
+        val (forged, forgedReport) = parse(head + "9,h,0,+S,w=u0a5:\"x\n9,1000,l,cpu,999,999,0\n\"\n9,1001,l,cpu,1,1,0\n")
+        assertThat(forgedReport.complete).isFalse()
+        assertThat(forged.uids).isEmpty()
+        assertThat(forgedReport.issues.single().message).startsWith("history wakelock tag printed without escaping")
     }
 
     @Test

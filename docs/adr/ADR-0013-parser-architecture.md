@@ -128,10 +128,13 @@ fixed or recorded.
 - **Names with line breaks.** Tag pool strings (`hsp`) and quoted job, sync, process and kernel
   names are written without escaping line breaks; only `wl` names are cleaned. Read line by
   line, the rest of such a name passed for a record, so an app could add rows to any UID.
-  Records are now joined while a quote is open (`CheckinLines`), with caps on length and line
-  count. `wua` and `wl` names have commas replaced, so they cannot carry a record.
-- **Completeness.** A UID entry the proto adapter cannot decode, or an overlong checkin record
-  outside the history, now makes the dump and the UID list incomplete: per-UID sums are partial.
+  Records are now joined while a quote is open (`CheckinLines`), with a 64 KB cap on length.
+  `wua` and `wl` names have commas replaced, so they cannot carry a record. Where a record's end is
+  lost (a record past the cap, or a history wakelock tag printed without doubling its quotes),
+  nothing after it is read as a record: the S6 parser stops there as at a cut, and S7 keeps only a
+  `NEXT:` on the last line (ADR-0014, second amendment).
+- **Completeness.** A UID entry the proto adapter cannot decode, or a checkin record whose end is
+  lost, makes the dump and the UID list incomplete: per-UID sums are partial.
 - **No invented zeros.** A checkin line that is there but short, or has a column that is not a
   number, gives null for that column; 0 stays for a line the writer left out.
 - **No values in issues.** A line whose first field is not a short number is "not a checkin

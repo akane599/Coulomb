@@ -20,24 +20,52 @@ import io.github.akane599.coulomb.core.parsing.text.Csv
  * - `9,h,` history records quote a tag inline only when the pool is full, and double its quotes
  *   (`printBitDescriptions` and `printNextItem`, android-17.0.0_r1 L6684-6734 and L6829-7206,
  *   android-16.0.0_r4 L6652-6702 and L6797-7174), so an odd number of quotes means one is open.
- *   One branch, a wakelock tag on a record whose wakelock bit did not change, does not double
- *   them; a quote in such a tag joins the next record by mistake.
  * - Other records (`jb`, `sy`, `pr`, `kwl`, `wr`) follow the [Csv] rule.
  *
- * A joined record longer than [LineReader.MAX_LINE_BYTES] characters or [MAX_JOINED_LINES] lines
- * comes back [Line.truncated], with the lines read so far, and reading goes on after it.
+ * Where a record ends can be lost, and with it where the next one starts; [desync] then says why,
+ * the record comes back [Line.truncated], and every later call returns physical lines as they are,
+ * which callers must not read as records:
+ * - [Desync.TOO_LONG]: a line, or a joined record, ran past [LineReader.MAX_LINE_BYTES] characters.
+ *   Real names are far shorter: the platform caps tags at 1024 characters.
+ * - [Desync.UNESCAPED_TAG]: a wakelock tag printed inline by the one branch that does not double
+ *   its quotes, `,w=<uid>:"<tag>"` on a record whose wakelock bit did not change (android-17.0.0_r1
+ *   L6723-6733, android-16.0.0_r4 L6691-6701). Its end cannot be found, so an app could hide records
+ *   in it or forge them. It is the record's first quoted text, since the battery fields and state
+ *   bits before it hold none, so it is recognised exactly.
  */
 internal class CheckinLines(
     private val lines: LineReader,
 ) {
     val offset: Long get() = lines.offset
 
+    /** Why record boundaries were lost; null while they are known. */
+    var desync: Desync? = null
+        private set
+
+    enum class Desync { TOO_LONG, UNESCAPED_TAG }
+
     /** The next record, or null at the end of the stream. */
     fun next(): Line? {
         val first = lines.next() ?: return null
-        if (!first.terminated || first.truncated || !continues(first.text)) return first
+        return when {
+            desync != null -> first
+            first.truncated -> lost(first, Desync.TOO_LONG)
+            unescapedTag(first.text) -> lost(first, Desync.UNESCAPED_TAG)
+            !first.terminated || !continues(first.text) -> first
+            else -> join(first)
+        }
+    }
+
+    private fun lost(
+        line: Line,
+        why: Desync,
+    ): Line {
+        desync = why
+        return Line(line.offset, line.text, line.terminated, truncated = true)
+    }
+
+    private fun join(first: Line): Line {
         val text = StringBuilder(first.text)
-        var joined = 1
         var result: Line? = null
         while (result == null) {
             val more = lines.next()
@@ -45,11 +73,10 @@ internal class CheckinLines(
                 result = Line(first.offset, text.toString(), terminated = false, truncated = false)
             } else {
                 text.append('\n').append(more.text)
-                joined++
                 result =
                     when {
-                        more.truncated || text.length > LineReader.MAX_LINE_BYTES || joined > MAX_JOINED_LINES -> {
-                            Line(first.offset, text.toString(), more.terminated, truncated = true)
+                        more.truncated || text.length > LineReader.MAX_LINE_BYTES -> {
+                            lost(Line(first.offset, text.toString(), more.terminated, truncated = true), Desync.TOO_LONG)
                         }
 
                         !more.terminated || !continues(text) -> {
@@ -66,15 +93,15 @@ internal class CheckinLines(
     }
 
     internal companion object {
-        /** Far above any real name; the platform caps pool strings at 1024 characters. */
-        const val MAX_JOINED_LINES = 64
-
         const val POOL_PREFIX = "9,hsp,"
         const val HISTORY_PREFIX = "9,h,"
         private const val DATA_PREFIX = "9,"
         private const val QUOTE = '"'
         private const val ESCAPE = '\\'
         private const val POOL_STRING_FIELD = 4
+
+        /** `,w=<formatted uid>:` right before a history record's first quote. */
+        private val UNESCAPED_TAG_OPENING = Regex(",w=[0-9a-z]{1,24}:$")
 
         /** True when [text] ends inside a quoted name. */
         fun continues(text: CharSequence): Boolean =
@@ -84,6 +111,13 @@ internal class CheckinLines(
                 text.startsWith(DATA_PREFIX) -> Csv.hasOpenQuote(text.toString())
                 else -> false
             }
+
+        /** True when a history record's first quote opens a tag that does not double its quotes. */
+        fun unescapedTag(text: String): Boolean {
+            if (!text.startsWith(HISTORY_PREFIX)) return false
+            val quote = text.indexOf(QUOTE)
+            return quote > 0 && UNESCAPED_TAG_OPENING.containsMatchIn(text.substring(0, quote))
+        }
 
         /** `9,hsp,<index>,<uid>,"<escaped>"`: true when the string has no unescaped closing quote. */
         private fun poolStringOpen(text: CharSequence): Boolean {
