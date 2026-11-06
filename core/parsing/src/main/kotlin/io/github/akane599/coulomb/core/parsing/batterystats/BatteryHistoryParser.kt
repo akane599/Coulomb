@@ -539,7 +539,12 @@ private class HistoryWalk(
             }
 
             index != null -> {
-                // A tag added after the pool was printed: the record is read without it.
+                // A tag added after the pool was printed, or one an unclean reboot lost: the pool is
+                // saved with the stats summary and restored from it at boot, while history
+                // fragments already on disk keep their indices (BatteryStatsHistory.java
+                // writeSummaryToParcel/readSummaryFromParcel, L818-861 in android-16.0.0_r4 and
+                // android-17.0.0_r1). Seen on the phone: indices past the pool's end just before a
+                // START with no SHUTDOWN. The record is read without the tag.
                 pool[index] ?: null.also {
                     issue(line.offset, "h", "tag not in the pool")
                     lost = true
