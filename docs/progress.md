@@ -37,6 +37,20 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   counted by name. A "values frozen by `dumpsys battery set`" flag.
 - S19 `dumpsys thermalservice` (`ThermalServiceParser`): cached and current temperatures, cooling
   devices, static thresholds, the status-override flag; Android 17's per-device lines skipped.
+- S11 `dumpsys deviceidle` (`DeviceIdleParser`): the active Doze constants as printed, deep and
+  light states, the idling history (oldest first) and the allowlists; Samsung's extra constants
+  counted by name.
+- S12 `dumpsys power` (`PowerParser`): power manager state, the wakelocks held now and battery
+  saver. Wakelock tags are unescaped, so the list is kept only when its lines match
+  `Wake Locks: size=N`, and each heading read must appear once (ADR-0013 text-parser amendment).
+- S10 `dumpsys alarm` (`AlarmParser`): dump time, pending alarms (soonest first), the pending count
+  per UID and per-app `Alarm Stats` with every tag. The service's `IndentingPrintWriter` indents
+  each line of a tag, so a tag cannot forge another app's entry.
+- S13 `dumpsys jobscheduler` (`JobSchedulerParser`): per-app statistics windows (counts, time
+  shares, stop reasons including `timeout_abandoned`) and each registered job's unsatisfied
+  constraints, restrictions, bucket and readiness. `Job history` is left to S7.
+- S8 `suspend_control_internal` is not registered on either fixture device ("Can't find service"),
+  so it has no parser yet; the capability probe reports it unavailable (P0 finding).
 
 ### Open findings
 

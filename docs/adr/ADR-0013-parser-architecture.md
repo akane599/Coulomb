@@ -142,3 +142,43 @@ fixed or recorded.
 - **Smaller points.** A broken proto header is "malformed", not "ended early". A proto timer's
   absent maximum reads as null: the writer leaves out both a zero maximum and an untracked one.
   A name holding `",` still splits early; the format cannot tell it apart.
+
+## Amendment 2026-11-06: dumpsys text parsers (S10 to S13, S19, S21)
+
+The `dumpsys` text parsers share `TextDump` (the line layer above, with an unterminated last line
+never handed on) and keep their own small walkers. Their dumps print app-chosen text without
+escaping: wakelock tags (S12), alarm tags (S10), job namespaces and extras (S13). A line break
+in such text can print a line that looks like the platform's own. What each parser trusts:
+
+- **Only `\n` ends a line.** `LineReader` splits on `\n` and drops one trailing `\r`, so a `\r`
+  inside app text cannot start a line.
+- **`IndentingPrintWriter` indents every line.** `AlarmManagerService` and `JobSchedulerService`
+  print through `android.util.IndentingPrintWriter`, which writes the current indent after every
+  `\n` inside a printed string (core/java/android/util/IndentingPrintWriter.java L199-253, the same
+  file at both tags). App text printed n spaces in therefore never yields a line shallower than n.
+  S10 reads only lines two or four spaces in (app tags are six in), so a tag cannot forge another
+  app's `Alarm Stats` entry; a stats tag is every deeper line up to the next platform line, line
+  breaks included. S13's statistics windows hold no app text and app text never reaches column 0,
+  so they cannot be forged either.
+- **Counts where the indent does not help.** `PowerManagerService` prints with a plain
+  `PrintWriter`: the held wakelock list is kept only when the lines between `Wake Locks: size=N`
+  and `Suspend Blockers:` are N readable entries and one blank line. S13's job list is printed two
+  spaces in, the same depth as a namespace's continuation lines: it is kept only when its `JOB`
+  lines match `Registered N jobs`, and a job whose needed field line is missing or appears twice is
+  dropped and reported. The pending alarm list must match `N pending alarms`.
+- **Headings appear once.** A heading a parser reads, where the platform prints it once, must
+  appear once; otherwise that part is null and the dump incomplete. One UI prints released wakelock
+  tags before battery saver, which is why S12's saver section follows this rule. `Power Manager
+  State:` comes straight after the header, before any app text, so S12 keeps its first copy and
+  reports a later one. A forged heading can hide a part but not change it.
+- **Read from both ends where text is free.** A wakelock entry is split at the last ` (uid=` (the
+  platform's trailer) and the last quote before it, so a tag holding quotes or ` (uid=` stays whole.
+  S10's `Alarm Stats` lines are matched whole, and S13 reads only fixed field prefixes.
+- **Left out on purpose.** S10 does not keep `Top Alarms`: it is the ten tag entries with the most
+  running time, all present in `Alarm Stats`. S13 does not read `Job history`: a namespace can
+  forge its lines at the platform's indent, and S7 carries the same starts and stops, with
+  attribution and escaped names. S13's per-app stop reasons (`timeout_abandoned` included) come
+  from the statistics windows.
+- **Unknown names, never values.** OEM keys and names are counted by name only after a name pattern
+  check; text that fails the check counts as `<line without key>`. Samsung's extra job stop reason
+  `olaf` and Power Manager state names are counted this way.
