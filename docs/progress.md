@@ -15,6 +15,16 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   ADR-0013 amendment.
 - The zero rule in both parsers (ADR-0013 amendment): `ProtoOutputStream` drops empty nested
   messages, so an absent counter is 0, not "not reported".
+- Independent review of S5 and S6 (ADR-0013 review amendment), all findings fixed:
+  - checkin names with line breaks no longer split into records an app could forge;
+  - a dropped UID or an overlong record marks the dump incomplete;
+  - a bad column is null, not 0;
+  - stray lines are issues without their text.
+- S7 history parser (`BatteryHistoryParser`, `-c --history-start`). It streams `HistoryRecord`s to
+  a sink in batches of 512, places them from `NEXT:`, flags gaps and marks the restated state after
+  each read start, `START` and `RESET` (ADR-0014 amendment). Golden tests use three real emulator
+  reads (from 0, from mid-buffer, from `NEXT:`) that agree on every event they share, and the phone's
+  40 064 records.
 
 ### Open findings
 
@@ -22,6 +32,9 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   earlier, while CPU times match. The two writers ask for different usage stats (`detailed`
   false vs true, ADR-0013 review amendment), so `powerMah` is never compared across sources;
   whether that explains the whole gap is not proven.
+- `--history-start` makes system_server walk the whole history buffer and print the whole tag
+  pool on every read, and it starts an asynchronous stats write. The collector keeps to one read
+  per heavy snapshot; the on-device cost is measured in the P2 performance gate.
 
 ## P1 Privileged core (2026-11-06)
 
