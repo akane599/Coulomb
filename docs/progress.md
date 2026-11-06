@@ -163,6 +163,9 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   - A later tag can take one of those indices again. An old record would then point at the wrong
     name, and no reader of the checkin output can tell. The P2 gate review decides whether history
     tags from before an unclean boot are kept.
+  - The boot-completed snapshot is a heavy one, so only tags first seen between the restore and
+    that read can take a lost index. Keeping the last printed pool would close the gap; `history_tag`
+    stores names only, not the platform's indices.
 
 ### Still to do before the P2 gate
 
