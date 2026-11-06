@@ -153,13 +153,31 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 - Snapshot blobs are settled in ADR-0018: the raw S5 proto (about 340 KB on the phone) for 5 to 10
   heavy snapshots a day, plus the raw text of any source whose parse was incomplete, kept 30 days
   or up to 128 MB.
+- An unclean reboot loses history tags. The tag pool is saved with the stats summary and restored
+  from it at boot, but history fragments already on disk keep their own indices
+  (`BatteryStatsHistory` `writeSummaryToParcel`/`readSummaryFromParcel`, L818-861 in both tags).
+  - On the phone at the start of the 72 h run, 16 records just before a START with no SHUTDOWN
+    point at indices 179 to 184, while the printed pool ends at 178. The parser reads those records
+    without their tag and marks the read incomplete.
+  - The collector keeps the cursor, so this costs only the first catch-up read (S7 `partial`).
+  - A later tag can take one of those indices again. An old record would then point at the wrong
+    name, and no reader of the checkin output can tell. The P2 gate review decides whether history
+    tags from before an unclean boot are kept.
 
 ### Still to do before the P2 gate
 
 - The 72 h headless run on the phone, for protocols A and E and the measured rates: per-source
   cost, heavy snapshot rate, blob count, history rows a day, how often a screen-off dump sleeps,
-  and whether any counter moves between two plugged-in snapshots. The owner is asked before
-  connecting.
+  and whether any counter moves between two plugged-in snapshots. Started 2026-11-06 15:58 UTC
+  with the owner's approval. The build is `9ccb2d4` and the phone runs build S938BXXSDDZJ1, the
+  same as the fixture.
+  - The T1 grants are intact, the standby bucket is EXEMPTED and the collector service runs in the
+    foreground. The crash buffer holds no Coulomb lines.
+  - Notifications are not granted, so the service notification is not shown.
+  - The first heavy snapshot (`PACKAGE_REPLACED`) took 3,012 ms. Most of that is the catch-up read
+    of the whole history buffer, so it says nothing about the rate.
+  - The phone was left on the screen it started on. The end checkpoint runs after 2026-11-09
+    16:00 UTC and needs the owner's go-ahead again.
 - Freeze the schema with the measured rates.
 
 ## P1 Privileged core (2026-11-06)
