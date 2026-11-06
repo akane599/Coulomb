@@ -68,7 +68,7 @@ public class CapabilityProber
                 add(batteryStatsFlags())
                 add(batteryStatsDump(CapabilityId.BATTERYSTATS_PROTO, BatteryStatsMode.PROTO))
                 add(batteryStatsDump(CapabilityId.BATTERYSTATS_CHECKIN, BatteryStatsMode.CHECKIN))
-                add(batteryStatsDump(CapabilityId.BATTERYSTATS_HISTORY, BatteryStatsMode.HISTORY))
+                add(historyCursor())
                 add(kernelWakelocks())
                 add(sysfsListing(CapabilityId.WAKEUP_SOURCES, SysfsRoot.WAKEUP))
                 add(serviceDump(CapabilityId.ALARM_DUMP, SystemService.ALARM))
@@ -278,6 +278,24 @@ public class CapabilityProber
                     if (mode == BatteryStatsMode.PROTO) put("looks_like_proto", looksLikeProto(drained.head).toString())
                 }
             return streamed(id, result, drained, detail)
+        }
+
+        /**
+         * S7 reads the history in checkin form from a cursor (ADR-0014). A cursor past every record
+         * makes the probe cheap: the dump is the version line, the tag pool and `NEXT:`, which
+         * the incremental read cannot work without.
+         */
+        private suspend fun historyCursor(): Capability {
+            val id = CapabilityId.BATTERYSTATS_HISTORY
+            val result = access.dumpBatteryStats(BatteryStatsMode.CHECKIN_HISTORY, historyStart = Long.MAX_VALUE) { drain(it) }
+            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier())
+            val hasNext = String(drained.head, Charsets.UTF_8).lineSequence().any { it.startsWith(NEXT_LINE) }
+            val detail = mapOf("bytes" to drained.bytes.toString(), "route" to routeOf(result), "has_next" to hasNext.toString())
+            return when {
+                drained.bytes == 0L -> unavailable(id, tierOf(result), "empty output", FixAction.NONE)
+                !hasNext -> cap(id, DEGRADED, tierOf(result), "no NEXT line", null, detail)
+                else -> streamed(id, result, drained, detail)
+            }
         }
 
         private suspend fun serviceDump(
@@ -560,6 +578,9 @@ public class CapabilityProber
             const val THERMAL_FORECAST_S = 10
             const val BUFFER = 64 * 1024
             const val HEAD_BYTES = 256 * 1024
+
+            /** The history dump's last line (BatteryStats.dumpHistory, android-16.0.0_r4 L7552-7554, android-17.0.0_r1 L7584-7586). */
+            const val NEXT_LINE = "NEXT: "
 
             val KNOWN_BATTERYSTATS_FLAGS =
                 listOf(

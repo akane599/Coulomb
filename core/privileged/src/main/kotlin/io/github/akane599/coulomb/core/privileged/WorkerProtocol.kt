@@ -29,6 +29,12 @@ public enum class BatteryStatsMode(
 
     /** `--history-start <n>`; the start value comes from the previous history read. */
     HISTORY_START(5),
+
+    /**
+     * `-c --history-start <n>`: only the history, in checkin form, from monotonic time n, ending
+     * with `NEXT:` (S7, ADR-0014). The start value is the previous read's `NEXT:`.
+     */
+    CHECKIN_HISTORY(6),
     ;
 
     /**
@@ -36,9 +42,11 @@ public enum class BatteryStatsMode(
      * `getInstalledApplications(MATCH_ANY_USER | MATCH_ALL)` under the caller's identity, so an
      * in-app dump needs INTERACT_ACROSS_USERS (services/core/java/com/android/server/am/
      * BatteryStatsService.java, android-16.0.0_r4 L3327-3328, L3369-3370; android-17.0.0_r1
-     * L3375-3376, L3417-3418). The worker runs as shell or root and is not affected.
+     * L3375-3376, L3417-3418). The checkin branch does so before it looks at the history-only
+     * flag, so `-c --history-start` needs it too. The worker runs as shell or root and is not
+     * affected.
      */
-    internal val listsAllUsers: Boolean get() = this == PROTO || this == CHECKIN
+    internal val listsAllUsers: Boolean get() = this == PROTO || this == CHECKIN || this == CHECKIN_HISTORY
 
     internal fun args(historyStart: Long): Array<String> =
         when (this) {
@@ -47,6 +55,7 @@ public enum class BatteryStatsMode(
             CHECKIN -> arrayOf("-c")
             HISTORY -> arrayOf("--history")
             HISTORY_START -> arrayOf("--history-start", historyStart.coerceAtLeast(0L).toString())
+            CHECKIN_HISTORY -> arrayOf("-c", "--history-start", historyStart.coerceAtLeast(0L).toString())
         }
 
     internal companion object {

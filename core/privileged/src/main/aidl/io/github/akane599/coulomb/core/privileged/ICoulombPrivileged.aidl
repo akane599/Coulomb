@@ -24,7 +24,7 @@ interface ICoulombPrivileged {
     String getSeLinuxContext() = 3;
 
     // `dumpsys batterystats` with one allowlisted mode (WorkerProtocol.BatteryStatsMode).
-    // historyStart is used only by HISTORY_START. Returns a WorkerProtocol.Status code after
+    // historyStart is used only by HISTORY_START and CHECKIN_HISTORY. Returns a WorkerProtocol.Status code after
     // the service finished writing; the worker closes its copy of `pipe` before returning.
     int dumpBatteryStats(int mode, long historyStart, in ParcelFileDescriptor pipe) = 10;
 
