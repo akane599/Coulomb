@@ -88,12 +88,44 @@ internal object WindowBuilder {
                 unattributedMah = Attribution.reconcile(measured, modeled).unattributedMah,
                 screenOnMs = screenOn,
                 screenOffMs = (realtime - screenOn).coerceAtLeast(0),
-                awakeMsScreenOff = device.values[DeviceKeys.SCREEN_OFF_UPTIME_MS]?.roundToLong(),
+                // The mapper omits zero counters: with device counters at both ends, a missing key is 0.
+                awakeMsScreenOff =
+                    device.values[DeviceKeys.SCREEN_OFF_UPTIME_MS]?.roundToLong() ?: 0L.takeIf { hasDevice(from) && hasDevice(to) },
                 quality = quality(measured, source, from.snapshot, to.snapshot, power.partial || device.partial),
                 detailPruned = !withDetail,
             )
         return window to if (withDetail) detail(chain, power) else WindowRows()
     }
+
+    /**
+     * The snapshots of [ordered] (a window's ends and every stored heavy snapshot in between) whose
+     * counters the window needs: its ends and the two snapshots around each reset. Without a reset
+     * the changes between two snapshots add up to the change between the outer ones, so loading
+     * the others would change nothing. Reads only the snapshot rows, not their counters.
+     */
+    fun links(ordered: List<SnapshotEntity>): List<SnapshotEntity> {
+        if (ordered.size <= 2) return ordered
+        val keep = sortedSetOf(0, ordered.lastIndex)
+        ordered.zipWithNext().forEachIndexed { i, (a, b) ->
+            if (Attribution.resetBetween(epochOf(a), epochOf(b))) {
+                keep += i
+                keep += i + 1
+            }
+        }
+        return keep.map(ordered::get)
+    }
+
+    /** [snapshot]'s place and statistics epoch without counters, for [Attribution.resetBetween]. */
+    fun epochOf(snapshot: SnapshotEntity): Counters<Unit> =
+        Counters(
+            bootSeq = snapshot.bootSeq,
+            elapsedMs = snapshot.elapsedNs / NS_PER_MS,
+            wallMs = snapshot.wallMs,
+            epoch = StatsEpoch(snapshot.statsStartWall, snapshot.statsRealtimeMs),
+            values = emptyMap<Unit, Double>(),
+        )
+
+    private fun hasDevice(end: WindowEnd) = end.rows.deviceStats.isNotEmpty()
 
     private data class PowerKey(
         val uid: Int,

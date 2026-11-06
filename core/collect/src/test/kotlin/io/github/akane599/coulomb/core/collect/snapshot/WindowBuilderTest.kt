@@ -128,6 +128,7 @@ class WindowBuilderTest {
         assertEquals(500.0, window.measuredMah!!, 1e-9)
         assertEquals(ChargeSource.LEVEL_DELTA, window.chargeSource)
         assertNull("no power model read: no modeled total", window.modeledMah)
+        assertNull("no device counters: awake time unknown", window.awakeMsScreenOff)
         assertNull(window.unattributedMah)
         assertTrue(window.detailPruned)
         assertEquals(0.45, window.quality, 1e-9)
@@ -197,6 +198,34 @@ class WindowBuilderTest {
         assertEquals(5_000L, stats[10_100 to UidKeys.MOBILE_RX_BYTES])
         assertEquals(60_000L, stats[UidPowerEntity.DEVICE_UID to DeviceKeys.SCREEN_ON_MS])
         assertTrue(rows.stats.all { it.provenance == Provenance.MEASURED })
+    }
+
+    @Test
+    fun aScreenOffCounterMissingAtBothEndsMeansNoScreenOffAwakeTime() {
+        val onOnly = { ms: Long -> listOf(DeviceStatEntity(0, DeviceKeys.SCREEN_ON_MS, ms)) }
+        val from = WindowEnd(snapshot(1, 0, 3_000_000, 80), SnapshotRows(deviceStats = onOnly(1_000)))
+        val to = WindowEnd(snapshot(2, hourMs, 2_900_000, 78), SnapshotRows(deviceStats = onOnly(hourMs)))
+
+        val (window, _) = WindowBuilder.build(WindowKind.CONSECUTIVE, null, listOf(from, to), true, 5_000.0, withDetail = false)
+
+        assertEquals(0L, window.awakeMsScreenOff)
+    }
+
+    @Test
+    fun aChainKeepsItsEndsAndTheSnapshotsAroundEachReset() {
+        val chain =
+            listOf(
+                snapshot(1, hourMs, 3_000_000, 80),
+                snapshot(2, 2 * hourMs, 2_900_000, 78),
+                snapshot(3, 3 * hourMs, 2_800_000, 76),
+                // Reset between 3 and 4: the counted realtime starts again.
+                snapshot(4, 4 * hourMs, 2_700_000, 74, statsRealtimeMs = hourMs / 4),
+                snapshot(5, 5 * hourMs, 2_600_000, 72, statsRealtimeMs = hourMs + hourMs / 4),
+                snapshot(6, 6 * hourMs, 2_500_000, 70, statsRealtimeMs = 2 * hourMs + hourMs / 4),
+            )
+
+        assertEquals(listOf(1L, 3L, 4L, 6L), WindowBuilder.links(chain).map { it.id })
+        assertEquals(listOf(1L, 2L), WindowBuilder.links(chain.take(2)).map { it.id })
     }
 
     private fun wake(

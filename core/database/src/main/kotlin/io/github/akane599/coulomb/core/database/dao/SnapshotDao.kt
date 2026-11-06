@@ -68,6 +68,31 @@ public abstract class SnapshotDao {
     public abstract suspend fun latestHeavy(): SnapshotEntity?
 
     /**
+     * Heavy snapshots strictly between `(fromBootSeq, fromElapsedNs)` and `(toBootSeq, toElapsedNs)`
+     * whose counters are still stored, in time order: the links of a window's chain (ADR-0018).
+     */
+    @Query(
+        "SELECT * FROM snapshot WHERE kind = 'HEAVY' AND countersPruned = 0 " +
+            "AND (bootSeq > :fromBootSeq OR (bootSeq = :fromBootSeq AND elapsedNs > :fromElapsedNs)) " +
+            "AND (bootSeq < :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs < :toElapsedNs)) " +
+            "ORDER BY bootSeq, elapsedNs",
+    )
+    public abstract suspend fun heavyWithCountersBetween(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<SnapshotEntity>
+
+    /** The latest snapshot of [bootSeq]: where a session closed by a reboot ends. */
+    @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq ORDER BY elapsedNs DESC LIMIT 1")
+    public abstract suspend fun latestInBoot(bootSeq: Int): SnapshotEntity?
+
+    /** The latest snapshot whose history read set a cursor: where the next read starts (ADR-0014). */
+    @Query("SELECT * FROM snapshot WHERE historyCursorMs IS NOT NULL ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
+    public abstract suspend fun latestWithHistoryCursor(): SnapshotEntity?
+
+    /**
      * The snapshot's counters. Lists are empty for a source that was not read (see
      * [SnapshotEntity.sourceStatusJson]) or once [SnapshotEntity.countersPruned] is set.
      */
@@ -158,6 +183,10 @@ public abstract class SnapshotDao {
 
     @Query("SELECT blobPath FROM snapshot WHERE blobPath IS NOT NULL")
     public abstract suspend fun blobPaths(): List<String>
+
+    /** Clears [paths] from their snapshots, for blobs deleted to keep the folder under its cap (ADR-0018). */
+    @Query("UPDATE snapshot SET blobPath = NULL WHERE blobPath IN (:paths)")
+    public abstract suspend fun clearBlobPaths(paths: List<String>)
 
     @Insert
     protected abstract suspend fun insertSnapshot(snapshot: SnapshotEntity): Long

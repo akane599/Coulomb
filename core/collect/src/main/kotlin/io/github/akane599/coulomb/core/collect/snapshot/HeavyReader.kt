@@ -3,6 +3,8 @@
 
 package io.github.akane599.coulomb.core.collect.snapshot
 
+import io.github.akane599.coulomb.core.collect.engine.HeavySource
+import io.github.akane599.coulomb.core.model.AccessTier
 import io.github.akane599.coulomb.core.model.history.BatteryHistory
 import io.github.akane599.coulomb.core.model.history.HistoryRecord
 import io.github.akane599.coulomb.core.model.parse.Parsed
@@ -44,8 +46,10 @@ internal data class HistoryRead(
 internal class HeavyReader(
     private val access: PrivilegedAccess,
     private val sdkInt: Int,
-) {
-    suspend fun stats(timeoutMs: Long): StatsRead {
+) : HeavySource {
+    override fun available(): Boolean = access.state.value.tier != AccessTier.T0_UNPRIVILEGED
+
+    override suspend fun stats(timeoutMs: Long): StatsRead {
         val copy = CappedCopy(MAX_RAW_BYTES)
         val proto =
             access.dumpBatteryStats<Parsed<BatteryStatsDump>>(
@@ -82,7 +86,7 @@ internal class HeavyReader(
         )
     }
 
-    suspend fun history(
+    override suspend fun history(
         cursorMs: Long,
         timeoutMs: Long,
     ): HistoryRead {

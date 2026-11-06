@@ -42,6 +42,9 @@ public enum class SnapshotTrigger {
     PACKAGE_REPLACED,
     PACKAGE_CHANGED,
     LITE_PERIODIC,
+
+    /** The collector's service started, or the system restarted it, with no other trigger (ADR-0018). */
+    SERVICE_STARTED,
 }
 
 /** SPEC 8 `WakeStat.kind`. */

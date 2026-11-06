@@ -64,6 +64,10 @@ public abstract class DeviceDao {
     @Query("SELECT * FROM boot WHERE bootSeq = :bootSeq")
     public abstract suspend fun boot(bootSeq: Int): BootEntity?
 
+    /** Every boot, oldest first: the collector turns "N days ago" into a retention cut with them (ADR-0015). */
+    @Query("SELECT * FROM boot ORDER BY bootSeq")
+    public abstract suspend fun boots(): List<BootEntity>
+
     /** Records how this boot's history clock maps to elapsed time (ADR-0014). */
     @Query("UPDATE boot SET historyOffsetMs = :offsetMs WHERE bootSeq = :bootSeq")
     public abstract suspend fun setHistoryOffset(
