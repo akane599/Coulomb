@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Now · Coulomb design lab</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<!-- sprite --><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="app-halcyon" viewBox="0 0 40 40"><rect width="40" height="40" rx="12" fill="oklch(0.56 0.15 28)"/><path d="M11 25a9 9 0 0 1 18 0z" fill="oklch(0.985 0.004 255)"/><rect x="8" y="27" width="24" height="2.5" rx="1.25" fill="oklch(0.985 0.004 255)"/></symbol><symbol id="app-system" viewBox="0 0 40 40"><rect width="40" height="40" rx="12" fill="oklch(0.38 0.02 255)"/><circle cx="20" cy="20" r="7.5" fill="none" stroke="oklch(0.985 0.004 255)" stroke-width="2.5"/><circle cx="20" cy="20" r="2.5" fill="oklch(0.985 0.004 255)"/></symbol><symbol id="app-wayline" viewBox="0 0 40 40"><rect width="40" height="40" rx="12" fill="oklch(0.48 0.09 200)"/><path d="M13 29c0-6 14-4 14-10s-8-6-8-6" fill="none" stroke="oklch(0.985 0.004 255)" stroke-width="2.5" stroke-linecap="round"/><circle cx="13" cy="29" r="2.5" fill="oklch(0.985 0.004 255)"/><circle cx="19" cy="13" r="2.5" fill="oklch(0.985 0.004 255)"/></symbol><symbol id="i-battery_android_5" viewBox="0 -960 960 960"><path d="M560-290h160v-380H560v380Zm-400 80q-33 0-56.5-23.5T80-290v-380q0-33 23.5-56.5T160-750h560q33 0 56.5 23.5T800-670v90h20q25 0 42.5 17.5T880-520v80q0 26-17.5 43T820-380h-20v90q0 33-23.5 56.5T720-210H160Z"/></symbol><symbol id="i-battery_android_frame_5_fill1" viewBox="0 -960 960 960"><path d="M160-240q-50 0-85-35t-35-85v-240q0-50 35-85t85-35h540q50 0 85 35t35 85v240q0 50-35 85t-85 35H160Zm0-80h540q17 0 28.5-11.5T740-360v-240q0-17-11.5-28.5T700-640H160q-17 0-28.5 11.5T120-600v240q0 17 11.5 28.5T160-320Zm700-60v-200h20q17 0 28.5 11.5T920-540v120q0 17-11.5 28.5T880-380h-20Zm-700-20v-160q0-17 11.5-28.5T200-600h320q17 0 28.5 11.5T560-560v160q0 17-11.5 28.5T520-360H200q-17 0-28.5-11.5T160-400Z"/></symbol><symbol id="i-chevron_right" viewBox="0 -960 960 960"><path d="M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z"/></symbol><symbol id="i-data_usage" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-130 75-234t199-145q29-10 53.5 7t24.5 46q0 20-11.5 36.5T391-747q-86 27-138.5 100.5T200-480q0 117 81.5 198.5T480-200q52 0 100.5-18t86.5-52q15-14 36.5-14t36.5 14q23 21 24 47.5T742-176q-54 47-120.5 71.5T480-80Zm280-400q0-92-53-165.5T568-747q-18-6-29.5-22.5T527-806q0-29 24.5-46t53.5-7q125 42 200 146t75 233q0 18-1.5 36.5T873-403q-5 29-29.5 41.5T790-360q-19-7-29.5-25.5T754-424q3-17 4.5-30t1.5-26Z"/></symbol><symbol id="i-ecg_heart" viewBox="0 -960 960 960"><path d="M480-480Zm0 360q-18 0-34.5-6.5T416-146L148-415q-35-35-51.5-80T80-589q0-103 67-177t167-74q48 0 90.5 19t75.5 53q32-34 74.5-53t90.5-19q100 0 167.5 74T880-590q0 49-17 94t-51 80L543-146q-13 13-29 19.5t-34 6.5Zm40-520q10 0 19 5t14 13l68 102h166q7-17 10.5-34.5T801-590q-2-69-46-118.5T645-758q-31 0-59.5 12T536-711l-27 29q-5 6-13 9.5t-16 3.5q-8 0-16-3.5t-14-9.5l-27-29q-21-23-49-36t-60-13q-66 0-110 50.5T160-590q0 18 3 35.5t10 34.5h187q10 0 19 5t14 13l35 52 54-162q4-12 14.5-20t23.5-8Zm12 130-54 162q-4 12-15 20t-24 8q-10 0-19-5t-14-13l-68-102H236l237 237q2 2 3.5 2.5t3.5.5q2 0 3.5-.5t3.5-2.5l236-237H600q-10 0-19-5t-15-13l-34-52Z"/></symbol><symbol id="i-fact_check" viewBox="0 -960 960 960"><path d="M160-120q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160Zm0-80h640v-560H160v560Zm200-80q17 0 28.5-11.5T400-320q0-17-11.5-28.5T360-360H240q-17 0-28.5 11.5T200-320q0 17 11.5 28.5T240-280h120Zm222-193-29-29q-12-12-28-11.5T497-501q-11 12-11.5 28t11.5 28l57 57q12 12 28 12t28-12l142-142q12-12 12-28t-12-28q-12-12-28.5-12T695-586L582-473Zm-222 33q17 0 28.5-11.5T400-480q0-17-11.5-28.5T360-520H240q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440h120Zm0-160q17 0 28.5-11.5T400-640q0-17-11.5-28.5T360-680H240q-17 0-28.5 11.5T200-640q0 17 11.5 28.5T240-600h120ZM160-200v-560 560Z"/></symbol><symbol id="i-more_vert" viewBox="0 -960 960 960"><path d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"/></symbol><symbol id="i-open_in_new" viewBox="0 -960 960 960"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h240q17 0 28.5 11.5T480-800q0 17-11.5 28.5T440-760H200v560h560v-240q0-17 11.5-28.5T800-480q17 0 28.5 11.5T840-440v240q0 33-23.5 56.5T760-120H200Zm560-584L416-360q-11 11-28 11t-28-11q-11-11-11-28t11-28l344-344H600q-17 0-28.5-11.5T560-800q0-17 11.5-28.5T600-840h200q17 0 28.5 11.5T840-800v200q0 17-11.5 28.5T800-560q-17 0-28.5-11.5T760-600v-104Z"/></symbol><symbol id="i-settings" viewBox="0 -960 960 960"><path d="M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm7-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></symbol><symbol id="i-shield_person" viewBox="0 -960 960 960"><path d="M480-440q-59 0-99.5-40.5T340-580q0-59 40.5-99.5T480-720q59 0 99.5 40.5T620-580q0 59-40.5 99.5T480-440Zm0-80q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm0 40Zm0-315-240 90v189q0 54 15 105t41 96q42-21 88-33t96-12q50 0 96 12t88 33q26-45 41-96t15-105v-189l-240-90Zm0 515q-36 0-70 8t-65 22q29 30 63 52t72 34q38-12 72-34t63-52q-31-14-65-22t-70-8Zm0 196q-7 0-13-1t-12-3q-135-45-215-166.5T160-516v-189q0-25 14.5-45t37.5-29l240-90q14-5 28-5t28 5l240 90q23 9 37.5 29t14.5 45v189q0 140-80 261.5T505-88q-6 2-12 3t-13 1Z"/></symbol><symbol id="i-signal_cellular_alt" viewBox="0 -960 960 960"><path d="M260-160q-25 0-42.5-17.5T200-220v-120q0-25 17.5-42.5T260-400q25 0 42.5 17.5T320-340v120q0 25-17.5 42.5T260-160Zm240 0q-25 0-42.5-17.5T440-220v-320q0-25 17.5-42.5T500-600q25 0 42.5 17.5T560-540v320q0 25-17.5 42.5T500-160Zm240 0q-25 0-42.5-17.5T680-220v-520q0-25 17.5-42.5T740-800q25 0 42.5 17.5T800-740v520q0 25-17.5 42.5T740-160Z"/></symbol><symbol id="i-timeline" viewBox="0 -960 960 960"><path d="M120-240q-33 0-56.5-23.5T40-320q0-33 23.5-56.5T120-400h10.5q4.5 0 9.5 2l182-182q-2-5-2-9.5V-600q0-33 23.5-56.5T400-680q33 0 56.5 23.5T480-600q0 2-2 20l102 102q5-2 9.5-2h21q4.5 0 9.5 2l142-142q-2-5-2-9.5V-640q0-33 23.5-56.5T840-720q33 0 56.5 23.5T920-640q0 33-23.5 56.5T840-560h-10.5q-4.5 0-9.5-2L678-420q2 5 2 9.5v10.5q0 33-23.5 56.5T600-320q-33 0-56.5-23.5T520-400v-10.5q0-4.5 2-9.5L420-522q-5 2-9.5 2H400q-2 0-20-2L198-340q2 5 2 9.5v10.5q0 33-23.5 56.5T120-240Z"/></symbol><symbol id="i-wifi" viewBox="0 -960 960 960"><path d="M480-120q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29Zm0-440q75 0 142.5 24T745-470q20 15 20.5 39.5T748-388q-17 17-42 17.5T661-384q-38-26-84-41t-97-15q-51 0-97 15t-84 41q-20 14-45 13t-42-18q-17-18-17-42.5t20-39.5q55-42 122.5-65.5T480-560Zm0-240q125 0 235.5 41T914-643q20 17 21 42t-17 43q-17 17-42 17.5T831-556q-72-59-161.5-91.5T480-680q-100 0-189.5 32.5T129-556q-20 16-45 15.5T42-558q-18-18-17-43t21-42q88-75 198.5-116T480-800Z"/></symbol><symbol id="p-derived" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/><path d="M6 2.5a3.5 3.5 0 0 1 0 7z" fill="currentColor" stroke="none"/></symbol><symbol id="p-estimated" viewBox="0 0 12 12"><path d="M2 3.5v5M10 3.5v5M2 6h8"/></symbol><symbol id="p-measured" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="currentColor" stroke="none"/></symbol><symbol id="p-modeled" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/></symbol></svg><!-- /sprite -->
+<header class="top">
+  <div class="statusbar" aria-hidden="true">
+    <span>14:20</span>
+    <span class="sys"><svg class="i i-18"><use href="#i-signal_cellular_alt"/></svg><svg class="i i-18"><use href="#i-wifi"/></svg><svg class="i i-18"><use href="#i-battery_android_5"/></svg></span>
+  </div>
+  <div class="appbar">
+    <h1>Now</h1>
+    <a class="icon-btn" href="#" aria-label="Action Center"><svg class="i"><use href="#i-fact_check"/></svg></a>
+    <a class="icon-btn" href="onboarding.html" aria-label="Privileges"><svg class="i"><use href="#i-shield_person"/></svg></a>
+    <a class="icon-btn" href="#" aria-label="Settings"><svg class="i"><use href="#i-settings"/></svg></a>
+  </div>
+</header>
+
+<main>
+  <section class="hero" aria-label="Battery">
+    <div class="hero-read">
+      <p class="t-display hero-level"><span class="nobr">74<span class="pct">%</span><svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></span></p>
+      <div class="hero-side">
+        <p class="hero-left"><span class="t-title"><span class="nobr">5 h 50 min</span> – <span class="nobr">7 h 20 min</span></span> <span class="nobr"><span class="muted">left</span> <svg class="prov" role="img" aria-label="Estimated"><title>Estimated</title><use href="#p-estimated"/></svg></span></p>
+        <p class="t-data muted">Discharging · 410 mA <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></p>
+      </div>
+    </div>
+    <figure class="hero-scale"><!-- chart:now-projection --><svg class="chart" viewBox="0 0 380 136" role="img" aria-labelledby="proj-t"><title id="proj-t">Battery fell from 84% to 74% over the last 2 hours. At this rate it reaches empty between 5 h 50 min and 7 h 20 min from now, between 20:10 and 21:40.</title><path class="grid" d="M0 90 H380"/><text x="380" y="86" text-anchor="end">25%</text><path class="grid" d="M0 64 H380"/><text x="380" y="60" text-anchor="end">50%</text><path class="grid" d="M0 38 H380"/><text x="380" y="34" text-anchor="end">75%</text><path class="grid" d="M0 12 H380"/><text x="380" y="8" text-anchor="end">100%</text><path class="grid" d="M63.3 12 V116" stroke-dasharray="2 3"/><path class="axis" d="M0 116 H380"/><text x="380" y="112" text-anchor="end">0%</text><path class="axis" d="M21.1 116 V119"/><path class="axis" d="M52.8 116 V119"/><path class="axis" d="M84.4 116 V119"/><path class="axis" d="M116.1 116 V119"/><path class="axis" d="M147.8 116 V119"/><path class="axis" d="M179.4 116 V119"/><path class="axis" d="M211.1 116 V119"/><path class="axis" d="M242.8 116 V119"/><path class="axis" d="M274.4 116 V119"/><path class="axis" d="M306.1 116 V119"/><path class="axis" d="M337.8 116 V119"/><path class="axis" d="M369.4 116 V119"/><text x="21.1" y="132" text-anchor="middle">13:00</text><text x="63.3" y="132" text-anchor="middle">now</text><text x="116.1" y="132" text-anchor="middle">16:00</text><text x="179.4" y="132" text-anchor="middle">18:00</text><text x="369.4" y="132" text-anchor="end">00:00</text><path class="cone" d="M63.3 39 L248.1 116 L295.6 116 Z"/><path class="cone-edge" d="M63.3 39 L248.1 116"/><path class="cone-edge" d="M63.3 39 L295.6 116"/><path class="ink" d="M0 28.7 L1.6 29.1 L3.2 29.1 L4.7 29.6 L6.3 29.7 L7.9 30 L9.5 30.4 L11.1 30.5 L12.7 31 L14.2 31 L15.8 31.5 L17.4 31.7 L19 31.8 L20.6 31.9 L22.2 32.5 L23.8 32.7 L25.3 32.7 L26.9 32.8 L28.5 33.3 L30.1 33.6 L31.7 33.6 L33.2 34.3 L34.8 34.2 L36.4 34.7 L38 35.1 L39.6 35.3 L41.2 35.5 L42.8 35.5 L44.3 36.1 L45.9 36.1 L47.5 36.4 L49.1 36.8 L50.7 36.9 L52.3 37.4 L53.8 37.7 L55.4 37.9 L57 37.9 L58.6 38.3 L60.2 38.6 L61.8 38.7 L63.3 39"/><path class="bracket" d="M248.1 109 V116 H295.6 V109"/><text x="271.8" y="132" text-anchor="middle" class="lbl-strong">20:10–21:40</text><circle class="dot" cx="63.3" cy="39" r="4.5"/></svg><!-- /chart --></figure>
+  </section>
+
+  <p class="verdict">Since unplugged 5 h 12 min ago, the battery fell 26%; <a href="app-detail.html">Halcyon</a> used a third of it.</p>
+
+  <section class="section" aria-labelledby="strip-h">
+    <h2 class="visually-hidden" id="strip-h">This session</h2>
+    <dl class="figures">
+      <div>
+        <dt>Screen on</dt>
+        <dd class="fig">12.6<span class="unit"> %/h</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></dd>
+        <dd class="sub">for 1 h 52 min</dd>
+      </div>
+      <div>
+        <dt>Screen off</dt>
+        <dd class="fig">0.8<span class="unit"> %/h</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></dd>
+        <dd class="sub">for 3 h 20 min</dd>
+      </div>
+      <div>
+        <dt><button class="term" aria-haspopup="dialog">Deep sleep</button></dt>
+        <dd class="fig">88<span class="unit">%</span> <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></dd>
+        <dd class="sub">of screen-off time</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="section" aria-labelledby="drains-h">
+    <div class="section-head">
+      <h2 id="drains-h">Top drains</h2>
+      <a class="text-btn" href="drain.html">See all<svg class="i i-18"><use href="#i-chevron_right"/></svg></a>
+    </div>
+    <ul class="rows">
+      <li>
+        <a class="app-row" href="app-detail.html">
+          <svg class="app-icon" aria-hidden="true"><use href="#app-halcyon"/></svg>
+          <span class="name">Halcyon</span>
+          <span class="detail">Screen on 52 min · mobile data</span>
+          <span class="value">402 <span class="unit">mAh</span> <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></span>
+          <span class="share-pct">33%</span>
+          <span class="share" aria-hidden="true"><span style="--share: 33%"></span></span>
+        </a>
+      </li>
+      <li>
+        <a class="app-row" href="app-detail.html">
+          <svg class="app-icon" aria-hidden="true"><use href="#app-wayline"/></svg>
+          <span class="name">Wayline</span>
+          <span class="detail">GPS 24 min · screen on 18 min</span>
+          <span class="value">168 <span class="unit">mAh</span> <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></span>
+          <span class="share-pct">14%</span>
+          <span class="share" aria-hidden="true"><span style="--share: 14%"></span></span>
+        </a>
+      </li>
+      <li>
+        <a class="app-row" href="app-detail.html">
+          <svg class="app-icon" aria-hidden="true"><use href="#app-system"/></svg>
+          <span class="name">Android System</span>
+          <span class="detail">Wakelocks 31 min</span>
+          <span class="value">96 <span class="unit">mAh</span> <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></span>
+          <span class="share-pct">8%</span>
+          <span class="share" aria-hidden="true"><span style="--share: 8%"></span></span>
+        </a>
+      </li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="insights-h">
+    <div class="section-head">
+      <h2 id="insights-h">Insights</h2>
+    </div>
+    <article class="insight">
+      <div class="insight-head">
+        <h3>Halcyon woke the phone 41 times in 3 h 20 min</h3>
+        <span class="chip act">Act</span>
+        <button class="icon-btn overflow" aria-label="More for this insight: snooze or dismiss"><svg class="i"><use href="#i-more_vert"/></svg></button>
+      </div>
+      <p>That is 12 wakeup alarms an hour with the screen off. Restricting background use stops them; its messages may arrive later.</p>
+      <div class="actions">
+        <span class="btn-wrap"><button class="btn filled" aria-haspopup="dialog">Restrict background</button></span>
+        <button class="text-btn" aria-haspopup="dialog">Why am I seeing this?</button>
+      </div>
+    </article>
+    <article class="insight">
+      <div class="insight-head">
+        <h3>The battery stayed at 100% for 3 h 40 min last night</h3>
+        <span class="chip watch">Watch</span>
+        <button class="icon-btn overflow" aria-label="More for this insight: snooze or dismiss"><svg class="i"><use href="#i-more_vert"/></svg></button>
+      </div>
+      <p>Hours at a full charge wear the battery faster. Battery protection stops charging at 80%.</p>
+      <div class="actions">
+        <span class="btn-wrap"><a class="btn tonal" href="#">Open battery protection<svg class="i i-18" aria-hidden="true"><use href="#i-open_in_new"/></svg></a></span>
+        <button class="text-btn" aria-haspopup="dialog">Why am I seeing this?</button>
+      </div>
+    </article>
+  </section>
+
+  <section class="section" aria-labelledby="live-h">
+    <div class="section-head">
+      <h2 id="live-h">Live current</h2>
+      <p class="t-data">410 <span class="unit">mA</span> <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></p>
+    </div>
+    <figure>
+      <!-- chart:now-current --><svg class="chart" viewBox="0 0 380 128" role="img" aria-labelledby="cur-t"><title id="cur-t">Current over the last 10 minutes: mostly 350 to 500 mA, one rise to about 1,000 mA six minutes ago, 410 mA now.</title><path class="grid" d="M0 30.5 H324"/><path class="grid" d="M0 53 H324"/><path class="grid" d="M0 75.5 H324"/><path class="grid" d="M0 98 H324"/><text x="380" y="12" text-anchor="end">0 mA</text><text x="380" y="57" text-anchor="end">−600</text><text x="380" y="102" text-anchor="end">−1,200</text><path class="ink-area" d="M0 8 L0 39.2 L2.7 40.5 L5.4 43.6 L8.1 41.1 L10.8 42 L13.5 43 L16.2 40.8 L18.9 43.4 L21.6 44.5 L24.3 45.8 L27 41.2 L29.7 42.7 L32.4 41.2 L35.1 45.9 L37.8 44.9 L40.5 40.2 L43.2 46.2 L45.9 45.6 L48.6 43 L51.3 42.1 L54 38.5 L56.7 36.9 L59.4 39.7 L62.1 35.9 L64.8 36.1 L67.5 35.9 L70.2 33.9 L72.9 36.3 L75.6 35.7 L78.3 38 L81 35.5 L83.7 36.1 L86.4 35 L89.1 36.1 L91.8 34.8 L94.5 33.7 L97.2 38.8 L99.9 39.1 L102.6 38.4 L105.3 38 L108 35.8 L110.7 46.7 L113.4 57.8 L116.1 65.7 L118.8 77.7 L121.5 80 L124.2 85.1 L126.9 81.2 L129.6 81.4 L132.3 74.5 L135 60.5 L137.7 52.2 L140.4 46.4 L143.1 43.6 L145.8 47.2 L148.5 43.3 L151.2 41.1 L153.9 44.7 L156.6 45.5 L159.3 41.7 L162 40.1 L164.7 41.3 L167.4 45.1 L170.1 43.1 L172.8 38.2 L175.5 38.4 L178.2 36.8 L180.9 35.9 L183.6 40.2 L186.3 35.4 L189 37.5 L191.7 36.2 L194.4 34 L197.1 37.3 L199.8 32.9 L202.5 36.1 L205.2 32.5 L207.9 34.5 L210.6 33.1 L213.3 33.6 L216 38.6 L218.7 37.8 L221.4 34.8 L224.1 39.2 L226.8 35.1 L229.5 36.9 L232.2 40.6 L234.9 39.8 L237.6 36.8 L240.3 43.5 L243 38.9 L245.7 39.8 L248.4 43.8 L251.1 41.3 L253.8 41.5 L256.5 40.4 L259.2 40.8 L261.9 44.4 L264.6 42.2 L267.3 44.7 L270 43.1 L272.7 43.5 L275.4 46.7 L278.1 43.2 L280.8 43.4 L283.5 44.9 L286.2 39.8 L288.9 39 L291.6 43.5 L294.3 42.3 L297 37.8 L299.7 36.7 L302.4 39.8 L305.1 40.6 L307.8 35 L310.5 39.6 L313.2 38.7 L315.9 36.4 L318.6 34.9 L321.3 32.5 L324 38.8 L324 8 Z"/><path class="ink" d="M0 39.2 L2.7 40.5 L5.4 43.6 L8.1 41.1 L10.8 42 L13.5 43 L16.2 40.8 L18.9 43.4 L21.6 44.5 L24.3 45.8 L27 41.2 L29.7 42.7 L32.4 41.2 L35.1 45.9 L37.8 44.9 L40.5 40.2 L43.2 46.2 L45.9 45.6 L48.6 43 L51.3 42.1 L54 38.5 L56.7 36.9 L59.4 39.7 L62.1 35.9 L64.8 36.1 L67.5 35.9 L70.2 33.9 L72.9 36.3 L75.6 35.7 L78.3 38 L81 35.5 L83.7 36.1 L86.4 35 L89.1 36.1 L91.8 34.8 L94.5 33.7 L97.2 38.8 L99.9 39.1 L102.6 38.4 L105.3 38 L108 35.8 L110.7 46.7 L113.4 57.8 L116.1 65.7 L118.8 77.7 L121.5 80 L124.2 85.1 L126.9 81.2 L129.6 81.4 L132.3 74.5 L135 60.5 L137.7 52.2 L140.4 46.4 L143.1 43.6 L145.8 47.2 L148.5 43.3 L151.2 41.1 L153.9 44.7 L156.6 45.5 L159.3 41.7 L162 40.1 L164.7 41.3 L167.4 45.1 L170.1 43.1 L172.8 38.2 L175.5 38.4 L178.2 36.8 L180.9 35.9 L183.6 40.2 L186.3 35.4 L189 37.5 L191.7 36.2 L194.4 34 L197.1 37.3 L199.8 32.9 L202.5 36.1 L205.2 32.5 L207.9 34.5 L210.6 33.1 L213.3 33.6 L216 38.6 L218.7 37.8 L221.4 34.8 L224.1 39.2 L226.8 35.1 L229.5 36.9 L232.2 40.6 L234.9 39.8 L237.6 36.8 L240.3 43.5 L243 38.9 L245.7 39.8 L248.4 43.8 L251.1 41.3 L253.8 41.5 L256.5 40.4 L259.2 40.8 L261.9 44.4 L264.6 42.2 L267.3 44.7 L270 43.1 L272.7 43.5 L275.4 46.7 L278.1 43.2 L280.8 43.4 L283.5 44.9 L286.2 39.8 L288.9 39 L291.6 43.5 L294.3 42.3 L297 37.8 L299.7 36.7 L302.4 39.8 L305.1 40.6 L307.8 35 L310.5 39.6 L313.2 38.7 L315.9 36.4 L318.6 34.9 L321.3 32.5 L324 38.8"/><path class="axis" d="M0 8 H324"/><circle class="dot" cx="324" cy="38.8" r="4"/><text x="0" y="122" text-anchor="start">−10 min</text><text x="162" y="122" text-anchor="middle">−5 min</text><text x="324" y="122" text-anchor="end">now</text></svg><!-- /chart -->
+      <figcaption class="chart-caption">Last 10 minutes. Updates once a second while this screen is open.</figcaption>
+      <button class="text-btn inline-start view-table" aria-haspopup="dialog">View as table</button>
+    </figure>
+  </section>
+</main>
+
+<nav class="navbar" aria-label="Destinations">
+  <ul>
+    <li><a href="now.html" aria-current="page"><span class="pill"><svg class="i"><use href="#i-battery_android_frame_5_fill1"/></svg></span>Now</a></li>
+    <li><a href="drain.html"><span class="pill"><svg class="i"><use href="#i-data_usage"/></svg></span>Drain</a></li>
+    <li><a href="timeline.html"><span class="pill"><svg class="i"><use href="#i-timeline"/></svg></span>Timeline</a></li>
+    <li><a href="health.html"><span class="pill"><svg class="i"><use href="#i-ecg_heart"/></svg></span>Health</a></li>
+  </ul>
+  <span class="gesture" aria-hidden="true"></span>
+</nav>
+</body>
+</html>

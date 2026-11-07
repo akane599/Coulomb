@@ -1,0 +1,172 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health · Coulomb design lab</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<!-- sprite --><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="i-battery_android_5" viewBox="0 -960 960 960"><path d="M560-290h160v-380H560v380Zm-400 80q-33 0-56.5-23.5T80-290v-380q0-33 23.5-56.5T160-750h560q33 0 56.5 23.5T800-670v90h20q25 0 42.5 17.5T880-520v80q0 26-17.5 43T820-380h-20v90q0 33-23.5 56.5T720-210H160Z"/></symbol><symbol id="i-battery_android_frame_5" viewBox="0 -960 960 960"><path d="M160-240q-50 0-85-35t-35-85v-240q0-50 35-85t85-35h540q50 0 85 35t35 85v240q0 50-35 85t-85 35H160Zm0-80h540q17 0 28.5-11.5T740-360v-240q0-17-11.5-28.5T700-640H160q-17 0-28.5 11.5T120-600v240q0 17 11.5 28.5T160-320Zm700-60v-200h20q17 0 28.5 11.5T920-540v120q0 17-11.5 28.5T880-380h-20Zm-700-20v-160q0-17 11.5-28.5T200-600h320q17 0 28.5 11.5T560-560v160q0 17-11.5 28.5T520-360H200q-17 0-28.5-11.5T160-400Z"/></symbol><symbol id="i-data_usage" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-130 75-234t199-145q29-10 53.5 7t24.5 46q0 20-11.5 36.5T391-747q-86 27-138.5 100.5T200-480q0 117 81.5 198.5T480-200q52 0 100.5-18t86.5-52q15-14 36.5-14t36.5 14q23 21 24 47.5T742-176q-54 47-120.5 71.5T480-80Zm280-400q0-92-53-165.5T568-747q-18-6-29.5-22.5T527-806q0-29 24.5-46t53.5-7q125 42 200 146t75 233q0 18-1.5 36.5T873-403q-5 29-29.5 41.5T790-360q-19-7-29.5-25.5T754-424q3-17 4.5-30t1.5-26Z"/></symbol><symbol id="i-ecg_heart_fill1" viewBox="0 -960 960 960"><path d="M645-840q100 0 167.5 74T880-590q0 18-2 35.5t-7 34.5H621l-68-102q-5-8-14-13t-19-5q-13 0-23.5 8T482-612l-54 162-35-52q-5-8-14-13t-19-5H89q-5-17-7-34.5T80-589q0-103 67-177t167-74q48 0 90.5 19t75.5 53q32-34 74.5-53t90.5-19ZM480-120q-18 0-34.5-6.5T416-146L148-415q-6-6-11-12t-10-13h211l68 102q5 8 14 13t19 5q13 0 24-8t15-20l54-162 34 52q6 8 15 13t19 5h232l-10 12-10 12-269 270q-13 13-29 19.5t-34 6.5Z"/></symbol><symbol id="i-fact_check" viewBox="0 -960 960 960"><path d="M160-120q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160Zm0-80h640v-560H160v560Zm200-80q17 0 28.5-11.5T400-320q0-17-11.5-28.5T360-360H240q-17 0-28.5 11.5T200-320q0 17 11.5 28.5T240-280h120Zm222-193-29-29q-12-12-28-11.5T497-501q-11 12-11.5 28t11.5 28l57 57q12 12 28 12t28-12l142-142q12-12 12-28t-12-28q-12-12-28.5-12T695-586L582-473Zm-222 33q17 0 28.5-11.5T400-480q0-17-11.5-28.5T360-520H240q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440h120Zm0-160q17 0 28.5-11.5T400-640q0-17-11.5-28.5T360-680H240q-17 0-28.5 11.5T200-640q0 17 11.5 28.5T240-600h120ZM160-200v-560 560Z"/></symbol><symbol id="i-settings" viewBox="0 -960 960 960"><path d="M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm7-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></symbol><symbol id="i-shield_person" viewBox="0 -960 960 960"><path d="M480-440q-59 0-99.5-40.5T340-580q0-59 40.5-99.5T480-720q59 0 99.5 40.5T620-580q0 59-40.5 99.5T480-440Zm0-80q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm0 40Zm0-315-240 90v189q0 54 15 105t41 96q42-21 88-33t96-12q50 0 96 12t88 33q26-45 41-96t15-105v-189l-240-90Zm0 515q-36 0-70 8t-65 22q29 30 63 52t72 34q38-12 72-34t63-52q-31-14-65-22t-70-8Zm0 196q-7 0-13-1t-12-3q-135-45-215-166.5T160-516v-189q0-25 14.5-45t37.5-29l240-90q14-5 28-5t28 5l240 90q23 9 37.5 29t14.5 45v189q0 140-80 261.5T505-88q-6 2-12 3t-13 1Z"/></symbol><symbol id="i-signal_cellular_alt" viewBox="0 -960 960 960"><path d="M260-160q-25 0-42.5-17.5T200-220v-120q0-25 17.5-42.5T260-400q25 0 42.5 17.5T320-340v120q0 25-17.5 42.5T260-160Zm240 0q-25 0-42.5-17.5T440-220v-320q0-25 17.5-42.5T500-600q25 0 42.5 17.5T560-540v320q0 25-17.5 42.5T500-160Zm240 0q-25 0-42.5-17.5T680-220v-520q0-25 17.5-42.5T740-800q25 0 42.5 17.5T800-740v520q0 25-17.5 42.5T740-160Z"/></symbol><symbol id="i-timeline" viewBox="0 -960 960 960"><path d="M120-240q-33 0-56.5-23.5T40-320q0-33 23.5-56.5T120-400h10.5q4.5 0 9.5 2l182-182q-2-5-2-9.5V-600q0-33 23.5-56.5T400-680q33 0 56.5 23.5T480-600q0 2-2 20l102 102q5-2 9.5-2h21q4.5 0 9.5 2l142-142q-2-5-2-9.5V-640q0-33 23.5-56.5T840-720q33 0 56.5 23.5T920-640q0 33-23.5 56.5T840-560h-10.5q-4.5 0-9.5-2L678-420q2 5 2 9.5v10.5q0 33-23.5 56.5T600-320q-33 0-56.5-23.5T520-400v-10.5q0-4.5 2-9.5L420-522q-5 2-9.5 2H400q-2 0-20-2L198-340q2 5 2 9.5v10.5q0 33-23.5 56.5T120-240Z"/></symbol><symbol id="i-wifi" viewBox="0 -960 960 960"><path d="M480-120q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29Zm0-440q75 0 142.5 24T745-470q20 15 20.5 39.5T748-388q-17 17-42 17.5T661-384q-38-26-84-41t-97-15q-51 0-97 15t-84 41q-20 14-45 13t-42-18q-17-18-17-42.5t20-39.5q55-42 122.5-65.5T480-560Zm0-240q125 0 235.5 41T914-643q20 17 21 42t-17 43q-17 17-42 17.5T831-556q-72-59-161.5-91.5T480-680q-100 0-189.5 32.5T129-556q-20 16-45 15.5T42-558q-18-18-17-43t21-42q88-75 198.5-116T480-800Z"/></symbol><symbol id="p-derived" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/><path d="M6 2.5a3.5 3.5 0 0 1 0 7z" fill="currentColor" stroke="none"/></symbol><symbol id="p-estimated" viewBox="0 0 12 12"><path d="M2 3.5v5M10 3.5v5M2 6h8"/></symbol><symbol id="p-measured" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="currentColor" stroke="none"/></symbol><symbol id="p-modeled" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/></symbol></svg><!-- /sprite -->
+<header class="top">
+  <div class="statusbar" aria-hidden="true">
+    <span>14:20</span>
+    <span class="sys"><svg class="i i-18"><use href="#i-signal_cellular_alt"/></svg><svg class="i i-18"><use href="#i-wifi"/></svg><svg class="i i-18"><use href="#i-battery_android_5"/></svg></span>
+  </div>
+  <div class="appbar">
+    <h1>Health</h1>
+    <a class="icon-btn" href="#" aria-label="Action Center"><svg class="i"><use href="#i-fact_check"/></svg></a>
+    <a class="icon-btn" href="onboarding.html" aria-label="Privileges"><svg class="i"><use href="#i-shield_person"/></svg></a>
+    <a class="icon-btn" href="#" aria-label="Settings"><svg class="i"><use href="#i-settings"/></svg></a>
+  </div>
+</header>
+
+<main>
+  <section class="health-hero" aria-label="Capacity">
+    <div class="total-figure">
+      <p class="t-display">4,610<span class="unit">mAh</span></p>
+      <span class="pm">± 70</span>
+      <svg class="prov" role="img" aria-label="Estimated"><title>Estimated</title><use href="#p-estimated"/></svg>
+    </div>
+    <p class="total-caption">92% of the 5,000 mAh design capacity</p>
+    <figure><!-- chart:health-scale --><svg class="chart" viewBox="0 0 380 72" role="img" aria-labelledby="scale-t"><title id="scale-t">Estimated capacity 4,610 mAh, 95% interval 4,540 to 4,680 mAh, on a scale from 4,000 mAh (80%) to the 5,000 mAh design capacity (100%).</title><path class="axis" d="M8.0 30.0 H372.0"/><path class="axis" d="M8 30.0 v8"/><path class="axis" d="M44.4 30.0 v4"/><path class="axis" d="M80.8 30.0 v4"/><path class="axis" d="M117.2 30.0 v4"/><path class="axis" d="M153.6 30.0 v4"/><path class="axis" d="M190 30.0 v8"/><path class="axis" d="M226.4 30.0 v4"/><path class="axis" d="M262.8 30.0 v4"/><path class="axis" d="M299.2 30.0 v4"/><path class="axis" d="M335.6 30.0 v4"/><path class="axis" d="M372 30.0 v8"/><text x="0" y="54" text-anchor="start">4,000</text><text x="0" y="70" text-anchor="start">80%</text><text x="190" y="54" text-anchor="middle">4,500</text><text x="190" y="70" text-anchor="middle">90%</text><text x="380" y="54" text-anchor="end">5,000</text><text x="380" y="70" text-anchor="end">100%</text><text x="380" y="12" text-anchor="end">Design</text><path class="bracket" d="M204.6 22.0 V30.0 H255.5 V22.0"/><circle class="dot" cx="230" cy="30.0" r="4.5"/><text x="230" y="12" text-anchor="middle" class="lbl-strong">4,540–4,680</text></svg><!-- /chart -->
+      <figcaption class="chart-caption">Estimated from 14 charge and discharge windows. Design capacity from Android's power profile.</figcaption>
+    </figure>
+    <p class="verdict">About 110 mAh lower than on 12 August, within the first estimate's ±150 mAh range.</p>
+  </section>
+
+  <section class="section" aria-labelledby="check-h">
+    <div class="section-head"><h2 id="check-h">Cross-check</h2></div>
+    <table class="data-table" aria-labelledby="check-h">
+      <thead><tr><th scope="col">Source</th><th scope="col" class="num">Health</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Coulomb<span class="note">Charge counter over 14 windows</span></th><td class="num">92% <svg class="prov" role="img" aria-label="Estimated"><title>Estimated</title><use href="#p-estimated"/></svg></td></tr>
+        <tr><th scope="row">Android<span class="note">Battery state of health</span></th><td class="num">93% <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></td></tr>
+        <tr><th scope="row">Battery fuel gauge<span class="note">The chip's own capacity figure</span></th><td class="num">91% <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></td></tr>
+      </tbody>
+    </table>
+    <p class="check-note">Three estimates by three methods; they agree within 2 points.</p>
+  </section>
+
+  <section class="section" aria-labelledby="cycles-h">
+    <h2 class="visually-hidden" id="cycles-h">Cycles and age</h2>
+    <dl class="figures">
+      <div>
+        <dt>Cycle count</dt>
+        <dd class="fig">312 <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></dd>
+        <dd class="sub">reported by Android</dd>
+      </div>
+      <div>
+        <dt>Counted by Coulomb</dt>
+        <dd class="fig">61.4 <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></dd>
+        <dd class="sub">since 12 Aug; Android counted 63</dd>
+      </div>
+      <div>
+        <dt>First used</dt>
+        <dd class="fig">Apr 2025</dd>
+        <dd class="sub">made in Mar 2025</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="section" aria-labelledby="cap-h">
+    <div class="section-head"><h2 id="cap-h">Capacity over time</h2></div>
+    <figure>
+      <!-- chart:capacity-trend --><svg class="chart" viewBox="0 0 380 150" role="img" aria-labelledby="cap-t"><title id="cap-t">Capacity since 12 August: the estimate moved from 4,720 to 4,610 mAh while its interval narrowed from plus or minus 150 to plus or minus 70 mAh, from 14 qualifying windows.</title><path class="grid" d="M0 90.8 H344"/><text x="380" y="94.8" text-anchor="end">4,600</text><path class="grid" d="M0 57.5 H344"/><text x="380" y="61.5" text-anchor="end">4,800</text><text x="380" y="128" text-anchor="end">4,400</text><path class="marker" d="M0 24.3 H344"/><text x="380" y="28.3" text-anchor="end">5,000</text><text x="0" y="18.3" text-anchor="start">Design capacity</text><path class="band" d="M11.9 45.9 L35.6 57 L55.4 56.5 L79.1 64.4 L106.8 65.5 L130.5 65 L154.2 69.5 L181.9 72.5 L205.6 70.8 L229.3 72.5 L257 75 L280.7 73.3 L308.4 75 L332.1 75 L332.1 98.2 L308.4 98.2 L280.7 96.6 L257 98.2 L229.3 95.8 L205.6 94.1 L181.9 95.8 L154.2 95.4 L130.5 94.9 L106.8 99.4 L79.1 102.2 L55.4 98.4 L35.6 102.9 L11.9 95.8 Z"/><path class="cross" d="M9.4 68.3 l5 5 M14.4 68.3 l-5 5 M33.1 86.6 l5 5 M38.1 86.6 l-5 5 M52.9 75 l5 5 M57.9 75 l-5 5 M76.6 93.3 l5 5 M81.6 93.3 l-5 5 M104.3 80 l5 5 M109.3 80 l-5 5 M128 71.7 l5 5 M133 71.7 l-5 5 M151.7 89.9 l5 5 M156.7 89.9 l-5 5 M179.4 83.3 l5 5 M184.4 83.3 l-5 5 M203.1 78.3 l5 5 M208.1 78.3 l-5 5 M226.8 91.6 l5 5 M231.8 91.6 l-5 5 M254.5 84.9 l5 5 M259.5 84.9 l-5 5 M278.2 81.6 l5 5 M283.2 81.6 l-5 5 M305.9 88.3 l5 5 M310.9 88.3 l-5 5 M329.6 85.8 l5 5 M334.6 85.8 l-5 5"/><path class="ink" d="M11.9 70.8 L35.6 80 L55.4 77.5 L79.1 83.3 L106.8 82.5 L130.5 80 L154.2 82.5 L181.9 84.1 L205.6 82.5 L229.3 84.1 L257 86.6 L280.7 85 L308.4 86.6 L332.1 86.6"/><path class="bracket" d="M338.1 77.5 H332.1 V100.7 H338.1"/><path class="axis" d="M0 124 H344"/><path class="axis" d="M0 124 v4"/><text x="0" y="144" text-anchor="start">12 Aug</text><path class="axis" d="M79.1 124 v4"/><text x="79.1" y="144" text-anchor="middle">Sep</text><path class="axis" d="M197.7 124 v4"/><text x="197.7" y="144" text-anchor="middle">Oct</text><path class="axis" d="M320.3 124 v4"/><text x="320.3" y="144" text-anchor="middle">Nov</text></svg><!-- /chart -->
+      <figcaption class="chart-caption">Each cross is one <button class="term" aria-haspopup="dialog">qualifying window</button>. The line is the estimate and the band its 95% interval.</figcaption>
+      <button class="text-btn inline-start view-table" aria-haspopup="dialog">View as table</button>
+    </figure>
+  </section>
+
+  <section class="section" aria-labelledby="habits-h">
+    <div class="section-head"><h2 id="habits-h">Charging habits</h2><span class="muted t-caption">Last 30 days</span></div>
+    <dl class="figures">
+      <div>
+        <dt>Depth of discharge</dt>
+        <dd class="fig">46<span class="unit">%</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></dd>
+        <dd class="sub">average per charge</dd>
+      </div>
+      <div>
+        <dt>At 80% or more</dt>
+        <dd class="fig">6<span class="unit"> h</span> 10<span class="unit"> min</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></dd>
+        <dd class="sub">a day</dd>
+      </div>
+      <div>
+        <dt>While charging</dt>
+        <dd class="fig">33.4<span class="unit"> °C</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></dd>
+        <dd class="sub">average</dd>
+      </div>
+    </dl>
+    <h3 class="subhead">Wear stress by session <svg class="prov" role="img" aria-label="Estimated"><title>Estimated</title><use href="#p-estimated"/></svg></h3>
+    <ul class="rows">
+      <li class="data-row"><span class="name">Low</span><span class="value">18 <span class="unit">sessions</span></span><span class="share" aria-hidden="true"><span style="--share: 60%"></span></span></li>
+      <li class="data-row"><span class="name">Moderate</span><span class="value">9 <span class="unit">sessions</span></span><span class="share" aria-hidden="true"><span style="--share: 30%"></span></span></li>
+      <li class="data-row"><span class="name">High</span><span class="value">3 <span class="unit">sessions</span></span><span class="share" aria-hidden="true"><span style="--share: 10%"></span></span></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="sessions-h">
+    <div class="section-head"><h2 id="sessions-h">Charge sessions</h2><a class="text-btn" href="#">See all</a></div>
+    <ul class="rows">
+      <li><a class="data-row" href="#">
+        <span class="name">Today, 00:30</span>
+        <span class="detail">38% to 100% in 8 h 38 min · 0.62 cycles · high stress</span>
+        <span class="value">+62<span class="unit">%</span></span>
+        <span class="share" aria-hidden="true"><span style="--share: 62%"></span></span>
+      </a></li>
+      <li><a class="data-row" href="#">
+        <span class="name">Yesterday, 12:40</span>
+        <span class="detail">55% to 81% in 40 min · 0.26 cycles · low stress</span>
+        <span class="value">+26<span class="unit">%</span></span>
+        <span class="share" aria-hidden="true"><span style="--share: 26%"></span></span>
+      </a></li>
+      <li><a class="data-row" href="#">
+        <span class="name">Wednesday, 23:10</span>
+        <span class="detail">31% to 100% in 7 h 50 min · 0.69 cycles · moderate stress</span>
+        <span class="value">+69<span class="unit">%</span></span>
+        <span class="share" aria-hidden="true"><span style="--share: 69%"></span></span>
+      </a></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="chargers-h">
+    <div class="section-head"><h2 id="chargers-h">Chargers</h2></div>
+    <ul class="rows">
+      <li class="data-row with-action">
+        <span class="name">Desk charger</span>
+        <span class="detail">Baseline · last seen today</span>
+        <span class="value">24.6<span class="unit"> W</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></span>
+        <button class="text-btn" aria-label="Rename Desk charger">Rename</button>
+        <span class="share" aria-hidden="true"><span style="--share: 100%"></span></span>
+      </li>
+      <li class="data-row with-action">
+        <span class="name">Car charger</span>
+        <span class="detail">Baseline · last seen 3 days ago</span>
+        <span class="value">14.8<span class="unit"> W</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></span>
+        <button class="text-btn" aria-label="Rename Car charger">Rename</button>
+        <span class="share" aria-hidden="true"><span style="--share: 60%"></span></span>
+      </li>
+      <li class="data-row with-action">
+        <span class="name">Unnamed USB-C charger</span>
+        <span class="detail">Baseline · last seen 21 Oct</span>
+        <span class="value">9.7<span class="unit"> W</span> <svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></span>
+        <button class="text-btn" aria-label="Rename Unnamed USB-C charger">Rename</button>
+        <span class="share" aria-hidden="true"><span style="--share: 39%"></span></span>
+      </li>
+    </ul>
+  </section>
+</main>
+
+<nav class="navbar" aria-label="Destinations">
+  <ul>
+    <li><a href="now.html"><span class="pill"><svg class="i"><use href="#i-battery_android_frame_5"/></svg></span>Now</a></li>
+    <li><a href="drain.html"><span class="pill"><svg class="i"><use href="#i-data_usage"/></svg></span>Drain</a></li>
+    <li><a href="timeline.html"><span class="pill"><svg class="i"><use href="#i-timeline"/></svg></span>Timeline</a></li>
+    <li><a href="health.html" aria-current="page"><span class="pill"><svg class="i"><use href="#i-ecg_heart_fill1"/></svg></span>Health</a></li>
+  </ul>
+  <span class="gesture" aria-hidden="true"></span>
+</nav>
+</body>
+</html>

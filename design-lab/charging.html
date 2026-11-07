@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Charging · Coulomb design lab</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<!-- sprite --><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="i-battery_android_5" viewBox="0 -960 960 960"><path d="M560-290h160v-380H560v380Zm-400 80q-33 0-56.5-23.5T80-290v-380q0-33 23.5-56.5T160-750h560q33 0 56.5 23.5T800-670v90h20q25 0 42.5 17.5T880-520v80q0 26-17.5 43T820-380h-20v90q0 33-23.5 56.5T720-210H160Z"/></symbol><symbol id="i-battery_android_frame_5_fill1" viewBox="0 -960 960 960"><path d="M160-240q-50 0-85-35t-35-85v-240q0-50 35-85t85-35h540q50 0 85 35t35 85v240q0 50-35 85t-85 35H160Zm0-80h540q17 0 28.5-11.5T740-360v-240q0-17-11.5-28.5T700-640H160q-17 0-28.5 11.5T120-600v240q0 17 11.5 28.5T160-320Zm700-60v-200h20q17 0 28.5 11.5T920-540v120q0 17-11.5 28.5T880-380h-20Zm-700-20v-160q0-17 11.5-28.5T200-600h320q17 0 28.5 11.5T560-560v160q0 17-11.5 28.5T520-360H200q-17 0-28.5-11.5T160-400Z"/></symbol><symbol id="i-check" viewBox="0 -960 960 960"><path d="m382-354 339-339q12-12 28-12t28 12q12 12 12 28.5T777-636L410-268q-12 12-28 12t-28-12L182-440q-12-12-11.5-28.5T183-497q12-12 28.5-12t28.5 12l142 143Z"/></symbol><symbol id="i-data_usage" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-130 75-234t199-145q29-10 53.5 7t24.5 46q0 20-11.5 36.5T391-747q-86 27-138.5 100.5T200-480q0 117 81.5 198.5T480-200q52 0 100.5-18t86.5-52q15-14 36.5-14t36.5 14q23 21 24 47.5T742-176q-54 47-120.5 71.5T480-80Zm280-400q0-92-53-165.5T568-747q-18-6-29.5-22.5T527-806q0-29 24.5-46t53.5-7q125 42 200 146t75 233q0 18-1.5 36.5T873-403q-5 29-29.5 41.5T790-360q-19-7-29.5-25.5T754-424q3-17 4.5-30t1.5-26Z"/></symbol><symbol id="i-ecg_heart" viewBox="0 -960 960 960"><path d="M480-480Zm0 360q-18 0-34.5-6.5T416-146L148-415q-35-35-51.5-80T80-589q0-103 67-177t167-74q48 0 90.5 19t75.5 53q32-34 74.5-53t90.5-19q100 0 167.5 74T880-590q0 49-17 94t-51 80L543-146q-13 13-29 19.5t-34 6.5Zm40-520q10 0 19 5t14 13l68 102h166q7-17 10.5-34.5T801-590q-2-69-46-118.5T645-758q-31 0-59.5 12T536-711l-27 29q-5 6-13 9.5t-16 3.5q-8 0-16-3.5t-14-9.5l-27-29q-21-23-49-36t-60-13q-66 0-110 50.5T160-590q0 18 3 35.5t10 34.5h187q10 0 19 5t14 13l35 52 54-162q4-12 14.5-20t23.5-8Zm12 130-54 162q-4 12-15 20t-24 8q-10 0-19-5t-14-13l-68-102H236l237 237q2 2 3.5 2.5t3.5.5q2 0 3.5-.5t3.5-2.5l236-237H600q-10 0-19-5t-15-13l-34-52Z"/></symbol><symbol id="i-fact_check" viewBox="0 -960 960 960"><path d="M160-120q-33 0-56.5-23.5T80-200v-560q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v560q0 33-23.5 56.5T800-120H160Zm0-80h640v-560H160v560Zm200-80q17 0 28.5-11.5T400-320q0-17-11.5-28.5T360-360H240q-17 0-28.5 11.5T200-320q0 17 11.5 28.5T240-280h120Zm222-193-29-29q-12-12-28-11.5T497-501q-11 12-11.5 28t11.5 28l57 57q12 12 28 12t28-12l142-142q12-12 12-28t-12-28q-12-12-28.5-12T695-586L582-473Zm-222 33q17 0 28.5-11.5T400-480q0-17-11.5-28.5T360-520H240q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440h120Zm0-160q17 0 28.5-11.5T400-640q0-17-11.5-28.5T360-680H240q-17 0-28.5 11.5T200-640q0 17 11.5 28.5T240-600h120ZM160-200v-560 560Z"/></symbol><symbol id="i-settings" viewBox="0 -960 960 960"><path d="M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm7-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></symbol><symbol id="i-shield_person" viewBox="0 -960 960 960"><path d="M480-440q-59 0-99.5-40.5T340-580q0-59 40.5-99.5T480-720q59 0 99.5 40.5T620-580q0 59-40.5 99.5T480-440Zm0-80q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm0 40Zm0-315-240 90v189q0 54 15 105t41 96q42-21 88-33t96-12q50 0 96 12t88 33q26-45 41-96t15-105v-189l-240-90Zm0 515q-36 0-70 8t-65 22q29 30 63 52t72 34q38-12 72-34t63-52q-31-14-65-22t-70-8Zm0 196q-7 0-13-1t-12-3q-135-45-215-166.5T160-516v-189q0-25 14.5-45t37.5-29l240-90q14-5 28-5t28 5l240 90q23 9 37.5 29t14.5 45v189q0 140-80 261.5T505-88q-6 2-12 3t-13 1Z"/></symbol><symbol id="i-signal_cellular_alt" viewBox="0 -960 960 960"><path d="M260-160q-25 0-42.5-17.5T200-220v-120q0-25 17.5-42.5T260-400q25 0 42.5 17.5T320-340v120q0 25-17.5 42.5T260-160Zm240 0q-25 0-42.5-17.5T440-220v-320q0-25 17.5-42.5T500-600q25 0 42.5 17.5T560-540v320q0 25-17.5 42.5T500-160Zm240 0q-25 0-42.5-17.5T680-220v-520q0-25 17.5-42.5T740-800q25 0 42.5 17.5T800-740v520q0 25-17.5 42.5T740-160Z"/></symbol><symbol id="i-timeline" viewBox="0 -960 960 960"><path d="M120-240q-33 0-56.5-23.5T40-320q0-33 23.5-56.5T120-400h10.5q4.5 0 9.5 2l182-182q-2-5-2-9.5V-600q0-33 23.5-56.5T400-680q33 0 56.5 23.5T480-600q0 2-2 20l102 102q5-2 9.5-2h21q4.5 0 9.5 2l142-142q-2-5-2-9.5V-640q0-33 23.5-56.5T840-720q33 0 56.5 23.5T920-640q0 33-23.5 56.5T840-560h-10.5q-4.5 0-9.5-2L678-420q2 5 2 9.5v10.5q0 33-23.5 56.5T600-320q-33 0-56.5-23.5T520-400v-10.5q0-4.5 2-9.5L420-522q-5 2-9.5 2H400q-2 0-20-2L198-340q2 5 2 9.5v10.5q0 33-23.5 56.5T120-240Z"/></symbol><symbol id="i-wifi" viewBox="0 -960 960 960"><path d="M480-120q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29Zm0-440q75 0 142.5 24T745-470q20 15 20.5 39.5T748-388q-17 17-42 17.5T661-384q-38-26-84-41t-97-15q-51 0-97 15t-84 41q-20 14-45 13t-42-18q-17-18-17-42.5t20-39.5q55-42 122.5-65.5T480-560Zm0-240q125 0 235.5 41T914-643q20 17 21 42t-17 43q-17 17-42 17.5T831-556q-72-59-161.5-91.5T480-680q-100 0-189.5 32.5T129-556q-20 16-45 15.5T42-558q-18-18-17-43t21-42q88-75 198.5-116T480-800Z"/></symbol><symbol id="p-derived" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/><path d="M6 2.5a3.5 3.5 0 0 1 0 7z" fill="currentColor" stroke="none"/></symbol><symbol id="p-estimated" viewBox="0 0 12 12"><path d="M2 3.5v5M10 3.5v5M2 6h8"/></symbol><symbol id="p-measured" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="currentColor" stroke="none"/></symbol><symbol id="p-modeled" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/></symbol></svg><!-- /sprite -->
+<header class="top">
+  <div class="statusbar" aria-hidden="true">
+    <span>19:05</span>
+    <span class="sys"><svg class="i i-18"><use href="#i-signal_cellular_alt"/></svg><svg class="i i-18"><use href="#i-wifi"/></svg><svg class="i i-18"><use href="#i-battery_android_5"/></svg></span>
+  </div>
+  <div class="appbar">
+    <h1>Charging</h1>
+    <a class="icon-btn" href="#" aria-label="Action Center"><svg class="i"><use href="#i-fact_check"/></svg></a>
+    <a class="icon-btn" href="onboarding.html" aria-label="Privileges"><svg class="i"><use href="#i-shield_person"/></svg></a>
+    <a class="icon-btn" href="#" aria-label="Settings"><svg class="i"><use href="#i-settings"/></svg></a>
+  </div>
+</header>
+
+<main>
+  <section class="hero charge-hero" aria-label="Charging power">
+    <div class="hero-read">
+      <p class="t-display charge-power"><span class="nobr">18.4<span class="unit">W</span><svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></span></p>
+      <div class="hero-side">
+        <p class="t-title"><span class="nobr">52% <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></span> <span class="muted">· <button class="term" aria-haspopup="dialog">full speed</button></span></p>
+        <p class="t-data muted">Desk charger · 85% of its baseline</p>
+      </div>
+    </div>
+    <figure class="charge-level"><!-- chart:charge-level --><svg class="chart" viewBox="0 0 380 44" role="img" aria-labelledby="lvl-t"><title id="lvl-t">Level 52%, charging to the 80% target.</title><path class="wave" d="M0 30 L0.5 30.5 L1 30.9 L1.5 31.4 L2 31.8 L2.5 32.1 L3 32.4 L3.5 32.7 L4 32.9 L4.5 33 L5 33 L5.5 33 L6 32.9 L6.5 32.7 L7 32.4 L7.5 32.1 L8 31.8 L8.5 31.4 L9 30.9 L9.5 30.5 L10 30 L10.5 29.5 L11 29.1 L11.5 28.6 L12 28.2 L12.5 27.9 L13 27.6 L13.5 27.3 L14 27.1 L14.5 27 L15 27 L15.5 27 L16 27.1 L16.5 27.3 L17 27.6 L17.5 27.9 L18 28.2 L18.5 28.6 L19 29.1 L19.5 29.5 L20 30 L20.5 30.5 L21 30.9 L21.5 31.4 L22 31.8 L22.5 32.1 L23 32.4 L23.5 32.7 L24 32.9 L24.5 33 L25 33 L25.5 33 L26 32.9 L26.5 32.7 L27 32.4 L27.5 32.1 L28 31.8 L28.5 31.4 L29 30.9 L29.5 30.5 L30 30 L30.5 29.5 L31 29.1 L31.5 28.6 L32 28.2 L32.5 27.9 L33 27.6 L33.5 27.3 L34 27.1 L34.5 27 L35 27 L35.5 27 L36 27.1 L36.5 27.3 L37 27.6 L37.5 27.9 L38 28.2 L38.5 28.6 L39 29.1 L39.5 29.5 L40 30 L40.5 30.5 L41 30.9 L41.5 31.4 L42 31.8 L42.5 32.1 L43 32.4 L43.5 32.7 L44 32.9 L44.5 33 L45 33 L45.5 33 L46 32.9 L46.5 32.7 L47 32.4 L47.5 32.1 L48 31.8 L48.5 31.4 L49 30.9 L49.5 30.5 L50 30 L50.5 29.5 L51 29.1 L51.5 28.6 L52 28.2 L52.5 27.9 L53 27.6 L53.5 27.3 L54 27.1 L54.5 27 L55 27 L55.5 27 L56 27.1 L56.5 27.3 L57 27.6 L57.5 27.9 L58 28.2 L58.5 28.6 L59 29.1 L59.5 29.5 L60 30 L60.5 30.5 L61 30.9 L61.5 31.4 L62 31.8 L62.5 32.1 L63 32.4 L63.5 32.7 L64 32.9 L64.5 33 L65 33 L65.5 33 L66 32.9 L66.5 32.7 L67 32.4 L67.5 32.1 L68 31.8 L68.5 31.4 L69 30.9 L69.5 30.5 L70 30 L70.5 29.5 L71 29.1 L71.5 28.6 L72 28.2 L72.5 27.9 L73 27.6 L73.5 27.3 L74 27.1 L74.5 27 L75 27 L75.5 27 L76 27.1 L76.5 27.3 L77 27.6 L77.5 27.9 L78 28.2 L78.5 28.6 L79 29.1 L79.5 29.5 L80 30 L80.5 30.5 L81 30.9 L81.5 31.4 L82 31.8 L82.5 32.1 L83 32.4 L83.5 32.7 L84 32.9 L84.5 33 L85 33 L85.5 33 L86 32.9 L86.5 32.7 L87 32.4 L87.5 32.1 L88 31.8 L88.5 31.4 L89 30.9 L89.5 30.5 L90 30 L90.5 29.5 L91 29.1 L91.5 28.6 L92 28.2 L92.5 27.9 L93 27.6 L93.5 27.3 L94 27.1 L94.5 27 L95 27 L95.5 27 L96 27.1 L96.5 27.3 L97 27.6 L97.5 27.9 L98 28.2 L98.5 28.6 L99 29.1 L99.5 29.5 L100 30 L100.5 30.5 L101 30.9 L101.5 31.4 L102 31.8 L102.5 32.1 L103 32.4 L103.5 32.7 L104 32.9 L104.5 33 L105 33 L105.5 33 L106 32.9 L106.5 32.7 L107 32.4 L107.5 32.1 L108 31.8 L108.5 31.4 L109 30.9 L109.5 30.5 L110 30 L110.5 29.5 L111 29.1 L111.5 28.6 L112 28.2 L112.5 27.9 L113 27.6 L113.5 27.3 L114 27.1 L114.5 27 L115 27 L115.5 27 L116 27.1 L116.5 27.3 L117 27.6 L117.5 27.9 L118 28.2 L118.5 28.6 L119 29.1 L119.5 29.5 L120 30 L120.5 30.5 L121 30.9 L121.5 31.4 L122 31.8 L122.5 32.1 L123 32.4 L123.5 32.7 L124 32.9 L124.5 33 L125 33 L125.5 33 L126 32.9 L126.5 32.7 L127 32.4 L127.5 32.1 L128 31.8 L128.5 31.4 L129 30.9 L129.5 30.5 L130 30 L130.5 29.5 L131 29.1 L131.5 28.6 L132 28.2 L132.5 27.9 L133 27.6 L133.5 27.3 L134 27.1 L134.5 27 L135 27 L135.5 27 L136 27.1 L136.5 27.3 L137 27.6 L137.5 27.9 L138 28.2 L138.5 28.6 L139 29.1 L139.5 29.5 L140 30 L140.5 30.5 L141 30.9 L141.5 31.4 L142 31.8 L142.5 32.1 L143 32.4 L143.5 32.7 L144 32.9 L144.5 33 L145 33 L145.5 33 L146 32.9 L146.5 32.7 L147 32.4 L147.5 32.1 L148 31.8 L148.5 31.4 L149 30.9 L149.5 30.5 L150 30 L150.5 29.5 L151 29.1 L151.5 28.6 L152 28.2 L152.5 27.9 L153 27.6 L153.5 27.3 L154 27.1 L154.5 27 L155 27 L155.5 27 L156 27.1 L156.5 27.3 L157 27.6 L157.5 27.9 L158 28.2 L158.5 28.6 L159 29.1 L159.5 29.5 L160 30 L160.5 30.5 L161 30.9 L161.5 31.4 L162 31.8 L162.5 32.1 L163 32.4 L163.5 32.7 L164 32.9 L164.5 33 L165 33 L165.5 33 L166 32.9 L166.5 32.7 L167 32.4 L167.5 32.1 L168 31.8 L168.5 31.4 L169 30.9 L169.5 30.5 L170 30 L170.5 29.5 L171 29.1 L171.5 28.6 L172 28.2 L172.5 27.9 L173 27.6 L173.5 27.3 L174 27.1 L174.5 27 L175 27 L175.5 27 L176 27.1 L176.5 27.3 L177 27.6 L177.5 27.9 L178 28.2 L178.5 28.6 L179 29.1 L179.5 29.5 L180 30 L180.5 30.5 L181 30.9 L181.5 31.4 L182 31.8 L182.5 32.1 L183 32.4 L183.5 32.7 L184 32.9 L184.5 33 L185 33 L185.5 33 L186 32.9 L186.5 32.7 L187 32.4 L187.5 32.1 L188 31.8 L188.5 31.4 L189 30.9 L189.5 30.5 L190 30 L190.5 29.5 L191 29.1 L191.5 28.6 L192 28.2 L192.5 27.9 L193 27.6 L193.5 27.3 L194 27.1 L194.5 27 L195 27 L195.5 27"/><path class="track" d="M203.6 30.0 H378"/><circle class="stop" cx="378" cy="30.0" r="2"/><path class="target" d="M304 20.0 V40.0"/><text x="350" y="12" text-anchor="end" class="lbl-strong">80% at 19:27–19:33</text><path class="mark-est" d="M355 4.5v5M363 4.5v5M355 7h8"/></svg><!-- /chart --></figure>
+    <p class="eta">
+      <span class="nobr"><strong>80%</strong> in 22–28 min <svg class="prov" role="img" aria-label="Estimated"><title>Estimated</title><use href="#p-estimated"/></svg></span>
+      <span><strong>Full</strong> in <span class="nobr">58 min</span> – <span class="nobr">1 h 10 min <svg class="prov" role="img" aria-label="Estimated"><title>Estimated</title><use href="#p-estimated"/></svg></span></span>
+    </p>
+  </section>
+
+  <section class="section" aria-labelledby="live-h">
+    <h2 class="visually-hidden" id="live-h">Live readings</h2>
+    <dl class="figures">
+      <div>
+        <dt>Current</dt>
+        <dd class="fig">4.58<span class="unit"> A</span> <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></dd>
+        <dd class="sub">into the battery</dd>
+      </div>
+      <div>
+        <dt>Voltage</dt>
+        <dd class="fig">4.02<span class="unit"> V</span> <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></dd>
+        <dd class="sub">at the battery</dd>
+      </div>
+      <div>
+        <dt>Battery</dt>
+        <dd class="fig">33.8<span class="unit"> °C</span> <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></dd>
+        <dd class="sub">up 4.1 °C</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="section" aria-labelledby="session-h">
+    <div class="section-head"><h2 id="session-h">This session</h2><span class="muted t-caption">Since 18:31</span></div>
+    <figure><!-- chart:charging-curve --><svg class="chart" viewBox="0 0 380 196" role="img" aria-labelledby="curve-t"><title id="curve-t">Plugged in at 18:31 at 21%. Now 52% at 18.4 W. At this rate the battery reaches 80% between 19:27 and 19:33.</title><path class="grid" d="M0 80 H344"/><text x="380" y="84" text-anchor="end">25%</text><path class="grid" d="M0 56 H344"/><text x="380" y="60" text-anchor="end">50%</text><path class="grid" d="M0 8 H344"/><text x="380" y="12" text-anchor="end">100%</text><path class="axis" d="M0 104.0 H344"/><text x="380" y="108" text-anchor="end">0%</text><path class="marker" d="M0 27.2 H344"/><text x="380" y="31.2" text-anchor="end" class="lbl-strong">80%</text><path class="cone" d="M139.2 54.1 L229.3 27.2 L253.9 27.2 Z"/><path class="cone-edge" d="M139.2 54.1 L229.3 27.2"/><path class="cone-edge" d="M139.2 54.1 L253.9 27.2"/><path class="ink" d="M0 83.8 L4.1 82.8 L8.2 81.8 L12.3 80.8 L16.4 79.9 L20.5 78.9 L24.6 77.9 L28.7 76.9 L32.8 75.9 L36.9 75 L41 74 L45 73.1 L49.1 72.1 L53.2 71.2 L57.3 70.2 L61.4 69.3 L65.5 68.4 L69.6 67.5 L73.7 66.6 L77.8 65.7 L81.9 64.8 L86 63.9 L90.1 63.1 L94.2 62.2 L98.3 61.4 L102.4 60.5 L106.5 59.7 L110.6 58.9 L114.7 58.1 L118.8 57.4 L122.9 56.6 L127 55.9 L131 55.2 L135.1 54.6 L139.2 54.1"/><path class="bracket" d="M229.3 20.2 V27.2 H253.9 V20.2"/><text x="241.6" y="15.2" text-anchor="middle" class="lbl-strong">19:27–19:33</text><circle class="dot" cx="139.2" cy="54.1" r="4.5"/><path class="ink-area" d="M0 176 L0 156.6 L4.1 146.7 L8.2 137.5 L12.3 136.9 L16.4 137.4 L20.5 137.5 L24.6 137.1 L28.7 137.9 L32.8 137.3 L36.9 137.5 L41 137.8 L45 137.1 L49.1 137.7 L53.2 137.3 L57.3 137.1 L61.4 137.6 L65.5 136.8 L69.6 137.3 L73.7 137.1 L77.8 136.7 L81.9 138 L86 138 L90.1 139.1 L94.2 139.9 L98.3 140 L102.4 141.5 L106.5 141.6 L110.6 142.4 L114.7 143.5 L118.8 143.4 L122.9 144.6 L127 145 L131 145.3 L135.1 146.5 L139.2 146.3 L139.2 176 Z"/><path class="ink" d="M0 156.6 L4.1 146.7 L8.2 137.5 L12.3 136.9 L16.4 137.4 L20.5 137.5 L24.6 137.1 L28.7 137.9 L32.8 137.3 L36.9 137.5 L41 137.8 L45 137.1 L49.1 137.7 L53.2 137.3 L57.3 137.1 L61.4 137.6 L65.5 136.8 L69.6 137.3 L73.7 137.1 L77.8 136.7 L81.9 138 L86 138 L90.1 139.1 L94.2 139.9 L98.3 140 L102.4 141.5 L106.5 141.6 L110.6 142.4 L114.7 143.5 L118.8 143.4 L122.9 144.6 L127 145 L131 145.3 L135.1 146.5 L139.2 146.3"/><path class="grid" d="M0 128 H344"/><text x="380" y="132" text-anchor="end">30 W</text><path class="axis" d="M0 176.0 H344"/><text x="380" y="180" text-anchor="end">0</text><text x="0" y="122" text-anchor="start" class="lbl-strong">Power</text><path class="grid" d="M139.2 8 V176.0" stroke-dasharray="2 3"/><path class="axis" d="M0 176.0 v4"/><text x="0" y="194" text-anchor="start">18:31</text><path class="axis" d="M139.2 176.0 v4"/><text x="139.2" y="194" text-anchor="middle">now</text><path class="axis" d="M241.6 176.0 v4"/><text x="241.6" y="194" text-anchor="middle">19:30</text><path class="axis" d="M344 176.0 v4"/><text x="344" y="194" text-anchor="end">19:55</text></svg><!-- /chart --></figure>
+  </section>
+
+  <section class="section" aria-labelledby="target-h">
+    <div class="section-head"><h2 id="target-h">Target</h2></div>
+    <div class="window-sel" role="radiogroup" aria-label="Charge target">
+      <button role="radio" aria-checked="true"><svg class="i i-18" aria-hidden="true"><use href="#i-check"/></svg>80%</button>
+      <button role="radio" aria-checked="false">85%</button>
+      <button role="radio" aria-checked="false">90%</button>
+      <button role="radio" aria-checked="false">100%</button>
+    </div>
+    <label class="switch-row">
+      <span>Alert me when it reaches 80%</span>
+      <input class="switch" type="checkbox" role="switch" checked>
+    </label>
+  </section>
+</main>
+
+<nav class="navbar" aria-label="Destinations">
+  <ul>
+    <li><a href="now.html" aria-current="page"><span class="pill"><svg class="i"><use href="#i-battery_android_frame_5_fill1"/></svg></span>Now</a></li>
+    <li><a href="drain.html"><span class="pill"><svg class="i"><use href="#i-data_usage"/></svg></span>Drain</a></li>
+    <li><a href="timeline.html"><span class="pill"><svg class="i"><use href="#i-timeline"/></svg></span>Timeline</a></li>
+    <li><a href="health.html"><span class="pill"><svg class="i"><use href="#i-ecg_heart"/></svg></span>Health</a></li>
+  </ul>
+  <span class="gesture" aria-hidden="true"></span>
+</nav>
+</body>
+</html>

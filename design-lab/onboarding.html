@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding · Coulomb design lab</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body class="onb">
+<!-- sprite --><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="i-arrow_back" viewBox="0 -960 960 960"><path d="m313-440 196 196q12 12 11.5 28T508-188q-12 11-28 11.5T452-188L188-452q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l264-264q11-11 27.5-11t28.5 11q12 12 12 28.5T508-715L313-520h447q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H313Z"/></symbol><symbol id="i-battery_android_5" viewBox="0 -960 960 960"><path d="M560-290h160v-380H560v380Zm-400 80q-33 0-56.5-23.5T80-290v-380q0-33 23.5-56.5T160-750h560q33 0 56.5 23.5T800-670v90h20q25 0 42.5 17.5T880-520v80q0 26-17.5 43T820-380h-20v90q0 33-23.5 56.5T720-210H160Z"/></symbol><symbol id="i-check_circle" viewBox="0 -960 960 960"><path d="m424-408-86-86q-11-11-28-11t-28 11q-11 11-11 28t11 28l114 114q12 12 28 12t28-12l226-226q11-11 11-28t-11-28q-11-11-28-11t-28 11L424-408Zm56 328q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></symbol><symbol id="i-lock" viewBox="0 -960 960 960"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm0-80h480v-400H240v400Zm240-120q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80ZM240-160v-400 400Z"/></symbol><symbol id="i-open_in_new" viewBox="0 -960 960 960"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h240q17 0 28.5 11.5T480-800q0 17-11.5 28.5T440-760H200v560h560v-240q0-17 11.5-28.5T800-480q17 0 28.5 11.5T840-440v240q0 33-23.5 56.5T760-120H200Zm560-584L416-360q-11 11-28 11t-28-11q-11-11-11-28t11-28l344-344H600q-17 0-28.5-11.5T560-800q0-17 11.5-28.5T600-840h200q17 0 28.5 11.5T840-800v200q0 17-11.5 28.5T800-560q-17 0-28.5-11.5T760-600v-104Z"/></symbol><symbol id="i-signal_cellular_alt" viewBox="0 -960 960 960"><path d="M260-160q-25 0-42.5-17.5T200-220v-120q0-25 17.5-42.5T260-400q25 0 42.5 17.5T320-340v120q0 25-17.5 42.5T260-160Zm240 0q-25 0-42.5-17.5T440-220v-320q0-25 17.5-42.5T500-600q25 0 42.5 17.5T560-540v320q0 25-17.5 42.5T500-160Zm240 0q-25 0-42.5-17.5T680-220v-520q0-25 17.5-42.5T740-800q25 0 42.5 17.5T800-740v520q0 25-17.5 42.5T740-160Z"/></symbol><symbol id="i-wifi" viewBox="0 -960 960 960"><path d="M480-120q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29Zm0-440q75 0 142.5 24T745-470q20 15 20.5 39.5T748-388q-17 17-42 17.5T661-384q-38-26-84-41t-97-15q-51 0-97 15t-84 41q-20 14-45 13t-42-18q-17-18-17-42.5t20-39.5q55-42 122.5-65.5T480-560Zm0-240q125 0 235.5 41T914-643q20 17 21 42t-17 43q-17 17-42 17.5T831-556q-72-59-161.5-91.5T480-680q-100 0-189.5 32.5T129-556q-20 16-45 15.5T42-558q-18-18-17-43t21-42q88-75 198.5-116T480-800Z"/></symbol><symbol id="p-derived" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/><path d="M6 2.5a3.5 3.5 0 0 1 0 7z" fill="currentColor" stroke="none"/></symbol><symbol id="p-estimated" viewBox="0 0 12 12"><path d="M2 3.5v5M10 3.5v5M2 6h8"/></symbol><symbol id="p-measured" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="currentColor" stroke="none"/></symbol><symbol id="p-modeled" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/></symbol></svg><!-- /sprite -->
+<header class="top">
+  <div class="statusbar" aria-hidden="true">
+    <span>14:20</span>
+    <span class="sys"><svg class="i i-18"><use href="#i-signal_cellular_alt"/></svg><svg class="i i-18"><use href="#i-wifi"/></svg><svg class="i i-18"><use href="#i-battery_android_5"/></svg></span>
+  </div>
+  <div class="appbar has-back">
+    <a class="icon-btn primary" href="#" aria-label="Back to Shizuku"><svg class="i"><use href="#i-arrow_back"/></svg></a>
+    <h1>Set up</h1>
+  </div>
+</header>
+
+<main>
+  <div class="onb-steps" role="progressbar" aria-label="Setup progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="4"><span class="done"></span><span class="done"></span><span class="done"></span><span class="current"></span></div>
+  <p class="onb-step-label">Step 4 of 4</p>
+
+  <h2 class="onb-title">Coulomb can see where your battery goes</h2>
+  <p class="onb-lede">It can see per-app drain, wakelocks and kernel wakeups. This phone does not expose its power rails, so energy per component comes from <span class="nobr">Android's power model <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></span>.</p>
+
+  <section class="callout" aria-labelledby="sleep-h">
+    <h2 id="sleep-h">Keep the monitor running</h2>
+    <p>One UI may put Coulomb to sleep and leave gaps in its record. Add it to Never sleeping apps.</p>
+    <span class="btn-wrap"><a class="btn outlined" href="#">Open battery settings<svg class="i i-18" aria-hidden="true"><use href="#i-open_in_new"/></svg></a></span>
+  </section>
+
+  <section class="section" aria-labelledby="grants-h">
+    <div class="section-head"><h2 id="grants-h">Granted through Shizuku</h2></div>
+    <p class="list-caption">These stay granted if Shizuku stops or the phone restarts.</p>
+    <ul class="rows">
+      <li class="check-row">
+        <svg class="i ok" role="img" aria-label="Granted"><use href="#i-check_circle"/></svg>
+        <div><p class="what">Battery statistics</p><p class="t-mono">BATTERY_STATS</p></div>
+      </li>
+      <li class="check-row">
+        <svg class="i ok" role="img" aria-label="Granted"><use href="#i-check_circle"/></svg>
+        <div><p class="what">System service reports</p><p class="t-mono">DUMP</p></div>
+      </li>
+      <li class="check-row">
+        <svg class="i ok" role="img" aria-label="Granted"><use href="#i-check_circle"/></svg>
+        <div><p class="what">App usage</p><p class="t-mono">PACKAGE_USAGE_STATS · GET_USAGE_STATS</p></div>
+      </li>
+      <li class="check-row">
+        <svg class="i ok" role="img" aria-label="Granted"><use href="#i-check_circle"/></svg>
+        <div><p class="what">Battery history in Coulomb's own process</p><p class="t-mono">INTERACT_ACROSS_USERS</p></div>
+      </li>
+      <li class="check-row">
+        <svg class="i no" role="img" aria-label="Not requested"><use href="#i-lock"/></svg>
+        <div><p class="what">Change system settings</p><p class="why">Asked only when you turn on the Action Center</p><p class="t-mono">WRITE_SECURE_SETTINGS</p></div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="key-h">
+    <div class="section-head"><h2 id="key-h">How to read the marks</h2></div>
+    <dl class="prov-key">
+      <dt><svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></dt><dd><strong>Measured:</strong> counted by the hardware or the system</dd>
+      <dt><svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></dt><dd><strong>Modeled:</strong> from a model in Android or the battery</dd>
+      <dt><svg class="prov" role="img" aria-label="Estimated"><title>Estimated</title><use href="#p-estimated"/></svg></dt><dd><strong>Estimated:</strong> Coulomb's estimate, with its range</dd>
+      <dt><svg class="prov" role="img" aria-label="Derived"><title>Derived</title><use href="#p-derived"/></svg></dt><dd><strong>Derived:</strong> worked out from other figures</dd>
+    </dl>
+    <p class="prov-key-note">Touch and hold any figure to see where its number comes from.</p>
+  </section>
+</main>
+
+<div class="onb-actions">
+  <p class="onb-next">First results after 15 minutes with the screen off.</p>
+  <a class="btn filled" href="now.html">Show my battery</a>
+  <span class="gesture" aria-hidden="true"></span>
+</div>
+</body>
+</html>

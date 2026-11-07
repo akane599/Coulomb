@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App detail · Coulomb design lab</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<!-- sprite --><svg class="sprite" aria-hidden="true" focusable="false"><symbol id="app-halcyon" viewBox="0 0 40 40"><rect width="40" height="40" rx="12" fill="oklch(0.56 0.15 28)"/><path d="M11 25a9 9 0 0 1 18 0z" fill="oklch(0.985 0.004 255)"/><rect x="8" y="27" width="24" height="2.5" rx="1.25" fill="oklch(0.985 0.004 255)"/></symbol><symbol id="i-arrow_back" viewBox="0 -960 960 960"><path d="m313-440 196 196q12 12 11.5 28T508-188q-12 11-28 11.5T452-188L188-452q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l264-264q11-11 27.5-11t28.5 11q12 12 12 28.5T508-715L313-520h447q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H313Z"/></symbol><symbol id="i-battery_android_5" viewBox="0 -960 960 960"><path d="M560-290h160v-380H560v380Zm-400 80q-33 0-56.5-23.5T80-290v-380q0-33 23.5-56.5T160-750h560q33 0 56.5 23.5T800-670v90h20q25 0 42.5 17.5T880-520v80q0 26-17.5 43T820-380h-20v90q0 33-23.5 56.5T720-210H160Z"/></symbol><symbol id="i-battery_android_frame_5" viewBox="0 -960 960 960"><path d="M160-240q-50 0-85-35t-35-85v-240q0-50 35-85t85-35h540q50 0 85 35t35 85v240q0 50-35 85t-85 35H160Zm0-80h540q17 0 28.5-11.5T740-360v-240q0-17-11.5-28.5T700-640H160q-17 0-28.5 11.5T120-600v240q0 17 11.5 28.5T160-320Zm700-60v-200h20q17 0 28.5 11.5T920-540v120q0 17-11.5 28.5T880-380h-20Zm-700-20v-160q0-17 11.5-28.5T200-600h320q17 0 28.5 11.5T560-560v160q0 17-11.5 28.5T520-360H200q-17 0-28.5-11.5T160-400Z"/></symbol><symbol id="i-data_usage_fill1" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-130 75-234t199-145q29-10 53.5 7t24.5 46q0 20-11.5 36.5T391-747q-86 27-138.5 100.5T200-480q0 117 81.5 198.5T480-200q52 0 100.5-18t86.5-52q15-14 36.5-14t36.5 14q23 21 24 47.5T742-176q-54 47-120.5 71.5T480-80Zm280-400q0-92-53-165.5T568-747q-18-6-29.5-22.5T527-806q0-29 24.5-46t53.5-7q125 42 200 146t75 233q0 18-1.5 36.5T873-403q-5 29-29.5 41.5T790-360q-19-7-29.5-25.5T754-424q3-17 4.5-30t1.5-26Z"/></symbol><symbol id="i-ecg_heart" viewBox="0 -960 960 960"><path d="M480-480Zm0 360q-18 0-34.5-6.5T416-146L148-415q-35-35-51.5-80T80-589q0-103 67-177t167-74q48 0 90.5 19t75.5 53q32-34 74.5-53t90.5-19q100 0 167.5 74T880-590q0 49-17 94t-51 80L543-146q-13 13-29 19.5t-34 6.5Zm40-520q10 0 19 5t14 13l68 102h166q7-17 10.5-34.5T801-590q-2-69-46-118.5T645-758q-31 0-59.5 12T536-711l-27 29q-5 6-13 9.5t-16 3.5q-8 0-16-3.5t-14-9.5l-27-29q-21-23-49-36t-60-13q-66 0-110 50.5T160-590q0 18 3 35.5t10 34.5h187q10 0 19 5t14 13l35 52 54-162q4-12 14.5-20t23.5-8Zm12 130-54 162q-4 12-15 20t-24 8q-10 0-19-5t-14-13l-68-102H236l237 237q2 2 3.5 2.5t3.5.5q2 0 3.5-.5t3.5-2.5l236-237H600q-10 0-19-5t-15-13l-34-52Z"/></symbol><symbol id="i-expand_more" viewBox="0 -960 960 960"><path d="M480-362q-8 0-15-2.5t-13-8.5L268-557q-11-11-11-28t11-28q11-11 28-11t28 11l156 156 156-156q11-11 28-11t28 11q11 11 11 28t-11 28L508-373q-6 6-13 8.5t-15 2.5Z"/></symbol><symbol id="i-more_vert" viewBox="0 -960 960 960"><path d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"/></symbol><symbol id="i-open_in_new" viewBox="0 -960 960 960"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h240q17 0 28.5 11.5T480-800q0 17-11.5 28.5T440-760H200v560h560v-240q0-17 11.5-28.5T800-480q17 0 28.5 11.5T840-440v240q0 33-23.5 56.5T760-120H200Zm560-584L416-360q-11 11-28 11t-28-11q-11-11-11-28t11-28l344-344H600q-17 0-28.5-11.5T560-800q0-17 11.5-28.5T600-840h200q17 0 28.5 11.5T840-800v200q0 17-11.5 28.5T800-560q-17 0-28.5-11.5T760-600v-104Z"/></symbol><symbol id="i-signal_cellular_alt" viewBox="0 -960 960 960"><path d="M260-160q-25 0-42.5-17.5T200-220v-120q0-25 17.5-42.5T260-400q25 0 42.5 17.5T320-340v120q0 25-17.5 42.5T260-160Zm240 0q-25 0-42.5-17.5T440-220v-320q0-25 17.5-42.5T500-600q25 0 42.5 17.5T560-540v320q0 25-17.5 42.5T500-160Zm240 0q-25 0-42.5-17.5T680-220v-520q0-25 17.5-42.5T740-800q25 0 42.5 17.5T800-740v520q0 25-17.5 42.5T740-160Z"/></symbol><symbol id="i-timeline" viewBox="0 -960 960 960"><path d="M120-240q-33 0-56.5-23.5T40-320q0-33 23.5-56.5T120-400h10.5q4.5 0 9.5 2l182-182q-2-5-2-9.5V-600q0-33 23.5-56.5T400-680q33 0 56.5 23.5T480-600q0 2-2 20l102 102q5-2 9.5-2h21q4.5 0 9.5 2l142-142q-2-5-2-9.5V-640q0-33 23.5-56.5T840-720q33 0 56.5 23.5T920-640q0 33-23.5 56.5T840-560h-10.5q-4.5 0-9.5-2L678-420q2 5 2 9.5v10.5q0 33-23.5 56.5T600-320q-33 0-56.5-23.5T520-400v-10.5q0-4.5 2-9.5L420-522q-5 2-9.5 2H400q-2 0-20-2L198-340q2 5 2 9.5v10.5q0 33-23.5 56.5T120-240Z"/></symbol><symbol id="i-undo" viewBox="0 -960 960 960"><path d="M320-200q-17 0-28.5-11.5T280-240q0-17 11.5-28.5T320-280h244q63 0 109.5-40T720-420q0-60-46.5-100T564-560H312l76 76q11 11 11 28t-11 28q-11 11-28 11t-28-11L188-572q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l144-144q11-11 28-11t28 11q11 11 11 28t-11 28l-76 76h252q97 0 166.5 63T800-420q0 94-69.5 157T564-200H320Z"/></symbol><symbol id="i-wifi" viewBox="0 -960 960 960"><path d="M480-120q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29Zm0-440q75 0 142.5 24T745-470q20 15 20.5 39.5T748-388q-17 17-42 17.5T661-384q-38-26-84-41t-97-15q-51 0-97 15t-84 41q-20 14-45 13t-42-18q-17-18-17-42.5t20-39.5q55-42 122.5-65.5T480-560Zm0-240q125 0 235.5 41T914-643q20 17 21 42t-17 43q-17 17-42 17.5T831-556q-72-59-161.5-91.5T480-680q-100 0-189.5 32.5T129-556q-20 16-45 15.5T42-558q-18-18-17-43t21-42q88-75 198.5-116T480-800Z"/></symbol><symbol id="p-measured" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="currentColor" stroke="none"/></symbol><symbol id="p-modeled" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5"/></symbol></svg><!-- /sprite -->
+<header class="top">
+  <div class="statusbar" aria-hidden="true">
+    <span>14:20</span>
+    <span class="sys"><svg class="i i-18"><use href="#i-signal_cellular_alt"/></svg><svg class="i i-18"><use href="#i-wifi"/></svg><svg class="i i-18"><use href="#i-battery_android_5"/></svg></span>
+  </div>
+  <div class="appbar has-back">
+    <a class="icon-btn primary" href="drain.html" aria-label="Back to Drain"><svg class="i"><use href="#i-arrow_back"/></svg></a>
+    <h1>Halcyon</h1>
+    <a class="icon-btn" href="#" aria-label="More options"><svg class="i"><use href="#i-more_vert"/></svg></a>
+  </div>
+</header>
+
+<main>
+  <section aria-label="Halcyon in this window">
+    <div class="app-head">
+      <svg class="app-icon" aria-hidden="true"><use href="#app-halcyon"/></svg>
+      <div>
+        <p class="t-mono">app.halcyon.video</p>
+        <p class="t-caption muted">Version 8.12</p>
+        <button class="window-pick" aria-haspopup="dialog" aria-label="Window: since unplugged. Change">Since unplugged<svg class="i i-18" aria-hidden="true"><use href="#i-expand_more"/></svg></button>
+      </div>
+    </div>
+    <div class="app-total">
+      <div class="total-figure">
+        <p class="t-display">402<span class="unit">mAh</span></p>
+        <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg>
+      </div>
+      <p class="total-caption">33% of the 1,204 mAh measured since unplugged</p>
+    </div>
+    <p class="story">Halcyon used a third of the battery since unplugged. Most of it was the screen, and 121 mAh went to mobile data.</p>
+  </section>
+
+  <section class="section" aria-labelledby="where-h">
+    <div class="section-head"><h2 id="where-h">Where it went <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></h2></div>
+    <figure>
+      <!-- chart:app-components --><svg class="chart" viewBox="0 0 380 76" role="img" aria-labelledby="comp-t"><title id="comp-t">Halcyon by component: screen 188 mAh, mobile radio 121, CPU 74, Wi-Fi 12, other 7.</title><rect class="comp-seg" x="0" y="2" width="175.7" height="16" rx="2" style="fill: var(--data-screen)"/><path class="axis" d="M0.5 20 V24"/><text x="0" y="38" text-anchor="start" class="lbl-strong">Screen</text><text x="0" y="54" text-anchor="start">188 mAh</text><rect class="comp-seg" x="177.7" y="2" width="112.4" height="16" rx="2" style="fill: var(--data-radio)"/><path class="axis" d="M178.2 20 V24"/><text x="177.7" y="38" text-anchor="start" class="lbl-strong">Mobile radio</text><text x="177.7" y="54" text-anchor="start">121 mAh</text><rect class="comp-seg" x="292.1" y="2" width="68" height="16" rx="2" style="fill: var(--data-cpu)"/><path class="axis" d="M292.6 20 V24"/><text x="292.1" y="38" text-anchor="start" class="lbl-strong">CPU</text><text x="292.1" y="54" text-anchor="start">74 mAh</text><rect class="comp-seg" x="362" y="2" width="9.3" height="16" rx="2" style="fill: var(--data-wifi)"/><rect class="comp-seg" x="373.4" y="2" width="4.6" height="16" rx="2" style="fill: var(--data-other)"/><path class="axis" d="M372.2 20 V56"/><text x="380" y="72" text-anchor="end">Wi-Fi 12 · Other 7 mAh</text></svg><!-- /chart -->
+    </figure>
+    <h3 class="subhead" id="state-h">By process state</h3>
+    <table class="data-table" aria-labelledby="state-h">
+      <thead><tr><th scope="col">State</th><th scope="col" class="num">Time <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></th><th scope="col" class="num">mAh <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Foreground</th><td class="num">52 min</td><td class="num">236</td></tr>
+        <tr><th scope="row">Background</th><td class="num">1 h 10 min</td><td class="num">98</td></tr>
+        <tr><th scope="row">Foreground service</th><td class="num">18 min</td><td class="num">51</td></tr>
+        <tr><th scope="row"><button class="term" aria-haspopup="dialog">Cached</button></th><td class="num">2 h 52 min</td><td class="num">17</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section" aria-labelledby="woke-h">
+    <div class="section-head"><h2 id="woke-h">Woke the phone 41 times <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></h2></div>
+    <h3 class="subhead" id="wl-h">Wakelocks</h3>
+    <table class="data-table" aria-labelledby="wl-h">
+      <thead><tr><th scope="col">Tag</th><th scope="col" class="num">Time</th><th scope="col" class="num">Count</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><span class="t-mono">*job*/<wbr>app.halcyon.video/<wbr>.sync.FeedPrefetchJob</span><span class="note">All with the screen off</span></th><td class="num">22 min</td><td class="num">31</td></tr>
+        <tr><th scope="row"><span class="t-mono">HalcyonPush:<wbr>NotificationWakeLock</span><span class="note">95% with the screen off</span></th><td class="num">9 min</td><td class="num">41</td></tr>
+        <tr><th scope="row"><span class="t-mono">ExoPlayer:WakeLockManager</span><span class="note">Playback with the screen on</span></th><td class="num">6 min</td><td class="num">2</td></tr>
+      </tbody>
+    </table>
+    <h3 class="subhead" id="al-h">Alarms</h3>
+    <table class="data-table" aria-labelledby="al-h">
+      <thead><tr><th scope="col">Alarm</th><th scope="col" class="num">Wakeups</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><span class="t-mono">app.halcyon.video.REFRESH_FEED</span><span class="note">Every 5 min with the screen off</span></th><td class="num">41</td></tr>
+      </tbody>
+    </table>
+    <h3 class="subhead" id="job-h">Jobs</h3>
+    <table class="data-table" aria-labelledby="job-h">
+      <thead><tr><th scope="col">Job</th><th scope="col" class="num">Runs</th><th scope="col" class="num">Time</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><span class="t-mono">.sync.FeedPrefetchJob</span><span class="note">Stopped most often by timeout</span></th><td class="num">31</td><td class="num">22 min</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section" aria-labelledby="net-h">
+    <div class="section-head"><h2 id="net-h">Network and screen time <svg class="prov" role="img" aria-label="Measured"><title>Measured</title><use href="#p-measured"/></svg></h2></div>
+    <dl class="figures">
+      <div>
+        <dt>Mobile data</dt>
+        <dd class="fig">312<span class="unit"> MB</span></dd>
+        <dd class="sub">88% in background</dd>
+      </div>
+      <div>
+        <dt>Wi-Fi</dt>
+        <dd class="fig">48<span class="unit"> MB</span></dd>
+        <dd class="sub">4% in background</dd>
+      </div>
+      <div>
+        <dt>Foreground</dt>
+        <dd class="fig">52<span class="unit"> min</span></dd>
+        <dd class="sub">in 6 sessions</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="section" aria-labelledby="trend-h">
+    <div class="section-head"><h2 id="trend-h">Last 14 days <svg class="prov" role="img" aria-label="Modeled"><title>Modeled</title><use href="#p-modeled"/></svg></h2></div>
+    <figure>
+      <!-- chart:app-trend --><svg class="chart" viewBox="0 0 380 150" role="img" aria-labelledby="trend-t"><title id="trend-t">Halcyon used 100 to 140 mAh a day until it updated to 8.12 on 3 November; since then 236 to 402 mAh a day.</title><text x="0" y="10" text-anchor="start">mAh per day</text><path class="grid" d="M0 86.7 H344"/><text x="380" y="90.7" text-anchor="end">150</text><path class="grid" d="M0 55.3 H344"/><text x="380" y="59.3" text-anchor="end">300</text><path class="grid" d="M0 24 H344"/><text x="380" y="28" text-anchor="end">450</text><rect class="bar" x="3" y="93.4" width="18.6" height="24.6" rx="2"/><rect class="bar" x="27.6" y="90.4" width="18.6" height="27.6" rx="2"/><rect class="bar" x="52.1" y="96.9" width="18.6" height="21.1" rx="2"/><rect class="bar" x="76.7" y="91.9" width="18.6" height="26.1" rx="2"/><rect class="bar" x="101.3" y="88.8" width="18.6" height="29.2" rx="2"/><rect class="bar" x="125.9" y="92.5" width="18.6" height="25.5" rx="2"/><rect class="bar" x="150.4" y="95.2" width="18.6" height="22.8" rx="2"/><rect class="bar" x="175" y="90.6" width="18.6" height="27.4" rx="2"/><rect class="bar" x="199.6" y="91.5" width="18.6" height="26.5" rx="2"/><rect class="bar" x="224.1" y="68.7" width="18.6" height="49.3" rx="2"/><rect class="bar" x="248.7" y="57.8" width="18.6" height="60.2" rx="2"/><rect class="bar" x="273.3" y="55.1" width="18.6" height="62.9" rx="2"/><rect class="bar" x="297.9" y="60.8" width="18.6" height="57.2" rx="2"/><rect class="bar-now" x="322.4" y="34" width="18.6" height="84" rx="2"/><path class="axis" d="M0 118 H344"/><path class="marker" d="M221.1 2 V118"/><text x="215.1" y="10" text-anchor="end" class="lbl-strong">Updated to 8.12</text><text x="3" y="136" text-anchor="start">25 Oct</text><text x="159.7" y="136" text-anchor="middle">31 Oct</text><text x="341" y="136" text-anchor="end">Today</text></svg><!-- /chart -->
+      <figcaption class="chart-caption">Daily use more than doubled after the update on 3 November.</figcaption>
+      <button class="text-btn inline-start view-table" aria-haspopup="dialog">View as table</button>
+    </figure>
+  </section>
+
+  <section class="section" aria-labelledby="act-h">
+    <div class="section-head"><h2 id="act-h">Actions</h2></div>
+    <ul class="rows">
+      <li class="action-row">
+        <div>
+          <p class="what">Background use</p>
+          <p class="state">Now <strong>unrestricted</strong>. Restricting stops its background alarms; messages may arrive later.</p>
+        </div>
+        <span class="btn-wrap"><button class="btn filled" aria-haspopup="dialog">Restrict background</button></span>
+      </li>
+      <li class="action-row">
+        <div>
+          <p class="what">How often Android lets it run in the background</p>
+          <p class="state"><strong>Rarely</strong>, set in the Action Center 10 min ago; was <strong>any time</strong></p>
+        </div>
+        <span class="btn-wrap"><button class="btn outlined" aria-label="Undo: let it run any time again"><svg class="i i-18" aria-hidden="true"><use href="#i-undo"/></svg>Undo</button></span>
+      </li>
+      <li>
+        <a class="link-row" href="#">App info<svg class="i i-20 muted" aria-hidden="true"><use href="#i-open_in_new"/></svg></a>
+      </li>
+    </ul>
+  </section>
+</main>
+
+<nav class="navbar" aria-label="Destinations">
+  <ul>
+    <li><a href="now.html"><span class="pill"><svg class="i"><use href="#i-battery_android_frame_5"/></svg></span>Now</a></li>
+    <li><a href="drain.html" aria-current="page"><span class="pill"><svg class="i"><use href="#i-data_usage_fill1"/></svg></span>Drain</a></li>
+    <li><a href="timeline.html"><span class="pill"><svg class="i"><use href="#i-timeline"/></svg></span>Timeline</a></li>
+    <li><a href="health.html"><span class="pill"><svg class="i"><use href="#i-ecg_heart"/></svg></span>Health</a></li>
+  </ul>
+  <span class="gesture" aria-hidden="true"></span>
+</nav>
+</body>
+</html>

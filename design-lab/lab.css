@@ -1,0 +1,1954 @@
+/* SPDX-FileCopyrightText: The Coulomb contributors */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+/*
+ * Coulomb design lab (SPEC 11.12). One CSS px stands for one dp, so the 412 x 915 viewport is a
+ * compact phone. Tokens follow SPEC 11.4 and 11.5 with the ADR-0022 additions; the Compose port
+ * copies them 1:1.
+ */
+
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("fonts/HankenGrotesk-wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Spline Sans Mono";
+  src: url("fonts/SplineSansMono-wght.ttf") format("truetype");
+  font-weight: 300 700;
+  font-display: block;
+}
+
+/* ---------- Color: light ---------- */
+:root {
+  color-scheme: light;
+  --bg: oklch(0.985 0.004 255);
+  --surface: oklch(0.965 0.006 255);
+  --surface-raised: oklch(0.94 0.008 255);
+  --hairline: oklch(0.88 0.010 255);
+  --text-primary: oklch(0.22 0.015 255);
+  --text-secondary: oklch(0.48 0.015 255);
+  --accent: oklch(0.60 0.14 50);
+  --good: oklch(0.62 0.13 160);
+  --caution: oklch(0.70 0.15 80);
+  --critical: oklch(0.57 0.20 27);
+  /* ADR-0022: fills that carry text, and the ink on them. */
+  --accent-fill: oklch(0.88 0.06 55);
+  --on-accent-fill: var(--text-primary);
+  --on-good: var(--text-primary);
+  --on-caution: var(--text-primary);
+  --on-critical: var(--bg);
+  /* Data palette: equal lightness (ADR-0022 sets L 0.62 in light), C 0.11. */
+  --data-screen: oklch(0.62 0.11 245);
+  --data-cpu: oklch(0.62 0.11 30);
+  --data-radio: oklch(0.62 0.11 150);
+  --data-wifi: oklch(0.62 0.11 200);
+  --data-gnss: oklch(0.62 0.11 95);
+  --data-bluetooth: oklch(0.62 0.11 275);
+  --data-sensors: oklch(0.62 0.11 340);
+  --data-other: oklch(0.62 0.015 255);
+  /* State layers (Material 3): hover 8%, focus and press 10%. */
+  --state-hover: color-mix(in oklch, var(--text-primary) 8%, transparent);
+  --state-press: color-mix(in oklch, var(--text-primary) 10%, transparent);
+  --scrim-shadow: oklch(0.22 0.015 255 / 0.16);
+}
+
+/* ---------- Color: dark ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: oklch(0.17 0.012 255);
+    --surface: oklch(0.21 0.014 255);
+    --surface-raised: oklch(0.25 0.015 255);
+    --hairline: oklch(0.32 0.015 255);
+    --text-primary: oklch(0.94 0.006 255);
+    --text-secondary: oklch(0.72 0.012 255);
+    --accent: oklch(0.74 0.13 55);
+    --good: oklch(0.76 0.12 160);
+    --caution: oklch(0.82 0.14 85);
+    --critical: oklch(0.70 0.17 25);
+    --accent-fill: oklch(0.38 0.08 55);
+    --on-accent-fill: var(--text-primary);
+    --on-good: var(--bg);
+    --on-caution: var(--bg);
+    --on-critical: var(--bg);
+    --data-screen: oklch(0.74 0.11 245);
+    --data-cpu: oklch(0.74 0.11 30);
+    --data-radio: oklch(0.74 0.11 150);
+    --data-wifi: oklch(0.74 0.11 200);
+    --data-gnss: oklch(0.74 0.11 95);
+    --data-bluetooth: oklch(0.74 0.11 275);
+    --data-sensors: oklch(0.74 0.11 340);
+    --data-other: oklch(0.74 0.015 255);
+    --scrim-shadow: oklch(0 0 0 / 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: oklch(0.17 0.012 255);
+  --surface: oklch(0.21 0.014 255);
+  --surface-raised: oklch(0.25 0.015 255);
+  --hairline: oklch(0.32 0.015 255);
+  --text-primary: oklch(0.94 0.006 255);
+  --text-secondary: oklch(0.72 0.012 255);
+  --accent: oklch(0.74 0.13 55);
+  --good: oklch(0.76 0.12 160);
+  --caution: oklch(0.82 0.14 85);
+  --critical: oklch(0.70 0.17 25);
+  --accent-fill: oklch(0.38 0.08 55);
+  --on-accent-fill: var(--text-primary);
+  --on-good: var(--bg);
+  --on-caution: var(--bg);
+  --on-critical: var(--bg);
+  --data-screen: oklch(0.74 0.11 245);
+  --data-cpu: oklch(0.74 0.11 30);
+  --data-radio: oklch(0.74 0.11 150);
+  --data-wifi: oklch(0.74 0.11 200);
+  --data-gnss: oklch(0.74 0.11 95);
+  --data-bluetooth: oklch(0.74 0.11 275);
+  --data-sensors: oklch(0.74 0.11 340);
+  --data-other: oklch(0.74 0.015 255);
+  --scrim-shadow: oklch(0 0 0 / 0.5);
+}
+
+/* True black (SPEC 11.4, opt-in): only bg changes; surfaces stay tinted. */
+:root[data-theme="black"] {
+  color-scheme: dark;
+  --bg: oklch(0 0 0);
+  --surface: oklch(0.21 0.014 255);
+  --surface-raised: oklch(0.25 0.015 255);
+  --hairline: oklch(0.32 0.015 255);
+  --text-primary: oklch(0.94 0.006 255);
+  --text-secondary: oklch(0.72 0.012 255);
+  --accent: oklch(0.74 0.13 55);
+  --good: oklch(0.76 0.12 160);
+  --caution: oklch(0.82 0.14 85);
+  --critical: oklch(0.70 0.17 25);
+  --accent-fill: oklch(0.38 0.08 55);
+  --on-accent-fill: var(--text-primary);
+  --on-good: var(--bg);
+  --on-caution: var(--bg);
+  --on-critical: var(--bg);
+  --data-screen: oklch(0.74 0.11 245);
+  --data-cpu: oklch(0.74 0.11 30);
+  --data-radio: oklch(0.74 0.11 150);
+  --data-wifi: oklch(0.74 0.11 200);
+  --data-gnss: oklch(0.74 0.11 95);
+  --data-bluetooth: oklch(0.74 0.11 275);
+  --data-sensors: oklch(0.74 0.11 340);
+  --data-other: oklch(0.74 0.015 255);
+  --scrim-shadow: oklch(0 0 0 / 0.5);
+}
+
+/* ---------- Space, shape, motion (SPEC 11.5, 11.6) ---------- */
+:root {
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --space-64: 64px;
+  --gutter: 16px;
+  --radius-chip: 6px;
+  --radius-row: 12px;
+  --radius-sheet: 20px;
+  --radius-large: 28px;
+  --target: 48px;
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 150ms;
+  --duration-default: 250ms;
+  --font-ui: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, monospace;
+}
+
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-color: var(--hairline) transparent;
+  scrollbar-width: thin;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text-primary);
+  font: 400 16px/24px var(--font-ui);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  caret-color: var(--accent);
+}
+
+/* Prose never leaves one word alone on its last line; headings balance instead. */
+p,
+figcaption,
+dd {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--text-secondary);
+  text-underline-offset: 3px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sprite {
+  display: none;
+}
+
+/* ---------- Type roles (SPEC 11.3) ---------- */
+.t-display {
+  font-size: 56px;
+  line-height: 60px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.t-headline {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.t-title {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.t-body {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.t-data {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.t-label {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.t-caption {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+
+.t-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.unit {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* ---------- Icons ---------- */
+.i {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  fill: currentColor;
+}
+
+.i-20 {
+  width: 20px;
+  height: 20px;
+}
+
+.i-18 {
+  width: 18px;
+  height: 18px;
+}
+
+/* Provenance marks (SPEC 6.7): dot measured, ring modeled, interval estimated, half dot derived. */
+.prov {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  vertical-align: -1px;
+  color: var(--text-secondary);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* ---------- Shell ---------- */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+}
+
+.statusbar {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 0 24px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+
+.statusbar .sys {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.appbar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 4px 0 var(--gutter);
+}
+
+.appbar.has-back {
+  padding-left: 4px;
+}
+
+.appbar h1 {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appbar.has-back h1 {
+  padding-left: 4px;
+}
+
+.icon-btn {
+  width: var(--target);
+  height: var(--target);
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  color: var(--text-secondary);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.icon-btn:hover {
+  background: var(--state-hover);
+}
+
+.icon-btn:active {
+  background: var(--state-press);
+}
+
+.icon-btn.primary {
+  color: var(--text-primary);
+}
+
+main {
+  padding: 0 var(--gutter) var(--space-48);
+}
+
+.navbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: var(--surface);
+  border-top: 1px solid var(--hairline);
+  padding-bottom: 20px;
+}
+
+.navbar ul {
+  height: 80px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.navbar a {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 12px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.navbar .pill {
+  width: 64px;
+  height: 32px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  transition: background-color var(--duration-default) var(--ease-out);
+}
+
+.navbar a:hover .pill {
+  background: var(--state-hover);
+}
+
+.navbar a[aria-current="page"] {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.navbar a[aria-current="page"] .pill {
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
+}
+
+.gesture {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 108px;
+  height: 4px;
+  margin-left: -54px;
+  border-radius: 2px;
+  background: var(--text-primary);
+  opacity: 0.4;
+}
+
+/* ---------- Sections ---------- */
+.section {
+  margin-top: var(--space-32);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  min-height: var(--target);
+  margin-bottom: var(--space-4);
+}
+
+.section-head h2 {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+.text-btn {
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  margin-right: -12px;
+  border-radius: 24px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.text-btn:hover {
+  background: var(--state-hover);
+}
+
+.text-btn.inline-start {
+  margin-left: -12px;
+  margin-right: 0;
+}
+
+.btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+/* Material buttons are 40 high with a 48 touch target; the pseudo-element extends the hit area. */
+.btn,
+.window-sel button,
+.segmented button {
+  position: relative;
+}
+
+.btn::before,
+.window-sel button::before,
+.segmented button::before {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+
+.btn-wrap {
+  min-height: var(--target);
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn.filled {
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
+}
+
+.btn.filled:hover {
+  box-shadow: 0 1px 3px var(--scrim-shadow);
+}
+
+.btn.outlined {
+  border: 1px solid var(--hairline);
+  color: var(--text-primary);
+}
+
+.btn.outlined:hover,
+.btn.tonal:hover {
+  background: var(--state-hover);
+}
+
+.btn.tonal {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+/* ---------- Rows and share bars ---------- */
+.rows > li {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.rows > li:first-child {
+  border-top: 1px solid var(--hairline);
+}
+
+.app-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  column-gap: var(--space-16);
+  align-items: center;
+  min-height: 72px;
+  padding: var(--space-12) 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.app-row .app-icon {
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+
+/* Names and details wrap: SPEC 11.3 reflows, never clips. */
+.app-row .name {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.app-row .detail {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.app-row .value {
+  grid-column: 3;
+  grid-row: 1;
+  text-align: right;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.app-row .share-pct {
+  grid-column: 3;
+  grid-row: 2;
+  text-align: right;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.app-row .share {
+  grid-column: 2 / span 2;
+  grid-row: 3;
+  margin-top: var(--space-8);
+}
+
+.app-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: block;
+}
+
+.share {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.share > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--share);
+  border-radius: 2px;
+  background: var(--text-secondary);
+}
+
+/* ---------- Chips ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.chip.act {
+  background: var(--critical);
+  color: var(--on-critical);
+}
+
+.chip.watch {
+  background: var(--caution);
+  color: var(--on-caution);
+}
+
+.chip.good {
+  background: var(--good);
+  color: var(--on-good);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* ---------- Insight card (a movable unit, SPEC 11.5) ---------- */
+.insight {
+  background: var(--surface);
+  border-radius: var(--radius-row);
+  padding: var(--space-16) var(--space-16) var(--space-8);
+}
+
+.insight + .insight {
+  margin-top: var(--space-12);
+}
+
+.insight-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.insight h3 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.insight p {
+  margin-top: var(--space-4);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-secondary);
+}
+
+.insight .actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+/* ---------- Charts (SPEC 11.8) ---------- */
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart text {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  fill: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart .lbl-strong {
+  fill: var(--text-primary);
+  font-weight: 600;
+}
+
+.chart .grid {
+  stroke: var(--hairline);
+  stroke-width: 1;
+  fill: none;
+}
+
+.chart .axis {
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  fill: none;
+}
+
+.chart .ink {
+  stroke: var(--text-primary);
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart .ink-area {
+  fill: color-mix(in oklch, var(--text-secondary) 14%, transparent);
+  stroke: none;
+}
+
+.chart .dot {
+  fill: var(--text-primary);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.chart .bracket {
+  stroke: var(--accent);
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart .cone {
+  fill: color-mix(in oklch, var(--accent) 14%, transparent);
+  stroke: none;
+}
+
+.chart .cone-edge {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  fill: none;
+}
+
+.chart-caption {
+  margin-top: var(--space-8);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* ---------- Reduced motion (SPEC 11.6) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: var(--duration-fast) !important;
+    transition-property: opacity !important;
+    animation: none !important;
+  }
+}
+
+/* ---------- Now ---------- */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  padding: var(--space-24) 0 var(--space-32);
+}
+
+.hero-read {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: var(--space-16);
+  row-gap: var(--space-8);
+}
+
+.hero-level .pct {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-left: 2px;
+}
+
+.hero-side {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: 6px;
+}
+
+.hero-left {
+  line-height: 26px;
+}
+
+.verdict {
+  font-size: 16px;
+  line-height: 24px;
+  max-width: 40em;
+}
+
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -12px;
+  clip-path: inset(0 0 0 12px);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.figures > div {
+  flex: 1 1 7.5em;
+  padding: var(--space-12) var(--space-12) var(--space-16);
+  box-shadow: -1px 0 0 var(--hairline), 0 -1px 0 var(--hairline);
+}
+
+.figures dt {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+
+.figures .fig {
+  margin-top: var(--space-4);
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+.figures .fig .unit {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.figures .sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.chart .seg {
+  fill: var(--text-secondary);
+}
+
+.chart .gap-fill {
+  fill: url(#hatch);
+}
+
+.chart .gap-edge {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+}
+
+.chart .hatch-line {
+  stroke: var(--text-secondary);
+  stroke-width: 1.5;
+}
+
+/* ---------- Window selector: connected button group (SPEC 10.3, 11.7) ---------- */
+.window-sel {
+  display: flex;
+  gap: 2px;
+  margin: var(--space-8) calc(-1 * var(--gutter)) 0;
+  padding: 4px var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.window-sel button {
+  flex: none;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-radius var(--duration-default) var(--ease-out), background-color var(--duration-default) var(--ease-out);
+}
+
+.window-sel button:first-child {
+  border-radius: 20px 8px 8px 20px;
+}
+
+.window-sel button:last-child {
+  border-radius: 8px 20px 20px 8px;
+}
+
+.window-sel button[aria-checked="true"] {
+  border-radius: 20px;
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
+  font-weight: 600;
+}
+
+.window-sel button:hover:not([aria-checked="true"]) {
+  background: color-mix(in oklch, var(--surface-raised), var(--text-primary) 6%);
+}
+
+.window-note {
+  margin-top: var(--space-8);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* ---------- Totals ---------- */
+.total {
+  padding: var(--space-24) 0 var(--space-8);
+}
+
+.t-display .unit {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-left: 4px;
+}
+
+.total-figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+
+.total-caption {
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-secondary);
+}
+
+.reconcile {
+  margin-top: var(--space-16);
+}
+
+/* ---------- Segmented button (lenses) ---------- */
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  margin-top: var(--space-24);
+}
+
+.segmented button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1px solid var(--hairline);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.segmented button:first-child {
+  border-radius: 20px 0 0 20px;
+}
+
+.segmented button:last-child {
+  border-radius: 0 20px 20px 0;
+}
+
+.segmented button + button {
+  border-left: none;
+}
+
+.segmented button[aria-selected="true"] {
+  background: var(--surface-raised);
+  font-weight: 600;
+}
+
+.segmented button:hover:not([aria-selected="true"]) {
+  background: var(--state-hover);
+}
+
+/* ---------- Switch row ---------- */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  min-height: 56px;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 52px;
+  height: 32px;
+  margin: 0;
+  border-radius: 16px;
+  border: 2px solid var(--text-secondary);
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition: background-color var(--duration-default) var(--ease-out), border-color var(--duration-default) var(--ease-out);
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: transform var(--duration-default) var(--ease-out), width var(--duration-default) var(--ease-out), height var(--duration-default) var(--ease-out), top var(--duration-default) var(--ease-out);
+}
+
+.switch:checked {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.switch:checked::after {
+  top: 2px;
+  width: 24px;
+  height: 24px;
+  transform: translateX(20px);
+  background: var(--bg);
+}
+
+/* ---------- Drain rows ---------- */
+.drain-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: start;
+  column-gap: 4px;
+}
+
+.drain-row .app-row {
+  padding-right: 0;
+}
+
+.drain-row .expand {
+  margin-top: 12px;
+  margin-right: -12px;
+}
+
+.drain-row.open .expand svg {
+  transform: rotate(180deg);
+}
+
+.breakdown {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-16);
+  row-gap: var(--space-4);
+  padding: 0 0 var(--space-16) 56px;
+}
+
+.breakdown .chip {
+  min-height: 24px;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+}
+
+.breakdown .chip .v {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.more .app-icon-gap {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.unattributed .app-icon-gap {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px dashed var(--text-secondary);
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+}
+
+/* ---------- App detail ---------- */
+.app-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding-top: var(--space-8);
+}
+
+.app-head .app-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+}
+
+.app-head .t-mono {
+  color: var(--text-secondary);
+}
+
+.app-total {
+  padding: var(--space-16) 0 var(--space-24);
+}
+
+.story {
+  font-size: 16px;
+  line-height: 24px;
+  max-width: 40em;
+}
+
+.story + .story {
+  margin-top: var(--space-8);
+}
+
+.subhead {
+  margin-top: var(--space-24);
+  margin-bottom: var(--space-4);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table thead th {
+  padding: var(--space-8) 0;
+  text-align: left;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.data-table td,
+.data-table tbody th {
+  padding: var(--space-12) 0;
+  text-align: left;
+  vertical-align: top;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.data-table th + th,
+.data-table th + td,
+.data-table td + td {
+  padding-left: var(--space-12);
+}
+
+.data-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-table .t-mono {
+  font-weight: 400;
+}
+
+.data-table .note {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-16);
+  min-height: 72px;
+  padding: var(--space-12) 0;
+}
+
+.action-row .what {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.action-row .state {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.action-row .state strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: var(--space-12) 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.chart .bar {
+  fill: var(--text-secondary);
+}
+
+.chart .bar-now {
+  fill: var(--text-primary);
+}
+
+.chart .marker {
+  stroke: var(--text-primary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  fill: none;
+}
+
+/* ---------- Timeline (SPEC 10.6) ---------- */
+.tl-read {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-16) 0;
+}
+
+.tl-read .when {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+.tl-event {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: var(--target);
+  margin-bottom: var(--space-8);
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.tl-event .i {
+  color: var(--text-secondary);
+}
+
+.tl-event span {
+  flex: 1;
+  min-width: 0;
+}
+
+.tl-event:hover {
+  background: color-mix(in oklch, var(--surface) 92%, var(--text-primary));
+}
+
+.timeline-fig {
+  padding-bottom: 104px;
+}
+
+.chart .level {
+  stroke-width: 2;
+}
+
+.chart .cur-out {
+  fill: color-mix(in oklch, var(--text-secondary) 30%, transparent);
+}
+
+.chart .cur-in {
+  fill: color-mix(in oklch, var(--accent) 45%, transparent);
+}
+
+.chart .cur-out-edge,
+.chart .cur-in-edge {
+  fill: none;
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.chart .cur-out-edge { stroke: var(--text-secondary); }
+.chart .cur-in-edge { stroke: var(--accent); }
+
+.chart .trk-bg {
+  fill: color-mix(in oklch, var(--text-secondary) 8%, transparent);
+}
+
+.chart .trk-screen { fill: var(--data-screen); }
+.chart .trk-charge { fill: var(--accent); }
+/* Lighter states are outlined: the stroke meets 3:1 against the track, the tint tells them apart. */
+.chart .trk-doze-light { fill: color-mix(in oklch, var(--text-secondary) 20%, transparent); stroke: var(--text-secondary); stroke-width: 1; }
+.chart .trk-doze-deep { fill: var(--text-secondary); }
+.chart .trk-awake { fill: var(--data-cpu); }
+.chart .trk-app { fill: var(--text-secondary); }
+.chart .trk-app-alt { fill: color-mix(in oklch, var(--text-secondary) 20%, transparent); stroke: var(--text-secondary); stroke-width: 1; }
+.chart .trk-wl { fill: var(--data-cpu); }
+.chart .trk-radio { fill: var(--data-radio); }
+.chart .trk-wifi { fill: var(--data-wifi); }
+.chart .trk-gps { fill: var(--data-gnss); }
+
+.chart .trk-awake-tick,
+.chart .trk-wl-tick {
+  stroke: var(--data-cpu);
+  stroke-width: 1.5;
+}
+
+.chart .trk-radio-tick {
+  stroke: var(--data-radio);
+  stroke-width: 1.5;
+}
+
+/* Events closer than 3 px: one outlined span, so a burst never reads as "on the whole time". */
+.chart .trk-dense-cpu { fill: color-mix(in oklch, var(--data-cpu) 20%, transparent); stroke: var(--data-cpu); stroke-width: 1; }
+.chart .trk-dense-radio { fill: color-mix(in oklch, var(--data-radio) 20%, transparent); stroke: var(--data-radio); stroke-width: 1; }
+
+.chart .trk-line {
+  stroke: var(--text-primary);
+  stroke-width: 1.25;
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.chart .scrub {
+  stroke: var(--text-primary);
+  stroke-width: 1;
+}
+
+/* Floating toolbar (M3 Expressive): range presets, track visibility, jump to now. */
+.ftoolbar {
+  position: fixed;
+  left: 50%;
+  bottom: 116px;
+  z-index: 4;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  background: var(--surface-raised);
+  max-width: calc(100vw - 2 * var(--space-16));
+  box-shadow: 0 2px 6px var(--scrim-shadow), 0 8px 24px var(--scrim-shadow);
+}
+
+/* At large font scales the ranges scroll inside the toolbar; layers and Now stay in reach. */
+.ftoolbar .ranges {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ftoolbar .ranges button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 48px;
+  min-height: var(--target);
+  padding: 0 10px;
+  border-radius: 24px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.ftoolbar .ranges button[aria-pressed="true"] {
+  background: var(--accent-fill);
+  color: var(--on-accent-fill);
+  font-weight: 600;
+}
+
+.ftoolbar .ranges button:hover:not([aria-pressed="true"]) {
+  background: var(--state-hover);
+}
+
+.ftoolbar .sep {
+  width: 1px;
+  height: 24px;
+  margin: 0 var(--space-4);
+  background: var(--hairline);
+}
+
+/* ---------- Health (SPEC 10.8) ---------- */
+.health-hero {
+  padding: var(--space-24) 0 var(--space-8);
+}
+
+.health-hero .pm {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.health-hero .chart {
+  margin-top: var(--space-24);
+}
+
+.health-hero .verdict {
+  margin-top: var(--space-16);
+}
+
+.chart .band {
+  fill: color-mix(in oklch, var(--accent) 14%, transparent);
+}
+
+/* Qualifying windows: a ring would read as the Modeled mark, a dot as Measured. */
+.chart .cross {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+}
+
+.check-note {
+  margin-top: var(--space-8);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* A list row without an icon: title and detail on the left, value on the right, share bar under both. */
+.data-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-16);
+  align-items: center;
+  min-height: 64px;
+  padding: var(--space-12) 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.data-row .name {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.data-row .detail {
+  grid-column: 1;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.data-row .value {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.data-row .share {
+  grid-column: 1 / span 2;
+  margin-top: var(--space-8);
+}
+
+.data-row.with-action {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.data-row.with-action .text-btn {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+/* ---------- Charging (SPEC 10.9) ---------- */
+.charge-power {
+  color: var(--accent);
+}
+
+.charge-power .unit {
+  color: var(--accent);
+}
+
+.chart .wave {
+  stroke: var(--accent);
+  stroke-width: 4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart .track {
+  stroke: color-mix(in oklch, var(--text-secondary) 28%, transparent);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.chart .stop {
+  fill: var(--accent);
+}
+
+.chart .target {
+  stroke: var(--text-primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* The Estimated mark drawn inside a chart, as `.prov` draws it in text. */
+.chart .mark-est {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.charge-level {
+  margin-top: var(--space-16);
+}
+
+.eta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-16);
+  row-gap: var(--space-4);
+  margin-top: var(--space-8);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.eta strong {
+  font-weight: 600;
+}
+
+.charge-hero {
+  min-height: 0;
+  gap: var(--space-16);
+  padding-bottom: var(--space-8);
+}
+
+/* ---------- Onboarding (SPEC 14.1) ---------- */
+.onb {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.onb main {
+  flex: 1;
+  padding-bottom: var(--space-24);
+}
+
+.onb-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: var(--space-8);
+}
+
+.onb-steps span {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hairline);
+}
+
+.onb-steps span.done {
+  background: var(--text-primary);
+}
+
+.onb-steps span.current {
+  background: linear-gradient(to right, var(--text-primary) 50%, var(--hairline) 50%);
+}
+
+.onb-step-label {
+  margin-top: var(--space-8);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.onb-title {
+  margin-top: var(--space-24);
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.onb-lede {
+  margin-top: var(--space-12);
+  font-size: 16px;
+  line-height: 24px;
+  max-width: 36em;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: var(--space-16);
+  align-items: start;
+  padding: var(--space-12) 0;
+}
+
+.check-row .i {
+  margin-top: 1px;
+}
+
+.check-row .i.ok {
+  color: var(--good);
+}
+
+.check-row .i.no {
+  color: var(--text-secondary);
+}
+
+.check-row .what {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.check-row .why {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.check-row .t-mono {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.callout {
+  margin-top: var(--space-24);
+  padding: var(--space-16);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+}
+
+.callout h2 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.callout p {
+  margin-top: var(--space-4);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-secondary);
+}
+
+.callout .btn-wrap {
+  margin-top: var(--space-8);
+}
+
+.onb-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--gutter) 36px;
+  background: var(--bg);
+  border-top: 1px solid var(--hairline);
+}
+
+.onb-actions .btn {
+  min-height: var(--target);
+  border-radius: 24px;
+  padding: 0 24px;
+}
+
+.onb-next {
+  flex-basis: 100%;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* ---------- Provenance key (taught once, at onboarding) ---------- */
+.prov-key {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: var(--space-16);
+  row-gap: var(--space-8);
+  margin-top: var(--space-12);
+}
+
+.prov-key dt {
+  display: grid;
+  place-items: center;
+  height: 24px;
+}
+
+.prov-key dd {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.prov-key dd strong {
+  font-weight: 600;
+}
+
+.prov-key-note {
+  margin-top: var(--space-12);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* ---------- Shared pieces from the critique round (ADR-0023) ---------- */
+/* A number, its unit and its mark never break apart. */
+.nobr {
+  white-space: nowrap;
+}
+
+/* A technical term opens the glossary sheet; a dotted underline marks it (PRODUCT.md). */
+.term {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--text-secondary);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.term:hover {
+  text-decoration-color: var(--text-primary);
+}
+
+/* Every chart's table alternative (SPEC 11.8). */
+.view-table {
+  margin-top: var(--space-4);
+}
+
+/* A labelled group inside a ruled list, such as the unattributed gap after the apps. */
+.list-group {
+  margin-top: var(--space-24);
+  margin-bottom: var(--space-4);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+
+.list-caption {
+  margin-top: var(--space-8);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* A single window control where a page has no room for the full selector (SPEC 10.1). */
+.window-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-top: var(--space-8);
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-chip);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.window-pick::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+
+.window-pick:hover {
+  background: var(--state-hover);
+}
+
+.insight-head .overflow {
+  flex: none;
+  margin: -12px -12px -12px -8px;
+}
+
+.insight-head .chip {
+  flex: none;
+}
+
+/* The window radios sit in their own group so "More" (a menu, not a choice) stays outside it. */
+.window-radios {
+  display: flex;
+  gap: 2px;
+}
+
+.window-sel .window-radios button:last-child:not([aria-checked="true"]) {
+  border-radius: 8px;
+}
+
+.hero-level .prov {
+  margin-left: 6px;
+  vertical-align: baseline;
+}
+
+.charge-power .prov {
+  margin-left: 6px;
+  vertical-align: baseline;
+}
+
+.ftoolbar .icon-btn,
+.ftoolbar .now-btn,
+.ftoolbar .sep {
+  flex: none;
+}
+
+.ftoolbar .now-btn {
+  margin: 0;
+  padding: 0 14px;
+}
