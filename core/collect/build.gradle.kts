@@ -20,6 +20,38 @@ tasks.withType<Test>().configureEach {
     systemProperty("coulomb.fixtures", fixtures.asFile.absolutePath)
 }
 
+/** Copies the stress test's two fixture dumps into an asset folder, `stress/` (SPEC 16.3, ADR-0019). */
+abstract class StressFixtures : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val dumps: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val folder = output.get().asFile.resolve("stress")
+        folder.deleteRecursively()
+        folder.mkdirs()
+        dumps.forEach { it.copyTo(folder.resolve(it.name)) }
+    }
+}
+
+val stressFixtures =
+    tasks.register<StressFixtures>("stressFixtures") {
+        val phone = rootProject.layout.projectDirectory.dir("fixtures/sm-s938b/S938BXXSDDZJ1")
+        dumps.from(phone.file("batterystats.proto.bin"), phone.file("batterystats.checkin.txt"))
+    }
+
+androidComponents {
+    onVariants { variant ->
+        variant.deviceTests.values.forEach { test ->
+            test.sources.assets?.addGeneratedSourceDirectory(stressFixtures, StressFixtures::output)
+        }
+    }
+}
+
 dependencies {
     implementation(projects.core.privileged)
     implementation(projects.core.parsing)
@@ -32,4 +64,8 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.truth)
 }
