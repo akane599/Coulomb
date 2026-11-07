@@ -32,10 +32,11 @@ import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 /**
- * The time-compressed stress test of SPEC 16.3 (ADR-0019, ADR-0020): 30 days of triggers on a
- * simulated clock through the whole collector, on a file database, in under 10 minutes on the API 37
- * emulator. Pass: no crash and no ANR, heap growth after GC under 10% from day 1 to day 30, and the
- * database within the 7.7 projection.
+ * The time-compressed stress test of SPEC 16.3 (ADR-0019, ADR-0020, ADR-0021): a month of triggers
+ * on a simulated clock through the whole collector, on a file database, in under 10 minutes on the
+ * API 37 emulator. It runs 31 days so that the 30-day retention cuts run once. Pass: no crash and no
+ * ANR, heap growth after GC under 10% from day 1 to the last day, and the database within the 7.7
+ * projection.
  *
  * The synthetic phone follows the rates measured on the S25 Ultra at the 2026-11-07 checkpoint:
  * about 75 screen cycles, 160 heavy and 210 light snapshots and 66,000 stored history events a day.
@@ -66,7 +67,7 @@ class CollectorStressTest {
     fun close() = db.close()
 
     @Test
-    fun thirtyDaysStayWithinTheBudgets() =
+    fun aMonthStaysWithinTheBudgets() =
         runBlocking {
             val started = SystemClock.elapsedRealtime()
             val watchdog = MainThreadWatchdog().also { it.start() }
@@ -79,19 +80,22 @@ class CollectorStressTest {
             watchdog.finish()
             val minutes = (SystemClock.elapsedRealtime() - started) / MINUTE_MS.toDouble()
 
-            val heapGrowth = (sim.heapDay30 - sim.heapDay1).toDouble() / sim.heapDay1
-            val projectedMb = projection(checkNotNull(sim.sizesDay15), checkNotNull(sim.sizesDay30)) / MB
+            val heapGrowth = (sim.heapEnd - sim.heapDay1).toDouble() / sim.heapDay1
+            val projectedMb = projection(checkNotNull(sim.sizesMid), checkNotNull(sim.sizesEnd)) / MB
             log("run: %.1f min; worst main-thread delay %d ms".format(minutes, watchdog.worstMs))
-            log("heap after GC: day 1 %.1f MB, day 30 %.1f MB (%+.1f%%)".format(sim.heapDay1 / MB, sim.heapDay30 / MB, heapGrowth * 100))
+            log("heap after GC: day 1 %.1f MB, day $DAYS %.1f MB (%+.1f%%)".format(sim.heapDay1 / MB, sim.heapEnd / MB, heapGrowth * 100))
             log(
-                "database: day 30 file %.1f MB, projected after a year %.1f MB".format(
-                    checkNotNull(sim.sizesDay30).fileBytes / MB,
+                "database: day $DAYS file %.1f MB, projected after a year %.1f MB".format(
+                    checkNotNull(sim.sizesEnd).fileBytes / MB,
                     projectedMb,
                 ),
             )
 
-            assertWithMessage("heavy snapshots in 30 days").that(sim.totals.heavy).isAtLeast(DAYS * MIN_HEAVY_PER_DAY)
-            assertWithMessage("stored history events at day 30").that(sim.historyRowsDay30).isAtLeast(MIN_HISTORY_ROWS)
+            assertWithMessage("heavy snapshots in $DAYS days").that(sim.totals.heavy).isAtLeast(DAYS * MIN_HEAVY_PER_DAY)
+            assertWithMessage("stored history events at day $DAYS").that(sim.historyRowsEnd).isAtLeast(MIN_HISTORY_ROWS)
+            assertWithMessage("light snapshots of the first 6 h left at day $DAYS (the 30-day cut ran)")
+                .that(sim.earlyLightEnd)
+                .isEqualTo(0)
             assertWithMessage("worst main-thread delay, ms (ANR)").that(watchdog.worstMs).isLessThan(ANR_MS)
             assertWithMessage("heap growth after GC, day 1 to day 30").that(heapGrowth).isLessThan(MAX_HEAP_GROWTH)
             assertWithMessage("database projected after a year, MB (SPEC 7.7, ADR-0020)").that(projectedMb).isLessThan(BUDGET_MB)
@@ -107,7 +111,7 @@ class CollectorStressTest {
         return StressWorld(SyntheticCounters(template), proto, HistoryPool(records), START_WALL_MS, ZONE, HISTORY_PER_DAY, NEW_TAGS_PER_DAY)
     }
 
-    /** One run: the plan, the event loop, and the measurements at days 1, 15 and 30. */
+    /** One run: the plan, the event loop, and the measurements at days 1, [MID_DAY] and [DAYS]. */
     private inner class Simulation(
         private val world: StressWorld,
         private val blobs: FileBlobStore,
@@ -122,10 +126,11 @@ class CollectorStressTest {
         private var day = Counts()
         val totals = Counts()
         var heapDay1 = 0L
-        var heapDay30 = 0L
-        var historyRowsDay30 = 0L
-        var sizesDay15: Sizes? = null
-        var sizesDay30: Sizes? = null
+        var heapEnd = 0L
+        var historyRowsEnd = 0L
+        var earlyLightEnd = -1L
+        var sizesMid: Sizes? = null
+        var sizesEnd: Sizes? = null
 
         suspend fun run() {
             plan().forEach { (at, act) -> add(at, act) }
@@ -330,13 +335,14 @@ class CollectorStressTest {
                 }
 
                 MID_DAY -> {
-                    sizesDay15 = sizes()
+                    sizesMid = sizes()
                 }
 
                 DAYS -> {
-                    heapDay30 = heapAfterGc()
-                    historyRowsDay30 = history
-                    sizesDay30 = sizes()
+                    heapEnd = heapAfterGc()
+                    historyRowsEnd = history
+                    earlyLightEnd = long("SELECT COUNT(*) FROM snapshot WHERE kind = 'LIGHT' AND wallMs < ${START_WALL_MS + EARLY_MS}")
+                    sizesEnd = sizes()
                     detailPerWindow()
                 }
             }
@@ -458,15 +464,9 @@ class CollectorStressTest {
             while (c.moveToNext()) bytes.merge(owner[c.getString(0)] ?: c.getString(0), c.getLong(1), Long::plus)
         }
         val cappedShare =
-            DETAIL_TABLES.associateWith { table ->
+            CAPPED_ROWS.mapValues { (table, capped) ->
                 val all = long("SELECT COUNT(*) FROM $table")
-                val capped =
-                    long(
-                        "SELECT COUNT(*) FROM $table d JOIN window_result w ON w.id = d.windowId " +
-                            "LEFT JOIN session s ON s.id = w.sessionId " +
-                            "WHERE w.kind IN ('CONSECUTIVE', 'REFERENCE') OR (w.kind = 'SESSION' AND s.kind = 'CHARGE')",
-                    )
-                if (all == 0L) 0.0 else capped.toDouble() / all
+                if (all == 0L) 0.0 else long("SELECT COUNT(*) FROM $table x WHERE $capped").toDouble() / all
             }
         val sizes = Sizes(long("PRAGMA page_count") * long("PRAGMA page_size"), bytes, cappedShare)
         log(
@@ -480,20 +480,31 @@ class CollectorStressTest {
     }
 
     /**
-     * ADR-0020: the day-30 file plus the day-15-to-30 growth of every part SPEC 7.7 and ADR-0015 do
-     * not cap, extended to day 365. Capped: raw samples, history, and the detail rows of consecutive,
-     * reference and charge-session windows (their table's bytes split by row count).
+     * ADR-0020 as ADR-0021 corrects it: the last day's file plus the growth from [MID_DAY] to [DAYS]
+     * of every part retention does not cap, extended to day 365.
+     * - Capped whole: raw samples, history, and the snapshot counters (kept 2 h).
+     * - Capped in part, a table's bytes split by row count ([CAPPED_ROWS]): consecutive windows,
+     *   reference and charge-session detail, and the snapshots only those point to.
+     * - Aggregates grow for 180 days, then turn hourly: a sixtieth of the rate.
      */
     private fun projection(
-        day15: Sizes,
-        day30: Sizes,
+        mid: Sizes,
+        end: Sizes,
     ): Double {
+        val days = (DAYS - MID_DAY).toDouble()
         val growth = HashMap<String, Double>()
-        for (table in day30.tableBytes.keys + day15.tableBytes.keys) {
+        for (table in end.tableBytes.keys + mid.tableBytes.keys) {
             if (table in CAPPED_TABLES) continue
-            val late = (day30.tableBytes[table] ?: 0) * (1 - (day30.cappedDetailShare[table] ?: 0.0))
-            val early = (day15.tableBytes[table] ?: 0) * (1 - (day15.cappedDetailShare[table] ?: 0.0))
-            if (late > early) growth[table] = (late - early) * (YEAR_DAYS - DAYS) / (DAYS - MID_DAY)
+            val late = (end.tableBytes[table] ?: 0) * (1 - (end.cappedShare[table] ?: 0.0))
+            val early = (mid.tableBytes[table] ?: 0) * (1 - (mid.cappedShare[table] ?: 0.0))
+            if (late <= early) continue
+            val perDay = (late - early) / days
+            growth[table] =
+                if (table == AGGREGATES) {
+                    perDay * (MINUTE_AGGREGATE_DAYS + (YEAR_DAYS - RAW_DAYS - MINUTE_AGGREGATE_DAYS) / 60.0) - late
+                } else {
+                    perDay * (YEAR_DAYS - DAYS)
+                }
         }
         log(
             "growth to day 365: " +
@@ -502,7 +513,7 @@ class CollectorStressTest {
                     .take(TOP_TABLES)
                     .joinToString { (name, b) -> "$name %.2f MB".format(b / MB) },
         )
-        return day30.fileBytes + growth.values.sum()
+        return end.fileBytes + growth.values.sum()
     }
 
     private fun long(query: String): Long =
@@ -558,18 +569,21 @@ class CollectorStressTest {
     private data class Sizes(
         val fileBytes: Long,
         val tableBytes: Map<String, Long>,
-        val cappedDetailShare: Map<String, Double>,
+        val cappedShare: Map<String, Double>,
     )
 
     private companion object {
         const val TAG = "CoulombStress"
         const val SEED = 20_261_107L
-        const val DAYS = 30
-        const val MID_DAY = 15
+        const val DAYS = 31
+        const val MID_DAY = 16
         const val YEAR_DAYS = 365
         const val MINUTE_MS = 60_000L
         const val DAY_MS = 86_400_000L
-        const val MB = 1_048_576.0
+        const val EARLY_MS = 6 * 3_600_000L
+
+        /** SPEC 7.7 says MB: decimal, the stricter reading (ADR-0021). */
+        const val MB = 1_000_000.0
 
         /** 2026-11-01 12:00 at UTC+3: Coulomb is installed at noon, on battery, with the screen on. */
         const val START_WALL_MS = 1_793_491_200_000L + 9 * 3_600_000L
@@ -591,8 +605,41 @@ class CollectorStressTest {
         val UPDATE_DAYS = setOf(8, 22)
         const val KILL_DAY = 13
 
-        val CAPPED_TABLES = setOf("battery_sample", "history_event", "history_gap", "history_tag")
+        val CAPPED_TABLES =
+            setOf(
+                "battery_sample",
+                "history_event",
+                "history_gap",
+                "history_tag",
+                "uid_power",
+                "wake_stat",
+                "alarm_stat",
+                "job_stat",
+                "net_stat",
+                "rail_energy",
+                "uid_stat",
+                "device_stat",
+            )
         val DETAIL_TABLES = listOf("window_uid", "window_wake", "window_stat")
+
+        /** Rows that retention removes after 30 days, per table, as a condition on its row `x`. */
+        val CAPPED_ROWS: Map<String, String> =
+            DETAIL_TABLES.associateWith {
+                "x.windowId IN (SELECT w.id FROM window_result w LEFT JOIN session s ON s.id = w.sessionId " +
+                    "WHERE w.kind IN ('CONSECUTIVE', 'REFERENCE') OR (w.kind = 'SESSION' AND s.kind = 'CHARGE'))"
+            } +
+                mapOf(
+                    "window_result" to "x.kind = 'CONSECUTIVE'",
+                    "snapshot" to
+                        "x.id NOT IN (SELECT startSnapshotId FROM session WHERE startSnapshotId IS NOT NULL) " +
+                        "AND x.id NOT IN (SELECT endSnapshotId FROM session WHERE endSnapshotId IS NOT NULL) " +
+                        "AND x.id NOT IN (SELECT snapshotId FROM reference) " +
+                        "AND x.id NOT IN (SELECT fromSnapshotId FROM window_result WHERE kind <> 'CONSECUTIVE') " +
+                        "AND x.id NOT IN (SELECT toSnapshotId FROM window_result WHERE kind <> 'CONSECUTIVE')",
+                )
+        const val AGGREGATES = "sample_aggregate"
+        const val RAW_DAYS = 14
+        const val MINUTE_AGGREGATE_DAYS = 180
         const val TOP_TABLES = 12
 
         const val GC_ROUNDS = 3
