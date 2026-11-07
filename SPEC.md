@@ -678,12 +678,13 @@ Purpose: who and what used the battery in a chosen window.
 ### 10.4 App detail
 
 1. Header: icon, name, mAh and share in the window, provenance.
-2. Story sentence for this app.
-3. Component breakdown (stacked bar) and process-state breakdown (foreground, background, foreground service, cached).
-4. "Woke the phone N times" with wakelocks, alarms and jobs tables.
-5. Network (mobile, Wi-Fi) and foreground time.
-6. 14-day trend sparkline with update markers.
-7. Actions (section 13) with current state of each restriction. App info deep link.
+2. Story for this app (9.3). Its anomaly sentence is the app's highest-severity open insight.
+3. When that insight is rated Act: its card, the same as on Now, with its action button (ADR-0026).
+4. Component breakdown (stacked bar) and process-state breakdown (foreground, background, foreground service, cached).
+5. "Woke the phone N times" with wakelocks, alarms and jobs tables.
+6. Network (mobile, Wi-Fi) and foreground time.
+7. 14-day trend sparkline with update markers.
+8. Actions (section 13) with current state of each restriction. App info deep link.
 
 ### 10.5 Wakeup source detail
 

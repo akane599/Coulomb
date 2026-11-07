@@ -2,7 +2,7 @@
 
 One section per phase (SPEC 0.3.9, 17). Newest phase first.
 
-## P3 Design lab (in progress)
+## P3 Design lab (gate passed 2026-11-07)
 
 Started 2026-11-07 while the P2 gate waits for the night report (owner decision, ADR-0019).
 
@@ -62,15 +62,14 @@ Started 2026-11-07 while the P2 gate waits for the night report (owner decision,
     deferred to the Compose port, each with a reason: top-app span names, the target tick, and
     the Rename buttons.
   - Open questions are listed in each file for the direction review.
-- [ ] Finish review against the direction contract: `docs/design-gates/2026-11-07-finish-review-lab.md`.
-  Not a pass: it ended at its round budget with disposition **fix**, and the owner decides at the
-  direction review.
+- [x] Finish review against the direction contract: `docs/design-gates/2026-11-07-finish-review-lab.md`.
+  It ended at its round budget with disposition **fix**. At the direction review the owner closed it:
+  ship the lab as it is, fix the 200% defects in P4, no third round (ADR-0026 §4).
   - Round 1 gave eight material fixes; all were applied in one batch.
   - In round 2, six of the 28 captures had caught the page mid-transition. They were reshot under
     reduced motion, and two full passes are pixel-identical.
   - The verdict on the valid set is **fix**: seven fixes resolved, one partial (200% text). The
-    two-round budget ends here, and the owner decides at the direction review whether to fund a
-    third round.
+    two-round budget ended there.
   - Open, carried into P4's font-scale 2.0 screenshots:
     - row names must break only between words (the lab uses `overflow-wrap: anywhere`, and
       "Unattributed" splits);
@@ -87,9 +86,18 @@ Started 2026-11-07 while the P2 gate waits for the night report (owner decision,
   - `DesignTokensTest`: 3 tests pass.
   - A one-digit lightness change in `DESIGN.md` fails both the test and `tokens.py --check` (checked
     by mutation, then restored).
-- [ ] P3 direction review with the owner (SPEC 0.6 hard stop). It covers the direction, the finish
-  review's open item (ship the lab or fund a third round), eleven critique questions with defaults, and
-  ADR-0022 to ADR-0025.
+- [x] P3 direction review with the owner (SPEC 0.6 hard stop), recorded in ADR-0026 (edits SPEC 10.4).
+  - The direction is approved, and ADR-0022 to ADR-0025 stand.
+  - Two P4 corrections:
+    - Now's chart starts at the unplug, so it covers the verdict's span, with the bracket at the right
+      end (`DESIGN.md`).
+    - On App detail, an open Act insight ends the story as its anomaly sentence. The same card as on
+      Now, with its action button, follows the story. Then the evidence, with Actions last.
+  - Ten critique defaults are accepted; the eleventh (Actions before Evidence) is the App detail order
+    above.
+  - The owner asked about INTERACT_ACROSS_USERS. No narrower path keeps the same data at the same cost.
+    The platform check, the paths ruled out and P4's onboarding copy are in ADR-0010's 2026-11-07
+    amendment.
 
 ## P2 Data engine (in progress)
 

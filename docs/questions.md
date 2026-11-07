@@ -20,7 +20,11 @@ start of every phase. Answered questions move to the bottom with the answer and 
 - 2026-11-06. Publishing: a new public repository from one clean commit of the audited tree. Before that,
   a secret scan of the tree is reported to the owner. Afterwards the private repository is archived and
   kept private, not deleted. Nothing is created or published until the owner confirms the audit.
-- 2026-11-06. INTERACT_ACROSS_USERS: declared and bootstrapped (ADR-0010 default).
+- 2026-11-06. INTERACT_ACROSS_USERS: declared and bootstrapped (ADR-0010 default). The owner asked
+  again on 2026-11-07: use a narrower path if one exists. None keeps the same data at the same cost, so
+  it stays; the reasons are in ADR-0010's 2026-11-07 amendment.
+- 2026-11-07. P3 direction review: the direction is approved, the lab closes as it is, ten critique
+  defaults are accepted, and App detail leads with the open Act insight (ADR-0026).
 - 2026-11-06. INTERNET: not needed and not declared. SPEC 1.2 forbids it, and no feature needs it:
   - manager links open in the browser through an intent;
   - fonts are bundled;

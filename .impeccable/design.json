@@ -1053,7 +1053,9 @@
       "Selected navigation labels, window choices, lens tabs and the toolbar range go to weight 600. Port: weights stay fixed per role (ADR-0023 §3).",
       "Now's \"Open battery protection\" is a tonal button. Port: outlined (SPEC 11.4).",
       "The window group's inner corners are 8 dp, and App detail's icon has a 16 dp radius. Port: inner corners 6 dp; app icons as the system provides them (SPEC 11.5).",
-      "The app bar title truncates with an ellipsis. Port: it wraps to a second line (SPEC 11.3)."
+      "The app bar title truncates with an ellipsis. Port: it wraps to a second line (SPEC 11.3).",
+      "Now's chart starts two hours back, while the verdict covers the whole session. Port: the scale starts at the unplug, with the bracket at the right end (ADR-0026 §2).",
+      "App detail's story has no anomaly sentence and no insight card. Port: an open Act insight ends the story and its card follows, before the evidence; Actions stay last (SPEC 10.4, ADR-0026 §3)."
     ]
   }
 }

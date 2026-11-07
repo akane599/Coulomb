@@ -97,3 +97,8 @@ The clip scan missed the first two. It checked for clipping and sideways scrolli
 - SPEC 11.12's lab gates are steps 1–5. The finish review is impeccable's own check on top of them.
 - The three items carry into P4: SPEC 11.12's Compose phase renders every screen at font scale 2.0. They are listed in `docs/progress.md`.
 - The owner chooses at the P3 direction review between shipping the lab as it stands and funding a third round.
+
+## Closed by the owner
+
+At the P3 direction review the owner shipped the lab as it stands and did not fund a third round. The
+three open items are fixed in P4 and checked in its font-scale 2.0 screenshots (ADR-0026 §4).

@@ -554,6 +554,9 @@ key, one line each. Long-press explains a mark; TalkBack gets an "Explain proven
   with the range in Data lead. The level line ends where it meets the "now" rule, with no dot; a point
   estimate inside the bracket is a tick. On Now, a 14% copper cone with dashed 1 dp edges narrows from the
   present reading into the bracket. On Charging, the bracket sits beside the target tick.
+- On Now the scale starts at the unplug, so the line covers the same span as the verdict sentence, and
+  the bracket stays at the right end. Level history that does not reach back to the unplug leaves a gap,
+  never an invented line (ADR-0026 §2).
 - The same range is printed in text beside the reading, with the Estimated mark.
 
 ### Rows with share bars
@@ -704,7 +707,7 @@ redraws at most once a second. The wavy level is allowed only on Charging while 
 - **Don't** scale chart labels with the plot, or break a word mid-word to fit a column.
 
 ### Where the lab differs
-The lab stays as reviewed; the port follows the rule (ADR-0025 §3).
+The lab stays as reviewed; the port follows the rule (ADR-0025 §3, ADR-0026).
 - Row names and mono text break anywhere, so "Unattributed" splits at 200%. Port: words break only
   between words (SPEC 11.3).
 - Drain's "+22" spills out of its 40 dp tile at 200%. Port: text fits its container (SPEC 11.3).
@@ -720,3 +723,7 @@ The lab stays as reviewed; the port follows the rule (ADR-0025 §3).
 - The window group's inner corners are 8 dp, and App detail's icon has a 16 dp radius. Port: inner
   corners 6 dp; app icons as the system provides them (SPEC 11.5).
 - The app bar title truncates with an ellipsis. Port: it wraps to a second line (SPEC 11.3).
+- Now's chart starts two hours back, while the verdict covers the whole session. Port: the scale starts
+  at the unplug, with the bracket at the right end (ADR-0026 §2).
+- App detail's story has no anomaly sentence and no insight card. Port: an open Act insight ends the
+  story and its card follows, before the evidence; Actions stay last (SPEC 10.4, ADR-0026 §3).
