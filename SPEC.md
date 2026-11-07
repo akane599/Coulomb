@@ -785,7 +785,7 @@ All tokens are authored in OKLCH (as `/impeccable` requires), converted to sRGB 
 | `good` | oklch(0.62 0.13 160) | oklch(0.76 0.12 160) |  |
 | `caution` | oklch(0.70 0.15 80) | oklch(0.82 0.14 85) |  |
 | `critical` | oklch(0.57 0.20 27) | oklch(0.70 0.17 25) |  |
-| `accentFill` | oklch(0.88 0.06 55) | oklch(0.38 0.08 55) | Fills that carry text or an icon: filled button, selected chip or segment, navigation pill (ADR-0022, ADR-0023) |
+| `accentFill` | oklch(0.88 0.06 55) | oklch(0.38 0.08 55) | Fills that carry text or an icon: filled button, the selected value in a chip or segment group, navigation pill. View tabs, such as Drain's lens, select with `surfaceRaised` and a check (ADR-0022, ADR-0023, ADR-0025) |
 | `onAccentFill` | `textPrimary` | `textPrimary` | Text on `accentFill` |
 | `onGood`, `onCaution` | `textPrimary` | `bg` | Text on status fills |
 | `onCritical` | `bg` | `bg` | Text on status fills |
@@ -803,7 +803,7 @@ All tokens are authored in OKLCH (as `/impeccable` requires), converted to sRGB 
 - 4 dp grid. Spacing tokens: 4, 8, 12, 16, 24, 32, 48, 64. Screen gutter 16 dp compact, 24 dp medium and up.
 - Group with space and hairlines, not containers. Cards only for content that moves as a unit (an insight, a session); never nested.
 - Corner radii: 6 (chips), 12 (rows on press, inputs), 20 (sheets), 28 (large surfaces). Touch targets ≥ 48 dp.
-- Vertical rhythm: section gap 32 dp, row height 56–72 dp, hero block ≥ 30% of the first viewport on Now.
+- Vertical rhythm: section gap 24 dp on compact widths and 32 dp on medium and up (ADR-0025), row height 56–72 dp, hero block ≥ 30% of the first viewport on Now.
 
 ### 11.6 Motion
 

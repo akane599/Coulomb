@@ -1,0 +1,1059 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-07",
+  "title": "Design System: Coulomb",
+  "extensions": {
+    "colorMeta": {
+      "bg-light": {
+        "role": "neutral",
+        "displayName": "Slate Ground (light)",
+        "canonical": "oklch(0.985 0.004 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.001 255)",
+          "oklch(0.264 0.002 255)",
+          "oklch(0.379 0.003 255)",
+          "oklch(0.493 0.004 255)",
+          "oklch(0.607 0.004 255)",
+          "oklch(0.721 0.004 255)",
+          "oklch(0.836 0.003 255)",
+          "oklch(0.950 0.002 255)"
+        ]
+      },
+      "bg-dark": {
+        "role": "neutral",
+        "displayName": "Slate Ground (dark)",
+        "canonical": "oklch(0.17 0.012 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.003 255)",
+          "oklch(0.264 0.005 255)",
+          "oklch(0.379 0.009 255)",
+          "oklch(0.493 0.011 255)",
+          "oklch(0.607 0.012 255)",
+          "oklch(0.721 0.011 255)",
+          "oklch(0.836 0.009 255)",
+          "oklch(0.950 0.005 255)"
+        ]
+      },
+      "bg-black": {
+        "role": "neutral",
+        "displayName": "Slate Ground (true black)",
+        "canonical": "oklch(0 0 0)",
+        "tonalRamp": [
+          "oklch(0.150 0.000 0)",
+          "oklch(0.264 0.000 0)",
+          "oklch(0.379 0.000 0)",
+          "oklch(0.493 0.000 0)",
+          "oklch(0.607 0.000 0)",
+          "oklch(0.721 0.000 0)",
+          "oklch(0.836 0.000 0)",
+          "oklch(0.950 0.000 0)"
+        ]
+      },
+      "surface-light": {
+        "role": "neutral",
+        "displayName": "Slate Surface (light)",
+        "canonical": "oklch(0.965 0.006 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.002 255)",
+          "oklch(0.264 0.003 255)",
+          "oklch(0.379 0.005 255)",
+          "oklch(0.493 0.006 255)",
+          "oklch(0.607 0.006 255)",
+          "oklch(0.721 0.006 255)",
+          "oklch(0.836 0.004 255)",
+          "oklch(0.950 0.002 255)"
+        ]
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Slate Surface (dark)",
+        "canonical": "oklch(0.21 0.014 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.006 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.013 255)",
+          "oklch(0.607 0.014 255)",
+          "oklch(0.721 0.013 255)",
+          "oklch(0.836 0.010 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "surface-raised-light": {
+        "role": "neutral",
+        "displayName": "Raised Slate (light)",
+        "canonical": "oklch(0.94 0.008 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.002 255)",
+          "oklch(0.264 0.004 255)",
+          "oklch(0.379 0.006 255)",
+          "oklch(0.493 0.008 255)",
+          "oklch(0.607 0.008 255)",
+          "oklch(0.721 0.007 255)",
+          "oklch(0.836 0.006 255)",
+          "oklch(0.950 0.003 255)"
+        ]
+      },
+      "surface-raised-dark": {
+        "role": "neutral",
+        "displayName": "Raised Slate (dark)",
+        "canonical": "oklch(0.25 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "hairline-light": {
+        "role": "neutral",
+        "displayName": "Hairline (light)",
+        "canonical": "oklch(0.88 0.010 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.003 255)",
+          "oklch(0.264 0.004 255)",
+          "oklch(0.379 0.008 255)",
+          "oklch(0.493 0.009 255)",
+          "oklch(0.607 0.010 255)",
+          "oklch(0.721 0.009 255)",
+          "oklch(0.836 0.007 255)",
+          "oklch(0.950 0.004 255)"
+        ]
+      },
+      "hairline-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "canonical": "oklch(0.32 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "text-primary-light": {
+        "role": "neutral",
+        "displayName": "Primary Ink (light)",
+        "canonical": "oklch(0.22 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "text-primary-dark": {
+        "role": "neutral",
+        "displayName": "Primary Ink (dark)",
+        "canonical": "oklch(0.94 0.006 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.002 255)",
+          "oklch(0.264 0.003 255)",
+          "oklch(0.379 0.005 255)",
+          "oklch(0.493 0.006 255)",
+          "oklch(0.607 0.006 255)",
+          "oklch(0.721 0.006 255)",
+          "oklch(0.836 0.004 255)",
+          "oklch(0.950 0.002 255)"
+        ]
+      },
+      "text-secondary-light": {
+        "role": "neutral",
+        "displayName": "Secondary Ink (light)",
+        "canonical": "oklch(0.48 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "text-secondary-dark": {
+        "role": "neutral",
+        "displayName": "Secondary Ink (dark)",
+        "canonical": "oklch(0.72 0.012 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.003 255)",
+          "oklch(0.264 0.005 255)",
+          "oklch(0.379 0.009 255)",
+          "oklch(0.493 0.011 255)",
+          "oklch(0.607 0.012 255)",
+          "oklch(0.721 0.011 255)",
+          "oklch(0.836 0.009 255)",
+          "oklch(0.950 0.005 255)"
+        ]
+      },
+      "accent-light": {
+        "role": "primary",
+        "displayName": "Copper (light)",
+        "canonical": "oklch(0.60 0.14 50)",
+        "tonalRamp": [
+          "oklch(0.150 0.035 50)",
+          "oklch(0.264 0.062 50)",
+          "oklch(0.379 0.106 50)",
+          "oklch(0.493 0.132 50)",
+          "oklch(0.607 0.140 50)",
+          "oklch(0.721 0.130 50)",
+          "oklch(0.836 0.102 50)",
+          "oklch(0.950 0.055 50)"
+        ]
+      },
+      "accent-dark": {
+        "role": "primary",
+        "displayName": "Copper (dark)",
+        "canonical": "oklch(0.74 0.13 55)",
+        "tonalRamp": [
+          "oklch(0.150 0.033 55)",
+          "oklch(0.264 0.058 55)",
+          "oklch(0.379 0.099 55)",
+          "oklch(0.493 0.123 55)",
+          "oklch(0.607 0.130 55)",
+          "oklch(0.721 0.121 55)",
+          "oklch(0.836 0.094 55)",
+          "oklch(0.950 0.051 55)"
+        ]
+      },
+      "good-light": {
+        "role": "status",
+        "displayName": "Good (light)",
+        "canonical": "oklch(0.62 0.13 160)",
+        "tonalRamp": [
+          "oklch(0.150 0.033 160)",
+          "oklch(0.264 0.058 160)",
+          "oklch(0.379 0.099 160)",
+          "oklch(0.493 0.123 160)",
+          "oklch(0.607 0.130 160)",
+          "oklch(0.721 0.121 160)",
+          "oklch(0.836 0.094 160)",
+          "oklch(0.950 0.051 160)"
+        ]
+      },
+      "good-dark": {
+        "role": "status",
+        "displayName": "Good (dark)",
+        "canonical": "oklch(0.76 0.12 160)",
+        "tonalRamp": [
+          "oklch(0.150 0.030 160)",
+          "oklch(0.264 0.053 160)",
+          "oklch(0.379 0.091 160)",
+          "oklch(0.493 0.113 160)",
+          "oklch(0.607 0.120 160)",
+          "oklch(0.721 0.111 160)",
+          "oklch(0.836 0.087 160)",
+          "oklch(0.950 0.047 160)"
+        ]
+      },
+      "caution-light": {
+        "role": "status",
+        "displayName": "Caution (light)",
+        "canonical": "oklch(0.70 0.15 80)",
+        "tonalRamp": [
+          "oklch(0.150 0.037 80)",
+          "oklch(0.264 0.067 80)",
+          "oklch(0.379 0.114 80)",
+          "oklch(0.493 0.141 80)",
+          "oklch(0.607 0.150 80)",
+          "oklch(0.721 0.139 80)",
+          "oklch(0.836 0.109 80)",
+          "oklch(0.950 0.059 80)"
+        ]
+      },
+      "caution-dark": {
+        "role": "status",
+        "displayName": "Caution (dark)",
+        "canonical": "oklch(0.82 0.14 85)",
+        "tonalRamp": [
+          "oklch(0.150 0.035 85)",
+          "oklch(0.264 0.062 85)",
+          "oklch(0.379 0.106 85)",
+          "oklch(0.493 0.132 85)",
+          "oklch(0.607 0.140 85)",
+          "oklch(0.721 0.130 85)",
+          "oklch(0.836 0.102 85)",
+          "oklch(0.950 0.055 85)"
+        ]
+      },
+      "critical-light": {
+        "role": "status",
+        "displayName": "Critical (light)",
+        "canonical": "oklch(0.57 0.20 27)",
+        "tonalRamp": [
+          "oklch(0.150 0.050 27)",
+          "oklch(0.264 0.089 27)",
+          "oklch(0.379 0.152 27)",
+          "oklch(0.493 0.189 27)",
+          "oklch(0.607 0.200 27)",
+          "oklch(0.721 0.185 27)",
+          "oklch(0.836 0.145 27)",
+          "oklch(0.950 0.079 27)"
+        ]
+      },
+      "critical-dark": {
+        "role": "status",
+        "displayName": "Critical (dark)",
+        "canonical": "oklch(0.70 0.17 25)",
+        "tonalRamp": [
+          "oklch(0.150 0.043 25)",
+          "oklch(0.264 0.075 25)",
+          "oklch(0.379 0.129 25)",
+          "oklch(0.493 0.160 25)",
+          "oklch(0.607 0.170 25)",
+          "oklch(0.721 0.158 25)",
+          "oklch(0.836 0.123 25)",
+          "oklch(0.950 0.067 25)"
+        ]
+      },
+      "accent-fill-light": {
+        "role": "primary",
+        "displayName": "Copper Fill (light)",
+        "canonical": "oklch(0.88 0.06 55)",
+        "tonalRamp": [
+          "oklch(0.150 0.015 55)",
+          "oklch(0.264 0.027 55)",
+          "oklch(0.379 0.045 55)",
+          "oklch(0.493 0.057 55)",
+          "oklch(0.607 0.060 55)",
+          "oklch(0.721 0.056 55)",
+          "oklch(0.836 0.044 55)",
+          "oklch(0.950 0.024 55)"
+        ]
+      },
+      "accent-fill-dark": {
+        "role": "primary",
+        "displayName": "Copper Fill (dark)",
+        "canonical": "oklch(0.38 0.08 55)",
+        "tonalRamp": [
+          "oklch(0.150 0.020 55)",
+          "oklch(0.264 0.035 55)",
+          "oklch(0.379 0.061 55)",
+          "oklch(0.493 0.075 55)",
+          "oklch(0.607 0.080 55)",
+          "oklch(0.721 0.074 55)",
+          "oklch(0.836 0.058 55)",
+          "oklch(0.950 0.032 55)"
+        ]
+      },
+      "on-accent-fill-light": {
+        "role": "primary",
+        "displayName": "Ink on Copper Fill (light)",
+        "canonical": "oklch(0.22 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "on-accent-fill-dark": {
+        "role": "primary",
+        "displayName": "Ink on Copper Fill (dark)",
+        "canonical": "oklch(0.94 0.006 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.002 255)",
+          "oklch(0.264 0.003 255)",
+          "oklch(0.379 0.005 255)",
+          "oklch(0.493 0.006 255)",
+          "oklch(0.607 0.006 255)",
+          "oklch(0.721 0.006 255)",
+          "oklch(0.836 0.004 255)",
+          "oklch(0.950 0.002 255)"
+        ]
+      },
+      "on-good-light": {
+        "role": "status",
+        "displayName": "Ink on Good (light)",
+        "canonical": "oklch(0.22 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "on-good-dark": {
+        "role": "status",
+        "displayName": "Ink on Good (dark)",
+        "canonical": "oklch(0.17 0.012 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.003 255)",
+          "oklch(0.264 0.005 255)",
+          "oklch(0.379 0.009 255)",
+          "oklch(0.493 0.011 255)",
+          "oklch(0.607 0.012 255)",
+          "oklch(0.721 0.011 255)",
+          "oklch(0.836 0.009 255)",
+          "oklch(0.950 0.005 255)"
+        ]
+      },
+      "on-good-black": {
+        "role": "status",
+        "displayName": "Ink on Good (true black)",
+        "canonical": "oklch(0 0 0)",
+        "tonalRamp": [
+          "oklch(0.150 0.000 0)",
+          "oklch(0.264 0.000 0)",
+          "oklch(0.379 0.000 0)",
+          "oklch(0.493 0.000 0)",
+          "oklch(0.607 0.000 0)",
+          "oklch(0.721 0.000 0)",
+          "oklch(0.836 0.000 0)",
+          "oklch(0.950 0.000 0)"
+        ]
+      },
+      "on-caution-light": {
+        "role": "status",
+        "displayName": "Ink on Caution (light)",
+        "canonical": "oklch(0.22 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "on-caution-dark": {
+        "role": "status",
+        "displayName": "Ink on Caution (dark)",
+        "canonical": "oklch(0.17 0.012 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.003 255)",
+          "oklch(0.264 0.005 255)",
+          "oklch(0.379 0.009 255)",
+          "oklch(0.493 0.011 255)",
+          "oklch(0.607 0.012 255)",
+          "oklch(0.721 0.011 255)",
+          "oklch(0.836 0.009 255)",
+          "oklch(0.950 0.005 255)"
+        ]
+      },
+      "on-caution-black": {
+        "role": "status",
+        "displayName": "Ink on Caution (true black)",
+        "canonical": "oklch(0 0 0)",
+        "tonalRamp": [
+          "oklch(0.150 0.000 0)",
+          "oklch(0.264 0.000 0)",
+          "oklch(0.379 0.000 0)",
+          "oklch(0.493 0.000 0)",
+          "oklch(0.607 0.000 0)",
+          "oklch(0.721 0.000 0)",
+          "oklch(0.836 0.000 0)",
+          "oklch(0.950 0.000 0)"
+        ]
+      },
+      "on-critical-light": {
+        "role": "status",
+        "displayName": "Ink on Critical (light)",
+        "canonical": "oklch(0.985 0.004 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.001 255)",
+          "oklch(0.264 0.002 255)",
+          "oklch(0.379 0.003 255)",
+          "oklch(0.493 0.004 255)",
+          "oklch(0.607 0.004 255)",
+          "oklch(0.721 0.004 255)",
+          "oklch(0.836 0.003 255)",
+          "oklch(0.950 0.002 255)"
+        ]
+      },
+      "on-critical-dark": {
+        "role": "status",
+        "displayName": "Ink on Critical (dark)",
+        "canonical": "oklch(0.17 0.012 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.003 255)",
+          "oklch(0.264 0.005 255)",
+          "oklch(0.379 0.009 255)",
+          "oklch(0.493 0.011 255)",
+          "oklch(0.607 0.012 255)",
+          "oklch(0.721 0.011 255)",
+          "oklch(0.836 0.009 255)",
+          "oklch(0.950 0.005 255)"
+        ]
+      },
+      "on-critical-black": {
+        "role": "status",
+        "displayName": "Ink on Critical (true black)",
+        "canonical": "oklch(0 0 0)",
+        "tonalRamp": [
+          "oklch(0.150 0.000 0)",
+          "oklch(0.264 0.000 0)",
+          "oklch(0.379 0.000 0)",
+          "oklch(0.493 0.000 0)",
+          "oklch(0.607 0.000 0)",
+          "oklch(0.721 0.000 0)",
+          "oklch(0.836 0.000 0)",
+          "oklch(0.950 0.000 0)"
+        ]
+      },
+      "data-screen-light": {
+        "role": "data",
+        "displayName": "Screen (light)",
+        "canonical": "oklch(0.62 0.11 245)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 245)",
+          "oklch(0.264 0.049 245)",
+          "oklch(0.379 0.083 245)",
+          "oklch(0.493 0.104 245)",
+          "oklch(0.607 0.110 245)",
+          "oklch(0.721 0.102 245)",
+          "oklch(0.836 0.080 245)",
+          "oklch(0.950 0.043 245)"
+        ]
+      },
+      "data-screen-dark": {
+        "role": "data",
+        "displayName": "Screen (dark)",
+        "canonical": "oklch(0.74 0.11 245)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 245)",
+          "oklch(0.264 0.049 245)",
+          "oklch(0.379 0.083 245)",
+          "oklch(0.493 0.104 245)",
+          "oklch(0.607 0.110 245)",
+          "oklch(0.721 0.102 245)",
+          "oklch(0.836 0.080 245)",
+          "oklch(0.950 0.043 245)"
+        ]
+      },
+      "data-cpu-light": {
+        "role": "data",
+        "displayName": "CPU (light)",
+        "canonical": "oklch(0.62 0.11 30)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 30)",
+          "oklch(0.264 0.049 30)",
+          "oklch(0.379 0.083 30)",
+          "oklch(0.493 0.104 30)",
+          "oklch(0.607 0.110 30)",
+          "oklch(0.721 0.102 30)",
+          "oklch(0.836 0.080 30)",
+          "oklch(0.950 0.043 30)"
+        ]
+      },
+      "data-cpu-dark": {
+        "role": "data",
+        "displayName": "CPU (dark)",
+        "canonical": "oklch(0.74 0.11 30)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 30)",
+          "oklch(0.264 0.049 30)",
+          "oklch(0.379 0.083 30)",
+          "oklch(0.493 0.104 30)",
+          "oklch(0.607 0.110 30)",
+          "oklch(0.721 0.102 30)",
+          "oklch(0.836 0.080 30)",
+          "oklch(0.950 0.043 30)"
+        ]
+      },
+      "data-radio-light": {
+        "role": "data",
+        "displayName": "Mobile Radio (light)",
+        "canonical": "oklch(0.62 0.11 150)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 150)",
+          "oklch(0.264 0.049 150)",
+          "oklch(0.379 0.083 150)",
+          "oklch(0.493 0.104 150)",
+          "oklch(0.607 0.110 150)",
+          "oklch(0.721 0.102 150)",
+          "oklch(0.836 0.080 150)",
+          "oklch(0.950 0.043 150)"
+        ]
+      },
+      "data-radio-dark": {
+        "role": "data",
+        "displayName": "Mobile Radio (dark)",
+        "canonical": "oklch(0.74 0.11 150)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 150)",
+          "oklch(0.264 0.049 150)",
+          "oklch(0.379 0.083 150)",
+          "oklch(0.493 0.104 150)",
+          "oklch(0.607 0.110 150)",
+          "oklch(0.721 0.102 150)",
+          "oklch(0.836 0.080 150)",
+          "oklch(0.950 0.043 150)"
+        ]
+      },
+      "data-wifi-light": {
+        "role": "data",
+        "displayName": "Wi-Fi (light)",
+        "canonical": "oklch(0.62 0.11 200)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 200)",
+          "oklch(0.264 0.049 200)",
+          "oklch(0.379 0.083 200)",
+          "oklch(0.493 0.104 200)",
+          "oklch(0.607 0.110 200)",
+          "oklch(0.721 0.102 200)",
+          "oklch(0.836 0.080 200)",
+          "oklch(0.950 0.043 200)"
+        ]
+      },
+      "data-wifi-dark": {
+        "role": "data",
+        "displayName": "Wi-Fi (dark)",
+        "canonical": "oklch(0.74 0.11 200)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 200)",
+          "oklch(0.264 0.049 200)",
+          "oklch(0.379 0.083 200)",
+          "oklch(0.493 0.104 200)",
+          "oklch(0.607 0.110 200)",
+          "oklch(0.721 0.102 200)",
+          "oklch(0.836 0.080 200)",
+          "oklch(0.950 0.043 200)"
+        ]
+      },
+      "data-gnss-light": {
+        "role": "data",
+        "displayName": "GNSS (light)",
+        "canonical": "oklch(0.62 0.11 95)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 95)",
+          "oklch(0.264 0.049 95)",
+          "oklch(0.379 0.083 95)",
+          "oklch(0.493 0.104 95)",
+          "oklch(0.607 0.110 95)",
+          "oklch(0.721 0.102 95)",
+          "oklch(0.836 0.080 95)",
+          "oklch(0.950 0.043 95)"
+        ]
+      },
+      "data-gnss-dark": {
+        "role": "data",
+        "displayName": "GNSS (dark)",
+        "canonical": "oklch(0.74 0.11 95)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 95)",
+          "oklch(0.264 0.049 95)",
+          "oklch(0.379 0.083 95)",
+          "oklch(0.493 0.104 95)",
+          "oklch(0.607 0.110 95)",
+          "oklch(0.721 0.102 95)",
+          "oklch(0.836 0.080 95)",
+          "oklch(0.950 0.043 95)"
+        ]
+      },
+      "data-bluetooth-light": {
+        "role": "data",
+        "displayName": "Bluetooth (light)",
+        "canonical": "oklch(0.62 0.11 275)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 275)",
+          "oklch(0.264 0.049 275)",
+          "oklch(0.379 0.083 275)",
+          "oklch(0.493 0.104 275)",
+          "oklch(0.607 0.110 275)",
+          "oklch(0.721 0.102 275)",
+          "oklch(0.836 0.080 275)",
+          "oklch(0.950 0.043 275)"
+        ]
+      },
+      "data-bluetooth-dark": {
+        "role": "data",
+        "displayName": "Bluetooth (dark)",
+        "canonical": "oklch(0.74 0.11 275)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 275)",
+          "oklch(0.264 0.049 275)",
+          "oklch(0.379 0.083 275)",
+          "oklch(0.493 0.104 275)",
+          "oklch(0.607 0.110 275)",
+          "oklch(0.721 0.102 275)",
+          "oklch(0.836 0.080 275)",
+          "oklch(0.950 0.043 275)"
+        ]
+      },
+      "data-sensors-light": {
+        "role": "data",
+        "displayName": "Sensors (light)",
+        "canonical": "oklch(0.62 0.11 340)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 340)",
+          "oklch(0.264 0.049 340)",
+          "oklch(0.379 0.083 340)",
+          "oklch(0.493 0.104 340)",
+          "oklch(0.607 0.110 340)",
+          "oklch(0.721 0.102 340)",
+          "oklch(0.836 0.080 340)",
+          "oklch(0.950 0.043 340)"
+        ]
+      },
+      "data-sensors-dark": {
+        "role": "data",
+        "displayName": "Sensors (dark)",
+        "canonical": "oklch(0.74 0.11 340)",
+        "tonalRamp": [
+          "oklch(0.150 0.028 340)",
+          "oklch(0.264 0.049 340)",
+          "oklch(0.379 0.083 340)",
+          "oklch(0.493 0.104 340)",
+          "oklch(0.607 0.110 340)",
+          "oklch(0.721 0.102 340)",
+          "oklch(0.836 0.080 340)",
+          "oklch(0.950 0.043 340)"
+        ]
+      },
+      "data-other-light": {
+        "role": "data",
+        "displayName": "Other (light)",
+        "canonical": "oklch(0.62 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      },
+      "data-other-dark": {
+        "role": "data",
+        "displayName": "Other (dark)",
+        "canonical": "oklch(0.74 0.015 255)",
+        "tonalRamp": [
+          "oklch(0.150 0.004 255)",
+          "oklch(0.264 0.007 255)",
+          "oklch(0.379 0.011 255)",
+          "oklch(0.493 0.014 255)",
+          "oklch(0.607 0.015 255)",
+          "oklch(0.721 0.014 255)",
+          "oklch(0.836 0.011 255)",
+          "oklch(0.950 0.006 255)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "One hero number per screen: level, measured total, capacity, charging power."
+      },
+      "display-unit": {
+        "displayName": "Display unit",
+        "purpose": "The unit beside a Display numeral, in text-secondary."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Screen titles on expanded layouts."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "App bar and section titles, the compact onboarding title, figure-strip figures, the Timeline readout."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Story sentences, the verdict, descriptions, switch labels, definition lists."
+      },
+      "body-name": {
+        "displayName": "Body name",
+        "purpose": "Row names."
+      },
+      "body-subhead": {
+        "displayName": "Body subhead",
+        "purpose": "Subheads and insight-card titles."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Table and row values, the ETA line, checklist items."
+      },
+      "data-lead": {
+        "displayName": "Data lead",
+        "purpose": "A bold lead word in a Data line; the bracket range label."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Column headers, chips, selection controls, list-group headings, the stepper label."
+      },
+      "label-button": {
+        "displayName": "Label button",
+        "purpose": "Buttons and text buttons."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Units beside small figures, row details, share percentages, chart text and captions, footnotes."
+      },
+      "caption-nav": {
+        "displayName": "Caption nav",
+        "purpose": "Navigation bar labels."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Raw identifiers only: wakelock tags, package names, kernel names, commands."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating",
+        "value": "0 2px 6px oklch(0.22 0.015 255 / 0.16), 0 8px 24px oklch(0.22 0.015 255 / 0.16)",
+        "purpose": "The Timeline floating toolbar only. Dark mode uses black at 50% alpha."
+      },
+      {
+        "name": "hover-lift",
+        "value": "0 1px 3px oklch(0.22 0.015 255 / 0.16)",
+        "purpose": "A filled button under a pointer. Dark mode uses black at 50% alpha."
+      }
+    ],
+    "motion": [
+      {
+        "name": "spring-spatial-damping",
+        "value": "0.95",
+        "purpose": "Damping ratio of spatial springs (SPEC 11.6); no visible bounce."
+      },
+      {
+        "name": "spring-effects-damping",
+        "value": "1",
+        "purpose": "Damping ratio of effects springs (colour, opacity)."
+      },
+      {
+        "name": "spring-stiffness-fast",
+        "value": "1400",
+        "purpose": "Small, quick changes."
+      },
+      {
+        "name": "spring-stiffness-default",
+        "value": "700",
+        "purpose": "Default spring stiffness."
+      },
+      {
+        "name": "spring-stiffness-slow",
+        "value": "300",
+        "purpose": "Large or full-screen changes."
+      },
+      {
+        "name": "duration-reduced-crossfade",
+        "value": "150ms",
+        "purpose": "Under reduced motion every transition is an opacity crossfade of this length, and nothing else moves."
+      },
+      {
+        "name": "lab-tween",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1) at 150ms and 250ms",
+        "purpose": "The lab's CSS stand-in for springs (ease-out quart). Not ported."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "0dp",
+        "purpose": "16dp gutter."
+      },
+      {
+        "name": "medium",
+        "value": "600dp",
+        "purpose": "24dp gutter and up (WindowSizeClass)."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Filled Button",
+      "kind": "button",
+      "refersTo": "button-filled-light",
+      "description": "The one primary action in a region, such as an insight's action that opens the preview sheet.",
+      "html": "<button class=\"ds-btn-filled\">Restrict background</button>",
+      "css": ".ds-btn-filled { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; min-height: 40px; padding: 10px 20px; border: 0; border-radius: 20px; background: var(--accent-fill, oklch(0.88 0.06 55)); color: var(--on-accent-fill, oklch(0.22 0.015 255)); font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; transition: box-shadow 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-filled:hover { box-shadow: 0 1px 3px oklch(0.22 0.015 255 / 0.16); } .ds-btn-filled:focus-visible { outline: 2px solid var(--accent, oklch(0.6 0.14 50)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outlined Button",
+      "kind": "button",
+      "refersTo": "button-outlined-light",
+      "description": "The secondary action beside a filled button.",
+      "html": "<button class=\"ds-btn-outlined\">Open settings</button>",
+      "css": ".ds-btn-outlined { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; min-height: 40px; padding: 10px 20px; border: 1px solid var(--hairline, oklch(0.88 0.01 255)); border-radius: 20px; background: none; color: var(--text-primary, oklch(0.22 0.015 255)); font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; } .ds-btn-outlined:hover { background: color-mix(in oklch, var(--text-primary, oklch(0.22 0.015 255)) 8%, transparent); } .ds-btn-outlined:focus-visible { outline: 2px solid var(--accent, oklch(0.6 0.14 50)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Window Selector",
+      "kind": "chip",
+      "refersTo": "window-choice-selected-light",
+      "description": "Connected radio group of three windows; inner corners 6dp, the chosen one copper fill at the same weight. More sits outside it and opens a sheet.",
+      "html": "<div class=\"ds-win\"><div class=\"ds-win-radios\" role=\"radiogroup\" aria-label=\"Window\"><button role=\"radio\" aria-checked=\"true\"><svg width=\"18\" height=\"18\" viewBox=\"0 -960 960 960\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z\"/></svg>Since unplugged</button><button role=\"radio\" aria-checked=\"false\">Today</button><button role=\"radio\" aria-checked=\"false\">Last 24 h</button></div><button class=\"ds-win-more\" aria-haspopup=\"dialog\">More</button></div>",
+      "css": ".ds-win, .ds-win-radios { display: flex; flex-wrap: wrap; gap: 8px 2px; } .ds-win button { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--surface-raised, oklch(0.94 0.008 255)); color: var(--text-primary, oklch(0.22 0.015 255)); font-size: 13px; line-height: 18px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; cursor: pointer; transition: border-radius 250ms cubic-bezier(0.25, 1, 0.5, 1), background-color 250ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-win-radios button:first-child { border-radius: 20px 6px 6px 20px; } .ds-win .ds-win-more { border-radius: 6px 20px 20px 6px; } .ds-win button[aria-checked=\"true\"] { border-radius: 20px; background: var(--accent-fill, oklch(0.88 0.06 55)); color: var(--on-accent-fill, oklch(0.22 0.015 255)); } .ds-win button:hover:not([aria-checked=\"true\"]) { background: color-mix(in oklch, var(--surface-raised, oklch(0.94 0.008 255)), var(--text-primary, oklch(0.22 0.015 255)) 6%); } .ds-win button:focus-visible { outline: 2px solid var(--accent, oklch(0.6 0.14 50)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Severity Chips",
+      "kind": "chip",
+      "refersTo": "chip-act-light",
+      "description": "Act, Watch and Info chips in an insight card head; text uses the fill's on-colour.",
+      "html": "<span class=\"ds-chip ds-chip-act\">Act</span> <span class=\"ds-chip ds-chip-watch\">Watch</span> <span class=\"ds-chip\">Info</span>",
+      "css": ".ds-chip { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; display: inline-flex; align-items: center; min-height: 28px; padding: 4px 10px; border-radius: 6px; background: var(--surface-raised, oklch(0.94 0.008 255)); color: var(--text-primary, oklch(0.22 0.015 255)); font-size: 13px; line-height: 18px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; } .ds-chip-act { background: var(--critical, oklch(0.57 0.2 27)); color: var(--on-critical, oklch(0.985 0.004 255)); } .ds-chip-watch { background: var(--caution, oklch(0.7 0.15 80)); color: var(--on-caution, oklch(0.22 0.015 255)); }"
+    },
+    {
+      "name": "Insight Card",
+      "kind": "card",
+      "refersTo": "insight-card-light",
+      "description": "The only card: a movable unit with a severity chip, overflow, a primary action and its reason.",
+      "html": "<article class=\"ds-insight\"><div class=\"ds-insight-head\"><h3>Halcyon keeps the radio awake</h3><span class=\"ds-chip-act\">Act</span></div><p>It woke the phone 41 times with the screen off.</p><div class=\"ds-insight-actions\"><button class=\"ds-fill\">Restrict background</button><button class=\"ds-text\">Why am I seeing this?</button></div></article>",
+      "css": ".ds-insight { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; background: var(--surface, oklch(0.965 0.006 255)); border-radius: 12px; padding: 16px 16px 8px; color: var(--text-primary, oklch(0.22 0.015 255)); } .ds-insight-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; } .ds-insight h3 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; } .ds-insight p { margin: 4px 0 0; font-size: 16px; line-height: 24px; color: var(--text-secondary, oklch(0.48 0.015 255)); } .ds-chip-act { padding: 4px 10px; border-radius: 6px; background: var(--critical, oklch(0.57 0.2 27)); color: var(--on-critical, oklch(0.985 0.004 255)); font-size: 13px; line-height: 18px; font-weight: 500; } .ds-insight-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; } .ds-fill, .ds-text { font: 600 13px/18px \"Hanken Grotesk\", sans-serif; border: 0; cursor: pointer; } .ds-fill { min-height: 40px; padding: 10px 20px; border-radius: 20px; background: var(--accent-fill, oklch(0.88 0.06 55)); color: var(--on-accent-fill, oklch(0.22 0.015 255)); } .ds-text { min-height: 48px; padding: 0 12px; border-radius: 24px; background: none; color: var(--text-primary, oklch(0.22 0.015 255)); } .ds-text:hover { background: color-mix(in oklch, var(--text-primary, oklch(0.22 0.015 255)) 8%, transparent); } .ds-fill:focus-visible, .ds-text:focus-visible { outline: 2px solid var(--accent, oklch(0.6 0.14 50)); outline-offset: 2px; }"
+    },
+    {
+      "name": "App Row with Share Bar",
+      "kind": "custom",
+      "refersTo": "app-row",
+      "description": "Ruled row: icon, name and detail, value with its Modeled mark, share percentage, neutral share bar.",
+      "html": "<a class=\"ds-row\" href=\"#\"><span class=\"ds-row-icon\"></span><span class=\"ds-row-name\">Halcyon</span><span class=\"ds-row-value\">402 mAh <svg class=\"ds-prov\" viewBox=\"0 0 12 12\" aria-label=\"Modeled\"><circle cx=\"6\" cy=\"6\" r=\"3.5\"/></svg></span><span class=\"ds-row-detail\">Screen on 52 min · mobile data</span><span class=\"ds-row-pct\">33%</span><span class=\"ds-share\"><span style=\"width:33%\"></span></span></a>",
+      "css": ".ds-row { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 16px; align-items: center; min-height: 72px; padding: 12px 0; border-block: 1px solid var(--hairline, oklch(0.88 0.01 255)); color: var(--text-primary, oklch(0.22 0.015 255)); text-decoration: none; } .ds-row:hover { background: color-mix(in oklch, var(--text-primary, oklch(0.22 0.015 255)) 8%, transparent); } .ds-row:focus-visible { outline: 2px solid var(--accent, oklch(0.6 0.14 50)); outline-offset: 2px; } .ds-row-icon { grid-row: 1 / span 3; width: 40px; height: 40px; border-radius: 12px; background: var(--surface-raised, oklch(0.94 0.008 255)); } .ds-row-name { font-size: 16px; line-height: 24px; font-weight: 500; overflow-wrap: normal; } .ds-row-value { grid-column: 3; grid-row: 1; text-align: right; font-size: 15px; line-height: 20px; font-weight: 500; white-space: nowrap; } .ds-row-detail { grid-column: 2; grid-row: 2; font-size: 12px; line-height: 16px; color: var(--text-secondary, oklch(0.48 0.015 255)); } .ds-row-pct { grid-column: 3; grid-row: 2; text-align: right; font-size: 12px; line-height: 16px; color: var(--text-secondary, oklch(0.48 0.015 255)); } .ds-share { grid-column: 2 / span 2; grid-row: 3; position: relative; height: 4px; margin-top: 8px; border-radius: 2px; background: var(--hairline, oklch(0.88 0.01 255)); overflow: hidden; } .ds-share > span { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--text-secondary, oklch(0.48 0.015 255)); } .ds-prov { width: 12px; height: 12px; vertical-align: -1px; fill: none; stroke: var(--text-secondary, oklch(0.48 0.015 255)); stroke-width: 1.5; }"
+    },
+    {
+      "name": "Switch",
+      "kind": "input",
+      "refersTo": "switch-checked-light",
+      "description": "Neutral-ink switch in a 56dp Body row; never copper.",
+      "html": "<label class=\"ds-switch-row\">Include system apps<input class=\"ds-switch\" type=\"checkbox\" role=\"switch\" checked></label>",
+      "css": ".ds-switch-row { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; font-size: 16px; line-height: 24px; color: var(--text-primary, oklch(0.22 0.015 255)); } .ds-switch { appearance: none; position: relative; flex: none; width: 52px; height: 32px; margin: 0; border-radius: 16px; border: 2px solid var(--text-secondary, oklch(0.48 0.015 255)); background: var(--surface-raised, oklch(0.94 0.008 255)); cursor: pointer; transition: background-color 250ms cubic-bezier(0.25, 1, 0.5, 1), border-color 250ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-switch::after { content: \"\"; position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-secondary, oklch(0.48 0.015 255)); transition: transform 250ms cubic-bezier(0.25, 1, 0.5, 1), width 250ms, height 250ms, top 250ms; } .ds-switch:checked { background: var(--text-primary, oklch(0.22 0.015 255)); border-color: var(--text-primary, oklch(0.22 0.015 255)); } .ds-switch:checked::after { top: 2px; width: 24px; height: 24px; transform: translateX(20px); background: var(--bg, oklch(0.985 0.004 255)); } .ds-switch:focus-visible { outline: 2px solid var(--accent, oklch(0.6 0.14 50)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "nav-pill-selected-light",
+      "description": "Four destinations on surface with a hairline above; the current one has a copper-fill pill.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\"><span class=\"ds-pill\"><svg width=\"24\" height=\"24\" viewBox=\"0 -960 960 960\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M160-240q-33 0-56.5-23.5T80-320v-320q0-33 23.5-56.5T160-720h600q33 0 56.5 23.5T840-640v40h40v240h-40v40q0 33-23.5 56.5T760-240H160Zm0-80h600v-320H160v320Zm40-40h400v-240H200v240Z\"/></svg></span>Now</a><a href=\"#\"><span class=\"ds-pill\"><svg width=\"24\" height=\"24\" viewBox=\"0 -960 960 960\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880v80q-134 0-227 93t-93 227q0 134 93 227t227 93q134 0 227-93t93-227h80q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z\"/></svg></span>Drain</a></nav>",
+      "css": ".ds-nav { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; display: grid; grid-template-columns: repeat(2, 1fr); height: 80px; background: var(--surface, oklch(0.965 0.006 255)); border-top: 1px solid var(--hairline, oklch(0.88 0.01 255)); } .ds-nav a { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 12px; color: var(--text-secondary, oklch(0.48 0.015 255)); text-decoration: none; font-size: 12px; line-height: 16px; font-weight: 500; } .ds-pill { display: grid; place-items: center; width: 64px; height: 32px; border-radius: 16px; transition: background-color 250ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-nav a:hover .ds-pill { background: color-mix(in oklch, var(--text-primary, oklch(0.22 0.015 255)) 8%, transparent); } .ds-nav a:focus-visible { outline: 2px solid var(--accent, oklch(0.6 0.14 50)); outline-offset: 2px; } .ds-nav a[aria-current=\"page\"] { color: var(--text-primary, oklch(0.22 0.015 255)); } .ds-nav a[aria-current=\"page\"] .ds-pill { background: var(--accent-fill, oklch(0.88 0.06 55)); color: var(--on-accent-fill, oklch(0.22 0.015 255)); }"
+    },
+    {
+      "name": "Provenance Marks",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "The four reserved 12dp shapes: Measured dot, Modeled ring, Estimated bracket, Derived half dot.",
+      "html": "<dl class=\"ds-prov-key\"><dt><svg viewBox=\"0 0 12 12\"><circle cx=\"6\" cy=\"6\" r=\"4\" fill=\"currentColor\" stroke=\"none\"/></svg></dt><dd><strong>Measured</strong>: counted directly</dd><dt><svg viewBox=\"0 0 12 12\"><circle cx=\"6\" cy=\"6\" r=\"3.5\"/></svg></dt><dd><strong>Modeled</strong>: from a model Coulomb does not own</dd><dt><svg viewBox=\"0 0 12 12\"><path d=\"M2 3.5v5M10 3.5v5M2 6h8\"/></svg></dt><dd><strong>Estimated</strong>: Coulomb's estimate, with a range</dd><dt><svg viewBox=\"0 0 12 12\"><circle cx=\"6\" cy=\"6\" r=\"3.5\"/><path d=\"M6 2.5a3.5 3.5 0 0 1 0 7z\" fill=\"currentColor\" stroke=\"none\"/></svg></dt><dd><strong>Derived</strong>: arithmetic on the others</dd></dl>",
+      "css": ".ds-prov-key { font-family: \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums lining-nums; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 16px; row-gap: 8px; margin: 0; color: var(--text-primary, oklch(0.22 0.015 255)); } .ds-prov-key dt { display: grid; place-items: center; height: 24px; } .ds-prov-key dd { margin: 0; font-size: 16px; line-height: 24px; } .ds-prov-key strong { font-weight: 600; } .ds-prov-key svg { width: 12px; height: 12px; color: var(--text-secondary, oklch(0.48 0.015 255)); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }"
+    },
+    {
+      "name": "Bracket on a Graduated Scale",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "The signature: an estimate drawn as a copper bracket spanning its interval on a hairline scale; the point estimate is a tick.",
+      "html": "<figure class=\"ds-scale\"><svg viewBox=\"0 0 320 64\" role=\"img\" aria-label=\"Capacity 4,540 to 4,680 mAh\"><text x=\"160\" y=\"14\" text-anchor=\"middle\" class=\"ds-strong\">4,540–4,680</text><path class=\"ds-axis\" d=\"M8 36H312M8 30v12M84 32v8M160 30v12M236 32v8M312 30v12\"/><path class=\"ds-tick\" d=\"M180 31v10\"/><path class=\"ds-bracket\" d=\"M136 28v8H176M184 36H204v-8\"/><text x=\"8\" y=\"60\">4,000</text><text x=\"160\" y=\"60\" text-anchor=\"middle\">4,500</text><text x=\"312\" y=\"60\" text-anchor=\"end\">5,000</text></svg></figure>",
+      "css": ".ds-scale { margin: 0; } .ds-scale svg { display: block; width: 100%; height: auto; overflow: visible; } .ds-scale text { font: 400 12px \"Hanken Grotesk\", sans-serif; font-variant-numeric: tabular-nums; fill: var(--text-secondary, oklch(0.48 0.015 255)); } .ds-scale .ds-strong { fill: var(--text-primary, oklch(0.22 0.015 255)); font-weight: 600; } .ds-axis { stroke: var(--text-secondary, oklch(0.48 0.015 255)); stroke-width: 1; fill: none; } .ds-bracket { stroke: var(--accent, oklch(0.6 0.14 50)); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; } .ds-tick { stroke: var(--text-primary, oklch(0.22 0.015 255)); stroke-width: 2; stroke-linecap: round; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Graduated Scale",
+    "overview": "Coulomb reads like a battery instrument. Values sit on graduated scales, and every estimate is drawn as a bracket spanning its interval, never as a point. The world refuses the category default: a ring gauge and a big percentage on a coloured card, with score tiles beneath.\n\nThe ground is cool slate, tinted to hue 255; nothing is pure grey. Hairlines divide content instead of cards. Hanken Grotesk with tabular figures sets numbers like a timetable column. Spline Sans Mono appears only for raw identifiers. One copper accent marks the reading that matters. Data hues appear only on power-component marks, each with a direct label. Every figure carries one of four drawn provenance marks.\n\nDensity is moderate: one hero per screen, then ruled rows at 72 dp. Motion is calm and critically damped, and nothing moves while the screen is idle. The personality is SPEC 11.2's: precise, calm, candid.",
+    "keyCharacteristics": [
+      "The bracket on a graduated scale is the signature move: time remaining (Now), the capacity interval (Health), time to target beside the target tick (Charging).",
+      "Hairlines and space group content. Cards appear only for a movable unit (an insight, a session).",
+      "Copper is rare: the bracket, charging power and the selection.",
+      "Hue names a power component and nothing else. States use neutral ink.",
+      "Tabular, lining figures on every text style.",
+      "Every figure shows its provenance: Measured, Modeled, Estimated or Derived."
+    ],
+    "rules": [
+      {
+        "name": "The Hue Names a Component Rule",
+        "body": "A data hue means one power component. Doze, top app, signal, temperature and wear stress are states, so they use neutral ink: `text-secondary` solid or a 20% tint with a 1 dp outline.",
+        "section": "colors"
+      },
+      {
+        "name": "The Narrow Copper Rule",
+        "body": "Copper marks the bracket, charging power and the selection. As emphasis it appears at most once per region. Charging drawn in a chart is a data encoding and counts once per chart. Discharging uses neutral ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Chosen Value Rule",
+        "body": "`accent-fill` marks a chosen value: a window, a target, a filter chip, the navigation pill. A view tab, such as Drain's lens, switches views of the same data and selects with `surface-raised` and a check, in ink (ADR-0025 §2).",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink on Fills Rule",
+        "body": "Any fill that carries text or an icon uses a fill token and its on-colour at 4.5:1 or more: `accent-fill` with `on-accent-fill`, status fills with their `on-` inks.",
+        "section": "colors"
+      },
+      {
+        "name": "The Timetable Rule",
+        "body": "Every text style sets `tnum` and `lnum`, not only numbers in tables (`fontFeatureSettings = \"tnum,lnum\"`; ADR-0022 §5, ADR-0024 §6).",
+        "section": "typography"
+      },
+      {
+        "name": "The No Fourteen Rule",
+        "body": "The roles above are the only sizes. 14 sp is not a role, and a new size needs a SPEC edit, not a local style.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fixed Weight Rule",
+        "body": "Each role keeps its weight in every state. Selection never changes font weight; it shows by fill, check or indicator (ADR-0023 §3, ADR-0025 §3).",
+        "section": "typography"
+      },
+      {
+        "name": "The Unbreakable Figure Rule",
+        "body": "A number, its unit and its provenance mark never break apart. Prose wraps \"pretty\", so no word sits alone on a last line; headings balance. Names and identifiers break only between words, never mid-word.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline, Not Card Rule",
+        "body": "Group with space and 1 dp hairlines. A card holds only content that moves as a unit, such as an insight or a session, and cards never nest.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Still Screen Rule",
+        "body": "Nothing animates while idle: no shimmer, pulse or loop. The live current chart redraws at most once a second. The wavy level is allowed only on Charging while plugged in.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do draw every estimate as a range: a copper bracket on its scale, and the range in text with the Estimated mark.",
+      "Do put a provenance mark on every figure, or one mark on the header of a single-source table or chart.",
+      "Do keep the verdict, the reading and its scale inside the first viewport on Now, with the hero at 30% or more.",
+      "Do end a truncated share list with a remainder row and state the denominator, so the visible rows sum to the whole.",
+      "Do label every coloured item directly, and give every chart a \"View as table\" alternative.",
+      "Do use one gutter per screen (16 dp compact, 24 dp medium) and 48 dp targets everywhere.",
+      "Do name the charging phase in plain words (\"full speed\", \"slowing down near full\").",
+      "Do keep a number, its unit and its mark on one line, and wrap names only between words."
+    ],
+    "donts": [
+      "Don't draw a ring gauge, a big percentage on a coloured card or score tiles.",
+      "Don't set text in copper, or put text on a copper fill other than `accent-fill`.",
+      "Don't use a data hue for a state (Doze, top app, signal, temperature, wear stress).",
+      "Don't use a dot, ring, bracket or half dot as a chart marker.",
+      "Don't let a translucent fill carry meaning without a solid edge.",
+      "Don't wrap sections in cards or nest cards.",
+      "Don't add a size outside the type roles; 14 sp is not a role.",
+      "Don't change font weight to show selection.",
+      "Don't use a tonal button, or a radius outside 6, 12, 20 and 28 other than a full pill.",
+      "Don't use `text-secondary` on any coloured fill.",
+      "Don't animate while idle, bounce, or overshoot.",
+      "Don't scale chart labels with the plot, or break a word mid-word to fit a column."
+    ],
+    "labDiffers": [
+      "Row names and mono text break anywhere, so \"Unattributed\" splits at 200%. Port: words break only between words (SPEC 11.3).",
+      "Drain's \"+22\" spills out of its 40 dp tile at 200%. Port: text fits its container (SPEC 11.3).",
+      "Chart labels sit in fixed SVGs and do not scale. Port: sp text, re-laid out per chart (SPEC 11.8, ADR-0022 §4).",
+      "A solid dot marks the current point on Now, Health, Charging and Timeline. Port: the line meets the \"now\" rule with no dot; a point estimate is a tick (SPEC 11.8, ADR-0023 §10).",
+      "Health's capacity band is a 14% copper fill with no edge. Port: a solid edge at 3:1 or better (ADR-0022 §4).",
+      "Selected navigation labels, window choices, lens tabs and the toolbar range go to weight 600. Port: weights stay fixed per role (ADR-0023 §3).",
+      "Now's \"Open battery protection\" is a tonal button. Port: outlined (SPEC 11.4).",
+      "The window group's inner corners are 8 dp, and App detail's icon has a 16 dp radius. Port: inner corners 6 dp; app icons as the system provides them (SPEC 11.5).",
+      "The app bar title truncates with an ellipsis. Port: it wraps to a second line (SPEC 11.3)."
+    ]
+  }
+}
