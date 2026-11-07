@@ -1097,7 +1097,7 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 - UserService contract tests (instrumented, need Shizuku on the device; skipped with a reason on CI).
 - Failure drills: kill Shizuku mid-dump, revoke each grant, simulate a fingerprint change, return a truncated stream. Expected: no crash, correct degraded state, correct copy.
 - Collector: simulated trigger sequences (screen off for 8 h, plug at 20%, reboot mid-session).
-- Time-compressed stress test (ADR-0019): a 30-day trigger sequence on a simulated event clock with synthetic data, covering daily screen cycles, nightly charging, 8 h screen-off nights, reboots mid-session, and retention and compaction runs. It runs on the API 37 emulator in under 10 minutes. Pass: no crash and no ANR; heap after GC at day 30 within 10% of heap after GC at day 1; database size within the 7.7 projection, meaning the day-30 size plus the day-15-to-30 growth extended to day 365 stays under 150 MB.
+- Time-compressed stress test (ADR-0019): a 30-day trigger sequence on a simulated event clock with synthetic data, covering daily screen cycles, nightly charging, 8 h screen-off nights, reboots mid-session, and retention and compaction runs. It runs on the API 37 emulator in under 10 minutes. Pass: no crash and no ANR; heap after GC at day 30 within 10% of heap after GC at day 1; database size within the 7.7 projection: the day-30 file, plus the day-15-to-30 growth of every table that 7.7 and ADR-0015 do not cap at 14 or 30 days extended to day 365, stays under 150 MB (ADR-0020).
 
 ### 16.4 UI tests
 

@@ -1,6 +1,7 @@
 # ADR-0019: One night for protocol E; a time-compressed stress test instead of the 72 h soak
 
-- Status: accepted (owner decision; edits SPEC 1.3, 16.3, 16.6, 17 and 18)
+- Status: accepted (owner decision; edits SPEC 1.3, 16.3, 16.6, 17 and 18); the night's validity rules,
+  its wakeup sources and the size projection are corrected by ADR-0020
 - Date: 2026-11-07
 - Phase: P2
 
