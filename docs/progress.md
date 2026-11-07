@@ -179,6 +179,35 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
     that read can take a lost index. Keeping the last printed pool would close the gap; `history_tag`
     stores names only, not the platform's indices.
 
+### Stress test and schema version 2 (2026-11-07)
+
+- **Stress test** (`CollectorStressTest`, SPEC 16.3, ADR-0019): a synthetic month on a simulated
+  clock drives the real collector actor and database on the API 37 emulator. It runs at the phone
+  checkpoint's rates: about 65,800 history events and 150 to 160 heavy snapshots a day.
+- **Schema version 1 failed it**: the projection was 236 MiB after a year. ADR-0021 records the
+  fix, which also freezes the P2 schema:
+  - version 2 interns window counter keys and wakelock tags, stores detail provenance as codes,
+    drops two unused indexes and stores history times in milliseconds;
+  - a tested migration from version 1, which is installed on the phone;
+  - after 30 days, consecutive windows and the snapshot rows nothing needs are deleted;
+  - the projection is corrected: it runs 31 days, caps the counter tables, models aggregates
+    turning hourly, uses MB of 10^6 bytes, and checks that the 30-day cut ran.
+- **Result on the API 37 emulator: pass.**
+  - It took 2.8 minutes, with a worst main-thread delay of 1 ms.
+  - Heap after GC went from 5.0 to 4.7 MB (−6.9%).
+  - The day-31 file was 93.5 MB, and the projection after a year is 145.5 MB against 150.
+  - History rows: 2,019,363 at day 30 and 2,042,026 at day 31.
+  - Per consecutive window: 21.4 UID rows, 2.2 wakelock rows and 126.3 counter rows.
+- **The margin is 3%**, at an upper-bound history rate (seven reboots and one boot with full
+  history). The night's clean rate replaces it. ADR-0021 lists the next steps if it does not
+  come down.
+- `SizeBudgetTest`: a history event takes 29.1 bytes and a detail row 50.7 bytes (were 31 and 86).
+  The thresholds are now 32 and 60.
+- **Independent review** of the migration and the delete paths. It found one defect: the rebuild
+  dropped the history id counter, so a ring emptied before the upgrade would have reused ids
+  below the snapshots' marks. Fixed, with a migration test that fails without the fix. Each
+  snapshot keep rule and the ring across two daily runs now have tests (ADR-0021, Review).
+
 ### Phone checkpoint (2026-11-07, one read-only session, owner approved)
 
 The owner removed the 72 h wait (ADR-0019) and asked for a check of the data from the run started
@@ -219,10 +248,9 @@ were reset; the phone was left on the screen it was on.
 ### Still to do before the P2 gate
 
 SPEC 17 as amended by ADR-0019 (owner decision, 2026-11-07): the gate is fixtures parse (done), the
-30-day stress test (SPEC 16.3), and protocols A and E on the phone, E in one night together with
-B. P3 starts now; the P2 gate closes when the night's report arrives.
+30-day stress test (SPEC 16.3; passed, see above), and protocols A and E on the phone, E in one
+night together with B. P3 starts now; the P2 gate closes when the night's report arrives.
 
-- The time-compressed 30-day stress test on the API 37 emulator.
 - The phone night, which needs the owner's go-ahead: 8 h or more with the screen off and
   unplugged, ideally with nothing else holding the CPU awake. Take three checkpoints (ADR-0020):
   - at the start;
@@ -231,7 +259,7 @@ B. P3 starts now; the P2 gate closes when the night's report arrives.
 
   Disconnect adb between them. Protocol A's 30 minutes of video run the same evening. Then run
   `report.py <end> --night-start <start> --after-screen-on <after> --video-from T --video-to T`.
-- Freeze the schema with the measured rates (the checkpoint above and the night).
+- Check the night's clean history rate against the stress test's 3% margin (ADR-0021).
 - The gate review decides whether history tags from before an unclean boot are kept.
 
 ## P1 Privileged core (2026-11-06)

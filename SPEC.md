@@ -491,7 +491,7 @@ Order by `elapsedRealtimeNanos` plus boot count; display wall-clock time. Wall-c
 
 ## 8. Domain model and database schema
 
-The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested. ADR-0015 records the keys, foreign-key actions, retention and size budget of version 1.
+The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested. ADR-0015 records the keys, foreign-key actions, retention and size budget of version 1; ADR-0021 records version 2.
 
 ```kotlin
 // Units are in field names. Times: elapsed = elapsedRealtimeNanos, wall = epoch ms.
@@ -544,11 +544,14 @@ entity WindowResult(id PK, kind /*CONSECUTIVE|SESSION|DAY|REFERENCE*/, sessionId
   fromSnapshotId, toSnapshotId, measuredMah?, chargeSource?, modeledMah?, unattributedMah?,
   screenOnMs, screenOffMs, awakeMsScreenOff?, quality, detailPruned)
 entity WindowUid(windowId FK, uid, component, processState, process, mAh, provenance)
-entity WindowWake(windowId FK, uid?, tag, kind, totalMs, count, screenOffMs?)
-entity WindowStat(windowId FK, uid, key, value, provenance)
+entity WindowWake(windowId FK, uid?, tagId, kind, totalMs, count, screenOffMs?)
+entity WindowStat(windowId FK, uid, keyId, value, provenance)
+entity WakeTag(id PK, tag)
+entity StatKey(id PK, name)
+  // interned tags and keys; detail provenance as codes (ADR-0021)
 
-entity HistoryEvent(id PK, bootSeq, elapsedNs, type, change, baseline, uid?, tagId?, value?)
-  // compact 30-day ring: codes, interned tags, no time index (ADR-0015)
+entity HistoryEvent(id PK, bootSeq, elapsedMs, type, change, baseline, uid?, tagId?, value?)
+  // compact 30-day ring: codes, interned tags, no time index (ADR-0015); ms (ADR-0021)
 entity HistoryTag(id PK, tag)
 entity HistoryGap(id PK, startMonotonicMs, endMonotonicMs, startBootSeq, startElapsedNs,
   endBootSeq, endElapsedNs, reason)
@@ -1097,7 +1100,7 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 - UserService contract tests (instrumented, need Shizuku on the device; skipped with a reason on CI).
 - Failure drills: kill Shizuku mid-dump, revoke each grant, simulate a fingerprint change, return a truncated stream. Expected: no crash, correct degraded state, correct copy.
 - Collector: simulated trigger sequences (screen off for 8 h, plug at 20%, reboot mid-session).
-- Time-compressed stress test (ADR-0019): a 30-day trigger sequence on a simulated event clock with synthetic data, covering daily screen cycles, nightly charging, 8 h screen-off nights, reboots mid-session, and retention and compaction runs. It runs on the API 37 emulator in under 10 minutes. Pass: no crash and no ANR; heap after GC at day 30 within 10% of heap after GC at day 1; database size within the 7.7 projection: the day-30 file, plus the day-15-to-30 growth of every table that 7.7 and ADR-0015 do not cap at 14 or 30 days extended to day 365, stays under 150 MB (ADR-0020).
+- Time-compressed stress test (ADR-0019): a 30-day trigger sequence on a simulated event clock with synthetic data, covering daily screen cycles, nightly charging, 8 h screen-off nights, reboots mid-session, and retention and compaction runs. It runs on the API 37 emulator in under 10 minutes; the sequence runs a 31st day so that every 30-day cut has run. Pass: no crash and no ANR; heap after GC at the last day within 10% of heap after GC at day 1; database size within the 7.7 projection: the day-31 file, plus the day-16-to-31 growth of every row that 7.7, ADR-0015 and ADR-0021 do not cap extended to day 365, with one-minute aggregates turning hourly after 180 days, stays under 150 MB (10^6 bytes; ADR-0020, ADR-0021).
 
 ### 16.4 UI tests
 
