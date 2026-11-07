@@ -1,6 +1,7 @@
 # ADR-0020: The night report's validity rules, and the stress test's size projection by retention class
 
-- Status: accepted (corrects ADR-0019; edits SPEC 16.3)
+- Status: accepted (corrects ADR-0019; edits SPEC 16.3); the size projection (decision 4) is
+  corrected by ADR-0021
 - Date: 2026-11-07
 - Phase: P2
 

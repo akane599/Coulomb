@@ -1,6 +1,7 @@
 # ADR-0015: Room schema version 1
 
-- Status: accepted (amends SPEC 8); final freeze at the P2 gate
+- Status: accepted (amends SPEC 8); version 2, its retention of consecutive windows and snapshot
+  rows, and the `DetailCodes` exception to "enums by name" are in ADR-0021, which freezes the schema
 - Date: 2026-11-06
 - Phase: P2
 
