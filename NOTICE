@@ -7,8 +7,9 @@ Copyright (C) 2016-2018 The Android Open Source Project.
 Licensed under the Apache License, Version 2.0 (see LICENSES/Apache-2.0.txt).
 Each file is modified only by an added "option java_package" line, marked in the file.
 
-The design lab (design-lab/) bundles two fonts under the SIL Open Font License 1.1
-(see LICENSES/OFL-1.1.txt and the license file next to each font):
+The design lab (design-lab/fonts/) and the app (core/designsystem/src/main/res/font/) bundle
+two fonts under the SIL Open Font License 1.1 (see LICENSES/OFL-1.1.txt and the license file
+next to each font in design-lab/fonts/):
 Hanken Grotesk, Copyright 2021 The Hanken Grotesk Project Authors
 (https://github.com/marcologous/hanken-grotesk), and Spline Sans Mono, Copyright 2022
 The Spline Sans Mono Project Authors (https://github.com/SorkinType/SplineSansMono).
