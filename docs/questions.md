@@ -5,7 +5,12 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
-None.
+- 2026-11-07. Protocol B's capacity: the night report turns the level change into mAh with the capacity
+  the platform reports (`pws`, the summary's capacity). Coulomb's own estimate (SPEC 6.3) could replace
+  it once it exists. Default: the platform's capacity, so B does not test Coulomb against itself.
+- 2026-11-07. Protocol B's rounding: levels are whole percents, so a night's level-delta rate is known
+  only to about 1/hours %/h. A gap above the 0.1 %/h pass mark but within that rounding reads
+  "inconclusive" (ADR-0020). Default: inconclusive is neither pass nor fail; a second night decides.
 
 ## Answered
 
