@@ -77,9 +77,19 @@ Started 2026-11-07 while the P2 gate waits for the night report (owner decision,
     - Drain's "+22" tile must fit its text;
     - chart labels must be sp text that each chart re-lays out (the lab's fixed SVGs do not scale
       them, so the lab's 200% evidence does not cover the charts).
-- [ ] `DESIGN.md` and `.impeccable/design.json` (extract and document).
-- [ ] Token port to `:core:designsystem` with the parity test.
-- [ ] P3 direction review with the owner (SPEC 0.6 hard stop).
+- [x] `DESIGN.md` and `.impeccable/design.json` (extract and document), written by impeccable's documenter
+  from the lab.
+  - The four token groups are the ADR-0024 contract, byte-identical to what was checked against `lab.css`.
+  - Writing it down found eleven lab/SPEC disagreements. ADR-0025 settles them: SPEC 11.5's section gap
+    is 24 dp on compact widths, SPEC 11.4's view tabs are neutral, and nine lab deviations are stated as
+    rules that the port follows and the lab does not.
+- [x] Token port to `:core:designsystem` with the parity test (ADR-0024).
+  - `DesignTokensTest`: 3 tests pass.
+  - A one-digit lightness change in `DESIGN.md` fails both the test and `tokens.py --check` (checked
+    by mutation, then restored).
+- [ ] P3 direction review with the owner (SPEC 0.6 hard stop). It covers the direction, the finish
+  review's open item (ship the lab or fund a third round), eleven critique questions with defaults, and
+  ADR-0022 to ADR-0025.
 
 ## P2 Data engine (in progress)
 
