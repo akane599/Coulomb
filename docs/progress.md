@@ -73,7 +73,8 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   - the history ring stores codes and interned tags without a time index (31 bytes per event,
     from 65), with each snapshot marking the ids its read stored.
   - `SizeBudgetTest` projects about 131 MB after a year against SPEC 7.7's 150 MB, from the
-    rates in ADR-0015. The 72 h run at the gate replaces those rates before the schema freezes.
+    rates in ADR-0015. Rates measured on the phone (the 2026-11-07 checkpoint and the gate's night,
+    ADR-0019) replace those rates before the schema freezes.
 - `:core:analytics` (ADR-0017), pure functions with unit tests: current calibration (sign, scale,
   charge counter trust), drain rate with provenance and quality, capacity as a weighted median
   with a bootstrap interval, wear, attribution windows split at resets, and the session rules.
@@ -102,10 +103,11 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 - Fixture gate test (`FixtureGateTest`): every file in both fixture sets is parsed whole by its
   parser (no issue, every byte read) or listed as no parser input, with the reason. History reads
   start from the cursor saved beside them.
-- Validation tools for the 72 h run, read-only: `tools/validation/capture.sh` copies the database
-  and reads Coulomb's process CPU, service, alarms and batterystats lines (`-c`, never
-  `--checkin`); `tools/validation/report.py` prints the rates, the heavy snapshot cost and
-  protocols E and A, and says "not a result" where its inputs are missing.
+- Validation tools for the phone runs, read-only: `tools/validation/capture.sh` copies the database
+  and reads Coulomb's process CPU, service, alarms, battery level and batterystats lines (`-c`,
+  never `--checkin`). `tools/validation/report.py` prints the rates, the heavy snapshot cost and
+  protocol A. Given the night's start checkpoint as well, it prints protocols E and B for that
+  night (ADR-0019). It says "not a result" where its inputs are missing.
 - Instrumented tests (`:app` androidTest, Hilt runner, run with `am instrument` after
   `install -r -t`, never `connectedAndroidTest`, which uninstalls):
   - the SPEC 16.3 UserService contract (8 tests): 8/8 on the API 36 emulator with Shizuku. They
@@ -156,7 +158,7 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 - An unclean reboot loses history tags. The tag pool is saved with the stats summary and restored
   from it at boot, but history fragments already on disk keep their own indices
   (`BatteryStatsHistory` `writeSummaryToParcel`/`readSummaryFromParcel`, L818-861 in both tags).
-  - On the phone at the start of the 72 h run, 16 records just before a START with no SHUTDOWN
+  - On the phone at the start of the 2026-11-06 run, 16 records just before a START with no SHUTDOWN
     point at indices 179 to 184, while the printed pool ends at 178. The parser reads those records
     without their tag and marks the read incomplete.
   - The collector keeps the cursor, so this costs only the first catch-up read (S7 `partial`).
@@ -167,21 +169,56 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
     that read can take a lost index. Keeping the last printed pool would close the gap; `history_tag`
     stores names only, not the platform's indices.
 
+### Phone checkpoint (2026-11-07, one read-only session, owner approved)
+
+The owner removed the 72 h wait (ADR-0019) and asked for a check of the data from the run started
+on 2026-11-06 (build `9ccb2d4`) before planning a night. No settings were changed and no stats
+were reset; the phone was left on the screen it was on.
+
+- **Sessions.** 17.4 h of data since install: 36 screen-off sessions, 25 of them unplugged, 4.78 h
+  in total. The longest unplugged one lasted 3.05 h; none reached 8 h.
+  - Every session closed on a state change. No history gap falls inside one: the seven
+    `CURSOR_SKIPPED` gaps are at reboots and at the stats reset of a full unplug.
+  - The system killed Coulomb once with reason "permissions revoked" and it stayed down for 17
+    minutes, until a reboot. The cause is unknown; the grants were intact at the checkpoint.
+  - The phone rebooted seven times. None of the reboots was Coulomb's: the same pattern (a clean
+    shutdown, then a soft reboot within minutes) shows before Coulomb was installed.
+  - Shizuku restarted once. The collector's T1 route does not use it: S5 read whole in 114 of 114
+    heavy snapshots, S7 in 113 (the lost-tag read above).
+- **Protocol E, wakeups and alarms**, over all 4.78 h of unplugged screen-off time: passes.
+  - Coulomb's windows show 0 alarm, mobile and Wi-Fi wakeups, 0 partial wakelock time and 0 jobs.
+  - The platform's since-charged lines cover 12.75 h on battery and agree: Coulomb has no wakeup
+    alarm line, its aggregated partial wakelock time on battery with the screen off is 0 ms, and
+    `dumpsys alarm` lists no Coulomb alarm.
+  - The history holds 257 holds of Coulomb's sampling wakelock (7.4 s in total), all while plugged
+    in, as SPEC 7.4 allows.
+  - Caveat: other apps kept the CPU awake for the whole time on battery (`bt` battery uptime equals
+    battery realtime), though the device was in deep Doze for 4.07 h. Coulomb has not yet been
+    tested in deep sleep.
+- **Protocol E consumption and protocol B**: not evaluable. Both need a real night of 8 h or more.
+- **Rates for the schema freeze** (per day over 17.4 h):
+  - snapshots: 158 heavy, 214 light; samples: 3,794; blobs kept: 33;
+  - history events: 65,755. This is inflated: all 9,871 wakelock events in the dump fall inside one
+    58-minute boot in which the platform recorded full history (not Coulomb's doing), and each of
+    the seven reboots forced a catch-up read;
+  - after 17.4 h the database with its log was 6.64 MB and the blob folder 2.58 MB.
+- **Heavy snapshot cost** (gated in P4): wall time p50 514 ms, p90 1,229 ms, max 3,012 ms (the
+  first catch-up read). Process CPU is at most 604 ms per heavy snapshot, sampling and idle
+  included, against a 300 ms target; this needs a closer look before P4.
+
 ### Still to do before the P2 gate
 
-- The 72 h headless run on the phone, for protocols A and E and the measured rates: per-source
-  cost, heavy snapshot rate, blob count, history rows a day, how often a screen-off dump sleeps,
-  and whether any counter moves between two plugged-in snapshots. Started 2026-11-06 15:58 UTC
-  with the owner's approval. The build is `9ccb2d4` and the phone runs build S938BXXSDDZJ1, the
-  same as the fixture.
-  - The T1 grants are intact, the standby bucket is EXEMPTED and the collector service runs in the
-    foreground. The crash buffer holds no Coulomb lines.
-  - Notifications are not granted, so the service notification is not shown.
-  - The first heavy snapshot (`PACKAGE_REPLACED`) took 3,012 ms. Most of that is the catch-up read
-    of the whole history buffer, so it says nothing about the rate.
-  - The phone was left on the screen it started on. The end checkpoint runs after 2026-11-09
-    16:00 UTC and needs the owner's go-ahead again.
-- Freeze the schema with the measured rates.
+SPEC 17 as amended by ADR-0019 (owner decision, 2026-11-07): the gate is fixtures parse (done), the
+30-day stress test (SPEC 16.3), and protocols A and E on the phone, E in one night together with
+B. P3 starts now; the P2 gate closes when the night's report arrives.
+
+- The time-compressed 30-day stress test on the API 37 emulator.
+- The phone night, which needs the owner's go-ahead: 8 h or more with the screen off and
+  unplugged, ideally with nothing else holding the CPU awake. Take a checkpoint at the start and
+  one at the end, before the screen comes on. Protocol A's 30 minutes of video run the same
+  evening. Then run `report.py <end> --night-start <start> --video-from T --video-to T`.
+- Freeze the schema with the measured rates (the checkpoint above and the night).
+- The gate review decides whether history tags from before an unclean boot are kept.
 
 ## P1 Privileged core (2026-11-06)
 
@@ -273,7 +310,7 @@ Both were shut down after the runs.
 - The in-app capability probe on the phone was not in the approved step list and did not run.
   `docs/capabilities/sm-s938b-S938BXXSDDZJ1.md` still holds the P0 shell-level view.
 - Protocol F expects "no crash". No crash showed up in the drill output, and the phone's crash log
-  buffer, read at the start of the P2 72 h run (2026-11-06), holds no Coulomb lines.
+  buffer, read at the start of the P2 phone run (2026-11-06), holds no Coulomb lines.
 - Sui and root (T3) have not been exercised; neither the phone setup nor the emulators run Sui.
 - The instrumented `UserService` contract tests (SPEC 16.3) were written in P2 and pass 8/8 on
   `pixel-api36` (P2 section). Official Shizuku cannot authorize on the API 37 AVD, so they run on
