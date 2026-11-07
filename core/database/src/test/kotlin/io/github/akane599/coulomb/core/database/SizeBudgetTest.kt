@@ -24,8 +24,8 @@ import kotlin.random.Random
 
 /**
  * Measures stored bytes per row and projects the database after a year at the rates of ADR-0015's
- * budget, against SPEC 7.7's 150 MB. The rates come from the S25 Ultra fixture and SPEC 7; the P2
- * gate's 72 h run replaces them with measured ones.
+ * budget, against SPEC 7.7's 150 MB. The rates come from the S25 Ultra fixture and SPEC 7; rates
+ * measured on the phone replace them before the schema freezes (ADR-0019).
  */
 @RunWith(AndroidJUnit4::class)
 class SizeBudgetTest : DatabaseTest() {

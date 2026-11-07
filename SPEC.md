@@ -137,10 +137,10 @@ Coulomb answers one question within three seconds of opening: **what is draining
 | Capacity estimate accuracy | Within ±3% of reference after 3 qualifying charge sessions | Protocol D (16.6) |
 | Per-app attribution vs system | Within ±1 percentage point of `BatteryUsageStats` for the same window | Protocol C |
 | Screen-off drain rate | Within ±0.1 %/h of the level-delta method over ≥ 2 h | Protocol B |
-| Coulomb's own battery cost, Full mode | ≤ 0.3% of capacity per 24 h; 0 screen-off wakeups from Coulomb | Protocol E |
+| Coulomb's own battery cost, Full mode | Over one 8 h screen-off night: 0 wakeups and 0 alarms from Coulomb, ≤ 0.1% of capacity, partial wakelocks < 30 s | Protocol E (ADR-0019) |
 | Feature parity | 100% of the matrix in section 2 | Checklist (18) |
 | Design quality | All `/impeccable` gates pass (11.12) | Gate log |
-| Stability | 0 crashes over the 72 h soak; ANR-free | Soak test (16.6) |
+| Stability | 0 crashes and 0 ANRs over 30 simulated days; heap growth after GC < 10% | Stress test (16.3, ADR-0019) |
 
 ## 2. Competitive parity matrix
 
@@ -1097,6 +1097,7 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 - UserService contract tests (instrumented, need Shizuku on the device; skipped with a reason on CI).
 - Failure drills: kill Shizuku mid-dump, revoke each grant, simulate a fingerprint change, return a truncated stream. Expected: no crash, correct degraded state, correct copy.
 - Collector: simulated trigger sequences (screen off for 8 h, plug at 20%, reboot mid-session).
+- Time-compressed stress test (ADR-0019): a 30-day trigger sequence on a simulated event clock with synthetic data, covering daily screen cycles, nightly charging, 8 h screen-off nights, reboots mid-session, and retention and compaction runs. It runs on the API 37 emulator in under 10 minutes. Pass: no crash and no ANR; heap after GC at day 30 within 10% of heap after GC at day 1; database size within the 7.7 projection, meaning the day-30 size plus the day-15-to-30 growth extended to day 365 stays under 150 MB.
 
 ### 16.4 UI tests
 
@@ -1119,10 +1120,10 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 | Protocol | Method | Pass |
 | --- | --- | --- |
 | A. Calibration | 30 min fixed load (video, fixed brightness). Compare integrated `CURRENT_NOW` with the `CHARGE_COUNTER` delta | Agree within 5% |
-| B. Screen-off drain | 8 h overnight. Coulomb's %/h vs (level delta ÷ hours) vs the system battery usage graph | Within ±0.1 %/h |
+| B. Screen-off drain | 8 h overnight, the same night as E. Coulomb's %/h vs (level delta ÷ hours) vs the system battery usage graph | Within ±0.1 %/h |
 | C. Attribution | 1 h script: 20 min video, 10 min navigation, idle remainder. Compare per-app share with the system Battery usage screen and raw `dumpsys batterystats` | Within ±1 percentage point |
 | D. Capacity | Three qualifying charge sessions. Compare with the system and OEM health values | Within ±3% |
-| E. Self-cost | 72 h in Full mode, normal use | ≤ 0.3% per day; 0 screen-off wakeups from Coulomb; Coulomb partial wakelocks < 2 min per day |
+| E. Self-cost | One night in Full mode, the same night as B: ≥ 8 h with the screen off and unplugged. Read the system's mAh, partial wakelock, alarm and wakeup records for Coulomb's UID at the start and the end of the night (ADR-0019) | While the screen is off: 0 wakeups and 0 alarms from Coulomb; ≤ 0.1% of capacity for the night; Coulomb partial wakelocks < 30 s in total |
 | F. Privilege drills | 16.3 failure drills on the real device | All pass |
 | G. OS matrix | Parsing and UI on the API 37 emulator; A–F on the phone; API 36 emulator only for a reported Android 16 issue | All pass or documented as hardware-limited |
 
@@ -1137,7 +1138,7 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 
 ## 17. Delivery phases
 
-Seven phases, each closed by an exit gate; the agent never starts a phase while the previous gate is red. Data correctness comes before UI, and design direction is locked in HTML before any Compose screen is built.
+Seven phases, each closed by an exit gate; the agent never starts a phase while the previous gate is red, except that P3 starts while the P2 gate waits for its phone night (ADR-0019). Data correctness comes before UI, and design direction is locked in HTML before any Compose screen is built.
 
 &#91;embedded content: Delivery roadmap · 7 phases, 7 gates\]
 
@@ -1148,7 +1149,7 @@ The design-lab gate at P3 is the only planned human checkpoint; every other gate
 2. **P1 Privileged core.** Shizuku and Sui client, UserService with streaming AIDL, bootstrap grants, typed command allowlist, capability probes, failure handling (4.5).
    - Gate: protocol F passes on the device; a 20 MB dump streams without OOM; bind-timeout fallback demonstrated.
 3. **P2 Data engine.** Parsers with golden tests, Room schema, collector actor, triggers, samplers, sessions, calibration, references, retention.
-   - Gate: 100% fixtures parse; protocols A and E pass in a headless 72 h run (no UI yet).
+   - Gate: 100% fixtures parse; the stress test (16.3) passes; protocols A and E pass on the phone, E in one night (no UI yet). P3 does not wait for that night: the gate closes when its report arrives (ADR-0019). Longer runs are optional and hold no gate.
 4. **P3 Design lab.** HTML prototypes of the seven key screens, `/impeccable` loops, tokens locked in `DESIGN.md`.
    - Gate: `npx impeccable detect` returns zero; critique and audit show no major findings; one human review of the direction (the only scheduled human checkpoint). While waiting, continue P4 work that has no UI: analytics wiring, ViewModels, navigation skeleton.
 5. **P4 Core screens.** Now, Drain (all lenses), App detail, Health, Charging, onboarding, Privileges; analytics for capacity and attribution.
@@ -1180,7 +1181,7 @@ The app is done when every box below is ticked with evidence linked in `docs/pro
 
 **Battery cost**
 
-- [ ] ≤ 0.3% per day in Full mode over 72 h; zero screen-off wakeups from Coulomb.
+- [ ] Protocol E passes on one 8 h screen-off, unplugged night in Full mode: 0 wakeups and 0 alarms from Coulomb, ≤ 0.1% of capacity, partial wakelocks < 30 s.
 - [ ] No alarms or long wakelocks anywhere (lint check green).
 - [ ] Nothing animates while idle.
 
@@ -1204,7 +1205,7 @@ The app is done when every box below is ticked with evidence linked in `docs/pro
 
 - [ ] No `INTERNET` in the merged manifest.
 - [ ] Performance targets in 16.5 met.
-- [ ] 0 crashes and 0 ANRs during the 72 h soak.
+- [ ] The 30-day time-compressed stress test passes (16.3): 0 crashes, 0 ANRs, heap growth after GC < 10%, database within the 7.7 projection.
 - [ ] Every deviation from this spec has an ADR.
 - [ ] Signed release published on GitHub Releases.
 
