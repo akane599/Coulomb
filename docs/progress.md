@@ -108,6 +108,16 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
   never `--checkin`). `tools/validation/report.py` prints the rates, the heavy snapshot cost and
   protocol A. Given the night's start checkpoint as well, it prints protocols E and B for that
   night (ADR-0019). It says "not a result" where its inputs are missing.
+- An independent review of the night mode found five ways a broken night could pass. ADR-0020 fixes
+  them. The report now gives no result when any of these happens:
+  - a second stats reset, a reboot, or a counter going down;
+  - an unknown UID, a dump cut short, or a missing Coulomb line;
+  - charging or screen-on time during the night;
+  - Coulomb not running throughout as a foreground service.
+
+  A failed `dumpsys alarm` reads n/a. Wakeups now come from the platform's `wua` and `nt` lines,
+  because no Coulomb window covers the night. B takes a third checkpoint after the screen comes on.
+  A generator of 15 fake nights exercises each rule.
 - Instrumented tests (`:app` androidTest, Hilt runner, run with `am instrument` after
   `install -r -t`, never `connectedAndroidTest`, which uninstalls):
   - the SPEC 16.3 UserService contract (8 tests): 8/8 on the API 36 emulator with Shizuku. They
@@ -214,9 +224,13 @@ B. P3 starts now; the P2 gate closes when the night's report arrives.
 
 - The time-compressed 30-day stress test on the API 37 emulator.
 - The phone night, which needs the owner's go-ahead: 8 h or more with the screen off and
-  unplugged, ideally with nothing else holding the CPU awake. Take a checkpoint at the start and
-  one at the end, before the screen comes on. Protocol A's 30 minutes of video run the same
-  evening. Then run `report.py <end> --night-start <start> --video-from T --video-to T`.
+  unplugged, ideally with nothing else holding the CPU awake. Take three checkpoints (ADR-0020):
+  - at the start;
+  - at the end, before the screen comes on;
+  - after the screen comes on, once Coulomb has closed the night's session.
+
+  Disconnect adb between them. Protocol A's 30 minutes of video run the same evening. Then run
+  `report.py <end> --night-start <start> --after-screen-on <after> --video-from T --video-to T`.
 - Freeze the schema with the measured rates (the checkpoint above and the night).
 - The gate review decides whether history tags from before an unclean boot are kept.
 
