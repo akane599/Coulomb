@@ -127,7 +127,7 @@ The source is still named beside every platform value: "Android", "Battery fuel 
 
 **`concept-seed` is not run.**
 - SPEC 11 pins the world, and 4.7.1 lets a pinned direction beat the roll.
-- The direction contract records `seed: none (unavailable)` and "position 1 of 1".
+- The direction contract records that the seed was not rolled, and why, and "position 1 of 1".
 
 **`live` is not run in the autonomous part of P3.** Variants come from critique rounds instead. The owner sees the screens at the P3 direction review (SPEC 0.6), where `live` can be used if they want to pick variants.
 

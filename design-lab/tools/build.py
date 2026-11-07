@@ -178,22 +178,21 @@ def now_current() -> str:
 
 
 def drain_reconcile() -> str:
-    """Measured total as one bar in two labelled parts: modeled, and the unattributed gap hatched (SPEC 6.5, 10.3).
+    """Measured total as one bar in two parts: modeled, and the unattributed gap hatched (SPEC 6.5, 10.3).
 
+    The two labels sit under the bar in HTML, where they carry provenance glyphs and scale with the text.
     Per-app segments are left to the list below: unlabelled segments would claim identities nobody can read.
     """
-    w, h = 380, 48
+    w, h = 380, 18
     measured, modeled = 1204, 1062
     x = modeled * w / measured
     parts = [f'<svg class="chart" viewBox="0 0 {w} {h}" role="img" aria-labelledby="rec-t">',
              '<title id="rec-t">Measured 1,204 mAh. Apps and system account for 1,062 mAh by the power model; 142 mAh, 12%, is unattributed.</title>',
              '<defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">'
              '<path d="M0 0 V5" class="hatch-line"/></pattern></defs>']
-    parts.append(f'<rect class="seg" x="0" y="12" width="{f(x - 2)}" height="14" rx="2"/>')
-    parts.append(f'<rect class="gap-fill" x="{f(x)}" y="12" width="{f(w - x)}" height="14" rx="2"/>')
-    parts.append(f'<rect class="gap-edge" x="{f(x + 0.5)}" y="12.5" width="{f(w - x - 1)}" height="13" rx="2"/>')
-    parts.append(text(0, 44, "Modeled 1,062 mAh", "start"))
-    parts.append(text(w, 44, "Unattributed 142 mAh", "end", "lbl-strong"))
+    parts.append(f'<rect class="seg" x="0" y="2" width="{f(x - 2)}" height="14" rx="2"/>')
+    parts.append(f'<rect class="gap-fill" x="{f(x)}" y="2" width="{f(w - x)}" height="14" rx="2"/>')
+    parts.append(f'<rect class="gap-edge" x="{f(x + 0.5)}" y="2.5" width="{f(w - x - 1)}" height="13" rx="2"/>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -518,7 +517,64 @@ def capacity_trend() -> str:
 
 # ---------------------------------------------------------------- charging
 
-CH_LEVEL, CH_TARGET = 52, 80
+# One model drives the level, both session curves and the estimates, so they agree (finish review):
+# 18.4 W into the battery while it can take it ("full speed"), then the current tapers linearly to
+# 0.9 A at full. The capacity is Health's 4,610 mAh estimate; the charger's baseline there is 19.2 W.
+CH_CAPACITY_AH, CH_POWER_W = 4.610, 18.4
+CH_START, CH_LEVEL, CH_TARGET = 21, 52, 80
+CH_TAPER_FROM, CH_TAPER_END_A = 70, 0.9
+CH_PLUG = 18 * 60 + 31  # plugged in at 18:31
+
+
+def ch_volts(level: float) -> float:
+    """Terminal voltage while charging: 3.70 V empty, 4.02 V at 52%."""
+    return 3.70 + 0.32 / 52 * level
+
+
+def ch_amps(level: float, watts: float = CH_POWER_W) -> float:
+    if level < CH_TAPER_FROM:
+        return watts / ch_volts(level)
+    i0 = CH_POWER_W / ch_volts(CH_TAPER_FROM)
+    return i0 - (i0 - CH_TAPER_END_A) * (level - CH_TAPER_FROM) / (100 - CH_TAPER_FROM)
+
+
+def ch_session() -> list[tuple[float, float, float]]:
+    """(minute, level, watts) from plug-in to now, after a short handshake ramp."""
+    out, t, level, dt = [], 0.0, float(CH_START), 0.01
+    while level < CH_LEVEL:
+        watts = min(CH_POWER_W, 6 + 20 * t)
+        out.append((t, level, watts))
+        level += ch_amps(level, watts) * dt / 60 / CH_CAPACITY_AH * 100
+        t += dt
+    return out
+
+
+def ch_minutes(to: float, step: float = 0.001) -> float:
+    """Model minutes from the current level to `to`."""
+    t, level = 0.0, float(CH_LEVEL)
+    while level < to:
+        t += CH_CAPACITY_AH * step / 100 / ch_amps(level) * 60
+        level += step
+    return t
+
+
+def ch_range(to: float) -> tuple[int, int]:
+    """The estimate as a range: the model's minutes, minus 8% and plus 8%."""
+    m = ch_minutes(to)
+    return math.floor(m * 0.92), math.ceil(m * 1.08)
+
+
+CH_NOW = round(ch_session()[-1][0])
+
+
+def hm(minute: float) -> str:
+    m = CH_PLUG + round(minute)
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
+def ch_eta() -> str:
+    lo, hi = ch_range(CH_TARGET)
+    return f"{hm(CH_NOW + lo)}–{hm(CH_NOW + hi)}"
 
 
 def charge_level() -> str:
@@ -535,7 +591,7 @@ def charge_level() -> str:
     parts.append(f'<path class="target" d="M{f(x(CH_TARGET))} {ty - 10} V{ty + 10}"/>')
     # The time to target sits at the target tick, with the Estimated mark (a bracket) after it.
     tx_end = x(CH_TARGET) + 62
-    parts.append(text(tx_end - 16, 12, f"{CH_TARGET}% at 19:27–19:33", "end", "lbl-strong"))
+    parts.append(text(tx_end - 16, 12, f"{CH_TARGET}% at {ch_eta()}", "end", "lbl-strong"))
     parts.append(f'<path class="mark-est" d="M{f(tx_end - 11)} 4.5v5M{f(tx_end - 3)} 4.5v5M{f(tx_end - 11)} 7h8"/>')
     parts.append("</svg>")
     return "".join(parts)
@@ -544,14 +600,16 @@ def charge_level() -> str:
 def charging_curve() -> str:
     """Session level and power since plug-in, then the cone to the target and the bracket where it lands."""
     w, h, plot = 380, 196, 344
-    t_end, now = 84, 34  # minutes since plug-in at 18:31
+    t_end, now = 59, CH_NOW  # minutes since plug-in
     x = lambda m: m / t_end * plot  # noqa: E731
     ly = lambda pct: 104 - pct * 0.96  # noqa: E731  level panel y 8..104
     py0, pk = 176.0, 1.6  # power panel: 0 W at y 176, 30 W at y 128
     py = lambda wt: py0 - wt * pk  # noqa: E731
-    lo, hi = now + 22, now + 28
+    lo, hi = (now + m for m in ch_range(CH_TARGET))
+    eta = ch_eta()
     parts = [f'<svg class="chart" viewBox="0 0 {w} {h}" role="img" aria-labelledby="curve-t">',
-             '<title id="curve-t">Plugged in at 18:31 at 21%. Now 52% at 18.4 W. At this rate the battery reaches 80% between 19:27 and 19:33.</title>']
+             f'<title id="curve-t">Plugged in at {hm(0)} at {CH_START}%. Now {CH_LEVEL}% at {CH_POWER_W} W. '
+             f'At this rate the battery reaches {CH_TARGET}% between {eta.replace("–", " and ")}.</title>']
     for v in (25, 50, 100):
         parts.append(f'<path class="grid" d="M0 {f(ly(v))} H{plot}"/>')
         parts.append(text(w, ly(v) + 4, f"{v}%", "end"))
@@ -559,10 +617,10 @@ def charging_curve() -> str:
     parts.append(text(w, ly(0) + 4, "0%", "end"))
     parts.append(f'<path class="marker" d="M0 {f(ly(CH_TARGET))} H{plot}"/>')
     parts.append(text(w, ly(CH_TARGET) + 4, f"{CH_TARGET}%", "end", "lbl-strong"))
-    hist = []
-    for i in range(now + 1):
-        level = 21 + 31 * (1 - (1 - i / now) ** 1.15)
-        hist.append((x(i), ly(level)))
+    session = ch_session()
+    # One point every half minute; the last sample is now.
+    samples = session[::50] + [(now, CH_LEVEL, session[-1][2])]
+    hist = [(x(t), ly(level)) for t, level, _ in samples]
     cone = [(x(now), ly(CH_LEVEL)), (x(lo), ly(CH_TARGET)), (x(hi), ly(CH_TARGET))]
     parts.append(f'<path class="cone" d="{poly(cone)} Z"/>')
     parts.append(f'<path class="cone-edge" d="{poly([cone[0], cone[1]])}"/>')
@@ -570,13 +628,10 @@ def charging_curve() -> str:
     parts.append(f'<path class="ink" d="{poly(hist)}"/>')
     yb = ly(CH_TARGET)
     parts.append(f'<path class="bracket" d="M{f(x(lo))} {f(yb - 7)} V{f(yb)} H{f(x(hi))} V{f(yb - 7)}"/>')
-    parts.append(text((x(lo) + x(hi)) / 2, yb - 12, "19:27–19:33", "middle", "lbl-strong"))
+    parts.append(text((x(lo) + x(hi)) / 2, yb - 12, eta, "middle", "lbl-strong"))
     parts.append(f'<circle class="dot" cx="{f(x(now))}" cy="{f(ly(CH_LEVEL))}" r="4.5"/>')
-    # Power panel.
-    power = []
-    for i in range(now + 1):
-        wt = 24.2 if 2 <= i <= 19 else (12 + 6 * i if i < 2 else 24.2 - (i - 19) * 0.39)
-        power.append((x(i), py(wt + 0.4 * jitter(i / 3))))
+    # Power panel: the same samples, with a small deterministic wobble once at full speed.
+    power = [(x(t), py(wt + (0.3 * jitter(t / 2) if wt >= CH_POWER_W else 0))) for t, _, wt in samples]
     parts.append(f'<path class="ink-area" d="{poly([(0, py0)] + power + [(x(now), py0)])} Z"/>')
     parts.append(f'<path class="ink" d="{poly(power)}"/>')
     parts.append(f'<path class="grid" d="M0 {f(py(30))} H{plot}"/>')
@@ -585,7 +640,7 @@ def charging_curve() -> str:
     parts.append(text(w, py0 + 4, "0", "end"))
     parts.append(text(0, py(30) - 6, "Power", "start", "lbl-strong"))
     parts.append(f'<path class="grid" d="M{f(x(now))} 8 V{py0}" stroke-dasharray="2 3"/>')
-    for m, label, anchor in ((0, "18:31", "start"), (now, "now", "middle"), (59, "19:30", "middle"), (t_end, "19:55", "end")):
+    for m, label, anchor in ((0, hm(0), "start"), (now, "now", "middle"), (29, hm(29), "middle"), (t_end, hm(t_end), "end")):
         parts.append(f'<path class="axis" d="M{f(x(m))} {py0} v4"/>')
         parts.append(text(x(m), py0 + 18, label, anchor))
     parts.append("</svg>")

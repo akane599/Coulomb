@@ -59,7 +59,7 @@ roll ran.
 - Signature interaction: scrubbing a chart shows a hairline crosshair and a readout in the Data style;
   values snap to samples.
 - Motion grammar: critically damped springs, digits roll in place, charts draw in once, nothing idles.
-- seed: none (unavailable)
+- seed: not rolled. SPEC 11 pins the direction, and a pinned direction beats the roll (ADR-0022).
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
