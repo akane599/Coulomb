@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: The Coulomb contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Read-only checkpoint of a Coulomb validation run (SPEC 16.6 protocols A and E).
+# Read-only checkpoint of a Coulomb validation run (SPEC 16.6 protocols A, B and E).
 #
 #   tools/validation/capture.sh <adb-serial> <raw-out-dir> [package]
+#
+# Protocols B and E take two checkpoints: one when the night starts (screen off, unplugged) and one
+# when it ends, before the screen comes on (ADR-0019). adb does not turn the screen on.
 #
 # Copies Coulomb's database and blob listing (debug build, through run-as) and reads the platform's
 # own view of Coulomb: its process CPU, its foreground service, its alarms and its batterystats
@@ -45,6 +48,9 @@ if [ -n "$pid" ]; then app cat "/proc/$pid/stat" > "$out/proc_stat.txt"; fi
 sh_ dumpsys activity services "$pkg" > "$out/services.txt" 2>&1 || true
 sh_ dumpsys alarm | grep -n -F "$pkg" > "$out/alarm_coulomb.txt" || true
 sh_ dumpsys batterystats -c > "$out/batterystats.checkin.txt"
+# The level for protocol B's level delta (BatteryService.dumpInternal `  level: `, android-16.0.0_r4
+# L1641, android-17.0.0_r1 L1648).
+sh_ dumpsys battery > "$out/battery.txt" 2>&1 || true
 # The UID line is `appId=` on Android 17 (seen on the API 37 emulator) and `userId=` before it.
 sh_ dumpsys package "$pkg" | grep -E '^\s+(userId|appId|versionName|versionCode|lastUpdateTime)=' > "$out/package.txt" || true
 
