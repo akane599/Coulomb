@@ -113,6 +113,50 @@ class SnapshotDaoTest : DatabaseTest() {
             assertThat(dao.deleteUserReference(reference.id)).isEqualTo(0)
         }
 
+    /** Each rule that keeps a snapshot row past the history ring's cut (ADR-0021), one row each. */
+    @Test
+    fun afterTheCutOnlySnapshotsNothingNeedsGo() =
+        runTest {
+            fun bare(
+                elapsedS: Long,
+                bootSeq: Int,
+                kind: SnapshotKind = SnapshotKind.LIGHT,
+            ) = snapshot(elapsedS, bootSeq, kind, blobPath = null).copy(historyCursorMs = null)
+            val start = dao.insert(bare(10, 1))
+            val end = dao.insert(bare(20, 1))
+            val withBlob = dao.insert(snapshot(30, 1, SnapshotKind.LIGHT).copy(historyCursorMs = null))
+            val withCounters = dao.insert(bare(40, 1, SnapshotKind.HEAVY), counters())
+            val cursor = dao.insert(bare(45, 1).copy(historyCursorMs = 1_234))
+            val plain = dao.insert(bare(50, 1))
+            val lastOfBoot = dao.insert(bare(60, 1))
+            val olderMark = dao.insert(bare(5, 2).copy(historyEventId = 4))
+            val ringAnchor = dao.insert(bare(10, 2).copy(historyEventId = 5))
+            val latestHeavy = dao.insert(bare(12, 2, SnapshotKind.HEAVY).copy(countersPruned = true))
+            val plainToo = dao.insert(bare(14, 2))
+            val afterCut = dao.insert(bare(30, 2))
+            db.sessionDao().insert(session(startSnapshotId = start).copy(endSnapshotId = end, endElapsedNs = 20 * NS_PER_S))
+
+            assertThat(dao.deleteUnneeded(cutBootSeq = 2, cutElapsedNs = 20 * NS_PER_S)).isEqualTo(3)
+
+            val all =
+                listOf(
+                    start,
+                    end,
+                    withBlob,
+                    withCounters,
+                    cursor,
+                    plain,
+                    lastOfBoot,
+                    olderMark,
+                    ringAnchor,
+                    latestHeavy,
+                    plainToo,
+                    afterCut,
+                )
+            assertThat(all.filter { dao.snapshot(it) != null })
+                .containsExactly(start, end, withBlob, withCounters, cursor, lastOfBoot, ringAnchor, latestHeavy, afterCut)
+        }
+
     @Test
     fun aSnapshotSomethingDependsOnCannotBeDeleted() =
         runTest {

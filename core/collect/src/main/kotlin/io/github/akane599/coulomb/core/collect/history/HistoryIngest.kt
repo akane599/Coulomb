@@ -296,7 +296,7 @@ internal object HistoryIngest {
                     events +=
                         NewHistoryEvent(
                             bootSeq,
-                            elapsedNs,
+                            monotonic - segmentOffset,
                             record.kind,
                             record.change,
                             record.baseline,

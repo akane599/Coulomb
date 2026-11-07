@@ -22,9 +22,11 @@ import io.github.akane599.coulomb.core.database.entity.CapabilityEntity
 import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
 import io.github.akane599.coulomb.core.database.entity.ChargeDetailEntity
 import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
+import io.github.akane599.coulomb.core.database.entity.DetailCodes
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
 import io.github.akane599.coulomb.core.database.entity.HealthSummaryEntity
+import io.github.akane599.coulomb.core.database.entity.HistoryCodes
 import io.github.akane599.coulomb.core.database.entity.HistoryEventEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryGapEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryTagEntity
@@ -36,22 +38,26 @@ import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
 import io.github.akane599.coulomb.core.database.entity.SampleAggregateEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.StatKeyEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.UidPackageEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
+import io.github.akane599.coulomb.core.database.entity.WakeTagEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 
 /**
- * The SPEC 8 schema (ADR-0015). Schemas are exported to `core/database/schemas` and committed; a
- * version bump needs a migration and a migration test (SPEC 8). Enums are stored by name.
+ * The SPEC 8 schema (ADR-0015, ADR-0021). Schemas are exported to `core/database/schemas` and
+ * committed; a version bump needs a migration and a migration test (SPEC 8). Enums are stored by
+ * name, except the position codes of the history and window detail tables ([HistoryCodes],
+ * [DetailCodes]).
  */
 @Database(
-    version = 1,
+    version = 2,
     exportSchema = true,
     entities = [
         DeviceProfileEntity::class,
@@ -80,6 +86,8 @@ import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
         WindowUidEntity::class,
         WindowWakeEntity::class,
         WindowStatEntity::class,
+        StatKeyEntity::class,
+        WakeTagEntity::class,
         HistoryEventEntity::class,
         HistoryTagEntity::class,
         HistoryGapEntity::class,
@@ -106,9 +114,11 @@ public abstract class CoulombDatabase : RoomDatabase() {
         public const val FILE_NAME: String = "coulomb.db"
 
         /** The app's database in its no-backup directory: battery data stays on the device (SPEC 14). */
+        @Suppress("SpreadOperator") // One small array, copied once when the database is built.
         public fun build(context: Context): CoulombDatabase =
             Room
                 .databaseBuilder(context, CoulombDatabase::class.java, context.noBackupFilesDir.resolve(FILE_NAME).path)
+                .addMigrations(*Migrations.ALL)
                 .build()
     }
 }

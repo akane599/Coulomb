@@ -15,8 +15,9 @@ import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.WakeKind
 
 /**
- * SPEC 8 `Snapshot` (SPEC 7.2). The row stays for good, with the battery values the light data gave,
- * so a coulomb delta between any two snapshots (SPEC 6.2) outlives the samples. Its per-UID rows are
+ * SPEC 8 `Snapshot` (SPEC 7.2). The row stays 30 days, and for good while a session, a reference or a
+ * window points to it (ADR-0021), with the battery values the light data gave, so those records'
+ * coulomb deltas (SPEC 6.2) outlive the samples. Its per-UID rows are
  * cumulative counters and stay only while a window can still start at the snapshot: the latest
  * snapshot, a referenced one, or the start of an open session (ADR-0015). The blob goes after 30
  * days (SPEC 7.7). Per-snapshot tables reference `snapshot.id` with `ON DELETE CASCADE`.

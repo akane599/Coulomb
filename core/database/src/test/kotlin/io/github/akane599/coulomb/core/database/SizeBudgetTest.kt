@@ -8,11 +8,11 @@ import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.database.dao.NewHistoryEvent
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
+import io.github.akane599.coulomb.core.database.dao.WindowStat
+import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
-import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
-import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.history.HistoryChange
@@ -24,8 +24,9 @@ import kotlin.random.Random
 
 /**
  * Measures stored bytes per row and projects the database after a year at the rates of ADR-0015's
- * budget, against SPEC 7.7's 150 MB. The rates come from the S25 Ultra fixture and SPEC 7; rates
- * measured on the phone replace them before the schema freezes (ADR-0019).
+ * budget, against SPEC 7.7's 150 MB. The rates come from the S25 Ultra fixture and SPEC 7. The
+ * stress test (`CollectorStressTest`) projects the year at the rates measured on the phone; this
+ * test guards the row widths that projection relies on (ADR-0021).
  */
 @RunWith(AndroidJUnit4::class)
 class SizeBudgetTest : DatabaseTest() {
@@ -51,7 +52,7 @@ class SizeBudgetTest : DatabaseTest() {
             val tagged = random.nextInt(2) == 0
             NewHistoryEvent(
                 bootSeq = 1,
-                elapsedNs = startNs + i * HISTORY_STEP_NS,
+                elapsedMs = (startNs + i * HISTORY_STEP_NS) / 1_000_000,
                 type = if (tagged) HistoryKind.WAKE_LOCK else HistoryKind.BATTERY_TEMPERATURE,
                 change = if (tagged) HistoryChange.START else HistoryChange.SET,
                 baseline = false,
@@ -106,9 +107,9 @@ class SizeBudgetTest : DatabaseTest() {
                 },
             wakes =
                 List(DETAIL_ROWS) { i ->
-                    WindowWakeEntity(0, 0, 10_000 + i, "*job*/com.example.app$i/.sync.Worker", WakeKind.PARTIAL, 1_200L + i, 3, 900)
+                    WindowWake(10_000 + i, "*job*/com.example.app$i/.sync.Worker", WakeKind.PARTIAL, 1_200L + i, 3, 900)
                 },
-            stats = List(DETAIL_ROWS) { i -> WindowStatEntity(0, 10_000 + i / 2, STAT_KEYS[i % 2], 4_000L + i, Provenance.MEASURED) },
+            stats = List(DETAIL_ROWS) { i -> WindowStat(10_000 + i / 2, STAT_KEYS[i % 2], 4_000L + i, Provenance.MEASURED) },
         )
 
     /** Aggregates are written only by compaction, which frees the samples' pages; this writes them directly. */
@@ -174,9 +175,9 @@ class SizeBudgetTest : DatabaseTest() {
             println("bytes per row: " + measured.entries.joinToString { (k, v) -> "$k %.1f".format(v) })
             println("projected after a year: %.1f MB".format(projectedMb))
 
-            // Each row's size, with some room: a wider row here is a budget change for ADR-0015.
-            assertThat(history).isLessThan(36.0)
-            assertThat(detail).isLessThan(90.0)
+            // Each row's size, with some room: a wider row here is a budget change (ADR-0021).
+            assertThat(history).isLessThan(32.0)
+            assertThat(detail).isLessThan(60.0)
             assertThat(projectedMb).isLessThan(BUDGET_MB)
         }
 
@@ -210,7 +211,7 @@ class SizeBudgetTest : DatabaseTest() {
         // sessions' 220 a day; 30 days, about 100 consecutive windows' and 2 charge sessions' 60 a day.
         const val DETAIL_ROWS_KEPT = 365 * (220 + 1.5 * 220) + 30 * 102 * 60.0
         const val OTHER_TABLES_MB = 5.0
-        const val MB = 1_048_576.0
+        const val MB = 1_000_000.0 // SPEC 7.7 writes MB (ADR-0021)
         const val BUDGET_MB = 150.0
     }
 }

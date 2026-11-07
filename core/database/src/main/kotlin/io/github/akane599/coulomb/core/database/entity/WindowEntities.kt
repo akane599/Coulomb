@@ -7,6 +7,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
@@ -17,9 +18,10 @@ import io.github.akane599.coulomb.core.model.WindowKind
  * the charge, by [chargeSource]; [modeledMah] from the platform model, null where no model was read
  * (T0, Lite mode); [unattributedMah] is their difference where both exist.
  *
- * The row stays for good. Its per-UID rows ([WindowUidEntity], [WindowWakeEntity],
- * [WindowStatEntity]) stay as long as the retention policy keeps them for its [kind] (ADR-0015);
- * [detailPruned] then tells "pruned" apart from "nothing happened".
+ * Day and session windows stay for good, consecutive windows 30 days (ADR-0021). Their per-UID rows
+ * ([WindowUidEntity], [WindowWakeEntity], [WindowStatEntity]) stay as long as the retention policy
+ * keeps them for the window's [kind] (ADR-0015); [detailPruned] then tells "pruned" apart from
+ * "nothing happened".
  */
 @Entity(
     tableName = "window_result",
@@ -70,6 +72,7 @@ public data class WindowResultEntity(
  * shared UID by process (SPEC 6.5) and is [WHOLE_UID] otherwise; like the process states, a UID's
  * component has either one [WHOLE_UID] row or rows per process, never both. UIDs below the
  * retention policy's threshold are summed per component into an [OTHER_UID] row (ADR-0015).
+ * [provenance] is stored as a [DetailCodes] code (ADR-0021).
  */
 @Entity(
     tableName = "window_uid",
@@ -84,6 +87,7 @@ public data class WindowResultEntity(
     ],
     indices = [Index("uid", "windowId")],
 )
+@TypeConverters(DetailCodes::class)
 public data class WindowUidEntity(
     val windowId: Long,
     val uid: Int,
@@ -103,7 +107,8 @@ public data class WindowUidEntity(
 
 /**
  * A wakelock, kernel wakelock or wakeup reason's change over a window, so the screen-off causes
- * (SPEC 6.5) outlive the snapshots' counters. Not in the SPEC 8 list; added by ADR-0015.
+ * (SPEC 6.5) outlive the snapshots' counters. Not in the SPEC 8 list; added by ADR-0015. The tag
+ * is a [WakeTagEntity] id without a foreign key (ADR-0021); `WindowDao` reads and writes it as text.
  */
 @Entity(
     tableName = "window_wake",
@@ -115,13 +120,13 @@ public data class WindowUidEntity(
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("windowId"), Index("uid", "windowId")],
+    indices = [Index("windowId")],
 )
 public data class WindowWakeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val windowId: Long,
     val uid: Int?,
-    val tag: String,
+    val tagId: Long,
     val kind: WakeKind,
     val totalMs: Long,
     val count: Int,
@@ -132,10 +137,14 @@ public data class WindowWakeEntity(
  * Any other counter's change over a window: alarms, jobs, network bytes, rail energy and the
  * [UidStatEntity] and [DeviceStatEntity] keys, keyed by the same names. Device-level rows use
  * [UidPowerEntity.DEVICE_UID]. Not in the SPEC 8 list; added by ADR-0015.
+ *
+ * The table holds most of the database's detail rows, so it is kept narrow (ADR-0021): the key is a
+ * [StatKeyEntity] id without a foreign key, [provenance] a [DetailCodes] code, and the primary key is
+ * the only index. `WindowDao` reads and writes the key as text.
  */
 @Entity(
     tableName = "window_stat",
-    primaryKeys = ["windowId", "uid", "key"],
+    primaryKeys = ["windowId", "uid", "keyId"],
     foreignKeys = [
         ForeignKey(
             entity = WindowResultEntity::class,
@@ -144,12 +153,26 @@ public data class WindowWakeEntity(
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("uid", "windowId")],
 )
+@TypeConverters(DetailCodes::class)
 public data class WindowStatEntity(
     val windowId: Long,
     val uid: Int,
-    val key: String,
+    val keyId: Int,
     val value: Long,
     val provenance: Provenance,
+)
+
+/** A window counter's name, stored once (ADR-0021). The set is small and only grows: never pruned. */
+@Entity(tableName = "stat_key", indices = [Index("name", unique = true)])
+public data class StatKeyEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
+)
+
+/** A window wakelock's tag, stored once (ADR-0021); tags no window uses are pruned with the detail. */
+@Entity(tableName = "wake_tag", indices = [Index("tag", unique = true)])
+public data class WakeTagEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val tag: String,
 )

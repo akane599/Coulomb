@@ -9,12 +9,12 @@ import io.github.akane599.coulomb.core.analytics.Counters
 import io.github.akane599.coulomb.core.analytics.StatsEpoch
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
+import io.github.akane599.coulomb.core.database.dao.WindowStat
+import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
-import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
-import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
@@ -279,7 +279,7 @@ internal object WindowBuilder {
     private fun wakes(
         chain: List<WindowEnd>,
         ownUid: Int,
-    ): List<WindowWakeEntity> {
+    ): List<WindowWake> {
         val totals = window(chain) { rows -> rows.wakeStats.associate { WakeKey(it.uid, it.tag, it.kind) to it.totalMs.toDouble() } }
         val counts = window(chain) { rows -> rows.wakeStats.associate { WakeKey(it.uid, it.tag, it.kind) to it.count.toDouble() } }
         return totals.values.entries
@@ -289,9 +289,7 @@ internal object WindowBuilder {
                 val (own, others) = entries.partition { it.key.uid == ownUid }
                 own + others.filter { it.value >= MIN_WAKE_MS }.sortedByDescending { it.value }.take(MAX_WAKES_PER_KIND)
             }.map { (key, ms) ->
-                WindowWakeEntity(
-                    0,
-                    0,
+                WindowWake(
                     key.uid,
                     key.tag,
                     key.kind,
@@ -305,14 +303,14 @@ internal object WindowBuilder {
     private fun stats(
         chain: List<WindowEnd>,
         kept: Set<Int>,
-    ): List<WindowStatEntity> {
+    ): List<WindowStat> {
         val window = window(chain, ::statValues)
         val merged = HashMap<StatKey, Double>()
         for ((key, value) in window.values) {
             val uid = if (key.uid < 0 || key.uid in kept) key.uid else WindowUidEntity.OTHER_UID
             merged.merge(key.copy(uid = uid), value, Double::plus)
         }
-        return merged.map { (key, value) -> WindowStatEntity(0, key.uid, key.key, value.roundToLong(), Provenance.MEASURED) }
+        return merged.map { (key, value) -> WindowStat(key.uid, key.key, value.roundToLong(), Provenance.MEASURED) }
     }
 
     /** Every counter that is not power or a wakelock, keyed by UID (the device as [UidPowerEntity.DEVICE_UID]). */

@@ -8,13 +8,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.database.dao.WindowRows
+import io.github.akane599.coulomb.core.database.dao.WindowStat
+import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
 import io.github.akane599.coulomb.core.database.entity.ChargeDetailEntity
 import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
-import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
-import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.SessionCloseReason
 import io.github.akane599.coulomb.core.model.SessionKind
@@ -32,8 +32,8 @@ class WindowSessionTest : DatabaseTest() {
     private fun detail() =
         WindowRows(
             uids = listOf(WindowUidEntity(0, 10_123, "cpu", UidPowerEntity.ANY_STATE, WindowUidEntity.WHOLE_UID, 4.0, Provenance.DERIVED)),
-            wakes = listOf(WindowWakeEntity(0, 0, null, "qcom_rx_wakelock", WakeKind.KERNEL, 1_200, 3, null)),
-            stats = listOf(WindowStatEntity(0, UidPowerEntity.DEVICE_UID, "wakeups", 14, Provenance.MEASURED)),
+            wakes = listOf(WindowWake(null, "qcom_rx_wakelock", WakeKind.KERNEL, 1_200, 3, null)),
+            stats = listOf(WindowStat(UidPowerEntity.DEVICE_UID, "wakeups", 14, Provenance.MEASURED)),
         )
 
     @Test
@@ -44,9 +44,32 @@ class WindowSessionTest : DatabaseTest() {
             val id = windows.insert(window(from, to), detail())
             val rows = windows.rows(id)
             assertThat(rows.uids.single().windowId).isEqualTo(id)
-            assertThat(rows.wakes.single().windowId).isEqualTo(id)
-            assertThat(rows.stats.single().windowId).isEqualTo(id)
             assertThat(rows.uids.single().mAh).isEqualTo(4.0)
+            assertThat(rows.uids.single().provenance).isEqualTo(Provenance.DERIVED)
+            assertThat(rows.wakes).isEqualTo(detail().wakes)
+            assertThat(rows.stats).isEqualTo(detail().stats)
+        }
+
+    @Test
+    fun keysAndTagsAreStoredOnceAndUnusedTagsGo() =
+        runTest {
+            val from = db.snapshotDao().insert(snapshot(elapsedS = 10))
+            val to = db.snapshotDao().insert(snapshot(elapsedS = 20))
+            val first = windows.insert(window(from, to), detail())
+            val other = WindowWake(10_123, "*job*/sync", WakeKind.PARTIAL, 900, 1, 0)
+            val second = windows.insert(window(from, to), detail().copy(wakes = detail().wakes + other))
+            assertThat(long("SELECT COUNT(*) FROM stat_key")).isEqualTo(1)
+            assertThat(long("SELECT COUNT(*) FROM wake_tag")).isEqualTo(2)
+            assertThat(windows.rows(second).wakes.map { it.tag }).containsExactly("qcom_rx_wakelock", "*job*/sync").inOrder()
+
+            windows.deleteWindows(listOf(second))
+            assertThat(windows.window(second)).isNull()
+            assertThat(long("SELECT COUNT(*) FROM window_wake")).isEqualTo(1)
+            assertThat(long("SELECT COUNT(*) FROM wake_tag")).isEqualTo(1)
+            windows.pruneDetail(listOf(first))
+            assertThat(long("SELECT COUNT(*) FROM wake_tag")).isEqualTo(0)
+            // Keys are never pruned: the set is small and only grows.
+            assertThat(long("SELECT COUNT(*) FROM stat_key")).isEqualTo(1)
         }
 
     @Test

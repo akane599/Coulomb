@@ -172,14 +172,14 @@ internal fun window(
 
 internal fun event(
     bootSeq: Int,
-    elapsedNs: Long,
+    elapsedMs: Long,
     tag: String? = null,
     type: HistoryKind = HistoryKind.BATTERY_LEVEL,
     change: HistoryChange = HistoryChange.SET,
     baseline: Boolean = false,
 ) = NewHistoryEvent(
     bootSeq = bootSeq,
-    elapsedNs = elapsedNs,
+    elapsedMs = elapsedMs,
     type = type,
     change = change,
     baseline = baseline,

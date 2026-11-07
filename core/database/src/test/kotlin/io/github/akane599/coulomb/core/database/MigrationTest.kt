@@ -1,0 +1,155 @@
+// SPDX-FileCopyrightText: The Coulomb contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package io.github.akane599.coulomb.core.database
+
+import android.content.Context
+import androidx.room.Room
+import androidx.room.testing.MigrationTestHelper
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.database.dao.WindowRows
+import io.github.akane599.coulomb.core.database.dao.WindowStat
+import io.github.akane599.coulomb.core.database.dao.WindowWake
+import io.github.akane599.coulomb.core.database.entity.HistoryCodes
+import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.history.HistoryChange
+import io.github.akane599.coulomb.core.model.history.HistoryKind
+import kotlinx.coroutines.test.runTest
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** Every migration against the committed schemas (SPEC 8): the result must match the exported schema and keep every value. */
+@RunWith(AndroidJUnit4::class)
+class MigrationTest {
+    @get:Rule
+    val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), CoulombDatabase::class.java)
+
+    @Test
+    fun oneToTwoKeepsEveryDetailValueAndEventId() =
+        runTest {
+            helper.createDatabase(NAME, 1).use { v1 -> (snapshotsAndWindow() + detailAndHistory()).forEach(v1::execSQL) }
+
+            helper.runMigrationsAndValidate(NAME, 2, true, *Migrations.ALL).close()
+
+            migrated { db ->
+                val rows = db.windowDao().rows(7)
+                assertThat(
+                    rows.uids.associate { it.uid to it.provenance },
+                ).containsExactly(10123, Provenance.MODELED, -2, Provenance.DERIVED)
+                assertThat(rows.wakes)
+                    .containsExactly(
+                        WindowWake(null, "qcom_rx_wakelock", WakeKind.KERNEL, 1200, 3, null),
+                        WindowWake(10123, "*job*/sync", WakeKind.PARTIAL, 900, 1, 0),
+                        WindowWake(10124, "*job*/sync", WakeKind.PARTIAL, 300, 2, 300),
+                    ).inOrder()
+                assertThat(rows.stats)
+                    .containsExactly(
+                        WindowStat(10123, "job_runtime_ms", 4000, Provenance.MEASURED),
+                        WindowStat(10123, "alarm_wakeups", 3, Provenance.ESTIMATED),
+                        WindowStat(-1, "alarm_wakeups", 14, Provenance.MEASURED),
+                    )
+                // The snapshots still mark the same events, now in milliseconds.
+                val events = db.historyDao().events(1, 0, 1, 20 * NS_PER_S)
+                assertThat(events.map { it.event.id to it.event.elapsedMs }).containsExactly(2L to 9_500L, 3L to 15_001L).inOrder()
+                assertThat(events.map { it.event.type }).containsExactly(HistoryKind.BATTERY_LEVEL, HistoryKind.WAKE_LOCK).inOrder()
+                assertThat(events[1].event.change).isEqualTo(HistoryChange.START)
+                assertThat(events.map { it.tag }).containsExactly(null, "*alarm*").inOrder()
+                // A window stored after the migration finds the migrated tags.
+                val id = db.windowDao().insert(db.windowDao().window(7)!!.copy(id = 0), rows)
+                assertThat(
+                    db
+                        .windowDao()
+                        .rows(id)
+                        .wakes
+                        .map { it.tag },
+                ).containsExactly("qcom_rx_wakelock", "*job*/sync", "*job*/sync")
+            }
+        }
+
+    /**
+     * A ring emptied before the upgrade (history reads failing for 30 days) must not hand out its
+     * old ids again: snapshots still mark id 50, so a new event 1 would be read as already cut.
+     */
+    @Test
+    fun oneToTwoKeepsTheIdCountersOfEmptiedTables() =
+        runTest {
+            helper.createDatabase(NAME, 1).use { v1 ->
+                (
+                    snapshotsAndWindow() +
+                        listOf(
+                            "INSERT INTO history_event VALUES (50, 1, 9500000000, $LEVEL, $SET, 0, NULL, NULL, 80)",
+                            "DELETE FROM history_event",
+                            "INSERT INTO window_wake VALUES (60, 7, NULL, 'qcom_rx_wakelock', 'KERNEL', 1200, 3, NULL)",
+                            "DELETE FROM window_wake",
+                        )
+                ).forEach(v1::execSQL)
+            }
+
+            helper.runMigrationsAndValidate(NAME, 2, true, *Migrations.ALL).close()
+
+            migrated { db ->
+                assertThat(db.historyDao().insertRead(listOf(event(1, 30_000)), emptyList())).isEqualTo(51)
+                db.windowDao().insert(window(1, 2), WindowRows(wakes = listOf(WindowWake(null, "x", WakeKind.KERNEL, 1, 1, null))))
+                val wakeId =
+                    db.openHelper.readableDatabase.query("SELECT MAX(id) FROM window_wake").use {
+                        it.moveToFirst()
+                        it.getLong(0)
+                    }
+                assertThat(wakeId).isEqualTo(61)
+            }
+        }
+
+    private suspend fun migrated(check: suspend (CoulombDatabase) -> Unit) {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db =
+            Room
+                .databaseBuilder(context, CoulombDatabase::class.java, context.getDatabasePath(NAME).path)
+                .addMigrations(*Migrations.ALL)
+                .build()
+        try {
+            check(db)
+        } finally {
+            db.close()
+        }
+    }
+
+    /** Version 1 rows: two snapshots marking history ids 2 and 3, and window 7 between them. */
+    private fun snapshotsAndWindow() =
+        listOf(
+            "INSERT INTO snapshot (id, bootSeq, elapsedNs, wallMs, `trigger`, kind, sourceStatusJson, partial, countersPruned, " +
+                "durationMs, historyEventId) VALUES (1, 1, 10000000000, 1793491200000, 'SCREEN_OFF', 'HEAVY', '{}', 0, 0, 0, 2)",
+            "INSERT INTO snapshot (id, bootSeq, elapsedNs, wallMs, `trigger`, kind, sourceStatusJson, partial, countersPruned, " +
+                "durationMs, historyEventId) VALUES (2, 1, 20000000000, 1793491210000, 'SCREEN_ON', 'HEAVY', '{}', 0, 0, 0, 3)",
+            "INSERT INTO window_result (id, kind, fromSnapshotId, toSnapshotId, screenOnMs, screenOffMs, quality, detailPruned) " +
+                "VALUES (7, 'CONSECUTIVE', 1, 2, 0, 10000, 1.0, 0)",
+        )
+
+    /** Version 1 detail of window 7, with every provenance, and the history the snapshots mark. */
+    private fun detailAndHistory() =
+        listOf(
+            "INSERT INTO window_uid VALUES (7, 10123, 'cpu', 'ANY', '', 4.5, 'MODELED')",
+            "INSERT INTO window_uid VALUES (7, -2, 'cpu', 'ANY', '', 0.5, 'DERIVED')",
+            "INSERT INTO window_wake VALUES (40, 7, NULL, 'qcom_rx_wakelock', 'KERNEL', 1200, 3, NULL)",
+            "INSERT INTO window_wake VALUES (41, 7, 10123, '*job*/sync', 'PARTIAL', 900, 1, 0)",
+            "INSERT INTO window_wake VALUES (42, 7, 10124, '*job*/sync', 'PARTIAL', 300, 2, 300)",
+            "INSERT INTO window_stat VALUES (7, 10123, 'job_runtime_ms', 4000, 'MEASURED')",
+            "INSERT INTO window_stat VALUES (7, 10123, 'alarm_wakeups', 3, 'ESTIMATED')",
+            "INSERT INTO window_stat VALUES (7, -1, 'alarm_wakeups', 14, 'MEASURED')",
+            "INSERT INTO history_tag VALUES (5, '*alarm*')",
+            "INSERT INTO history_event VALUES (2, 1, 9500000000, $LEVEL, $SET, 0, NULL, NULL, 80)",
+            "INSERT INTO history_event VALUES (3, 1, 15001000000, $WAKE_LOCK, $START, 1, 10123, 5, NULL)",
+        )
+
+    private companion object {
+        const val NAME = "migration-test"
+        val LEVEL = HistoryCodes.kindCode(HistoryKind.BATTERY_LEVEL)
+        val WAKE_LOCK = HistoryCodes.kindCode(HistoryKind.WAKE_LOCK)
+        val SET = HistoryCodes.changeCode(HistoryChange.SET)
+        val START = HistoryCodes.changeCode(HistoryChange.START)
+    }
+}

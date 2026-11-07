@@ -171,6 +171,36 @@ public abstract class SnapshotDao {
     }
 
     /**
+     * Retention (ADR-0021): deletes the snapshot rows taken before `(cutBootSeq, cutElapsedNs)` that
+     * nothing needs any more, and returns how many went. Kept:
+     * - every snapshot a session, a reference or a window points to;
+     * - snapshots that still have counters or a blob path;
+     * - the last snapshot of each boot, which retention counts elapsed time back from;
+     * - the latest heavy snapshot and the latest with a history cursor;
+     * - the last one whose history read had ended before the cut, which [HistoryDao.deleteBefore]
+     *   cuts the history at. Run this after that call, with the same cut.
+     */
+    @Query(
+        "DELETE FROM snapshot WHERE $BEFORE_CUT AND blobPath IS NULL AND (kind = 'LIGHT' OR countersPruned = 1) " +
+            "AND id NOT IN (SELECT startSnapshotId FROM session WHERE startSnapshotId IS NOT NULL) " +
+            "AND id NOT IN (SELECT endSnapshotId FROM session WHERE endSnapshotId IS NOT NULL) " +
+            "AND id NOT IN (SELECT snapshotId FROM reference) " +
+            "AND id NOT IN (SELECT fromSnapshotId FROM window_result) " +
+            "AND id NOT IN (SELECT toSnapshotId FROM window_result) " +
+            "AND EXISTS (SELECT 1 FROM snapshot n WHERE n.bootSeq = snapshot.bootSeq AND n.elapsedNs > snapshot.elapsedNs) " +
+            "AND id NOT IN (SELECT id FROM snapshot WHERE kind = 'HEAVY' ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1) " +
+            "AND id NOT IN (SELECT id FROM snapshot WHERE historyCursorMs IS NOT NULL " +
+            "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1) " +
+            "AND id NOT IN (SELECT id FROM snapshot WHERE historyEventId IS NOT NULL AND (bootSeq < :cutBootSeq " +
+            "OR (bootSeq = :cutBootSeq AND elapsedNs + durationMs * 1000000 < :cutElapsedNs)) " +
+            "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1)",
+    )
+    public abstract suspend fun deleteUnneeded(
+        cutBootSeq: Int,
+        cutElapsedNs: Long,
+    ): Int
+
+    /**
      * Clears the blob path of snapshots taken before the cut (SPEC 7.7: 30 days) and returns the
      * paths, for the caller to delete after the transaction. Files that a crash left behind are
      * found by comparing the blob folder with [blobPaths].

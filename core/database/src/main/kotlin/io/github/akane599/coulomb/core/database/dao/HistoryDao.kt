@@ -16,10 +16,13 @@ import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
 
-/** A history event to store, with its tag as text; [HistoryDao.insertRead] stores the tag once. */
+/**
+ * A history event to store, with its tag as text; [HistoryDao.insertRead] stores the tag once.
+ * [elapsedMs] is in milliseconds, as the history clock counts.
+ */
 public data class NewHistoryEvent(
     val bootSeq: Int,
-    val elapsedNs: Long,
+    val elapsedMs: Long,
     val type: HistoryKind,
     val change: HistoryChange,
     val baseline: Boolean,
@@ -63,7 +66,7 @@ public abstract class HistoryDao {
                 HistoryEventEntity(
                     0,
                     it.bootSeq,
-                    it.elapsedNs,
+                    it.elapsedMs,
                     it.type,
                     it.change,
                     it.baseline,
@@ -81,7 +84,8 @@ public abstract class HistoryDao {
      * Events from `(fromBootSeq, fromElapsedNs)` inclusive to `(toBootSeq, toElapsedNs)` exclusive,
      * in order. The span may cross boots. Only the ids between the snapshots around the span are
      * read: the last one whose read had ended before the span, and the first one taken at or after
-     * its end. A read runs after its snapshot's time and may store events up to [READ_END].
+     * its end. A read runs after its snapshot's time and may store events up to [READ_END]. The
+     * span is in nanoseconds, like every other elapsed time; events are compared at [EVENT_NS].
      */
     @Query(
         "SELECT e.*, t.tag AS tag FROM history_event e LEFT JOIN history_tag t ON t.id = e.tagId WHERE " +
@@ -91,8 +95,8 @@ public abstract class HistoryDao {
             "AND e.id <= IFNULL((SELECT historyEventId FROM snapshot WHERE historyEventId IS NOT NULL " +
             "AND (bootSeq > :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs >= :toElapsedNs)) " +
             "ORDER BY bootSeq, elapsedNs LIMIT 1), $MAX_ID) " +
-            "AND (e.bootSeq > :fromBootSeq OR (e.bootSeq = :fromBootSeq AND e.elapsedNs >= :fromElapsedNs)) " +
-            "AND (e.bootSeq < :toBootSeq OR (e.bootSeq = :toBootSeq AND e.elapsedNs < :toElapsedNs)) " +
+            "AND (e.bootSeq > :fromBootSeq OR (e.bootSeq = :fromBootSeq AND $EVENT_NS >= :fromElapsedNs)) " +
+            "AND (e.bootSeq < :toBootSeq OR (e.bootSeq = :toBootSeq AND $EVENT_NS < :toElapsedNs)) " +
             "ORDER BY e.id",
     )
     public abstract suspend fun events(
@@ -175,5 +179,8 @@ public abstract class HistoryDao {
 
         /** When a snapshot's history read had ended, at the latest: its time plus its duration. */
         const val READ_END = "(elapsedNs + durationMs * 1000000)"
+
+        /** An event's elapsed time in nanoseconds; exact, since events are stored in whole milliseconds. */
+        const val EVENT_NS = "(e.elapsedMs * 1000000)"
     }
 }

@@ -12,6 +12,14 @@ android {
         // Robolectric reaches FileDescriptor internals on API 36; its own build opens the same package.
         it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED")
     }
+    // MigrationTest reads the exported schemas as assets.
+    testOptions.unitTests.isIncludeAndroidResources = true
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.hostTests.values.forEach { test -> test.sources.assets?.addStaticSourceDirectory("$projectDir/schemas") }
+    }
 }
 
 room {

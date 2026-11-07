@@ -73,7 +73,9 @@ class HistoryIngestTest {
         clockChanged = clockChanged,
     )
 
-    private fun elapsedNs(offsetMs: Long) = (first + offsetMs - shift) * 1_000_000
+    private fun elapsedNs(offsetMs: Long) = elapsedMs(offsetMs) * 1_000_000
+
+    private fun elapsedMs(offsetMs: Long) = first + offsetMs - shift
 
     @Test
     fun theFirstReadKeepsOnlyTheCurrentBootAndFindsItsOffset() {
@@ -90,7 +92,7 @@ class HistoryIngestTest {
         assertThat(result.newOffsetMs).isEqualTo(shift)
         assertThat(result.events.map { it.type }).containsExactly(BOOT, WALL_CLOCK, BATTERY_LEVEL, SCREEN).inOrder()
         assertThat(result.events.map { it.bootSeq }.toSet()).containsExactly(5)
-        assertThat(result.events.last().elapsedNs).isEqualTo(elapsedNs(12_000))
+        assertThat(result.events.last().elapsedMs).isEqualTo(elapsedMs(12_000))
         assertThat(result.gaps).isEmpty()
         assertThat(result.nextCursorMs).isEqualTo(first + 12_001)
         assertThat(result.end?.state?.values).containsExactly(SCREEN, 1L, BATTERY_LEVEL, 79L)
@@ -104,7 +106,7 @@ class HistoryIngestTest {
         val withPairing = HistoryIngest.ingest(input(restated, previous, stored = shift, cursor = first))
         assertThat(withPairing.newOffsetMs).isNull()
         assertThat(withPairing.gaps).isEmpty()
-        assertThat(withPairing.events.last().elapsedNs).isEqualTo(elapsedNs(3_000))
+        assertThat(withPairing.events.last().elapsedMs).isEqualTo(elapsedMs(3_000))
         assertThat(withPairing.transitions).containsExactly(SCREEN)
         // No pairing in the read: the stored offset places it.
         val bare = listOf(rec(0, SCREEN, START, baseline = true), rec(3_000, SCREEN, STOP))
@@ -113,8 +115,8 @@ class HistoryIngestTest {
                 .ingest(input(bare, previous, stored = shift, cursor = first))
                 .events
                 .last()
-                .elapsedNs,
-        ).isEqualTo(elapsedNs(3_000))
+                .elapsedMs,
+        ).isEqualTo(elapsedMs(3_000))
     }
 
     @Test
@@ -176,7 +178,7 @@ class HistoryIngestTest {
         val result = HistoryIngest.ingest(input(records, previous, bootSeq = 5, cursor = first))
         assertThat(result.newOffsetMs).isEqualTo(shift)
         assertThat(result.events.first().bootSeq).isEqualTo(4)
-        assertThat(result.events.first().elapsedNs).isEqualTo((first - oldShift) * 1_000_000)
+        assertThat(result.events.first().elapsedMs).isEqualTo(first - oldShift)
         assertThat(
             result.events
                 .drop(1)

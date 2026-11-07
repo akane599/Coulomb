@@ -11,11 +11,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SchemaTest : DatabaseTest() {
     @Test
-    fun theVersionOneSchemaIsFrozen() {
-        // Changing a v1 table changes this hash. Bump the version and add a tested migration instead
-        // (SPEC 8); until the P2 gate the hash may be updated here together with schemas/1.json.
-        assertThat(db.openHelper.readableDatabase.version).isEqualTo(1)
-        assertThat(string("SELECT identity_hash FROM room_master_table")).isEqualTo("e2b91c0b7722c6d50b7424b8a5fc7a47")
+    fun theCurrentSchemaIsFrozen() {
+        // Changing a table changes this hash. Bump the version and add a tested migration instead
+        // (SPEC 8, MigrationTest): version 1 is installed on a phone, so even the P2 schema freeze
+        // (ADR-0021) migrates rather than edits.
+        assertThat(db.openHelper.readableDatabase.version).isEqualTo(2)
+        assertThat(string("SELECT identity_hash FROM room_master_table")).isEqualTo("f2b071517bb69a0b4d978afa47c9b714")
     }
 
     @Test

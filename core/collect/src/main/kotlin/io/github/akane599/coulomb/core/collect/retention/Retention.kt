@@ -27,6 +27,8 @@ internal class Retention(
     data class Report(
         val samplesCompacted: Int,
         val blobsDeleted: Int,
+        val windowsDeleted: Int,
+        val snapshotsDeleted: Int,
         val vacuumed: Boolean,
     )
 
@@ -39,10 +41,13 @@ internal class Retention(
         val samples = db.sampleDao()
         val compacted = cut(SAMPLES_MS)?.let { samples.compactSamples(it.bootSeq, it.elapsedNs, MINUTE_S) } ?: 0
         cut(AGGREGATES_MS)?.let { samples.compactAggregates(it.bootSeq, it.elapsedNs, MINUTE_S, HOUR_S) }
-        cut(HISTORY_MS)?.let { db.historyDao().deleteBefore(it.bootSeq, it.elapsedNs) }
-        cut(DETAIL_MS)?.let { pruneDetail(it) }
-        val deleted = pruneBlobs(cut(BLOBS_MS))
-        return Report(compacted, deleted, vacuumIfWorthIt())
+        val ring = cut(HISTORY_MS)
+        ring?.let { db.historyDao().deleteBefore(it.bootSeq, it.elapsedNs) }
+        val windowsDeleted = cut(DETAIL_MS)?.let { pruneWindows(it) } ?: 0
+        val blobsDeleted = pruneBlobs(cut(BLOBS_MS))
+        // Last, with the history ring's own cut: it keeps the snapshot that cut was made at.
+        val snapshotsDeleted = ring?.let { db.snapshotDao().deleteUnneeded(it.bootSeq, it.elapsedNs) } ?: 0
+        return Report(compacted, blobsDeleted, windowsDeleted, snapshotsDeleted, vacuumIfWorthIt())
     }
 
     /**
@@ -78,13 +83,20 @@ internal class Retention(
         }
     }
 
-    /** ADR-0015: consecutive, reference and charge-session detail goes after 30 days; day and discharge detail stays. */
-    private suspend fun pruneDetail(cut: Cut) {
+    /**
+     * After 30 days, consecutive windows go with their detail (ADR-0021), and reference and
+     * charge-session windows lose theirs (ADR-0015); day and discharge windows keep everything.
+     * Returns the windows deleted.
+     */
+    private suspend fun pruneWindows(cut: Cut): Int {
         val windows = db.windowDao()
+        val expired = windows.windowsBefore(listOf(WindowKind.CONSECUTIVE), cut.bootSeq, cut.elapsedNs)
+        if (expired.isNotEmpty()) windows.deleteWindows(expired)
         val ids =
-            windows.detailBefore(listOf(WindowKind.CONSECUTIVE, WindowKind.REFERENCE), cut.bootSeq, cut.elapsedNs) +
+            windows.detailBefore(listOf(WindowKind.REFERENCE), cut.bootSeq, cut.elapsedNs) +
                 windows.sessionDetailBefore(listOf(SessionKind.CHARGE), cut.bootSeq, cut.elapsedNs)
         if (ids.isNotEmpty()) windows.pruneDetail(ids)
+        return expired.size
     }
 
     /** Blobs older than 30 days, then the oldest past the folder cap, then files no row names. */
