@@ -18,7 +18,7 @@ shoot() { # page theme file height scale
     --window-size=412,"$4" --virtual-time-budget=3000 --screenshot="$out/$3" "file://$lab/$1.html" >/dev/null 2>&1
 }
 
-for spec in now:1750 drain:1400 app-detail:2350 timeline:915 health:2300 charging:1300 onboarding:1150; do
+for spec in now:1840 drain:1460 app-detail:2450 timeline:1060 health:2480 charging:1080 onboarding:1370; do
   page=${spec%%:*}
   full=${spec##*:}
   for theme in light dark; do
