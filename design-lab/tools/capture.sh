@@ -10,11 +10,15 @@ lab=$(cd "$(dirname "$0")/.." && pwd)
 chrome=${CHROME:-google-chrome}
 mkdir -p "$out"
 
+# Reduced motion: without it, headless Chrome sometimes screenshots while the background, radius and
+# transform transitions are still leaving the browser's default button and switch styles. lab.css's
+# reduced-motion block limits transitions to opacity, so every state is final when the shot is taken.
 shoot() { # page theme file height scale
   flags=""
   [ "$2" = dark ] && flags="--force-dark-mode"
   # shellcheck disable=SC2086
-  "$chrome" --headless=new --disable-gpu --hide-scrollbars --no-first-run --force-device-scale-factor="$5" $flags \
+  "$chrome" --headless=new --disable-gpu --hide-scrollbars --no-first-run --force-prefers-reduced-motion \
+    --force-device-scale-factor="$5" $flags \
     --window-size=412,"$4" --virtual-time-budget=3000 --screenshot="$out/$3" "file://$lab/$1.html" >/dev/null 2>&1
 }
 
