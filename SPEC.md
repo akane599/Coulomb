@@ -400,10 +400,12 @@ When power monitors exist (S16), Coulomb computes energy per rail per window and
 
 | Provenance | Meaning | Example |
 | --- | --- | --- |
-| Measured | Direct hardware counter | Coulomb delta, power rail energy |
-| Modeled | Platform power model output | Per-app mAh from `BatteryUsageStats` |
+| Measured | Direct counter from the hardware, the kernel or the framework | Coulomb delta, power rail energy, cycle count, wakelock time, network bytes |
+| Modeled | Output of a model Coulomb does not own | Per-app mAh from `BatteryUsageStats`; the fuel gauge's level, state of health and capacity |
 | Estimated | Coulomb's statistical estimate | Capacity, time remaining, wear stress |
 | Derived | Arithmetic on the above, with any scaling | Scaled-to-measured app share |
+
+A platform value names its source beside the figure ("Android", "Battery fuel gauge"). The four glyph shapes (solid dot, ring, bracket, half dot) are reserved for provenance (ADR-0023).
 
 Each metric also has a quality score from 0 to 1 (sample count, window length, calibration state). Below 0.5 the number shows with a "low confidence" mark. Rounding: current to 10 mA below 1 A and 0.01 A above; rates to 0.1 %/h; capacity to 10 mAh; temperature to 0.1 °C; times as h and min.
 
@@ -646,7 +648,7 @@ Four destinations carry the app: **Now, Drain, Timeline, Health**. Settings, Pri
 
 - Navigation via `NavigationSuiteScaffold`: bottom bar on compact width, rail on medium, rail plus list-detail panes on expanded.
 - One primary number per screen, set in the Display numeral style (11.3). Everything else is secondary.
-- Every metric shows its provenance glyph (6.7); long-press explains it.
+- Every metric shows its provenance glyph (6.7). Long-press explains it, and so does a TalkBack custom action, "Explain provenance". A table or chart with a single source carries one glyph on its header. Onboarding teaches the four glyphs once (14.1; ADR-0023).
 - Every list row with a number shows a share bar, so magnitude reads without reading digits.
 - A window selector (10.3) appears wherever data is windowed, and the chosen window persists across screens.
 - No screen nests more than one level of containment. No cards inside cards.
@@ -666,7 +668,7 @@ Purpose: the three-second answer.
 
 Purpose: who and what used the battery in a chosen window.
 
-- **Window selector:** Since unplugged · Today · Last 24 h · Last night (screen off) · Custom range · Reference vs reference. Implemented as a connected button group.
+- **Window selector:** Since unplugged · Today · Last 24 h as a connected button group, plus **More**, which opens a sheet with Last night (screen off), Custom range and Compare two periods (ADR-0023).
 - **Lenses** (segmented): Apps · Components · Wakeups.
 - Header: measured total for the window, modeled total, unattributed row when > 10% (6.5).
 - **Apps lens:** ranked rows; each row expands inline to component chips; tap opens App detail. Toggle to include system UIDs.
@@ -693,6 +695,7 @@ Purpose: an on-device Battery Historian.
 
 - **Top track:** level as a line, current as an area (discharge below the axis, charge above).
 - **Tracks below** (each a band, toggleable): Screen · Charging · Doze (light, deep) · Awake vs suspended · Top app · Wakelocks · Mobile radio · Wi-Fi · GPS · Signal strength · Temperature.
+- Events closer than 3 dp at the current zoom merge into a density span: a 20% tint with a 1 dp stroke in the track's colour. The caption or readout gives the rate. Zooming in splits a span back into ticks (ADR-0023).
 - Pinch to zoom from 15 minutes to 7 days; drag to scrub with a haptic tick per event; tap an event to open a bottom sheet with its details and a link to the related screen.
 - Default range: last 24 h. A floating toolbar holds range presets, track visibility and "jump to now".
 - Rendering: custom `Canvas`, virtualized by visible time range, 60 fps while panning on the S25 Ultra.
@@ -713,7 +716,7 @@ List of screen-off sessions ≥ 1 h: date, duration, %/h, deep-sleep share, Doze
 
 ### 10.9 Charging (live)
 
-Shown in place of Now while plugged. Primary number: power in W. Secondary: mA, V, battery °C, time to target and to full (ranges), current phase (constant current or constant voltage), charger profile and comparison to its baseline. Below: the session's curve (level and power), updating at 1 Hz while visible. Target selector (e.g. 80%) links to the charge alarm.
+Shown in place of Now while plugged. Primary number: power in W. Secondary: mA, V, battery °C, time to target and to full (ranges), current phase in plain words ("full speed", "slowing down near full"; constant current and constant voltage stay in the glossary; ADR-0023), charger profile and comparison to its baseline. Below: the session's curve (level and power), updating at 1 Hz while visible. Target selector (e.g. 80%) links to the charge alarm.
 
 ### 10.10 Adaptive layouts
 
@@ -734,7 +737,7 @@ Coulomb looks like a precision instrument: quiet tinted surfaces, data as the he
 
 1. Install into the repo: `npx impeccable skills install` (or the Claude Code plugin: `/plugin marketplace add pbakaus/impeccable`). Then `npx impeccable skills update` to pull the newest rules.
 2. Run `/impeccable init`. Answer its questions from sections 1 and 11.2 so `PRODUCT.md` and `DESIGN.md` describe Coulomb. Register: **product**, not brand.
-3. Read all seven reference files (typography, color-and-contrast, spatial-design, motion-design, interaction-design, responsive-design, ux-writing) before any design work. Where this spec and the installed reference disagree, the installed reference wins unless 11.11 lists the conflict.
+3. Read all seven reference domains (typography, color-and-contrast, spatial-design, motion-design, interaction-design, responsive-design, ux-writing) before any design work. In impeccable 4.7.1 they live in the `typeset`, `colorize`, `layout`, `animate`, `operate` and `harden`, `adapt` and `clarify` references, with `craft-floor` read before every UI edit (ADR-0022). Where this spec and the installed reference disagree, the installed reference wins unless 11.11 lists the conflict.
 
 ### 11.2 Personality and anti-references
 
@@ -752,14 +755,16 @@ Coulomb looks like a precision instrument: quiet tinted surfaces, data as the he
 
 | Role | Size / line height | Weight | Use |
 | --- | --- | --- | --- |
-| Display numeral | 56 / 60, tracking −2% | 600 | One hero number per screen |
+| Display numeral | 56 / 60, tracking −2% | 600 | One hero number per screen; its unit at Headline size, weight 400 |
 | Headline | 28 / 34 | 600 | Screen titles on expanded layouts |
-| Title | 20 / 26 | 600 | Section titles |
-| Body | 16 / 24 | 400 | Story sentences, descriptions |
-| Data | 15 / 20, tabular | 500 | Table values |
-| Label | 13 / 18, tracking +1% | 500 | Column headers, chips |
-| Caption | 12 / 16 | 400 | Units, provenance, footnotes |
+| Title | 20 / 26 | 600 | Section titles, app bar titles, the onboarding title on compact widths |
+| Body | 16 / 24 | 400; 500 row names; 600 subheads and card titles | Story sentences, descriptions, row names, subheads, switch labels |
+| Data | 15 / 20, tabular | 500; 600 for a bold lead word | Table values |
+| Label | 13 / 18, tracking +1% | 500; 600 buttons | Column headers, chips, selection controls, buttons |
+| Caption | 12 / 16 | 400; 500 navigation bar labels | Units, provenance, footnotes, secondary notes |
 | Mono | 13 / 18 | 400 | Tags, identifiers |
+
+- There are no other sizes; 14 sp is not a role (ADR-0023).
 
 - Must stay legible at 200% font scale using Android's non-linear scaling; layouts reflow, never clip.
 - Line length for prose: 40–70 characters.
@@ -780,9 +785,15 @@ All tokens are authored in OKLCH (as `/impeccable` requires), converted to sRGB 
 | `good` | oklch(0.62 0.13 160) | oklch(0.76 0.12 160) |  |
 | `caution` | oklch(0.70 0.15 80) | oklch(0.82 0.14 85) |  |
 | `critical` | oklch(0.57 0.20 27) | oklch(0.70 0.17 25) |  |
+| `accentFill` | oklch(0.88 0.06 55) | oklch(0.38 0.08 55) | Fills that carry text or an icon: filled button, selected chip or segment, navigation pill (ADR-0022, ADR-0023) |
+| `onAccentFill` | `textPrimary` | `textPrimary` | Text on `accentFill` |
+| `onGood`, `onCaution` | `textPrimary` | `bg` | Text on status fills |
+| `onCritical` | `bg` | `bg` | Text on status fills |
 
-- **Data palette** for power components: 8 hues at equal lightness (L 0.66 light, 0.74 dark, C 0.11): screen 245, CPU 30, mobile radio 150, Wi-Fi 200, GNSS 95, Bluetooth 275, sensors 340, other = neutral. Validate with deuteranopia, protanopia and tritanopia simulation; every color-coded item also carries a direct text label.
-- Accent appears at most once per region. Charging uses the accent; discharging uses neutral ink.
+- **Data palette** for power components: 8 hues at equal lightness (L 0.62 light, 0.74 dark, C 0.11; ADR-0022): screen 245, CPU 30, mobile radio 150, Wi-Fi 200, GNSS 95, Bluetooth 275, sensors 340, other = neutral. Validate with deuteranopia, protanopia and tritanopia simulation; every color-coded item also carries a direct text label.
+- A hue names a power component and nothing else; non-component states (Doze, top app, signal, temperature, wear stress) use neutral ink (ADR-0022).
+- Accent appears at most once per region as emphasis (primary action, hero state, selection). Charging uses the accent; discharging uses neutral ink. Charging drawn in a chart is a data encoding and counts once per chart. `accent` itself never carries text; text-bearing fills use `accentFill`.
+- Switches use neutral ink: a checked switch has a `textPrimary` track and a `bg` thumb, and an unchecked one a `textSecondary` outline. The Info severity chip is `textPrimary` on `surfaceRaised` (ADR-0023).
 - Contrast: WCAG 2.2 AA minimum (4.5:1 text, 3:1 large text and UI parts). Checked by `/impeccable audit` and by the screenshot test suite.
 - **Wallpaper color** mode (optional setting): the Material You seed replaces only the accent; neutrals stay Coulomb's.
 - **True black** mode (opt-in): `bg` = #000000 for OLED savings, surfaces stay tinted. Default dark is tinted near-black (see 11.11).
@@ -815,7 +826,12 @@ All tokens are authored in OKLCH (as `/impeccable` requires), converted to sRGB 
 - Direct labels instead of legends; units on every axis; hairline gridlines at quarter intervals, tinted.
 - Discharge plots below the zero axis, charging above, so direction reads without color.
 - Scrubbing shows a crosshair and a value readout in the Data style; values snap to samples.
-- Accessibility: each chart has a semantics summary ("Battery fell from 82% to 61% between 23:10 and 07:05") and a "View as table" alternative.
+- Accessibility: each chart has a semantics summary ("Battery fell from 82% to 61% between 23:10 and 07:05") and a "View as table" alternative. That is a visible text button under every evidence chart, and a semantics custom action on every chart, hero scales included (ADR-0023).
+- Chart text is drawn in sp at native size; the plot width follows the container and labels never scale with it (ADR-0022).
+- A translucent fill never carries meaning alone: every area and band has a solid edge or outline at 3:1 or more. Lighter states are an outline with a 20% tint, stronger states solid.
+- A truncated list of shares ends with a remainder row ("22 more apps", with its mAh and share), so the visible rows sum to the whole.
+- Event marks closer than 3 dp become a density span (10.6).
+- The provenance shapes (solid dot, ring, bracket, half dot) never serve as chart markers; markers use crosses or ticks (ADR-0023).
 
 ### 11.9 Iconography and app icon
 
@@ -846,7 +862,7 @@ One icon family (Material Symbols Rounded, one weight and optical size throughou
 
 1. Create `design-lab/` with static HTML and CSS prototypes at 412 × 915 CSS px for: Now, Drain (Apps lens), App detail, Timeline, Health, Charging, plus one onboarding step.
 2. Per screen: `/impeccable shape` → `/impeccable craft` → `/impeccable critique` → `/impeccable audit`; use `/impeccable live` for variants.
-3. `npx impeccable detect design-lab/ --json` MUST return zero findings.
+3. `npx impeccable detect design-lab/ --json` MUST return zero findings, with the version pinned (`npx -y impeccable@<version>`, ADR-0022), and so MUST a rendered scan of each page at 412 × 915 (`detect <url> --viewport 412x915`).
 4. Lock tokens with `/impeccable extract` and `/impeccable document` into `DESIGN.md`.
 5. Port tokens 1:1 to `:core:designsystem`; a unit test asserts every token in `DESIGN.md` exists in code with the same value.
 
@@ -965,7 +981,12 @@ Onboarding takes at most four screens and ends on a real result, never on a tour
 1. **Welcome.** One sentence of value and two choices: "Connect Shizuku" (recommended) or "Start in basic mode".
 2. **Notifications and usage access.** `POST_NOTIFICATIONS` for the monitor and alerts; Usage access (settings intent) for per-app foreground time. Both skippable.
 3. **Shizuku.** Detect: not installed, stopped, running (shell or root), Sui. Request permission. On a 5 s hang or a failure on Android 17, show the compatible-manager explanation (4.5) and the ADB commands as a copy-ready block.
-4. **Bootstrap result.** A checklist of grants (4.4), then the capability summary in plain words: "Coulomb can see per-app drain, wakelocks and kernel wakeups. Power rails: not exposed on this device."
+4. **Bootstrap result.** The capability summary in plain words first: "Coulomb can see per-app drain, wakelocks and kernel wakeups. Power rails: not exposed on this device." Then:
+   - "Keep the monitor running" (14.2), when the OEM needs it;
+   - the checklist of grants (4.4), saying which ones stay after Shizuku stops or the phone restarts;
+   - a key to the four provenance glyphs (6.7).
+
+   The footer button, "Show my battery", says when the first figures appear (ADR-0023).
 
 Then land on Now with the first verdict. Calibration (6.1) runs in the background; the Health screen explains: "First capacity estimate after a charge from 30% or less to 80% or more."
 
