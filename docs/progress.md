@@ -62,7 +62,21 @@ Started 2026-11-07 while the P2 gate waits for the night report (owner decision,
     deferred to the Compose port, each with a reason: top-app span names, the target tick, and
     the Rename buttons.
   - Open questions are listed in each file for the direction review.
-- [ ] Finish review against the direction contract.
+- [ ] Finish review against the direction contract: `docs/design-gates/2026-11-07-finish-review-lab.md`.
+  Not a pass: it ended at its round budget with disposition **fix**, and the owner decides at the
+  direction review.
+  - Round 1 gave eight material fixes; all were applied in one batch.
+  - In round 2, six of the 28 captures had caught the page mid-transition. They were reshot under
+    reduced motion, and two full passes are pixel-identical.
+  - The verdict on the valid set is **fix**: seven fixes resolved, one partial (200% text). The
+    two-round budget ends here, and the owner decides at the direction review whether to fund a
+    third round.
+  - Open, carried into P4's font-scale 2.0 screenshots:
+    - row names must break only between words (the lab uses `overflow-wrap: anywhere`, and
+      "Unattributed" splits);
+    - Drain's "+22" tile must fit its text;
+    - chart labels must be sp text that each chart re-lays out (the lab's fixed SVGs do not scale
+      them, so the lab's 200% evidence does not cover the charts).
 - [ ] `DESIGN.md` and `.impeccable/design.json` (extract and document).
 - [ ] Token port to `:core:designsystem` with the parity test.
 - [ ] P3 direction review with the owner (SPEC 0.6 hard stop).
