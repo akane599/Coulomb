@@ -65,6 +65,8 @@ internal object Sysfs {
     sealed interface Listing {
         class Ok(
             val names: List<String>,
+            /** The directory held more than the cap; [names] are the first ones in sorted order. */
+            val truncated: Boolean = false,
         ) : Listing
 
         class Failed(
@@ -83,7 +85,7 @@ internal object Sysfs {
             return Listing.Failed(e.errno, e.message.orEmpty())
         }
         val names = File(path).list() ?: return Listing.Failed(OsConstants.EACCES, "readdir failed: $path")
-        return Listing.Ok(names.sorted().take(maxEntries))
+        return Listing.Ok(names.sorted().take(maxEntries), truncated = names.size > maxEntries)
     }
 
     private const val BUFFER = 8 * 1024

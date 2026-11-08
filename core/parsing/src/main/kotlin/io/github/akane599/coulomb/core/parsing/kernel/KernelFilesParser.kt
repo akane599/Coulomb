@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.model.kernel.KernelPaths
 import io.github.akane599.coulomb.core.model.kernel.LastWakeup
 import io.github.akane599.coulomb.core.model.kernel.SuspendStats
 import io.github.akane599.coulomb.core.model.kernel.WakeupSourceInstance
+import io.github.akane599.coulomb.core.model.parse.ParseIssue
 import io.github.akane599.coulomb.core.model.parse.Parsed
 import io.github.akane599.coulomb.core.parsing.ParseContext
 import io.github.akane599.coulomb.core.parsing.io.MeteredSource
@@ -19,6 +20,10 @@ public data class KernelFiles(
     val files: Map<String, String>,
     /** The errno of each file or directory the worker could not read. */
     val errors: Map<String, Int>,
+    /** The stream reached its end frame. Without it the source being read at the cut is incomplete. */
+    val ended: Boolean,
+    /** The path of the last whole frame, file or error; null when there was none. */
+    val lastPath: String?,
 ) {
     /** [KernelBoot.key] of the `boot_id` the worker read first; null when it is missing. */
     val bootKey: Long? get() = files[KernelPaths.BOOT_ID]?.let(KernelBoot::key)
@@ -57,7 +62,7 @@ public object KernelFilesParser {
         val frames = Frames(MeteredSource(input), ctx)
         val ended = frames.readAll()
         val complete = ended && ctx.issueCountIsZero()
-        return Parsed(KernelFiles(frames.files, frames.errors), ctx.report(frames.offset, complete))
+        return Parsed(KernelFiles(frames.files, frames.errors, ended, frames.lastPath), ctx.report(frames.offset, complete))
     }
 
     private enum class Step { NEXT, END, STOP }
@@ -68,6 +73,7 @@ public object KernelFilesParser {
     ) {
         val files = LinkedHashMap<String, String>()
         val errors = LinkedHashMap<String, Int>()
+        var lastPath: String? = null
         val offset: Long get() = meter.offset
 
         /** Reads every frame; true when the end frame arrived. */
@@ -94,17 +100,19 @@ public object KernelFilesParser {
                     Step.END
                 }
 
-                files.size + errors.size >= MAX_FRAMES -> {
-                    ctx.issue(offset, "frame", "too many frames")
+                files.size + errors.size >= MAX_FRAMES || offset > MAX_TOTAL_BYTES -> {
+                    ctx.issue(offset, "frame", "too many frames or bytes")
                     Step.STOP
                 }
 
                 header.startsWith(FILE) -> {
-                    if (file(header, offset, meter, ctx, files)) Step.NEXT else Step.STOP
+                    val whole = file(header, offset, meter, ctx, files)
+                    if (whole) lastPath = files.keys.last()
+                    if (whole) Step.NEXT else Step.STOP
                 }
 
                 header.startsWith(ERROR) -> {
-                    error(header, offset, ctx, errors)
+                    error(header, offset, ctx, errors)?.let { lastPath = it }
                     Step.NEXT
                 }
 
@@ -163,20 +171,22 @@ public object KernelFilesParser {
         return true
     }
 
+    /** Reads one error frame; returns its path, or null when the header is bad. */
     private fun error(
         header: String,
         offset: Long,
         ctx: ParseContext,
         errors: MutableMap<String, Int>,
-    ) {
+    ): String? {
         val space = header.lastIndexOf(' ')
         val path = if (space > 1) header.substring(1, space) else ""
         val errno = if (space > 1) header.substring(space + 1).toIntOrNull() else null
         if (!known(path) || errno == null) {
             ctx.issue(offset, "frame", "bad error header")
-        } else {
-            errors[path] = errno
+            return null
         }
+        errors[path] = errno
+        return path
     }
 
     private fun known(path: String): Boolean = path == KernelPaths.BOOT_ID || ROOTS.any { path == it || path.startsWith("$it/") }
@@ -193,6 +203,9 @@ public object KernelFilesParser {
 
     /** About 10 files per S9 source; phones list a few hundred sources. */
     private const val MAX_FRAMES = 50_000
+
+    /** A few hundred sources of about 10 small files each come to well under 1 MB. */
+    private const val MAX_TOTAL_BYTES = 16L * 1024 * 1024
 }
 
 /** One bulk read split into its three sources. A source the stream does not touch is null. */
@@ -203,28 +216,49 @@ public data class KernelSourceReads(
     val wakeupSources: Parsed<List<WakeupSourceInstance>>?,
 )
 
-/** Splits [KernelFiles] into S25, S26 and S9 with their own parsers. */
+/**
+ * Splits [KernelFiles] into S25, S26 and S9 with their own parsers. A stream cut short leaves the
+ * source it was reading incomplete, even where that source's own parser finds nothing missing: the
+ * worker writes S25, S26 and S9 in that order, each a directory at a time, so the cut can fall just
+ * before a file or a `wakeupN` directory the parser never hears of (ADR-0029 §5).
+ */
 public object KernelSources {
-    public fun split(files: KernelFiles): KernelSourceReads =
-        KernelSourceReads(
+    public fun split(files: KernelFiles): KernelSourceReads {
+        val cutIn = if (files.ended) null else files.lastPath
+        return KernelSourceReads(
             bootKey = files.bootKey,
             suspendStats =
                 KernelPaths.SUSPEND_STATS.takeIf(files::touches)?.let { dir ->
-                    if (dir in files.errors) failed(SuspendStatsParser.SOURCE) else SuspendStatsParser.parse(files.filesIn(dir))
+                    val parsed =
+                        if (dir in files.errors) failed(SuspendStatsParser.SOURCE) else SuspendStatsParser.parse(files.filesIn(dir))
+                    parsed.cutIfIn(dir, cutIn)
                 },
             lastWakeup =
                 KernelPaths.WAKEUP_REASONS.takeIf(files::touches)?.let { dir ->
                     val reason = files.files["$dir/${KernelPaths.LAST_RESUME_REASON}"]
-                    if (reason ==
-                        null
-                    ) {
-                        failed(WakeupReasonParser.SOURCE)
-                    } else {
-                        WakeupReasonParser.parse(reason, files.files["$dir/${KernelPaths.LAST_SUSPEND_TIME}"])
-                    }
+                    val parsed =
+                        if (reason == null) {
+                            failed(WakeupReasonParser.SOURCE)
+                        } else {
+                            WakeupReasonParser.parse(reason, files.files["$dir/${KernelPaths.LAST_SUSPEND_TIME}"])
+                        }
+                    parsed.cutIfIn(dir, cutIn)
                 },
-            wakeupSources = KernelPaths.WAKEUP_CLASS.takeIf(files::touches)?.let { WakeupSourcesParser.parse(files) },
+            wakeupSources =
+                KernelPaths.WAKEUP_CLASS.takeIf(files::touches)?.let { dir ->
+                    WakeupSourcesParser.parse(files).cutIfIn(dir, cutIn)
+                },
         )
+    }
+
+    private fun <T> Parsed<T>.cutIfIn(
+        dir: String,
+        cutIn: String?,
+    ): Parsed<T> {
+        if (cutIn == null || (cutIn != dir && !cutIn.startsWith("$dir/"))) return this
+        val issue = ParseIssue(report.bytesRead, "stream", "the read was cut short in this source")
+        return copy(report = report.copy(complete = false, issues = report.issues + issue, issueCount = report.issueCount + 1))
+    }
 
     private fun failed(source: String): Parsed<Nothing?> {
         val ctx = ParseContext(source)

@@ -32,7 +32,7 @@ internal class KernelFileWriter(
     /** Every entry of [dir], as files. */
     private fun directory(dir: String) {
         when (val listing = list(dir)) {
-            is Sysfs.Listing.Ok -> listing.names.forEach { file("$dir/$it") }
+            is Sysfs.Listing.Ok -> if (listing.truncated) error(dir, EOVERFLOW) else listing.names.forEach { file("$dir/$it") }
             is Sysfs.Listing.Failed -> error(dir, listing.errno)
         }
     }
@@ -42,7 +42,10 @@ internal class KernelFileWriter(
         val dir = KernelPaths.WAKEUP_CLASS
         when (val listing = list(dir)) {
             is Sysfs.Listing.Ok -> {
-                listing.names.filter(::isWakeupEntry).forEach { entry ->
+                // A directory past the listing cap cannot be read whole, so it reads as not
+                // listable rather than as a complete read missing sources.
+                if (listing.truncated) error(dir, EOVERFLOW)
+                listing.names.filter { !listing.truncated && isWakeupEntry(it) }.forEach { entry ->
                     KernelPaths.WAKEUP_ATTRIBUTES.forEach { file("$dir/$entry/$it") }
                 }
             }
@@ -77,6 +80,9 @@ internal class KernelFileWriter(
     internal companion object {
         private val END = "#end\n".toByteArray(Charsets.US_ASCII)
         private const val NEWLINE = '\n'.code
+
+        /** Value too large for defined data type (include/uapi/asm-generic/errno.h). */
+        private const val EOVERFLOW = 75
 
         private val WAKEUP_ENTRY = Regex("wakeup[0-9]{1,9}")
 

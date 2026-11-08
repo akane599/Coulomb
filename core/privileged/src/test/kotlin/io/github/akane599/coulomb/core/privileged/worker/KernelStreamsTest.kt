@@ -97,6 +97,18 @@ class KernelStreamsTest {
     }
 
     @Test
+    fun aDirectoryPastTheListingCapReadsAsNotListable() {
+        val out = ByteArrayOutputStream()
+        val list: (String) -> Sysfs.Listing = { Sysfs.Listing.Ok(listOf("wakeup0", "wakeup1"), truncated = true) }
+        KernelFileWriter({ Sysfs.Read.Ok("x\n".toByteArray()) }, list, out)
+            .write(KernelPaths.READ_SUSPEND_STATS or KernelPaths.READ_WAKEUP_SOURCES)
+        val text = out.toString(Charsets.US_ASCII)
+        assertThat(text).contains("!${KernelPaths.SUSPEND_STATS} 75\n")
+        assertThat(text).contains("!${KernelPaths.WAKEUP_CLASS} 75\n")
+        assertThat(text).doesNotContain("wakeup0")
+    }
+
+    @Test
     fun theFileWriterFramesEveryFileAndError() {
         val files =
             mapOf(

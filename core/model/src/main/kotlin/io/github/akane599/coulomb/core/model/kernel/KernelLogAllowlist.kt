@@ -12,6 +12,11 @@ package io.github.akane599.coulomb.core.model.kernel
 public object KernelLogAllowlist {
     public const val SUSPEND_ENTRY: String = "PM: suspend entry ("
     public const val SUSPEND_EXIT: String = "PM: suspend exit"
+
+    // The next four come from `print_wakeup_sources` in kernel/power/wakeup_reason.c (kernel/common
+    // android16-6.12 L274-325, android15-6.6 L283-295), which defines no `pr_fmt`, so the lines carry
+    // no prefix. It runs once per suspend attempt at PM_POST_SUSPEND and prints one "Abort" line, or
+    // one "Resume caused by IRQ" line per leaf interrupt, or one of the other two.
     public const val RESUME_IRQ: String = "Resume caused by IRQ "
     public const val RESUME_BY: String = "Resume caused by "
     public const val RESUME_UNKNOWN: String = "Resume cause unknown"

@@ -251,6 +251,21 @@ class KernelParsersTest {
     }
 
     @Test
+    fun nothingNewSinceTheCursorIsAWholeReadOfNothing() {
+        // Exactly what KernelLogCopier writes when every record is at or before its cursor
+        // (KernelStreamsTest.nothingPastTheCursorIsAnEmptyWholeRead).
+        val (read, report) = KernelLogParser.parse(kmsg(begin("-", after = "20"), "#end last=- lost=0"))
+        assertThat(report.complete).isTrue()
+        assertThat(read.afterSeq).isEqualTo(20)
+        assertThat(read.firstSeq).isNull()
+        assertThat(read.lastSeq).isNull()
+        // A gap with no record past the cursor contradicts the trailer.
+        val (_, contradiction) =
+            KernelLogParser.parse(kmsg(begin("-", after = "20"), "#gap from=21 to=25", "#end last=- lost=5"))
+        assertThat(contradiction.complete).isFalse()
+    }
+
+    @Test
     fun gapsAreKeptInOrderAndMustMatchTheTrailer() {
         // The ring no longer reached the record after the cursor (99), and lost 160..164 mid-read.
         val lines =

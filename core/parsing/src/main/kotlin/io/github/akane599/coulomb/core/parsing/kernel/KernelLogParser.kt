@@ -184,7 +184,9 @@ public object KernelLogParser {
                     ctx.issue(offset, "end", "lost does not match the gaps")
                 }
 
-                (lastValue.value == null) != (first == null) || (lastValue.value == null && cursor >= 0) -> {
+                // With no record past the cursor, nothing may have moved the walk past the header's
+                // own cursor either: a read that found nothing new since `after` is whole.
+                (lastValue.value == null) != (first == null) || (lastValue.value == null && cursor != (after ?: -1L)) -> {
                     ctx.issue(offset, "end", "first and last disagree")
                 }
 

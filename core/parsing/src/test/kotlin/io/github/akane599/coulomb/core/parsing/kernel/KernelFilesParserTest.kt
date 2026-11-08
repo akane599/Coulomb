@@ -133,6 +133,31 @@ class KernelFilesParserTest {
     }
 
     @Test
+    fun aCutBeforeAWakeupDirectoryLeavesS9IncompleteAndTheEarlierSourcesWhole() {
+        val beforeSeven = whole().dropLast(WakeupSourceParser.ATTRIBUTES.size)
+        // Cut inside the first frame of wakeup7, and cut exactly between the two directories.
+        for (tail in listOf("@$wakeup/wakeup7/na", "")) {
+            val (files, report) = KernelFilesParser.parse(stream(*beforeSeven.toTypedArray(), tail))
+            assertThat(report.complete).isFalse()
+            val reads = KernelSources.split(files)
+            assertThat(reads.suspendStats?.report?.complete).isTrue()
+            assertThat(reads.lastWakeup?.report?.complete).isTrue()
+            val sources = checkNotNull(reads.wakeupSources)
+            assertThat(sources.value.map { it.instance }).containsExactly(0)
+            assertThat(sources.report.complete).isFalse()
+        }
+    }
+
+    @Test
+    fun aCutInsideSuspendStatsLeavesItIncompleteAndTheRestUnread() {
+        val (files, _) = KernelFilesParser.parse(stream(*whole().take(1 + suspendFiles.size).toTypedArray()))
+        val reads = KernelSources.split(files)
+        assertThat(reads.suspendStats?.report?.complete).isFalse()
+        assertThat(reads.lastWakeup).isNull()
+        assertThat(reads.wakeupSources).isNull()
+    }
+
+    @Test
     fun aStreamThatFailsMidwayIsIncomplete() {
         val head = whole().take(3).joinToString("").encodeToByteArray()
         val failing =
