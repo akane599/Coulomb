@@ -89,6 +89,7 @@ python3 -I tools/fixtures/redact.py <raw-dir> <device> # writes fixtures/<device
 python3 -I tools/capabilities/report.py fixtures/<device>/<build> docs/capabilities/<device>-<build>.md
 tools/validation/capture.sh <serial> <raw-dir>        # read-only checkpoint of a validation run (raw dir outside repo)
 python3 -I tools/validation/report.py <raw-dir>       # rates, heavy snapshot cost, protocols E and A (SPEC 16.6)
+tools/emulator/mode-switch.sh <avd-serial> <out-dir>  # root -> kill -> shell -> root run on the AVD, then verify (ADR-0028 §5)
 ```
 
 ## Repository map

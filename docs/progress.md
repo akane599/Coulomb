@@ -16,6 +16,16 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
   - tests use the thedjchi fork, not official Shizuku.
   - The schema and connection design waits for its second opinion (ADR-0029). The mode-switch test on
     the API 37 emulator joins the P4 gate.
+- ADR-0029 built in order: parsers, model, worker and client, schema v3, collector, emulator test.
+  - Three independent reviews (parsers and stream writers, schema, collector) found four defects,
+    all fixed with regression tests (ADR-0029 Review).
+  - Mode-switch test (2026-11-08): `tools/emulator/mode-switch.sh` passed two runs in a row (89 and
+    85 checks): mode tags, no fake zeros, no double counting, no crash (ADR-0028 §5). It found that
+    the parser dropped a wakeup source with an empty name, so S9 was never stored on the emulator;
+    fixed.
+  - Seen once on the emulator: during an update install, Android 17 restarted the app and killed
+    one process start as invalid. `MY_PACKAGE_REPLACED` was logged as delivered, but the collector
+    did not start until the app was opened. Not reproduced; watch for it on the phone.
 
 ## P3 Design lab (gate passed 2026-11-07)
 

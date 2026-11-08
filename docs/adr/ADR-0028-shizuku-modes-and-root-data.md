@@ -79,12 +79,30 @@ How the data is tagged and stored is a schema change, decided in ADR-0029 after 
 
 A mode-switch test runs on the API 37 emulator, with no phone needed:
 
-1. Start Shizuku as root from an `adb root` shell.
+1. Start Shizuku as root from a root shell (`su 0` on the userdebug image).
 2. Kill it while Coulomb is collecting, then restart it from a shell `adb` session.
 3. Then the reverse: from shell mode to root mode.
 
 An automated check proves three things: no fake zeros, no double counting, and no crash. It joins
 the P4 gate.
+
+It runs as `tools/emulator/mode-switch.sh`, which ends with `verify_mode_switch.py`. Between
+snapshots it writes test markers to the kernel log and holds a userspace wakelock, so the check can
+count what each window saw.
+
+Result (2026-11-08, API 37 emulator, thedjchi fork v13.7.0): two runs in a row passed every check,
+89 and 85.
+- Every snapshot carried the mode it was taken in.
+- Windows that touch shell mode or a dead server say "not collected" and hold no kernel rows.
+  Windows between two root snapshots cover S25, S9 and S27 whole.
+- Each marker was stored once. Markers between root snapshots were counted once; markers written
+  across shell mode were counted in no consecutive window.
+- Coulomb kept one process throughout, with nothing in the crash buffer.
+- The kill landed just after a snapshot in one run and just before one in the other. A kill inside
+  the read, about 150 ms, is a race; the unit tests cover each such cut.
+
+The runs found one defect, now fixed: the parser dropped a wakeup source with an empty name, so S9
+was never stored on that kernel (ADR-0029 §4).
 
 ## SPEC edits
 
