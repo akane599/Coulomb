@@ -26,12 +26,14 @@ internal data class SessionEnd(
 
 /**
  * The values a session keeps once its samples are compacted (SPEC 6.3, ADR-0015), from the
- * samples between its ends. Pure. The wear columns (stress index, cycle equivalents) and the
- * capacity estimate come with P4's health analytics; deep Doze with P5's Night Report. They stay
- * null, which means "not known".
+ * samples between its ends, and its awake ratio from its end snapshots' clocks. Pure. The wear
+ * columns (stress index, cycle equivalents) and the capacity estimate come with P4's health
+ * analytics; deep Doze with P5's Night Report. They stay null, which means "not known".
  */
 internal object SessionSummary {
     private const val NS_PER_MIN = 60_000_000_000L
+    private const val NS_PER_MS = 1_000_000L
+    private const val MIN_AWAKE_SPAN_MS = 60_000L
     private const val UA_PER_MA = 1_000.0
     private const val HIGH_LEVEL = 80
     private const val FULL_LEVEL = 100
@@ -81,7 +83,8 @@ internal object SessionSummary {
     /**
      * Closes [session] at [end]. [samples] are the session's own, in time order and from its boot.
      * [currentUa] turns a sample's raw current into calibrated µA when the sample was stored
-     * before calibration finished; null while calibration is still running.
+     * before calibration finished; null while calibration is still running. [awakeRatio] comes
+     * from [awakeRatio] over the session's first and last snapshots.
      */
     fun close(
         session: SessionEntity,
@@ -89,6 +92,7 @@ internal object SessionSummary {
         samples: List<BatterySampleEntity>,
         counterReliable: Boolean,
         currentUa: ((Long) -> Long)?,
+        awakeRatio: Double? = null,
     ): SessionEntity {
         val currents =
             samples.mapNotNull { s ->
@@ -120,9 +124,28 @@ internal object SessionSummary {
             maxTempDeciC = temps.max(),
             minutesAtOrAbove80 = if (charging) minutesWhere(samples) { it.levelPct >= HIGH_LEVEL } else null,
             minutesAt100 = if (charging) minutesWhere(samples) { it.levelPct >= FULL_LEVEL } else null,
+            awakeRatio = awakeRatio,
             closeReason = end.reason,
             quality = quality(session, end, source),
         )
+    }
+
+    /**
+     * The share of the time from [start] to [end] that the CPU was awake: uptime, which stops in
+     * suspend, over elapsed time (ADR-0029 §3, the source SPEC 2 asks for per screen-off session).
+     * Null unless both snapshots are of one boot, carry uptime and lie at least [MIN_AWAKE_SPAN_MS]
+     * apart: the two clocks are read a few milliseconds apart, which a minute makes negligible.
+     */
+    fun awakeRatio(
+        start: SnapshotEntity?,
+        end: SnapshotEntity?,
+    ): Double? {
+        if (start == null || end == null || start.bootSeq != end.bootSeq) return null
+        val from = start.uptimeMs ?: return null
+        val to = end.uptimeMs ?: return null
+        val elapsedMs = (end.elapsedNs - start.elapsedNs) / NS_PER_MS
+        if (elapsedMs < MIN_AWAKE_SPAN_MS) return null
+        return ((to - from).toDouble() / elapsedMs).coerceIn(0.0, 1.0)
     }
 
     /** Charge source quality times resolution (ADR-0017), halved when the session ended in a gap. */

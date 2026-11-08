@@ -181,7 +181,10 @@ internal class SnapshotWriter(
             } else {
                 lastSeenIn(session, sessionSamples.lastOrNull(), change)
             }
-        val closed = SessionSummary.close(session, end, sessionSamples, context.counterReliable, context.currentUa)
+        // Awake time between the snapshot the session opened at and its last one in that boot.
+        val last = if (sameBoot) stored else snapshots.latestInBoot(session.bootSeq)
+        val awake = SessionSummary.awakeRatio(snapshots.at(session.bootSeq, session.startElapsedNs), last)
+        val closed = SessionSummary.close(session, end, sessionSamples, context.counterReliable, context.currentUa, awake)
         sessions.update(closed)
         sessionWindow(closed, stored, rows, context)
         return closed

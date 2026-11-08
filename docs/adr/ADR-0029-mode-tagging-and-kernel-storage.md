@@ -70,6 +70,9 @@ The migration from v2 adds:
 
 - `snapshot.uptimeMs` (CLOCK_MONOTONIC at the light read). It aligns the kernel log's clock, which
   also stops in suspend, and gives each window's deep-sleep time in both modes as elapsed minus uptime.
+  Each closed session's `awakeRatio` is uptime over elapsed time between the snapshot it opened
+  at and its last one in that boot (P4). It is null across a reboot or under a minute, where the
+  few milliseconds between the two clock reads would matter.
 - `snapshot.privilegeMode` (§1).
 - `kernel_read`: one row per snapshot that read any kernel source, with the snapshot id as primary
   key and foreign key (cascade). The draft's three tables are merged into this one row (R). Columns:

@@ -213,6 +213,13 @@ public abstract class SnapshotDao {
         toElapsedNs: Long,
     ): List<SnapshotEntity>
 
+    /** The snapshot of [bootSeq] read at [elapsedNs]: the one a session opened at. */
+    @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq AND elapsedNs = :elapsedNs LIMIT 1")
+    public abstract suspend fun at(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): SnapshotEntity?
+
     /** The latest snapshot of [bootSeq]: where a session closed by a reboot ends. */
     @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq ORDER BY elapsedNs DESC LIMIT 1")
     public abstract suspend fun latestInBoot(bootSeq: Int): SnapshotEntity?

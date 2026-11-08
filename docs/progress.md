@@ -58,10 +58,11 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     - an "as of" time when the latest reading is stale, from collector health (Privileges, P4);
     - a spoken form for units in `FigureText` (P4 accessibility pass, all screens);
     - app rows that open App detail (when App detail lands in P4).
-  - Open, found by the deep-sleep review: nothing writes a session's `awakeRatio` yet
-    (`SessionSummary` opens it as null and never sets it). Until a source fills it at session close
-    (S8 suspend stats, or batterystats' screen-off awake time), the strip's deep sleep stays
-    "Collecting" on a device. This is the next collection item in P4.
+  - Found by the deep-sleep review, then fixed: nothing wrote a session's `awakeRatio`, so the
+    strip's deep sleep would have stayed "Collecting" on a device. A closing session now gets
+    uptime over elapsed time between the snapshot it opened at and its last one in that boot
+    (ADR-0029 §3's clocks; null across a reboot, without uptime or under a minute). `AwakeRatioTest`
+    covers the ratio and its nulls; `CollectorEngineTest`'s night checks 0.8 h awake of 8 h.
 
 ## P3 Design lab (gate passed 2026-11-07)
 

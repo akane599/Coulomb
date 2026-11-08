@@ -81,6 +81,8 @@ class CollectorEngineTest {
 
             device.set(hours = 22.5, level = 79, chargeMah = 3_980.0, screenOn = false)
             assertThat(engine.handle(SnapshotTrigger.SCREEN_OFF)).isEqualTo(Action.HEAVY)
+            // The CPU sleeps 7.2 of the night's 8 hours.
+            clock.sleep(hoursMs(7.2))
             for ((i, level) in (78 downTo 76).withIndex()) {
                 device.set(hours = 24.0 + 2 * i, level = level, chargeMah = 3_980.0 - 50 * (i + 1), screenOn = false)
                 assertThat(engine.handle(SnapshotTrigger.LEVEL_CHANGED)).isEqualTo(Action.SAMPLE)
@@ -95,6 +97,8 @@ class CollectorEngineTest {
             assertThat(night.endLevel).isEqualTo(75)
             assertThat(night.chargeSource).isEqualTo(ChargeSource.CHARGE_COUNTER)
             assertThat(night.endElapsedNs!! - night.startElapsedNs).isEqualTo(hoursNs(8.0))
+            // Uptime stops in suspend: awake 0.8 h of 8 h (ADR-0029 §3).
+            assertThat(night.awakeRatio).isWithin(1e-9).of(0.1)
 
             val window = checkNotNull(db.windowDao().forSession(night.id))
             assertThat(window.kind).isEqualTo(WindowKind.SESSION)
