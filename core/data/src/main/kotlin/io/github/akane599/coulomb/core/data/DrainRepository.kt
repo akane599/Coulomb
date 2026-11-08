@@ -5,88 +5,52 @@ package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.AppScope
-import io.github.akane599.coulomb.core.database.dao.DeviceDao
-import io.github.akane599.coulomb.core.database.dao.SessionDao
-import io.github.akane599.coulomb.core.database.dao.SnapshotDao
-import io.github.akane599.coulomb.core.database.dao.WindowDao
-import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
-import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
-import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
-import io.github.akane599.coulomb.core.model.SessionKind
-import io.github.akane599.coulomb.core.model.WindowKind
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Who used the battery in a window (SPEC 6.5, 10.2, 10.3), from the windows the collector stored
- * (ADR-0032 §3). Names come from `uid_meta` (§5).
+ * (ADR-0032 §3) and the chains of consecutive windows between them (ADR-0036). Names come from
+ * `uid_meta` (§5).
  */
 @Singleton
 @OptIn(ExperimentalCoroutinesApi::class)
 public class DrainRepository
     @Inject
     internal constructor(
-        private val windows: WindowDao,
-        private val snapshots: SnapshotDao,
-        sessions: SessionDao,
-        devices: DeviceDao,
-        dispatchers: AppDispatchers,
+        private val reader: DrainReader,
+        private val dispatchers: AppDispatchers,
         scope: AppScope,
     ) {
+        private val inputs: SharedFlow<DrainInputs> =
+            reader.inputs().shareIn(scope, SharingStarted.WhileSubscribed(BatteryRepository.STOP_TIMEOUT_MS), replay = 1)
+
         /**
          * Since unplugged: while unplugged, the REFERENCE window from the unplug; plugged in, the
          * last discharge session's window. Null until one is stored.
          */
         public val sinceUnplugged: StateFlow<WindowDrains?> =
-            combine(
-                windows.observeRecent(WindowKind.REFERENCE, RECENT_REFERENCES),
-                snapshots.observeReferences(),
-                sessions.observeRecent(SessionKind.DISCHARGE, 1),
-                devices.observeUidMeta(),
-            ) { stored, references, discharge, meta -> SinceUnplugged(stored, references, discharge.firstOrNull(), meta) }
-                .mapLatest { it.window()?.let { window -> drains(window, it.meta) } }
-                .flowOn(dispatchers.io)
+            report(DrainSpan.SinceUnplugged)
+                .map { it?.drains }
                 .stateIn(scope, SharingStarted.WhileSubscribed(BatteryRepository.STOP_TIMEOUT_MS), null)
 
-        private suspend fun SinceUnplugged.window(): WindowResultEntity? {
-            val session = discharge ?: return null
-            if (session.closeReason != null) return windows.forSession(session.id)
-            val start = references.firstOrNull { it.autoKind == AutoReference.SINCE_UNPLUGGED }?.snapshotId ?: return null
-            return stored.firstOrNull { it.fromSnapshotId == start }
-        }
-
-        private suspend fun drains(
-            window: WindowResultEntity,
-            meta: List<UidMetaEntity>,
-        ): WindowDrains? {
-            val from = snapshots.snapshot(window.fromSnapshotId) ?: return null
-            val to = snapshots.snapshot(window.toSnapshotId) ?: return null
-            return WindowDrainsBuilder.build(window, from.wallMs, to.wallMs, windows.rows(window.id).uids, meta)
-        }
-
-        private class SinceUnplugged(
-            val stored: List<WindowResultEntity>,
-            val references: List<ReferenceEntity>,
-            val discharge: SessionEntity?,
-            val meta: List<UidMetaEntity>,
-        )
-
-        private companion object {
-            /** One per reference is kept (ADR-0032 §3); a little slack for a write in progress. */
-            const val RECENT_REFERENCES = 4
-        }
+        /** The report for [span], read again after every heavy snapshot; null until it has two ends. */
+        public fun report(span: DrainSpan): Flow<DrainReport?> = inputs.mapLatest { reader.read(span, it) }.flowOn(dispatchers.io)
     }
 
 /** Turns a stored window and its UID rows into [WindowDrains]. Pure. */
@@ -98,6 +62,29 @@ internal object WindowDrainsBuilder {
         window: WindowResultEntity,
         fromWallMs: Long,
         toWallMs: Long,
+        rows: List<WindowUidEntity>,
+        meta: List<UidMetaEntity>,
+    ): WindowDrains =
+        build(
+            fromWallMs = fromWallMs,
+            toWallMs = toWallMs,
+            measuredMah = window.measuredMah,
+            measuredProvenance = window.measuredMah?.let { provenance(window.chargeSource) },
+            modeledMah = window.modeledMah,
+            rows = rows,
+            meta = meta,
+        )
+
+    /**
+     * A span's drains from its measured total, the model's device total and its UID rows, whether
+     * they come from one stored window or are summed over a chain of them (ADR-0036).
+     */
+    fun build(
+        fromWallMs: Long,
+        toWallMs: Long,
+        measuredMah: Double?,
+        measuredProvenance: Provenance?,
+        modeledMah: Double?,
         rows: List<WindowUidEntity>,
         meta: List<UidMetaEntity>,
     ): WindowDrains {
@@ -119,12 +106,12 @@ internal object WindowDrainsBuilder {
         // The window's modeled total is the model's device total (WindowBuilder.modeled), which also
         // holds what no app was charged for. Without the device section at both ends it is null,
         // and the UID rows are all there is.
-        val modeled = window.modeledMah?.takeIf { it >= uidSum } ?: uidSum
+        val modeled = modeledMah?.takeIf { it >= uidSum } ?: uidSum
         return WindowDrains(
             fromWallMs = fromWallMs,
             toWallMs = toWallMs,
-            measuredMah = window.measuredMah,
-            measuredProvenance = window.measuredMah?.let { provenance(window.chargeSource) },
+            measuredMah = measuredMah,
+            measuredProvenance = measuredMah?.let { measuredProvenance },
             modeledMah = modeled,
             apps = apps,
             otherMah = perUid[WindowUidEntity.OTHER_UID] ?: 0.0,

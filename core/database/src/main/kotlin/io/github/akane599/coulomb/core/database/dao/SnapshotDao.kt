@@ -213,6 +213,14 @@ public abstract class SnapshotDao {
         toElapsedNs: Long,
     ): List<SnapshotEntity>
 
+    /**
+     * The first heavy snapshot at or after [wallMs], in time order: where a span that starts at a
+     * wall time can start (ADR-0036). Wall time only picks the start; order stays by boot and elapsed
+     * time (SPEC 7.8).
+     */
+    @Query("SELECT * FROM snapshot WHERE kind = 'HEAVY' AND wallMs >= :wallMs ORDER BY bootSeq, elapsedNs LIMIT 1")
+    public abstract suspend fun firstHeavyFrom(wallMs: Long): SnapshotEntity?
+
     /** The snapshot of [bootSeq] read at [elapsedNs]: the one a session opened at. */
     @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq AND elapsedNs = :elapsedNs LIMIT 1")
     public abstract suspend fun at(

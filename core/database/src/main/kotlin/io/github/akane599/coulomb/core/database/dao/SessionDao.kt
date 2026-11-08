@@ -39,6 +39,22 @@ public interface SessionDao {
         fromWall: Long,
     ): List<SessionEntity>
 
+    /**
+     * The longest closed session of [kind] lasting at least [minNs] that ended at or after
+     * [sinceWall], with both end snapshots: Drain's "Last night" (ADR-0036). A session lies within
+     * one boot, so its elapsed times compare.
+     */
+    @Query(
+        "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL AND endWall >= :sinceWall " +
+            "AND startSnapshotId IS NOT NULL AND endSnapshotId IS NOT NULL AND endElapsedNs - startElapsedNs >= :minNs " +
+            "ORDER BY endElapsedNs - startElapsedNs DESC, bootSeq DESC LIMIT 1",
+    )
+    public suspend fun longestClosed(
+        kind: SessionKind,
+        sinceWall: Long,
+        minNs: Long,
+    ): SessionEntity?
+
     @Query("SELECT * FROM session WHERE kind = :kind ORDER BY bootSeq DESC, startElapsedNs DESC LIMIT :limit")
     public fun observeRecent(
         kind: SessionKind,

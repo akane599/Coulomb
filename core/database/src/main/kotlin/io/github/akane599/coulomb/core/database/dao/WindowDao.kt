@@ -42,6 +42,59 @@ public data class WindowStat(
     val provenance: Provenance,
 )
 
+/**
+ * The sums over a chain of CONSECUTIVE windows (ADR-0036). Consecutive windows split at every plug
+ * and screen change that took a heavy snapshot, so a window that started on battery is a discharge.
+ */
+public data class ChainTotals(
+    val windows: Int,
+    /** Drain summed over the windows that started on battery; null when none had a measured value. */
+    val dischargeMah: Double?,
+    val dischargeWindows: Int,
+    /** Of [dischargeWindows], those measured by the charge counter (Measured); the rest are Estimated. */
+    val counterWindows: Int,
+    /** Of [dischargeWindows], those with no measured value: the sum leaves them out. */
+    val unmeasuredWindows: Int,
+    /** Windows that started plugged in; their counter change is charge, not drain. */
+    val pluggedWindows: Int,
+    /** Windows whose start snapshot has no plug state. */
+    val unknownWindows: Int,
+    val modeledMah: Double?,
+    /** Windows without a modeled total; the sum leaves them out. */
+    val unmodeledWindows: Int,
+    val screenOnMs: Long,
+    val screenOffMs: Long,
+)
+
+/** One UID's modeled mAh for one component, summed over a chain. */
+public data class ChainUid(
+    val uid: Int,
+    val component: String,
+    val mAh: Double,
+)
+
+/**
+ * One wakelock, kernel source or wakeup reason summed over a chain. [screenOffMs] and [screenOnMs]
+ * add its time in windows that were wholly screen-off or wholly screen-on; time in a window with
+ * both is in neither.
+ */
+public data class ChainWake(
+    val uid: Int?,
+    val tag: String,
+    val kind: WakeKind,
+    val totalMs: Long,
+    val count: Long,
+    val screenOffMs: Long,
+    val screenOnMs: Long,
+    val wakeups: Long?,
+)
+
+/** One UID's counter change summed over a chain. */
+public data class ChainStat(
+    val uid: Int,
+    val value: Long,
+)
+
 /** The per-UID records of one window. The uid rows' `windowId` is ignored on insert. */
 public data class WindowRows(
     val uids: List<WindowUidEntity> = emptyList(),
@@ -126,6 +179,74 @@ public abstract class WindowDao {
         kind: WindowKind,
         limit: Int,
     ): Flow<List<WindowResultEntity>>
+
+    /**
+     * The totals of the CONSECUTIVE windows that end after `(fromBootSeq, fromElapsedNs)` and no
+     * later than `(toBootSeq, toElapsedNs)`: the chain from one heavy snapshot to another.
+     */
+    @Query(
+        "SELECT COUNT(*) AS windows, " +
+            "SUM(CASE WHEN f.plugType = 0 THEN w.measuredMah END) AS dischargeMah, " +
+            "COALESCE(SUM(f.plugType = 0), 0) AS dischargeWindows, " +
+            "COALESCE(SUM(f.plugType = 0 AND w.measuredMah IS NOT NULL AND w.chargeSource = 'CHARGE_COUNTER'), 0) AS counterWindows, " +
+            "COALESCE(SUM(f.plugType = 0 AND w.measuredMah IS NULL), 0) AS unmeasuredWindows, " +
+            "COALESCE(SUM(f.plugType <> 0), 0) AS pluggedWindows, " +
+            "COALESCE(SUM(f.plugType IS NULL), 0) AS unknownWindows, " +
+            "SUM(w.modeledMah) AS modeledMah, " +
+            "COALESCE(SUM(w.modeledMah IS NULL), 0) AS unmodeledWindows, " +
+            "COALESCE(SUM(w.screenOnMs), 0) AS screenOnMs, COALESCE(SUM(w.screenOffMs), 0) AS screenOffMs " +
+            "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
+            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN",
+    )
+    public abstract suspend fun chainTotals(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): ChainTotals
+
+    /** As [chainTotals], each UID's modeled mAh per component (device rows included). */
+    @Query(
+        "SELECT u.uid, u.component, SUM(u.mAh) AS mAh FROM window_uid u " +
+            "JOIN window_result w ON w.id = u.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY u.uid, u.component",
+    )
+    public abstract suspend fun chainUids(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<ChainUid>
+
+    /** As [chainTotals], each wakelock, kernel source and wakeup reason, with its screen-off time. */
+    @Query(
+        "SELECT k.uid, t.tag, k.kind, SUM(k.totalMs) AS totalMs, SUM(k.count) AS count, " +
+            "SUM(CASE WHEN w.screenOnMs = 0 THEN k.totalMs ELSE 0 END) AS screenOffMs, " +
+            "SUM(CASE WHEN w.screenOffMs = 0 THEN k.totalMs ELSE 0 END) AS screenOnMs, " +
+            "SUM(k.wakeups) AS wakeups FROM window_wake k JOIN wake_tag t ON t.id = k.tagId " +
+            "JOIN window_result w ON w.id = k.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY k.uid, k.tagId, k.kind",
+    )
+    public abstract suspend fun chainWakes(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<ChainWake>
+
+    /** As [chainTotals], each UID's change of the counter [key]. */
+    @Query(
+        "SELECT x.uid, SUM(x.value) AS value FROM window_stat x JOIN stat_key k ON k.id = x.keyId " +
+            "JOIN window_result w ON w.id = x.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE k.name = :key AND w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY x.uid",
+    )
+    public abstract suspend fun chainStat(
+        key: String,
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<ChainStat>
 
     /** One UID's shares across the windows that still have them, for app detail (SPEC 10). */
     @Query("SELECT * FROM window_uid WHERE uid = :uid ORDER BY windowId")
@@ -252,6 +373,11 @@ public abstract class WindowDao {
         /** The window's end snapshot `s` is keyed before `(:cutBootSeq, :cutElapsedNs)`. */
         const val TO_BEFORE_CUT =
             "(s.bootSeq < :cutBootSeq OR (s.bootSeq = :cutBootSeq AND s.elapsedNs < :cutElapsedNs))"
+
+        /** The window's end snapshot `s` is keyed after `(:fromBootSeq, :fromElapsedNs)` and no later than `(:toBootSeq, :toElapsedNs)`. */
+        const val TO_IN_CHAIN =
+            "(s.bootSeq > :fromBootSeq OR (s.bootSeq = :fromBootSeq AND s.elapsedNs > :fromElapsedNs)) " +
+                "AND (s.bootSeq < :toBootSeq OR (s.bootSeq = :toBootSeq AND s.elapsedNs <= :toElapsedNs))"
 
         const val MAX_IDS = 500
     }
