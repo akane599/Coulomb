@@ -45,6 +45,30 @@ style:
     ignoreAnnotated: ['Preview']
   ForbiddenComment:
     active: false
+  # The pre-stable material3 Expressive APIs stay inside :core:designsystem (SPEC 11.7, ADR-0030).
+  # Features use its wrappers, so moving the pin touches one module.
+  ForbiddenImport:
+    active: true
+    excludes: ['**/core/designsystem/**']
+    imports:
+      - value: 'androidx.compose.material3.ExperimentalMaterial3ExpressiveApi'
+        reason: 'Expressive APIs are used only in :core:designsystem (ADR-0030).'
+      - value: 'androidx.compose.material3.MaterialExpressiveTheme'
+        reason: 'Expressive APIs are used only in :core:designsystem (ADR-0030).'
+      - value: 'androidx.compose.material3.MotionScheme'
+        reason: 'Use CoulombTheme motion from :core:designsystem (ADR-0030).'
+      - value: 'androidx.compose.material3.ButtonGroup*'
+        reason: 'Use WindowSelector from :core:designsystem (ADR-0030).'
+      - value: 'androidx.compose.material3.*ToggleButton*'
+        reason: 'Use the :core:designsystem wrappers (ADR-0030).'
+      - value: 'androidx.compose.material3.*FloatingToolbar*'
+        reason: 'Use the :core:designsystem wrapper (ADR-0030).'
+      - value: 'androidx.compose.material3.*LoadingIndicator*'
+        reason: 'Use the :core:designsystem wrapper (ADR-0030).'
+      - value: 'androidx.compose.material3.*WavyProgressIndicator*'
+        reason: 'Use the :core:designsystem wrapper (ADR-0030).'
+      - value: 'androidx.compose.material3.MaterialShapes'
+        reason: 'Shape morph is only for the charging glyph in :core:designsystem (ADR-0030).'
 
 # Compose rules 0.6.8 defaults (copied from the jar), with UnstableCollections on (SPEC 15.5).
 Compose:
