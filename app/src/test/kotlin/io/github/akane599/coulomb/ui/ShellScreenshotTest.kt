@@ -22,7 +22,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The shell at the lab's 412 x 915 dp and at a medium width, light and dark, and at 200% text
- * (DESIGN.md, 200% text and reflow). A plain Application keeps Hilt and the collector out of it.
+ * (DESIGN.md, 200% text and reflow). A plain Application keeps Hilt and the collector out of it,
+ * so Now is left empty; NowScreenshotTest covers it.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -70,7 +71,7 @@ class ShellScreenshotTest {
     ) {
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale)) {
-                CoulombTheme(darkTheme = dark) { CoulombApp() }
+                CoulombTheme(darkTheme = dark) { CoulombApp(screens = AppScreens(now = {})) }
             }
         }
     }

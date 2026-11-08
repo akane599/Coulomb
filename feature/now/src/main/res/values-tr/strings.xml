@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="now_loading">Yükleniyor</string>
+    <string name="now_time_left">%1$s kaldı</string>
+    <string name="now_time_left_pending">Kalan süre hesaplanıyor</string>
+    <string name="now_state_discharging">Boşalıyor</string>
+    <string name="now_state_discharging_plugged">Prizdeyken boşalıyor</string>
+    <string name="now_calibrating">Kalibre ediliyor</string>
+    <string name="now_state_charging">Şarj oluyor</string>
+    <string name="now_state_full">Dolu</string>
+    <string name="now_state_not_charging">Şarj olmuyor</string>
+    <string name="now_state_with_current">%1$s\u00A0· %2$s</string>
+
+    <string name="now_verdict_with_app">Şarjdan çıkalı %1$s oldu ve pil %2$s azaldı; bunun %4$s kadarını %3$s kullandı.</string>
+    <string name="now_verdict">Şarjdan çıkalı %1$s oldu ve pil %2$s azaldı.</string>
+    <string name="now_verdict_flat">Şarjdan çıkalı %1$s oldu; seviye henüz değişmedi.</string>
+
+    <string name="now_strip_heading">Bu oturum</string>
+    <string name="now_screen_on">Ekran açık</string>
+    <string name="now_screen_off">Ekran kapalı</string>
+    <string name="now_deep_sleep">Derin uyku</string>
+    <string name="now_deep_sleep_definition">İşlemcinin askıya alındığı, ekran kapalıyken ulaşılan en düşük güç durumu.</string>
+    <string name="now_term_action">Anlamını göster</string>
+    <string name="now_for">%1$s boyunca</string>
+    <string name="now_of_screen_off">ekran kapalı sürede</string>
+    <string name="now_collecting">Toplanıyor</string>
+    <string name="now_first_after_on">İlk sonuç ekran %1$s açık kalınca</string>
+    <string name="now_first_after_off">İlk sonuç %1$s ekran kapalı süreden sonra</string>
+    <string name="now_with_low_confidence">%1$s\u00A0· %2$s</string>
+
+    <string name="now_top_drains">En çok tüketenler</string>
+    <string name="now_see_all">Tümünü gör</string>
+    <string name="now_everything_else">Diğer her şey</string>
+    <string name="now_shares_of_measured">Paylar ölçülen %1$s üzerinden.</string>
+    <string name="now_shares_of_modeled">Paylar Android’in modellediği %1$s üzerinden.</string>
+    <string name="now_last_discharge">Son pil kullanımından (bitiş: %1$s).</string>
+    <string name="now_drains_empty">Uygulama başına tüketim, Coulomb telefonun şarjdan çıkarıldığını gördükten sonra görünür.</string>
+    <string name="now_drains_collecting">Uygulama başına tüketim, şarjdan çıkardıktan sonraki ilk ölçümle görünür.</string>
+    <string name="now_open_privileges">Yetkileri aç</string>
+
+    <string name="now_live_current">Anlık akım</string>
+    <string name="now_live_caption">Son 10 dakika. Bu ekran açıkken güncellenir.</string>
+    <string name="now_live_waiting">İlk okuma bekleniyor.</string>
+    <string name="now_live_uncalibrated">Akım okuması kalibre ediliyor.</string>
+    <string name="now_live_summary">Son 10 dakikadaki akım: %1$s ile %2$s arası, şu an %3$s.</string>
+    <string name="now_minutes_ago">−%1$s\u00A0dk</string>
+    <string name="now_now">şimdi</string>
+    <string name="now_view_table">Tablo olarak gör</string>
+
+    <string name="now_scale_summary">Pil, %3$s önceki şarjdan çıkarmadan bu yana %1$s seviyesinden %2$s seviyesine indi.</string>
+    <string name="now_scale_summary_empty">Coulomb’un tahminine göre %1$s içinde, %2$s ile %3$s arasında biter.</string>
+    <string name="now_clock_range">%1$s–%2$s</string>
+    <string name="now_level_source">Pil yakıt göstergesi</string>
+    <string name="now_level_table">Şarjdan çıkalı pil seviyesi</string>
+    <string name="now_current_table">Akım, son 10 dakika</string>
+    <string name="now_column_time">Saat</string>
+    <string name="now_column_level">Seviye</string>
+    <string name="now_column_current">Akım</string>
+
+    <string name="now_error_title">Coulomb pil kayıtlarını okuyamadı</string>
+    <string name="now_error_body">Hiçbir şey kaybolmadı. Yeniden deneyin; sürerse uygulamayı yeniden başlatın.</string>
+    <string name="now_error_action">Yeniden dene</string>
+</resources>

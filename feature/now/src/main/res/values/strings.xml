@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPEC 10.2 Now. Sentence case, no exclamation marks (SPEC 9.3, 11). -->
+<resources>
+    <string name="now_loading">Loading</string>
+    <!-- %1$s: a range of durations, "5 h 50 min – 7 h 20 min". -->
+    <string name="now_time_left">%1$s left</string>
+    <string name="now_time_left_pending">Estimating time left</string>
+    <string name="now_state_discharging">Discharging</string>
+    <string name="now_state_discharging_plugged">Discharging while plugged in</string>
+    <string name="now_calibrating">Calibrating</string>
+    <string name="now_state_charging">Charging</string>
+    <string name="now_state_full">Full</string>
+    <string name="now_state_not_charging">Not charging</string>
+    <string name="now_state_with_current">%1$s\u00A0· %2$s</string>
+
+    <string name="now_verdict_with_app">Since unplugged %1$s ago, the battery fell %2$s; %3$s used %4$s of it.</string>
+    <string name="now_verdict">Since unplugged %1$s ago, the battery fell %2$s.</string>
+    <string name="now_verdict_flat">Unplugged %1$s ago; the level hasn’t changed yet.</string>
+
+    <string name="now_strip_heading">This session</string>
+    <string name="now_screen_on">Screen on</string>
+    <string name="now_screen_off">Screen off</string>
+    <string name="now_deep_sleep">Deep sleep</string>
+    <string name="now_deep_sleep_definition">The CPU suspended: the lowest-power state, reached with the screen off.</string>
+    <string name="now_term_action">Show meaning</string>
+    <string name="now_for">for %1$s</string>
+    <string name="now_of_screen_off">of screen-off time</string>
+    <string name="now_collecting">Collecting</string>
+    <string name="now_first_after_on">First result after %1$s with the screen on</string>
+    <string name="now_first_after_off">First result after %1$s of screen-off time</string>
+    <string name="now_with_low_confidence">%1$s\u00A0· %2$s</string>
+
+    <string name="now_top_drains">Top drains</string>
+    <string name="now_see_all">See all</string>
+    <string name="now_everything_else">Everything else</string>
+    <string name="now_shares_of_measured">Shares are of the %1$s measured.</string>
+    <string name="now_shares_of_modeled">Shares are of the %1$s that Android modeled.</string>
+    <string name="now_last_discharge">From the last discharge (ended %1$s).</string>
+    <string name="now_drains_empty">Per-app drain appears after Coulomb sees the phone unplugged.</string>
+    <string name="now_drains_collecting">Per-app drain appears with the first snapshot after the unplug.</string>
+    <string name="now_open_privileges">Open Privileges</string>
+
+    <string name="now_live_current">Live current</string>
+    <string name="now_live_caption">Last 10 minutes. Updates while this screen is open.</string>
+    <string name="now_live_waiting">Waiting for the first reading.</string>
+    <string name="now_live_uncalibrated">The current reading is being calibrated.</string>
+    <string name="now_live_summary">Current over the last 10 minutes: between %1$s and %2$s, %3$s now.</string>
+    <string name="now_minutes_ago">−%1$s\u00A0min</string>
+    <string name="now_now">now</string>
+    <string name="now_view_table">View as table</string>
+
+    <string name="now_scale_summary">The battery fell from %1$s to %2$s since the unplug %3$s ago.</string>
+    <string name="now_scale_summary_empty">Coulomb estimates it reaches empty in %1$s, between %2$s and %3$s.</string>
+    <string name="now_clock_range">%1$s–%2$s</string>
+    <string name="now_level_source">Battery fuel gauge</string>
+    <string name="now_level_table">Battery level since unplugged</string>
+    <string name="now_current_table">Current, last 10 minutes</string>
+    <string name="now_column_time">Time</string>
+    <string name="now_column_level">Level</string>
+    <string name="now_column_current">Current</string>
+
+    <string name="now_error_title">Coulomb couldn’t read its battery records</string>
+    <string name="now_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
+    <string name="now_error_action">Try again</string>
+</resources>

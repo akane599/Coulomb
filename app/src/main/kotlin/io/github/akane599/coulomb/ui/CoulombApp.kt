@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -53,6 +54,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.feature.now.NowScreen
 import io.github.akane599.coulomb.navigation.AppNavigator
 import io.github.akane599.coulomb.navigation.Destination
 import io.github.akane599.coulomb.navigation.Route
@@ -68,9 +70,10 @@ import io.github.akane599.coulomb.navigation.rememberAppNavigator
 fun CoulombApp(
     modifier: Modifier = Modifier,
     navigator: AppNavigator = rememberAppNavigator(),
+    screens: AppScreens = AppScreens.Default,
 ) {
     val rail = currentWindowWidth() != WindowWidth.Compact
-    val provider = remember(navigator) { appEntries(navigator) }
+    val provider = remember(navigator, screens) { appEntries(navigator, screens) }
     val entries =
         Destination.entries.associateWith { destination ->
             key(destination) {
@@ -149,9 +152,30 @@ private fun Navigation(
     }
 }
 
-private fun appEntries(navigator: AppNavigator): (NavKey) -> NavEntry<NavKey> =
+/** The built destination screens. Tests swap in stand-ins, so the shell renders without Hilt. */
+@Immutable
+class AppScreens(
+    val now: @Composable (AppNavigator) -> Unit,
+) {
+    companion object {
+        val Default: AppScreens =
+            AppScreens(
+                now = { navigator ->
+                    NowScreen(
+                        onSeeAllDrains = { navigator.select(Destination.Drain) },
+                        onOpenPrivileges = { navigator.open(Route.Privileges) },
+                    )
+                },
+            )
+    }
+}
+
+private fun appEntries(
+    navigator: AppNavigator,
+    screens: AppScreens,
+): (NavKey) -> NavEntry<NavKey> =
     entryProvider {
-        entry<Route.Now> { DestinationScreen(Destination.Now, navigator::open) { NotBuilt() } }
+        entry<Route.Now> { DestinationScreen(Destination.Now, navigator::open) { screens.now(navigator) } }
         entry<Route.Drain> { DestinationScreen(Destination.Drain, navigator::open) { NotBuilt() } }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { NotBuilt() } }
         entry<Route.Health> { DestinationScreen(Destination.Health, navigator::open) { NotBuilt() } }
