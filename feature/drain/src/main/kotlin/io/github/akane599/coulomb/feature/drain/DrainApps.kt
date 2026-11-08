@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.feature.drain
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
@@ -19,8 +20,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.DrainReport
@@ -34,6 +38,7 @@ import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.AppDrainRow
 import io.github.akane599.coulomb.core.ui.IconStandIn
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.rememberAppIcon
 
 /** One ranked row of the Apps lens: an app, or the power no app was charged for. */
 internal sealed interface AppsEntry {
@@ -129,8 +134,6 @@ internal fun canScale(drains: WindowDrains): Boolean {
 /** SPEC 6.5: the unattributed row shows whenever it exceeds 10% of measured. */
 private const val UNATTRIBUTED_ROW = 0.10
 
-private val IconSize = 40.dp
-
 /**
  * The Apps lens as list items: the switches and caption, then each row keyed by its UID, so a
  * reorder moves the rows instead of rewriting them (SPEC 11.6, 15).
@@ -152,7 +155,7 @@ internal fun LazyListScope.appsItems(
             if (view.empty) {
                 Text(
                     stringResource(R.string.drain_no_apps),
-                    Modifier.padding(top = CoulombSpacing.Space12),
+                    Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space12),
                     color = CoulombTheme.colors.textSecondary,
                     style = CoulombTheme.typography.body,
                 )
@@ -173,7 +176,10 @@ internal fun LazyListScope.appsItems(
     view.unattributedMah?.let { gap -> item(key = "gap", contentType = "gap") { Unattributed(gap, view, formats) } }
 }
 
-/** The remainder row, or once opened, each app it folds, then "Show fewer". */
+/**
+ * The remainder row, then once it is open each app it folds and "Show fewer". The row stays where
+ * it is and says whether it is open, so TalkBack's focus stays on it (an accordion).
+ */
 private fun LazyListScope.remainderItems(
     view: AppsView,
     provenance: Provenance,
@@ -181,15 +187,13 @@ private fun LazyListScope.remainderItems(
     actions: DrainActions,
     lists: ListState,
 ) {
-    val first = view.rows.isEmpty()
-    if (!lists.remainderOpen) {
-        item(key = "remainder", contentType = "row") {
-            Remainder(view, provenance, formats, first, expand = { lists.setRemainderOpen(true) }, rowMotion())
-        }
-        return
+    val open = lists.remainderOpen
+    item(key = "remainder", contentType = "row") {
+        Remainder(view, provenance, formats, view.rows.isEmpty(), open, toggle = { lists.setRemainderOpen(!open) }, rowMotion())
     }
-    itemsIndexed(view.rest, key = { _, app -> appKey(app.uid) }, contentType = { _, _ -> "row" }) { index, app ->
-        AppRow(app, view, first && index == 0, provenance, formats, actions, rowMotion())
+    if (!open) return
+    itemsIndexed(view.rest, key = { _, app -> appKey(app.uid) }, contentType = { _, _ -> "row" }) { _, app ->
+        AppRow(app, view, false, provenance, formats, actions, rowMotion())
     }
     if (view.hidden.isNotEmpty()) {
         item(key = "hidden", contentType = "row") {
@@ -203,10 +207,10 @@ private fun LazyListScope.remainderItems(
                 provenance = provenance,
                 share = share,
                 shareText = formats.share(share),
-                first = first && view.rest.isEmpty(),
+                first = false,
                 onClick = null,
                 modifier = rowMotion(),
-                standIn = IconStandIn.Remainder("+${formats.integer(view.hidden.size.toLong())}"),
+                standIn = IconStandIn.Group("+${formats.integer(view.hidden.size.toLong())}"),
             )
         }
     }
@@ -221,10 +225,10 @@ private fun LazyListScope.remainderItems(
                 provenance = provenance,
                 share = share,
                 shareText = formats.share(share),
-                first = first && view.rest.isEmpty() && view.hidden.isEmpty(),
+                first = false,
                 onClick = null,
                 modifier = rowMotion(),
-                standIn = IconStandIn.Remainder("+"),
+                standIn = IconStandIn.Group("+"),
             )
         }
     }
@@ -265,7 +269,14 @@ private fun Captions(
         }
     val captions = listOfNotNull(shares, if (report.lowerBound) stringResource(R.string.drain_lower_bound) else null)
     Column(Modifier.padding(top = CoulombSpacing.Space8)) {
-        captions.forEach { Text(it, color = CoulombTheme.colors.textSecondary, style = CoulombTheme.typography.caption) }
+        captions.forEach {
+            Text(
+                it,
+                Modifier.fillMaxWidth(),
+                color = CoulombTheme.colors.textSecondary,
+                style = CoulombTheme.typography.caption,
+            )
+        }
     }
 }
 
@@ -282,7 +293,7 @@ private fun AppRow(
     val share = view.share(app.mah)
     val open = actions.openApp
     AppDrainRow(
-        icon = appIcon(app.iconPackage, actions.icon),
+        icon = rememberAppIcon(app.iconPackage, actions.icon),
         name = formats.appName(app.label, app.uid),
         // A bare UID has no name to take an initial from.
         standIn = if (app.label == null && !app.isSystem) IconStandIn.Initial("#") else null,
@@ -330,19 +341,26 @@ private fun Remainder(
     provenance: Provenance,
     formats: Formats,
     first: Boolean,
-    expand: () -> Unit,
+    open: Boolean,
+    toggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val count = view.rest.size + view.hidden.size
     val share = view.share(view.remainderMah)
+    // The small apps have no count of their own, so the name says they are in the figure too.
     val name =
-        if (count > 0) pluralStringResource(R.plurals.drain_more_apps, count, count) else stringResource(R.string.drain_small_apps)
+        when {
+            count == 0 -> stringResource(R.string.drain_small_apps)
+            view.otherMah > 0 -> pluralStringResource(R.plurals.drain_more_apps_and_small, count, count)
+            else -> pluralStringResource(R.plurals.drain_more_apps, count, count)
+        }
     val detail =
         when {
             view.hidden.isNotEmpty() -> pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, view.hidden.size)
             view.rest.isNotEmpty() -> stringResource(R.string.drain_each_under, formats.share(ROW_SHARE))
             else -> null
         }
+    val state = stringResource(if (open) R.string.drain_state_expanded else R.string.drain_state_collapsed)
     AppDrainRow(
         icon = null,
         name = name,
@@ -352,8 +370,22 @@ private fun Remainder(
         share = share,
         shareText = formats.share(share),
         first = first,
-        onClick = expand,
-        modifier = modifier,
+        onClick = toggle,
+        modifier =
+            modifier.semantics {
+                stateDescription = state
+                if (open) {
+                    collapse {
+                        toggle()
+                        true
+                    }
+                } else {
+                    expand {
+                        toggle()
+                        true
+                    }
+                }
+            },
         standIn = IconStandIn.Remainder(if (count > 0) "+${formats.integer(count.toLong())}" else "+"),
     )
 }
@@ -386,20 +418,6 @@ private fun Unattributed(
             standIn = IconStandIn.Gap,
         )
     }
-}
-
-/** The app's icon from the shared cache, loaded once per package and size. */
-@Composable
-internal fun appIcon(
-    iconPackage: String?,
-    icon: suspend (String, Int) -> ImageBitmap?,
-): ImageBitmap? {
-    val sizePx = with(LocalDensity.current) { IconSize.roundToPx() }
-    val load by rememberUpdatedState(icon)
-    val bitmap by produceState<ImageBitmap?>(null, iconPackage, sizePx) {
-        value = iconPackage?.let { load(it, sizePx) }
-    }
-    return bitmap
 }
 
 /** A key no UID takes. */

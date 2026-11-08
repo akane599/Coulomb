@@ -19,12 +19,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +47,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombRadius
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -63,12 +67,25 @@ internal fun MoreSheet(
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
     if (picking) {
-        RangeDialog(chosen as? DrainSpan.Days, today, onChoose, onDismiss)
+        RangeDialog(
+            initial = chosen as? DrainSpan.Days,
+            today = today,
+            onChoose = {
+                onChoose(it)
+                onDismiss()
+            },
+            onDismiss = onDismiss,
+        )
         return
     }
     val colors = CoulombTheme.colors
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+    val scope = rememberCoroutineScope()
+    // The sheet slides away before it leaves the composition (SPEC 11.6: motion explains change).
+    val close: (then: () -> Unit) -> Unit = { then -> scope.launch { sheetState.hide() }.invokeOnCompletion { then() } }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         shape = RoundedCornerShape(topStart = CoulombRadius.Sheet, topEnd = CoulombRadius.Sheet),
         containerColor = colors.surfaceRaised,
         contentColor = colors.textPrimary,
@@ -85,7 +102,11 @@ internal fun MoreSheet(
                 name = stringResource(R.string.drain_last_night),
                 detail = stringResource(R.string.drain_last_night_detail),
                 chosen = chosen == DrainSpan.LastNight,
-                onClick = { onChoose(DrainSpan.LastNight) },
+                onClick = {
+                    // The new window starts loading while the sheet slides away.
+                    onChoose(DrainSpan.LastNight)
+                    close(onDismiss)
+                },
             )
             SheetChoice(
                 name = stringResource(R.string.drain_custom_range),
@@ -96,7 +117,7 @@ internal fun MoreSheet(
                         DrainSpan.CUSTOM_DAYS.toInt(),
                     ),
                 chosen = chosen is DrainSpan.Days,
-                onClick = { picking = true },
+                onClick = { close { picking = true } },
             )
         }
     }

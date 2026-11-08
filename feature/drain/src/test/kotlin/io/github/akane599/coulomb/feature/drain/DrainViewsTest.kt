@@ -4,11 +4,13 @@
 package io.github.akane599.coulomb.feature.drain
 
 import androidx.compose.ui.graphics.Color
+import io.github.akane599.coulomb.core.analytics.WakeSubsystem
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.LevelEstimate
 import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.data.WakeCoverage
+import io.github.akane599.coulomb.core.data.WakeEntry
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
@@ -167,6 +169,71 @@ class DrainViewsTest {
         assertTrue(groups.getValue(WakeGroup.REASONS).entries.isEmpty())
         assertEquals(Coverage.NONE, groups.getValue(WakeGroup.REASONS).coverage)
     }
+
+    @Test
+    fun wakeBarsAreTimeOverTheWindowOrAShareOfTheGroupsCount() {
+        val groups = wakeGroups(report()).associateBy { it.group }
+        val partial = groups.getValue(WakeGroup.PARTIAL)
+        val held = partial.share(durationMs = 2 * HOUR)
+        // 52 minutes of a two-hour window; a row with no time held in a timed group gets an empty bar.
+        assertEquals(52.0 / 120, held(partial.entries.first { it.tag.contains("SyncJob") })!!, 1e-9)
+        assertEquals(0.0, held(partial.entries.first().copy(totalMs = 0))!!, 1e-9)
+        // Time held beyond the window's length fills the bar and no more.
+        assertEquals(1.0, partial.share(durationMs = MINUTE)(partial.entries.first())!!, 1e-9)
+        assertNull(partial.share(durationMs = 0)(partial.entries.first()))
+        // Resume causes keep no time: each is its share of the group's count.
+        val reasons = WakeGroupView(WakeGroup.REASONS, listOf(cause("a", 300), cause("b", 100)), Coverage.WHOLE)
+        assertEquals(listOf(0.75, 0.25), reasons.entries.map { reasons.share(2 * HOUR)(it)!! })
+    }
+
+    @Test
+    fun kernelRecordsSitUnderTheirSubsystemsWhichKeepTheirOrderWhenOpened() {
+        val records =
+            listOf("PowerManagerService.WakeLocks", "rmnet_ctl", "qcom_rx_wakelock", "IPA_WS", "event2", "alarmtimer", "radio-interface")
+        val kernel =
+            WakeGroupView(
+                WakeGroup.KERNEL,
+                records.mapIndexed { rank, tag -> WakeEntry(WakeKind.KERNEL, null, null, null, tag, (100 - rank) * MINUTE, 1, null, null) },
+                Coverage.WHOLE,
+            )
+
+        fun outline(open: Boolean) = kernel.sections(open).map { s -> s.subsystem to s.entries.map { it.tag } }
+        assertEquals(
+            listOf(
+                WakeSubsystem.ANDROID to listOf("PowerManagerService.WakeLocks"),
+                WakeSubsystem.MOBILE_NETWORK to listOf("rmnet_ctl", "IPA_WS"),
+                WakeSubsystem.OTHER to listOf("qcom_rx_wakelock"),
+                WakeSubsystem.INPUT to listOf("event2"),
+            ),
+            outline(open = false),
+        )
+        // Opening adds rows to the sections and a new section only at the end.
+        assertEquals(
+            listOf(
+                WakeSubsystem.ANDROID to listOf("PowerManagerService.WakeLocks"),
+                WakeSubsystem.MOBILE_NETWORK to listOf("rmnet_ctl", "IPA_WS", "radio-interface"),
+                WakeSubsystem.OTHER to listOf("qcom_rx_wakelock"),
+                WakeSubsystem.INPUT to listOf("event2"),
+                WakeSubsystem.TIMERS to listOf("alarmtimer"),
+            ),
+            outline(open = true),
+        )
+        // Other groups have one section with no heading.
+        val partial = wakeGroups(report()).first { it.group == WakeGroup.PARTIAL }
+        assertEquals(listOf<WakeSubsystem?>(null), partial.sections(open = true).map { it.subsystem })
+        assertEquals(
+            SHOWN,
+            partial
+                .sections(open = false)
+                .single()
+                .entries.size,
+        )
+    }
+
+    private fun cause(
+        tag: String,
+        count: Long,
+    ) = WakeEntry(WakeKind.RESUME_CAUSE, null, null, null, tag, 0, count, null, null)
 
     @Test
     fun neutralComponentsShareOneSegmentAtTheBarsEnd() {

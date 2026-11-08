@@ -28,6 +28,7 @@
 
     <!-- %1$s: a duration; %2$s and %3$s: battery levels. -->
     <string name="drain_note_levels">%1$s, from %2$s to %3$s</string>
+    <string name="drain_as_of">as of %1$s</string>
     <string name="drain_note_charged">It charged in between, so the total counts only the time on battery.</string>
 
     <string name="drain_measured_counter">Measured by the battery’s charge counter</string>
@@ -42,6 +43,7 @@
         <item quantity="other">Measured by the battery’s charge counter, except %1$d stretches estimated from the level change</item>
     </plurals>
     <string name="drain_reconcile_estimated">Android’s power model counts %1$s of it, so %2$s is unattributed.</string>
+    <string name="drain_reconcile_unknown">Android’s power model counts %1$s of it. The estimate is too rough to say how much is unattributed.</string>
     <string name="drain_up_to">up to %1$s</string>
     <string name="drain_modeled">Modeled %1$s</string>
     <string name="drain_unattributed">Unattributed %1$s</string>
@@ -63,6 +65,12 @@
         <item quantity="one">%1$d more app</item>
         <item quantity="other">%1$d more apps</item>
     </plurals>
+    <plurals name="drain_more_apps_and_small">
+        <item quantity="one">%1$d more app and small ones</item>
+        <item quantity="other">%1$d more apps and small ones</item>
+    </plurals>
+    <string name="drain_state_expanded">Expanded</string>
+    <string name="drain_state_collapsed">Collapsed</string>
     <string name="drain_small_apps">Small apps</string>
     <string name="drain_each_under">Each under %1$s</string>
     <plurals name="drain_hidden_system">
@@ -80,6 +88,16 @@
     <string name="drain_components_caption">The device’s power by component, apps included, as Android models it. Shares are of the %1$s modeled.</string>
     <string name="drain_components_coarse">Android names only some components for this window; the rest is under Other.</string>
     <string name="drain_components_empty">No component breakdown for this window.</string>
+    <string name="drain_view_table">View as table</string>
+    <string name="drain_table_reconcile">Measured and modeled</string>
+    <string name="drain_table_components">Power by component</string>
+    <string name="drain_column_part">Part</string>
+    <string name="drain_column_component">Component</string>
+    <string name="drain_column_energy">Energy</string>
+    <string name="drain_column_share">Share</string>
+    <string name="drain_column_share_measured">Share of measured</string>
+    <string name="drain_row_measured">Measured</string>
+    <string name="drain_row_modeled">Modeled by Android</string>
     <string name="drain_components_chart">Power by component: %1$s</string>
     <string name="drain_component_screen">Screen</string>
     <string name="drain_component_cpu">CPU</string>
@@ -101,7 +119,7 @@
     <string name="drain_component_custom">Device-specific</string>
     <string name="drain_component_other">Other</string>
 
-    <string name="drain_wakeups_caption">Ranked by time held, or by count where no time is kept. Short wakeups cost more than the power model counts.</string>
+    <string name="drain_wakeups_caption">Ranked by time held, or by count where no time is kept. Bars show the time held as a share of the window, or a share of the group’s count. Short wakeups cost more than the power model counts.</string>
     <string name="drain_wake_partial">Partial wakelocks</string>
     <string name="drain_wake_kernel">Kernel wakelocks</string>
     <string name="drain_wake_reasons">Wakeup reasons</string>
@@ -139,4 +157,36 @@
     <string name="drain_wake_kernel_definition">A hold by a driver that keeps the phone from going into deep sleep.</string>
     <string name="drain_wake_reasons_definition">The interrupt that brought the phone out of deep sleep.</string>
     <string name="drain_term_action">Show meaning</string>
+
+    <!-- Kernel wakelock subsystems (SPEC 10.3), from WakeDictionary. -->
+    <string name="drain_subsystem_mobile_network">Mobile network</string>
+    <string name="drain_subsystem_wifi">Wi-Fi</string>
+    <string name="drain_subsystem_bluetooth">Bluetooth</string>
+    <string name="drain_subsystem_gps">GPS</string>
+    <string name="drain_subsystem_nfc">NFC</string>
+    <string name="drain_subsystem_input">Input devices</string>
+    <string name="drain_subsystem_fingerprint">Fingerprint sensor</string>
+    <string name="drain_subsystem_sensors">Sensors</string>
+    <string name="drain_subsystem_battery">Battery and charging</string>
+    <string name="drain_subsystem_audio">Audio</string>
+    <string name="drain_subsystem_camera">Camera</string>
+    <string name="drain_subsystem_timers">Timers and alarms</string>
+    <string name="drain_subsystem_android">Android system</string>
+    <string name="drain_subsystem_other">Other</string>
+    <!-- The plain-language dictionary (SPEC 10.3); each line's source is cited in WakeDictionary. -->
+    <string name="drain_meaning_android_wakelocks">Android holds this while it honours a wakelock, an app’s or its own. Partial wakelocks shows whose.</string>
+    <string name="drain_meaning_android_display">Android holds this while the screen is on or changing state.</string>
+    <string name="drain_meaning_android_broadcasts">Android holds this while it tells apps the screen turned on or off, and while it plays the charging sound or animation.</string>
+    <string name="drain_meaning_android_booting">Android holds this until the phone has finished starting.</string>
+    <string name="drain_meaning_sensor_service">Android’s sensor service, while it delivers readings from a sensor that wakes the phone.</string>
+    <string name="drain_meaning_alarm_timer">The kernel’s alarm timer. When an alarm is due within two seconds, it keeps the phone awake instead of letting it sleep.</string>
+    <string name="drain_meaning_wakeup_timer">A timer a process watches, held from when it fires until that process picks it up.</string>
+    <string name="drain_meaning_input_device">An input device, such as the touchscreen or a button, held from its input until Android picks it up.</string>
+    <string name="drain_meaning_alarm_delivery">Android’s alarm manager, while it delivers this app’s alarms.</string>
+    <string name="drain_meaning_job">Android’s job scheduler, while it runs this app’s background work.</string>
+    <string name="drain_meaning_sync">Android’s sync manager, while it syncs this app’s account data.</string>
+    <string name="drain_meaning_sleep_blocked">The phone tried to sleep and stopped, because the sources named were still keeping it awake.</string>
+    <string name="drain_meaning_sleep_interrupted">A wakeup event arrived as the phone tried to sleep, so it stopped. The source named was the last one active.</string>
+    <string name="drain_meaning_sleep_aborted">The phone tried to sleep and stopped, for the reason the kernel gives.</string>
+    <string name="drain_meaning_interrupt">A hardware interrupt woke the phone from deep sleep; the name is the one its driver gave it.</string>
 </resources>

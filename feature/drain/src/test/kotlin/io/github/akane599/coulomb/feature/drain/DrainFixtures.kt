@@ -85,10 +85,10 @@ internal fun wakes(): List<WakeEntry> =
         WakeEntry(WakeKind.PARTIAL, 10_515, "Northwind Mail", null, "*job*/mail.northwind/.Fetch", 4 * MINUTE, 38, 0.7, null),
         WakeEntry(WakeKind.PARTIAL, 10_241, "Wayline", null, "LocationUpdates", 24 * MINUTE, 6, 0.0, null),
         WakeEntry(WakeKind.PARTIAL, 10_310, "Tally", null, "WorkManager", 40_000, 9, null, null),
-        WakeEntry(WakeKind.KERNEL, null, null, null, "qcom_rx_wakelock", 41 * MINUTE, 2_210, null, null),
-        WakeEntry(WakeKind.KERNEL, null, null, null, "PowerManagerService.WakeLocks", 2 * HOUR, 905, null, null),
+        WakeEntry(WakeKind.KERNEL, null, null, null, "qcom_rx_wakelock", 41 * MINUTE, 2_210, 0.9, null),
+        WakeEntry(WakeKind.KERNEL, null, null, null, "PowerManagerService.WakeLocks", 2 * HOUR, 905, 0.6, null),
         WakeEntry(WakeKind.WAKEUP_SOURCE, null, null, null, "qcom_rx_wakelock", 41 * MINUTE, 2_210, null, 812),
-        WakeEntry(WakeKind.WAKEUP_REASON, null, null, null, "Abort:Pending Wakeup Sources: ipa_ws", 3 * MINUTE, 140, null, null),
+        WakeEntry(WakeKind.WAKEUP_REASON, null, null, null, "Abort: Pending Wakeup Sources: ipa_ws", 3 * MINUTE, 140, null, null),
         WakeEntry(WakeKind.RESUME_CAUSE, null, null, null, "200 qcom,glink-smem-native-xprt-modem", 0, 1_120, null, null),
     )
 

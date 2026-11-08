@@ -29,7 +29,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.data.DrainReport
@@ -46,6 +45,7 @@ import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
+import java.time.LocalDate
 import java.time.ZoneId
 
 /** The window selector (DESIGN.md): three presets and More, which names a sheet window while one is chosen. */
@@ -89,6 +89,7 @@ internal fun WindowNote(
     report: DrainReport,
     formats: Formats,
     zone: ZoneId,
+    today: LocalDate,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -107,12 +108,14 @@ internal fun WindowNote(
             val clock = formats.range(formats.clock(drains.fromWallMs, zone, drains.toWallMs), formats.clock(drains.toWallMs, zone))
             stringResource(R.string.drain_detail_separator, clock, levels)
         } else {
-            levels
+            // The window ends at the latest heavy snapshot, which may be a while ago: say when.
+            val end = formats.clock(drains.toWallMs, zone, today.atStartOfDay(zone).toInstant().toEpochMilli())
+            stringResource(R.string.drain_detail_separator, levels, stringResource(R.string.drain_as_of, end))
         }
     Column(Modifier.padding(top = CoulombSpacing.Space8)) {
-        Text(note, color = colors.textSecondary, style = type.caption)
+        Text(note, Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.caption)
         if (report.chargedInSpan) {
-            Text(stringResource(R.string.drain_note_charged), color = colors.textSecondary, style = type.caption)
+            Text(stringResource(R.string.drain_note_charged), Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.caption)
         }
     }
 }
@@ -126,6 +129,7 @@ internal fun WindowNote(
 internal fun Total(
     report: DrainReport,
     formats: Formats,
+    onViewTable: () -> Unit,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -155,11 +159,12 @@ internal fun Total(
                     )
                 }
                 // The mark sits on the numeral's baseline, as the level's on Now.
-                Box(Modifier.alignBy { it.measuredHeight }.padding(start = MarkGap)) { ProvenanceMark(provenance) }
+                // The caption under the figure names its provenance in words, so TalkBack reads it once.
+                Box(Modifier.alignBy { it.measuredHeight }.padding(start = MarkGap).clearAndSetSemantics {}) { ProvenanceMark(provenance) }
             }
-            Text(totalCaption(measured, provenance, estimate), color = colors.textSecondary, style = type.body)
+            Text(totalCaption(measured, provenance, estimate), Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.body)
         }
-        if (measured != null && drains.modeledMah > 0) Reconcile(drains, measured, formats)
+        if (measured != null && drains.modeledMah > 0) Reconcile(drains, measured, formats, onViewTable)
     }
 }
 
@@ -190,6 +195,7 @@ private fun Reconcile(
     drains: WindowDrains,
     measured: Double,
     formats: Formats,
+    onViewTable: () -> Unit,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -214,12 +220,17 @@ private fun Reconcile(
                 stringResource(R.string.drain_model_over, formats.mah(modeled).joined())
             }
 
+            // An estimate with no known error has no gap to show either (ADR-0036 §17, §30).
+            drains.estimated -> {
+                stringResource(R.string.drain_reconcile_unknown, formats.mah(modeled).joined())
+            }
+
             else -> {
                 null
             }
         }
     if (sentence != null) {
-        Text(sentence, Modifier.padding(top = CoulombSpacing.Space16), color = colors.textSecondary, style = type.caption)
+        Text(sentence, Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space16), color = colors.textSecondary, style = type.caption)
         return
     }
     val gap = drains.unattributedMah
@@ -235,7 +246,12 @@ private fun Reconcile(
         ReconcileBar(
             modeledFraction = (modeled / measured).toFloat(),
             solid = colors.textSecondary,
-            modifier = Modifier.fillMaxWidth().height(BarBox).clearAndSetSemantics { contentDescription = description },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(
+                        BarBox,
+                    ).chartSemantics(description, stringResource(R.string.drain_view_table), onViewTable),
         )
         FlowRow(
             Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
@@ -252,7 +268,7 @@ private fun Reconcile(
             MarkedText(
                 stringResource(R.string.drain_unattributed, formats.mah(gap).joined()),
                 Provenance.DERIVED,
-                type.caption.copy(fontWeight = FontWeight.SemiBold),
+                type.captionEmphasis,
                 colors.textPrimary,
             )
         }

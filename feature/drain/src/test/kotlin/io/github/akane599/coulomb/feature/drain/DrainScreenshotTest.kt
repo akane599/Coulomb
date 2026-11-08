@@ -8,13 +8,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.DeviceConfigurationOverride
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import androidx.compose.ui.test.then
 import androidx.compose.ui.unit.LayoutDirection
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -97,7 +102,7 @@ class DrainScreenshotTest {
     @Config(qualifiers = "w412dp-h2600dp-xhdpi")
     fun remainderOpen() {
         shoot("remainder-open", ready(includeSystem = false), capture = false)
-        compose.onNodeWithText("6 more apps").performClick()
+        compose.onNodeWithText("6 more apps", substring = true).performClick()
         compose.onRoot().captureRoboImage("src/test/screenshots/drain-remainder-open.png")
     }
 
@@ -200,6 +205,80 @@ class DrainScreenshotTest {
         captureScreenRoboImage("src/test/screenshots/drain-sheet.png")
     }
 
+    /** The reconcile bar's "View as table" action opens its table in a sheet (ADR-0036 §25). */
+    @OptIn(ExperimentalRoborazziApi::class, ExperimentalTestApi::class)
+    @Test
+    fun reconcileTable() {
+        shoot("reconcile-table", ready(), capture = false)
+        compose.onAllNodes(hasViewAsTable)[0].performCustomAccessibilityActionWithLabel("View as table")
+        compose.waitForIdle()
+        captureScreenRoboImage("src/test/screenshots/drain-reconcile-table.png")
+    }
+
+    @OptIn(ExperimentalRoborazziApi::class, ExperimentalTestApi::class)
+    @Test
+    fun componentsTable() {
+        shoot("components-table", ready(report(components = fullComponents())), lens = Lens.COMPONENTS, capture = false)
+        // The reconcile bar comes first; the component bar second.
+        compose.onAllNodes(hasViewAsTable)[1].performCustomAccessibilityActionWithLabel("View as table")
+        compose.waitForIdle()
+        captureScreenRoboImage("src/test/screenshots/drain-components-table.png")
+    }
+
+    /** The custom range picker, in a past month so that Material's ring for today never shows. */
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun rangeDialog() {
+        shoot("range", ready(), today = LocalDate.of(2025, 6, 18), capture = false)
+        compose.onNodeWithText("More").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Custom range").performClick()
+        compose.waitForIdle()
+        captureScreenRoboImage("src/test/screenshots/drain-range.png")
+    }
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h1600dp-xhdpi")
+    fun componentsTurkish() = shoot("components-tr", ready(report(components = fullComponents())), lens = Lens.COMPONENTS)
+
+    @Test
+    @Config(qualifiers = "w412dp-h2000dp-xhdpi")
+    fun componentsText130() =
+        shoot("components-130", ready(report(components = fullComponents())), lens = Lens.COMPONENTS, fontScale = 1.3f)
+
+    @Test
+    @Config(qualifiers = "w412dp-h1600dp-night-xhdpi")
+    fun componentsBlack() =
+        shoot("components-black", ready(report(components = fullComponents())), lens = Lens.COMPONENTS, dark = true, black = true)
+
+    @Test
+    @Config(qualifiers = "w1000dp-h1400dp-xhdpi")
+    fun componentsExpanded() = shoot("components-expanded", ready(report(components = fullComponents())), lens = Lens.COMPONENTS)
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h2600dp-xhdpi")
+    fun wakeupsTurkish() = shoot("wakeups-tr", ready(), lens = Lens.WAKEUPS)
+
+    @Test
+    @Config(qualifiers = "w412dp-h3200dp-xhdpi")
+    fun wakeupsText130() = shoot("wakeups-130", ready(), lens = Lens.WAKEUPS, fontScale = 1.3f)
+
+    @Test
+    @Config(qualifiers = "w412dp-h2600dp-night-xhdpi")
+    fun wakeupsBlack() = shoot("wakeups-black", ready(), lens = Lens.WAKEUPS, dark = true, black = true)
+
+    @Test
+    @Config(qualifiers = "w1000dp-h1800dp-xhdpi")
+    fun wakeupsExpanded() = shoot("wakeups-expanded", ready(), lens = Lens.WAKEUPS)
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h4600dp-xhdpi")
+    fun wakeupsTurkishLargeText() = shoot("wakeups-tr-200", ready(), lens = Lens.WAKEUPS, fontScale = 2f)
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h4000dp-xhdpi")
+    fun appsTurkishLargeText() = shoot("apps-tr-200", ready(), fontScale = 2f)
+
     @Suppress("LongParameterList") // Test variants.
     private fun shoot(
         name: String,
@@ -209,6 +288,7 @@ class DrainScreenshotTest {
         fontScale: Float = 1f,
         rtl: Boolean = false,
         lens: Lens = Lens.APPS,
+        today: LocalDate = LocalDate.of(2026, 11, 8),
         capture: Boolean = true,
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
@@ -223,7 +303,7 @@ class DrainScreenshotTest {
                             state = state,
                             actions = NoActions,
                             zone = ZoneOffset.UTC,
-                            today = LocalDate.of(2026, 11, 8),
+                            today = today,
                             initialLens = lens,
                         )
                     }
@@ -235,10 +315,28 @@ class DrainScreenshotTest {
 }
 
 private const val COMPACT_SIZE = "w412dp-h915dp"
+
+/** A node that offers "View as table" to TalkBack (ADR-0023 §5). */
+private val hasViewAsTable =
+    SemanticsMatcher("offers View as table") { node ->
+        node.config
+            .getOrNull(SemanticsActions.CustomActions)
+            .orEmpty()
+            .any { it.label == "View as table" }
+    }
 private const val COMPACT = "$COMPACT_SIZE-xhdpi"
 
 private val NoActions =
-    DrainActions(choose = {}, includeSystem = {}, scale = {}, retry = {}, openApp = {}, openPrivileges = {}, icon = { _, _ -> null })
+    DrainActions(
+        choose = {},
+        refresh = {},
+        includeSystem = {},
+        scale = {},
+        retry = {},
+        openApp = {},
+        openPrivileges = {},
+        icon = { _, _ -> null },
+    )
 
 /** Last night: 23:40 to 07:10 with the screen off, lab-sized figures. */
 private fun lastNightReport() =

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -54,24 +55,31 @@ import io.github.akane599.coulomb.core.ui.format.Formats
 internal fun ComponentsLens(
     report: DrainReport,
     formats: Formats,
+    onViewTable: () -> Unit,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     val components = report.components
     Column(Modifier.padding(top = CoulombSpacing.Space16)) {
         if (components.isEmpty()) {
-            Text(stringResource(R.string.drain_components_empty), color = colors.textSecondary, style = type.body)
+            Text(stringResource(R.string.drain_components_empty), Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.body)
             return@Column
         }
         val total = components.sumOf { it.mah }
         // DESIGN.md: the caption names the denominator of every share, here Android's model.
         Text(
             stringResource(R.string.drain_components_caption, formats.mah(total).joined()),
+            Modifier.fillMaxWidth(),
             color = colors.textSecondary,
             style = type.caption,
         )
         if (components.any { it.component == PowerComponent.OTHER }) {
-            Text(stringResource(R.string.drain_components_coarse), color = colors.textSecondary, style = type.caption)
+            Text(
+                stringResource(R.string.drain_components_coarse),
+                Modifier.fillMaxWidth(),
+                color = colors.textSecondary,
+                style = type.caption,
+            )
         }
         val names = components.map { stringResource(it.component.label) }
         val description =
@@ -79,7 +87,7 @@ internal fun ComponentsLens(
                 R.string.drain_components_chart,
                 components.indices.joinToString(", ") { "${names[it]} ${formats.share(components[it].mah / total)}" },
             )
-        val segments = barSegments(components, { colors.hue(it) }, colors.dataOther)
+        val segments = remember(components, colors) { barSegments(components, { colors.hue(it) }, colors.dataOther) }
         StackedBar(
             segments,
             total,
@@ -87,7 +95,7 @@ internal fun ComponentsLens(
                 .padding(top = CoulombSpacing.Space16)
                 .fillMaxWidth()
                 .height(BarBox)
-                .clearAndSetSemantics { contentDescription = description },
+                .chartSemantics(description, stringResource(R.string.drain_view_table), onViewTable),
         )
         Column(Modifier.padding(top = CoulombSpacing.Space16)) {
             components.forEachIndexed { index, part ->
@@ -103,12 +111,13 @@ internal fun barSegments(
     hue: (PowerComponent) -> Color,
     neutral: Color,
 ): List<Pair<Color, Double>> {
-    val (hued, rest) = components.partition { hue(it.component) != neutral }
+    // Only segments with energy: the bar draws each one, with a gap between.
+    val (hued, rest) = components.filter { it.mah > 0 }.partition { hue(it.component) != neutral }
     return hued.map { hue(it.component) to it.mah } +
         listOfNotNull(rest.sumOf { it.mah }.takeIf { it > 0 }?.let { neutral to it })
 }
 
-/** A 14 dp bar of [segments] from the start edge, 2 dp apart with 2 dp ends, mirrored in RTL. */
+/** A 14 dp bar of [segments] (each above zero) from the start edge, 2 dp apart with 2 dp ends, mirrored in RTL. */
 @Composable
 private fun StackedBar(
     segments: List<Pair<Color, Double>>,
@@ -120,10 +129,9 @@ private fun StackedBar(
         val top = (size.height - height) / 2
         val gap = SegmentGap.toPx()
         val corner = CornerRadius(BarEnd.toPx())
-        val drawn = segments.filter { it.second > 0 }
-        val room = size.width - gap * (drawn.size - 1).coerceAtLeast(0)
+        val room = size.width - gap * (segments.size - 1).coerceAtLeast(0)
         var start = 0f
-        drawn.forEach { (color, mah) ->
+        segments.forEach { (color, mah) ->
             val width = (room * (mah / total)).toFloat()
             val x = if (layoutDirection == LayoutDirection.Rtl) size.width - start - width else start
             drawRoundRect(color, Offset(x, top), Size(width, height), corner)

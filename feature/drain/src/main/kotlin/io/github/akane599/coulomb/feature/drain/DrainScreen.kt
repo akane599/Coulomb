@@ -22,7 +22,9 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +55,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
@@ -73,26 +76,28 @@ public fun DrainScreen(
     viewModel: DrainViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    DrainContent(
-        state = state,
-        actions =
+    val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val actions =
+        remember(viewModel, onOpenApp, onOpenPrivileges) {
             DrainActions(
                 choose = viewModel::choose,
+                refresh = viewModel::refresh,
                 includeSystem = viewModel::includeSystem,
                 scale = viewModel::scale,
                 retry = viewModel::retry,
                 openApp = onOpenApp,
                 openPrivileges = onOpenPrivileges,
                 icon = viewModel::icon,
-            ),
-        modifier = modifier,
-    )
+            )
+        }
+    DrainContent(state = state, actions = actions, modifier = modifier, refreshing = refreshing)
 }
 
 /** What Drain's controls do; the screen itself holds no logic. */
 @Suppress("LongParameterList") // One callback per control.
 internal class DrainActions(
     val choose: (DrainSpan) -> Unit,
+    val refresh: () -> Unit,
     val includeSystem: (Boolean) -> Unit,
     val scale: (Boolean) -> Unit,
     val retry: () -> Unit,
@@ -134,6 +139,7 @@ internal fun DrainContent(
     zone: ZoneId = ZoneId.systemDefault(),
     today: LocalDate = LocalDate.now(zone),
     initialLens: Lens = Lens.APPS,
+    refreshing: Boolean = false,
 ) {
     val gutter = currentGutter()
     var sheet by rememberSaveable { mutableStateOf(false) }
@@ -148,7 +154,10 @@ internal fun DrainContent(
 
         is DrainUiState.Ready -> {
             FadeInOnce(modifier.fillMaxSize()) {
-                ReadyContent(state, actions, zone, initialLens, onMore = { sheet = true })
+                // As on Now: a pull asks for a heavy snapshot, and the report follows (SPEC 7.2).
+                PullToRefreshBox(isRefreshing = refreshing, onRefresh = actions.refresh, modifier = Modifier.fillMaxSize()) {
+                    ReadyContent(state, actions, zone, today, initialLens, onMore = { sheet = true })
+                }
             }
         }
     }
@@ -157,10 +166,7 @@ internal fun DrainContent(
         MoreSheet(
             chosen = ready.chosen,
             today = today,
-            onChoose = {
-                actions.choose(it)
-                sheet = false
-            },
+            onChoose = actions.choose,
             onDismiss = { sheet = false },
         )
     }
@@ -172,10 +178,12 @@ internal fun DrainContent(
  * the second, so a landscape phone shows rows at once (ADR-0036 §23).
  */
 @Composable
+@Suppress("LongParameterList") // The screen's state, its controls and its clock.
 private fun ReadyContent(
     state: DrainUiState.Ready,
     actions: DrainActions,
     zone: ZoneId,
+    today: LocalDate,
     initialLens: Lens,
     onMore: () -> Unit,
 ) {
@@ -186,7 +194,12 @@ private fun ReadyContent(
     var remainderOpen by rememberSaveable(span) { mutableStateOf(false) }
     var openGroups by rememberSaveable(span) { mutableIntStateOf(0) }
     val lists = ListState(remainderOpen, { remainderOpen = it }, openGroups, { bit -> openGroups = openGroups xor (1 shl bit) })
+    // Built once per report and choice, not on every pass of the list (SPEC 16.4).
     val apps = state.report?.let { remember(it, state.includeSystem, state.scaled) { appsView(it, state.includeSystem, state.scaled) } }
+    val wakes = state.report?.let { remember(it) { wakeGroups(it) } }
+    val views = if (apps != null && wakes != null) LensViews(apps, wakes) else null
+    var table by rememberSaveable { mutableStateOf<DrainTable?>(null) }
+    val viewTable: (DrainTable) -> Unit = { table = it }
     val bottom = CoulombSpacing.Space48
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= MinColumnWidth * 2
@@ -195,10 +208,10 @@ private fun ReadyContent(
                 item(key = "summary", contentType = "summary") {
                     Column {
                         Controls(state, formats, actions, onMore)
-                        Summary(state, formats, zone, lens, actions)
+                        Summary(state, formats, zone, today, lens, actions, viewTable)
                     }
                 }
-                lensItems(state, apps, lens, { lens = it }, formats, actions, lists)
+                lensItems(state, views, lens, { lens = it }, formats, actions, lists, viewTable)
             }
         } else {
             // The selector and an issue concern both columns, so they span them and stay in place.
@@ -212,15 +225,18 @@ private fun ReadyContent(
                             .verticalScroll(rememberScrollState())
                             .padding(bottom = bottom),
                     ) {
-                        Summary(state, formats, zone, lens, actions)
+                        Summary(state, formats, zone, today, lens, actions, viewTable)
                     }
                     LazyColumn(Modifier.weight(LENS_WEIGHT).fillMaxHeight(), contentPadding = PaddingValues(bottom = bottom)) {
-                        lensItems(state, apps, lens, { lens = it }, formats, actions, lists, besideSummary = true)
+                        lensItems(state, views, lens, { lens = it }, formats, actions, lists, viewTable, besideSummary = true)
                     }
                 }
             }
         }
     }
+    val open = table
+    val report = state.report
+    if (open != null && report != null) DataTableSheet(tableOf(open, report, formats), onDismiss = { table = null })
 }
 
 /** The window selector, and a privilege issue under it. */
@@ -241,12 +257,15 @@ private fun Controls(
  * under the reconcile bar, whose gap it spreads over the apps (ADR-0036 §24).
  */
 @Composable
+@Suppress("LongParameterList") // The window's state, its clock and the lens it serves.
 private fun Summary(
     state: DrainUiState.Ready,
     formats: Formats,
     zone: ZoneId,
+    today: LocalDate,
     lens: Lens,
     actions: DrainActions,
+    viewTable: (DrainTable) -> Unit,
 ) = Column {
     val report = state.report
     when {
@@ -261,8 +280,8 @@ private fun Summary(
         }
 
         else -> {
-            WindowNote(report, formats, zone)
-            Total(report, formats)
+            WindowNote(report, formats, zone, today)
+            Total(report, formats, onViewTable = { viewTable(DrainTable.RECONCILE) })
             if (lens == Lens.APPS && canScale(report.drains)) {
                 CoulombSwitchRow(
                     stringResource(R.string.drain_scale),
@@ -279,12 +298,13 @@ private fun Summary(
 @Suppress("LongParameterList") // One list's inputs.
 private fun LazyListScope.lensItems(
     state: DrainUiState.Ready,
-    apps: AppsView?,
+    views: LensViews?,
     lens: Lens,
     choose: (Lens) -> Unit,
     formats: Formats,
     actions: DrainActions,
     lists: ListState,
+    viewTable: (DrainTable) -> Unit,
     besideSummary: Boolean = false,
 ) {
     val report = state.report
@@ -292,14 +312,31 @@ private fun LazyListScope.lensItems(
         item(key = "lens-skeleton", contentType = "skeleton") { LensSkeleton(besideSummary) }
         return
     }
-    if (report == null || apps == null) return
+    if (report == null || views == null) return
     item(key = "tabs", contentType = "tabs") { LensTabs(lens, choose, besideSummary) }
     when (lens) {
-        Lens.APPS -> appsItems(state, report, apps, formats, actions, lists)
-        Lens.COMPONENTS -> item(key = "components", contentType = "components") { ComponentsLens(report, formats) }
-        Lens.WAKEUPS -> wakeupItems(report, formats, lists)
+        Lens.APPS -> {
+            appsItems(state, report, views.apps, formats, actions, lists)
+        }
+
+        Lens.COMPONENTS -> {
+            item(key = "components", contentType = "components") {
+                ComponentsLens(report, formats, onViewTable = { viewTable(DrainTable.COMPONENTS) })
+            }
+        }
+
+        Lens.WAKEUPS -> {
+            wakeupItems(report, views.wakes, formats, lists)
+        }
     }
 }
+
+/** What the lenses show of one report, built once per report and choice. */
+@Immutable
+internal class LensViews(
+    val apps: AppsView,
+    val wakes: List<WakeGroupView>,
+)
 
 @Composable
 private fun LensTabs(
@@ -349,7 +386,7 @@ private fun EmptyWindow(chosen: DrainSpan) {
         }
     Text(
         stringResource(text),
-        Modifier.padding(top = CoulombSpacing.Space16),
+        Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space16),
         color = CoulombTheme.colors.textSecondary,
         style = CoulombTheme.typography.body,
     )
@@ -406,13 +443,13 @@ private fun ErrorState(retry: () -> Unit) {
     Column(Modifier.padding(top = CoulombSpacing.Space24)) {
         Text(
             stringResource(R.string.drain_error_title),
-            Modifier.semantics { heading() },
+            Modifier.fillMaxWidth().semantics { heading() },
             color = CoulombTheme.colors.textPrimary,
             style = CoulombTheme.typography.title,
         )
         Text(
             stringResource(R.string.drain_error_body),
-            modifier = Modifier.padding(top = CoulombSpacing.Space8),
+            modifier = Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
             color = CoulombTheme.colors.textSecondary,
             style = CoulombTheme.typography.body,
         )

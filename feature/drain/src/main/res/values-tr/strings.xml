@@ -7,7 +7,7 @@
     <string name="drain_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="drain_error_action">Yeniden dene</string>
 
-    <string name="drain_since_unplugged">Fişten çekileli</string>
+    <string name="drain_since_unplugged">Şarjdan çıkalı</string>
     <string name="drain_today">Bugün</string>
     <string name="drain_last_24h">Son 24 sa</string>
     <string name="drain_more">Daha fazla</string>
@@ -25,6 +25,7 @@
     <string name="drain_range_cancel">İptal</string>
 
     <string name="drain_note_levels">%1$s, %2$s seviyesinden %3$s seviyesine</string>
+    <string name="drain_as_of">%1$s itibarıyla</string>
     <string name="drain_note_charged">Arada şarj oldu; toplam yalnızca pilde geçen süreyi sayar.</string>
 
     <string name="drain_measured_counter">Pilin şarj sayacıyla ölçüldü</string>
@@ -39,6 +40,7 @@
         <item quantity="other">Pilin şarj sayacıyla ölçüldü; yalnızca %1$d aralık seviye değişiminden tahmin edildi</item>
     </plurals>
     <string name="drain_reconcile_estimated">Android’in güç modeli bunun %1$s kadarını sayıyor; %2$s atanmamış.</string>
+    <string name="drain_reconcile_unknown">Android’in güç modeli bunun %1$s kadarını sayıyor. Tahmin, ne kadarının atanmamış olduğunu söyleyecek kadar kesin değil.</string>
     <string name="drain_up_to">en çok %1$s</string>
     <string name="drain_modeled">Modellenen %1$s</string>
     <string name="drain_unattributed">Atanmamış %1$s</string>
@@ -59,6 +61,12 @@
         <item quantity="one">%1$d uygulama daha</item>
         <item quantity="other">%1$d uygulama daha</item>
     </plurals>
+    <plurals name="drain_more_apps_and_small">
+        <item quantity="one">%1$d uygulama daha ve küçük uygulamalar</item>
+        <item quantity="other">%1$d uygulama daha ve küçük uygulamalar</item>
+    </plurals>
+    <string name="drain_state_expanded">Genişletildi</string>
+    <string name="drain_state_collapsed">Daraltıldı</string>
     <string name="drain_small_apps">Küçük uygulamalar</string>
     <string name="drain_each_under">Her biri %1$s altında</string>
     <plurals name="drain_hidden_system">
@@ -76,6 +84,16 @@
     <string name="drain_components_caption">Cihazın gücü bileşenlere göre, uygulamalar dahil, Android’in modellediği gibi. Paylar modellenen %1$s üzerinden.</string>
     <string name="drain_components_coarse">Android bu aralık için bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
     <string name="drain_components_empty">Bu aralık için bileşen dökümü yok.</string>
+    <string name="drain_view_table">Tablo olarak gör</string>
+    <string name="drain_table_reconcile">Ölçülen ve modellenen</string>
+    <string name="drain_table_components">Bileşenlere göre güç</string>
+    <string name="drain_column_part">Kısım</string>
+    <string name="drain_column_component">Bileşen</string>
+    <string name="drain_column_energy">Enerji</string>
+    <string name="drain_column_share">Pay</string>
+    <string name="drain_column_share_measured">Ölçülendeki pay</string>
+    <string name="drain_row_measured">Ölçülen</string>
+    <string name="drain_row_modeled">Android’in modellediği</string>
     <string name="drain_components_chart">Bileşenlere göre güç: %1$s</string>
     <string name="drain_component_screen">Ekran</string>
     <string name="drain_component_cpu">İşlemci</string>
@@ -97,7 +115,7 @@
     <string name="drain_component_custom">Cihaza özgü</string>
     <string name="drain_component_other">Diğer</string>
 
-    <string name="drain_wakeups_caption">Tutulma süresine, süre yoksa sayıya göre sıralı. Kısa uyandırmalar güç modelinin saydığından fazlasına mal olur.</string>
+    <string name="drain_wakeups_caption">Tutulma süresine, süre yoksa sayıya göre sıralı. Çubuklar tutulma süresinin pencereye oranını, süre yoksa grubun sayısındaki payı gösterir. Kısa uyandırmalar güç modelinin saydığından fazlasına mal olur.</string>
     <string name="drain_wake_partial">Kısmi uyanık tutmalar</string>
     <string name="drain_wake_kernel">Çekirdek uyanık tutmaları</string>
     <string name="drain_wake_reasons">Uyandırma nedenleri</string>
@@ -133,4 +151,34 @@
     <string name="drain_wake_kernel_definition">Bir sürücünün, telefonun derin uykuya geçmesini engelleyen tutması.</string>
     <string name="drain_wake_reasons_definition">Telefonu derin uykudan çıkaran kesme.</string>
     <string name="drain_term_action">Anlamını göster</string>
+
+    <string name="drain_subsystem_mobile_network">Mobil ağ</string>
+    <string name="drain_subsystem_wifi">Wi-Fi</string>
+    <string name="drain_subsystem_bluetooth">Bluetooth</string>
+    <string name="drain_subsystem_gps">GPS</string>
+    <string name="drain_subsystem_nfc">NFC</string>
+    <string name="drain_subsystem_input">Giriş aygıtları</string>
+    <string name="drain_subsystem_fingerprint">Parmak izi sensörü</string>
+    <string name="drain_subsystem_sensors">Sensörler</string>
+    <string name="drain_subsystem_battery">Pil ve şarj</string>
+    <string name="drain_subsystem_audio">Ses</string>
+    <string name="drain_subsystem_camera">Kamera</string>
+    <string name="drain_subsystem_timers">Zamanlayıcılar ve alarmlar</string>
+    <string name="drain_subsystem_android">Android sistemi</string>
+    <string name="drain_subsystem_other">Diğer</string>
+    <string name="drain_meaning_android_wakelocks">Android, bir uygulamanın ya da kendisinin uyanık tutmasını yerine getirirken bunu tutar. Kimin tuttuğunu Kısmi uyanık tutmalar gösterir.</string>
+    <string name="drain_meaning_android_display">Ekran açıkken ya da durum değiştirirken Android bunu tutar.</string>
+    <string name="drain_meaning_android_broadcasts">Android, ekranın açıldığını ya da kapandığını uygulamalara bildirirken ve şarj sesini ya da animasyonunu oynatırken bunu tutar.</string>
+    <string name="drain_meaning_android_booting">Telefon açılışını bitirene kadar Android bunu tutar.</string>
+    <string name="drain_meaning_sensor_service">Android’in sensör hizmeti; telefonu uyandıran bir sensörün ölçümlerini iletirken tutar.</string>
+    <string name="drain_meaning_alarm_timer">Çekirdeğin alarm zamanlayıcısı. İki saniye içinde çalacak bir alarm varsa telefonu uyutmak yerine uyanık tutar.</string>
+    <string name="drain_meaning_wakeup_timer">Bir sürecin izlediği zamanlayıcı; çaldığı andan süreç onu alana dek tutulur.</string>
+    <string name="drain_meaning_input_device">Dokunmatik ekran ya da bir tuş gibi bir giriş aygıtı; girdisinden Android onu alana dek tutulur.</string>
+    <string name="drain_meaning_alarm_delivery">Android’in alarm yöneticisi; bu uygulamanın alarmlarını iletirken tutar.</string>
+    <string name="drain_meaning_job">Android’in iş zamanlayıcısı; bu uygulamanın arka plan işini çalıştırırken tutar.</string>
+    <string name="drain_meaning_sync">Android’in eşitleme yöneticisi; bu uygulamanın hesap verilerini eşitlerken tutar.</string>
+    <string name="drain_meaning_sleep_blocked">Telefon uyumaya çalıştı ama vazgeçti, çünkü adı geçen kaynaklar onu hâlâ uyanık tutuyordu.</string>
+    <string name="drain_meaning_sleep_interrupted">Telefon uyumaya çalışırken bir uyandırma olayı geldi ve vazgeçti. Adı geçen kaynak en son etkin olandı.</string>
+    <string name="drain_meaning_sleep_aborted">Telefon uyumaya çalıştı ama vazgeçti; çekirdek nedenini bu adla bildiriyor.</string>
+    <string name="drain_meaning_interrupt">Telefonu derin uykudan bir donanım kesmesi uyandırdı; ad, kesmeye sürücüsünün verdiği addır.</string>
 </resources>

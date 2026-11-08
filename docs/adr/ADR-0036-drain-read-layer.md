@@ -152,3 +152,56 @@ found figures that claimed more than the data holds. These decisions answer them
 24. **"Scale to measured" sits under the reconcile bar and shows only with the Apps lens.**
     - R: the switch spreads the bar's unattributed gap over the apps, so it belongs with the bar
       it changes. Components and Wakeups do not scale.
+25. **The reconcile and component bars carry "View as table" as a semantics action, without a
+    visible button.** The action opens a table sheet with the bar's rows (`DrainTable.kt`), with a
+    provenance mark per row or for the whole table (`DataTable`).
+    - R: ADR-0023 §5 asks for a visible button under every evidence chart. These two are summary
+      bars, not evidence charts: their values are printed as text right under them (the key) or
+      as the ranked list below. A button under each would repeat what the screen already shows,
+      while a TalkBack user still needs the values as a table.
+26. **The remainder opens and closes in place as an accordion.** The "N more apps" row is always
+    present: its members follow it when open, and "Show fewer" ends the run. The row says Expanded
+    or Collapsed and offers expand or collapse to TalkBack. When unnamed UIDs add to the remainder,
+    its name reads "N more apps and small ones". Hidden system apps and small apps carry a plain
+    group stand-in (`IconStandIn.Group`) instead of the tappable "+N" tile.
+    - R: Compose focuses clickables reliably only outside touch mode, so moving TalkBack focus with
+      a `FocusRequester` is unreliable. A row that stays where it is keeps the focus without it.
+      The count named only the listed apps and so read low.
+27. **The More sheet closes with its exit motion** before the chosen window or the range dialog
+    takes over (`SheetState.hide()`, then the next step).
+28. **The note ends with the time of its data** ("as of 14:05"), the end of the span's last
+    window, and the screen refreshes on a pull, as Now does. A pull asks the collector for a
+    snapshot and waits up to 5 s for the next report.
+    - R: a window ends at the latest heavy snapshot, which can be well before now.
+29. **Caption emphasis (12/16, 600) is a type role** for the emphasised figure in chart text and
+    keys (DESIGN.md), instead of a weight copied onto Caption in code.
+30. **An Estimated total with no level range says that the estimate is too rough to name the
+    unattributed part,** instead of printing a gap whose error exceeds it.
+31. **Every wake row has a share bar.** Rows that keep time show the time held as a share of the
+    window. Rows that keep only counts, resume causes and alarms, show a share of their group's
+    count. The caption says which.
+    - R: SPEC 10.1. Time held over the window is a whole that times held never exceed. Times of
+      different records overlap, so they are never shown as shares of their sum.
+32. **Kernel wakelocks sit under subsystem sub-headings, and known records carry a plain-language
+    line** (`WakeDictionary` in `:core:analytics`).
+    - A record's subsystem comes from words in its name that name one part unambiguously: IPA and
+      rmnet for the mobile network, `wlan`, `bluetooth`, `gnss`, `nfc`, input devices (touch
+      panels, pens, keys and every `/dev/input/eventN`), `battery`, Android's own suspend blockers,
+      the kernel's alarm timer and `[timerfd]`. Everything else is Other.
+    - The group still shows its top five records by rank. They sit under their subsystems, each
+      subsystem ranked by its longest record, so opening the group adds rows to sections and new
+      sections only at the end. No time is summed per subsystem, because holds overlap.
+    - A line shows only for names whose source pins them down, each cited to AOSP or the Android
+      common kernel in `WakeDictionary`. That covers Android's suspend blockers, the sensor
+      service, the alarm timer, timerfd and input device sources, the alarm manager, job
+      scheduler and sync manager wakelocks, abandoned suspends, and the interrupts batterystats
+      records. Resume causes from the kernel log get none: their stored names do not say whether
+      they are interrupts. Vendor names get no line rather than a guess.
+    - The dictionary had an independent review before the gate (AGENTS.md). It corrected the
+      Broadcasts blocker, which also covers the charging sound, and "Last active Wakeup Source",
+      which names the last source active when none still is.
+    - R: SPEC 10.3 asks for subsystem groups and a dictionary "when it knows" a name. A wrong line
+      would mislead more than a missing one (SPEC 0.2).
+33. **Component chips on app rows and top apps per component arrive with S4** (ADR-0035), the
+    source that splits an app's power by component. Until then app rows do not expand.
+    - R: S5 gives each app one total. Chips built from it would split nothing.

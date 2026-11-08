@@ -8,23 +8,29 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.akane599.coulomb.core.collect.Collector
 import io.github.akane599.coulomb.core.data.AppIcons
 import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.datastore.SettingsStore
+import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
@@ -42,8 +48,13 @@ public class DrainViewModel
         private val icons: AppIcons,
         private val settings: SettingsStore,
         access: PrivilegedAccess,
+        private val collector: Collector,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
+        private val refreshing = MutableStateFlow(false)
+
+        /** True from a pull until a new report arrives, or [REFRESH_WAIT_MS] at most. */
+        internal val isRefreshing: StateFlow<Boolean> = refreshing.asStateFlow()
 
         internal val state: StateFlow<DrainUiState> =
             attempt
@@ -72,6 +83,20 @@ public class DrainViewModel
             viewModelScope.launch { settings.scaleToMeasured(scaled) }
         }
 
+        /**
+         * Pull to refresh: a heavy snapshot, which the collector debounces to one a minute (SPEC 7.2).
+         * The report is read again when its window closes, as after any heavy snapshot.
+         */
+        internal fun refresh() {
+            if (refreshing.value) return
+            refreshing.value = true
+            collector.post(SnapshotTrigger.PULL_TO_REFRESH)
+            viewModelScope.launch {
+                withTimeoutOrNull(REFRESH_WAIT_MS) { state.drop(1).first() }
+                refreshing.value = false
+            }
+        }
+
         /** After [DrainUiState.Error]: reads everything again. */
         internal fun retry() {
             attempt.value++
@@ -85,5 +110,6 @@ public class DrainViewModel
 
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
+            const val REFRESH_WAIT_MS = 5_000L
         }
     }
