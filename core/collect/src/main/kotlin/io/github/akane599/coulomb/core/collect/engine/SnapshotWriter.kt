@@ -106,9 +106,17 @@ internal class SnapshotWriter(
         if (stored.isNotEmpty() && stored.all { it.toSnapshotId == end.id }) return
         windows.deleteWindows(stored.map { it.id })
         val kinds = if (context.reading.plugged) listOf(AutoReference.TODAY) else listOf(AutoReference.SINCE_UNPLUGGED, AutoReference.TODAY)
-        val starts = kinds.mapNotNull { snapshots.autoReference(it)?.snapshotId }.distinct().filter { it != end.id }
-        for (startId in starts) {
-            val start = snapshots.snapshot(startId) ?: continue
+        val today = localDate(context.reading.wallMs, context.zone)
+        val starts =
+            kinds
+                .mapNotNull { kind -> snapshots.autoReference(kind)?.snapshotId?.let { kind to it } }
+                .distinctBy { (_, id) -> id }
+                .filter { (_, id) -> id != end.id }
+                .mapNotNull { (kind, id) -> snapshots.snapshot(id)?.let { kind to it } }
+                // TODAY moves only at a heavy snapshot (day()); after midnight, with none since, the
+                // stored reference is still yesterday's, and a window from it would be yesterday's.
+                .filter { (kind, start) -> kind != AutoReference.TODAY || localDate(start.wallMs, context.zone) == today }
+        for ((_, start) in starts) {
             chain(start, end, endRows)?.let { insertWindow(WindowKind.REFERENCE, null, it, context, true) }
         }
     }

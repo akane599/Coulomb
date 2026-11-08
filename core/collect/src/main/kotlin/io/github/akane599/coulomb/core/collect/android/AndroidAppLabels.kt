@@ -25,8 +25,9 @@ internal class AndroidAppLabels(
     override fun label(uid: Int): AppLabel? {
         val names = if (uid == Process.SYSTEM_UID) listOf(AppNaming.SYSTEM_PACKAGE) else pm.getPackagesForUid(uid)?.toList()
         val facts = names.orEmpty().mapNotNull(::facts)
-        // isApplicationUid is per app id, so a work profile's app UIDs are apps too.
-        return AppNaming.name(!Process.isApplicationUid(uid), facts)
+        // isApplicationUid is per app id, so a work profile's app UIDs are apps too. Settings compares
+        // the raw UID, which is the same for the main user.
+        return AppNaming.name(belowAppRange = !Process.isApplicationUid(uid), packages = facts)
     }
 
     private fun facts(name: String): PackageFacts? =
@@ -38,7 +39,6 @@ internal class AndroidAppLabels(
                     label = app.loadLabel(pm).toString(),
                     hasIcon = app.icon != 0,
                     sharedUserLabel = sharedUserLabel(name, info.sharedUserLabelRes(), app),
-                    system = app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
                 )
             }
         } catch (_: PackageManager.NameNotFoundException) {

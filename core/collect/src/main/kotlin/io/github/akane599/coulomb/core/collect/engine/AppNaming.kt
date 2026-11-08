@@ -9,7 +9,10 @@ internal interface AppLabels {
     fun label(uid: Int): AppLabel?
 }
 
-/** A UID's name, whether it is part of the system, and the package whose icon stands for it. */
+/**
+ * A UID's name, whether Settings counts it as system (SPEC 10.3's "include system UIDs" toggle),
+ * and the package whose icon stands for it.
+ */
 internal data class AppLabel(
     val label: String,
     val isSystem: Boolean,
@@ -23,7 +26,6 @@ internal data class PackageFacts(
     val hasIcon: Boolean,
     /** The shared user's label, for a package that declares one. */
     val sharedUserLabel: String?,
-    val system: Boolean,
 )
 
 /**
@@ -37,13 +39,22 @@ internal data class PackageFacts(
  * - Several packages: the first shared user label. Settings keeps a placeholder when there is none;
  *   Coulomb takes the icon package's label, then the first label, then the first package name, so a
  *   row never shows a bare UID.
+ * - System: a UID below the application range, or one holding a package Settings lists as system
+ *   (`PowerUsageFeatureProviderImpl.isTypeSystem`, packages/apps/Settings
+ *   `src/com/android/settings/fuelgauge/PowerUsageFeatureProviderImpl.java` L48-51 and L68-80 at
+ *   android-16.0.0_r4, L54-56 and L72-84 at android-17.0.0_r1). A preinstalled app is not system:
+ *   Settings lists it with the other apps.
  */
 internal object AppNaming {
     /** The package that names Android's system UID (`Process.SYSTEM_UID`), as Settings' `PACKAGE_SYSTEM`. */
     const val SYSTEM_PACKAGE: String = "android"
 
+    /** Settings' `PACKAGES_SYSTEM`: the media and calendar providers and System UI. */
+    val SYSTEM_PACKAGES: Set<String> = setOf("com.android.providers.media", "com.android.providers.calendar", "com.android.systemui")
+
+    /** [belowAppRange]: the UID's app id is below `Process.FIRST_APPLICATION_UID`. */
     fun name(
-        systemUid: Boolean,
+        belowAppRange: Boolean,
         packages: List<PackageFacts>,
     ): AppLabel? {
         val first = packages.firstOrNull() ?: return null
@@ -57,6 +68,6 @@ internal object AppNaming {
                     ?: packages.firstNotNullOfOrNull { it.label }
                     ?: first.packageName
             }
-        return AppLabel(label, systemUid || packages.any { it.system }, iconPackage?.packageName)
+        return AppLabel(label, belowAppRange || packages.any { it.packageName in SYSTEM_PACKAGES }, iconPackage?.packageName)
     }
 }

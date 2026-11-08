@@ -273,6 +273,31 @@ class CollectorEngineTest {
         }
 
     @Test
+    fun afterMidnightARefreshBuildsNoTodayWindowFromYesterday() =
+        runTest {
+            reliableCounter()
+            val engine = engine()
+            device.set(hours = 23.0, level = 90, chargeMah = 4_500.0, screenOn = true, plugged = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            device.set(hours = 23.5, level = 90, chargeMah = 4_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.POWER_DISCONNECTED)
+            val unplug = checkNotNull(db.snapshotDao().latestHeavy())
+            device.set(hours = 23.9, level = 86, chargeMah = 4_300.0, screenOn = true)
+            engine.handle(SnapshotTrigger.APP_OPENED)
+            device.set(hours = 23.99, level = 85, chargeMah = 4_250.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+            val lastOfDay = checkNotNull(db.snapshotDao().latestHeavy())
+
+            // 46 s later, past midnight: debounced, so the windows are built to 23:59:24.
+            device.set(hours = 24.0 + 10.0 / 3600, level = 85, chargeMah = 4_248.0, screenOn = true)
+            assertThat(engine.handle(SnapshotTrigger.PULL_TO_REFRESH)).isEqualTo(Action.NONE)
+
+            val windows = db.windowDao().ofKind(WindowKind.REFERENCE)
+            assertThat(windows.map { it.fromSnapshotId }).containsExactly(unplug.id)
+            assertThat(windows.single().toSnapshotId).isEqualTo(lastOfDay.id)
+        }
+
+    @Test
     fun appNamesAreWrittenWhenPackagesChangeAndKeptAfterAnUninstall() =
         runTest {
             val engine = engine()

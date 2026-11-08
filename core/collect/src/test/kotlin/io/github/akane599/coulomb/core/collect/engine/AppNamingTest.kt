@@ -12,8 +12,7 @@ class AppNamingTest {
         label: String? = null,
         icon: Boolean = false,
         shared: String? = null,
-        system: Boolean = false,
-    ) = PackageFacts(name, label, icon, shared, system)
+    ) = PackageFacts(name, label, icon, shared)
 
     @Test
     fun onePackageGivesItsLabelOrItsName() {
@@ -26,16 +25,16 @@ class AppNamingTest {
     fun sharedPackagesTakeTheSharedUserLabelAndTheFirstIcon() {
         val name =
             AppNaming.name(
-                systemUid = false,
+                belowAppRange = false,
                 packages =
                     listOf(
                         pkg("com.example.phone.service", "Phone services"),
-                        pkg("com.example.dialer", "Phone", icon = true, shared = "Phone and messages", system = true),
+                        pkg("com.example.dialer", "Phone", icon = true, shared = "Phone and messages"),
                         pkg("com.example.sms", "Messages", icon = true, shared = "Ignored, not first"),
                     ),
             )
 
-        assertThat(name).isEqualTo(AppLabel("Phone and messages", isSystem = true, iconPackage = "com.example.dialer"))
+        assertThat(name).isEqualTo(AppLabel("Phone and messages", isSystem = false, iconPackage = "com.example.dialer"))
     }
 
     @Test
@@ -47,8 +46,11 @@ class AppNamingTest {
     }
 
     @Test
-    fun aSystemUidIsSystemAndNothingInstalledIsNoName() {
+    fun systemIsSettingsRuleNotThePreinstalledFlag() {
         assertThat(AppNaming.name(true, listOf(pkg("android", "Android System", icon = true)))?.isSystem).isTrue()
+        assertThat(AppNaming.name(false, listOf(pkg("com.android.systemui", "System UI")))?.isSystem).isTrue()
+        // A preinstalled browser is an app like any other, as in Settings' list.
+        assertThat(AppNaming.name(false, listOf(pkg("com.example.browser", "Browser", icon = true)))?.isSystem).isFalse()
         assertThat(AppNaming.name(false, emptyList())).isNull()
     }
 }
