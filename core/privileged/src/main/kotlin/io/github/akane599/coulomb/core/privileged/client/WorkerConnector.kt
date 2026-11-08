@@ -8,6 +8,7 @@ import android.os.RemoteException
 import io.github.akane599.coulomb.core.model.WorkerFailure
 import io.github.akane599.coulomb.core.model.WorkerStatus
 import io.github.akane599.coulomb.core.privileged.ICoulombPrivileged
+import io.github.akane599.coulomb.core.privileged.WorkerOrigin
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -36,6 +37,7 @@ internal data class WorkerConnectionState(
 internal sealed interface WorkerCall<out T> {
     data class Ok<T>(
         val value: T,
+        val origin: WorkerOrigin,
     ) : WorkerCall<T>
 
     /** The worker cannot be used this session (or the manager is not ready). */
@@ -67,6 +69,10 @@ internal class WorkerConnector(
     private val clock: () -> Long,
     private val bindTimeoutMs: Long = BIND_TIMEOUT_MS,
     private val idleUnbindMs: Long = IDLE_UNBIND_MS,
+    /** Whether a bind has worked before with the current manager package and version (ADR-0029 §6). */
+    private val bindKnownGood: () -> Boolean = { false },
+    /** Called after each verified bind, so the ledger can remember that this manager binds. */
+    private val onBound: () -> Unit = {},
 ) {
     private val _state = MutableStateFlow(WorkerConnectionState())
     val state: StateFlow<WorkerConnectionState> = _state.asStateFlow()
@@ -74,7 +80,10 @@ internal class WorkerConnector(
     private class Bound(
         val binder: WorkerBinder,
         val callback: WorkerCallback,
-    )
+    ) {
+        /** Set by the handshake before the worker is used. */
+        var origin: WorkerOrigin = WorkerOrigin(uid = -1, connection = -1)
+    }
 
     private val bindMutex = Mutex()
     private val lock = Any()
@@ -82,6 +91,13 @@ internal class WorkerConnector(
     private var inFlight = 0
     private var idleJob: Job? = null
     private var deaths = 0
+
+    /** The manager binder workers bind through now (ADR-0029 §1); set by [reset]. */
+    @Volatile private var connection = 0L
+
+    /** Bind timeouts in a row with a manager known to bind; the next bind waits until [retryAt]. */
+    private var timeoutStreak = 0
+    private var retryAt = 0L
 
     /** A worker that outlived its manager while a call was running; stopped when the call ends. */
     private var orphan: Bound? = null
@@ -96,10 +112,10 @@ internal class WorkerConnector(
      */
     @Suppress("TooGenericExceptionCaught")
     suspend fun <T> call(block: suspend (ICoulombPrivileged) -> T): WorkerCall<T> {
-        val worker = acquire() ?: return WorkerCall.Unavailable(_state.value.failure)
+        val bound = acquire() ?: return WorkerCall.Unavailable(_state.value.failure)
         begin()
         return try {
-            WorkerCall.Ok(withContext(io) { block(worker) })
+            WorkerCall.Ok(withContext(io) { block(bound.binder.worker) }, bound.origin)
         } catch (e: CancellationException) {
             throw e
         } catch (e: DeadObjectException) {
@@ -113,9 +129,17 @@ internal class WorkerConnector(
         }
     }
 
-    /** A new manager binder arrived: earlier failures may not apply to it (SPEC 4.5 auto-resume). */
-    fun reset() {
-        synchronized(lock) { deaths = 0 }
+    /**
+     * A new manager binder arrived: earlier failures may not apply to it (SPEC 4.5 auto-resume).
+     * Workers bound from now on carry [connection] in their results.
+     */
+    fun reset(connection: Long = this.connection) {
+        synchronized(lock) {
+            deaths = 0
+            this.connection = connection
+            timeoutStreak = 0
+            retryAt = 0L
+        }
         _state.update { if (it.status == WorkerStatus.UNAVAILABLE) WorkerConnectionState() else it.copy(failure = null) }
     }
 
@@ -166,21 +190,28 @@ internal class WorkerConnector(
         _state.update { if (it.status == WorkerStatus.UNAVAILABLE) it else it.copy(status = WorkerStatus.IDLE) }
     }
 
-    private suspend fun acquire(): ICoulombPrivileged? =
+    private suspend fun acquire(): Bound? =
         bindMutex.withLock {
-            synchronized(lock) { bound }?.let { return it.binder.worker }
+            synchronized(lock) { bound }?.let { return it }
             if (_state.value.status == WorkerStatus.UNAVAILABLE) return null
+            if (clock() < synchronized(lock) { retryAt }) return null
             repeat(HANDSHAKE_ATTEMPTS) { attempt ->
                 val started = clock()
                 val connected =
                     bindOnce() ?: run {
-                        markUnavailable(WorkerFailure.BIND_TIMEOUT)
+                        onBindTimeout()
                         return null
                     }
                 val worker = connected.binder.worker
                 val handshake = withContext(io) { runCatching { Triple(worker.version, worker.uid, worker.seLinuxContext) } }.getOrNull()
                 if (handshake != null && handshake.first == expectedVersion) {
+                    connected.origin = WorkerOrigin(handshake.second, connection)
                     attach(connected)
+                    synchronized(lock) {
+                        timeoutStreak = 0
+                        retryAt = 0L
+                    }
+                    onBound()
                     _state.update {
                         it.copy(
                             status = WorkerStatus.BOUND,
@@ -190,7 +221,7 @@ internal class WorkerConnector(
                             workerSeLinuxContext = handshake.third,
                         )
                     }
-                    return connected.binder.worker
+                    return connected
                 }
                 // SPEC 4.3: version mismatch -> unbind with remove = true, rebind.
                 withContext(io) { api.unbindWorker(connected.callback, remove = true) }
@@ -200,6 +231,24 @@ internal class WorkerConnector(
             }
             null
         }
+
+    /**
+     * SPEC 4.3 gives up for the session after a bind timeout, which is right for a manager that
+     * cannot start UserServices at all (official Shizuku on Android 17). A manager that has bound
+     * before is probably restarting or switching modes, so it gets retries with backoff instead and
+     * no "authorization hang" message (ADR-0029 §6).
+     */
+    private fun onBindTimeout() {
+        if (!bindKnownGood()) {
+            markUnavailable(WorkerFailure.BIND_TIMEOUT)
+            return
+        }
+        synchronized(lock) {
+            retryAt = clock() + RETRY_BACKOFF_MS.getOrElse(timeoutStreak) { RETRY_MAX_MS }
+            timeoutStreak += 1
+        }
+        _state.update { it.copy(status = WorkerStatus.IDLE, failure = WorkerFailure.BIND_TIMEOUT) }
+    }
 
     private suspend fun bindOnce(): Bound? {
         _state.update { it.copy(status = WorkerStatus.BINDING) }
@@ -281,5 +330,9 @@ internal class WorkerConnector(
         const val IDLE_UNBIND_MS = 60_000L
         const val HANDSHAKE_ATTEMPTS = 2
         const val MAX_DEATHS = 3
+
+        /** Waits after successive bind timeouts with a known-good manager, then [RETRY_MAX_MS] each. */
+        val RETRY_BACKOFF_MS = listOf(5_000L, 10_000L, 20_000L)
+        const val RETRY_MAX_MS = 60_000L
     }
 }

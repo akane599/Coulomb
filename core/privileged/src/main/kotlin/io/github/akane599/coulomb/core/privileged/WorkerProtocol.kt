@@ -191,6 +191,19 @@ internal object WorkerLimits {
     const val MAX_SYSFS_ENTRIES = 4096
     const val COMMAND_TIMEOUT_MS = 10_000L
 
+    /**
+     * One `/dev/kmsg` record: `printk_buffers.outbuf` is PRINTK_MESSAGE_MAX (2 KiB) in
+     * kernel/printk/internal.h (android16-6.12 L49, L311); a smaller buffer makes `devkmsg_read`
+     * skip the record with EINVAL. Vendor kernels may raise it, so the worker reads with 16 KiB.
+     */
+    const val KMSG_RECORD_BYTES = 16 * 1024
+
+    /** Kept S27 records per call; the next call continues from the last one. */
+    const val MAX_KMSG_KEPT = 2_000
+
+    /** Records read per call, kept or not: a full ring of a few MB holds tens of thousands. */
+    const val MAX_KMSG_READS = 200_000
+
     /** Upper bound for the transport test stream (P1 gate uses 20 MB). */
     const val MAX_TEST_PATTERN_BYTES = 256L * 1024 * 1024
 }

@@ -9,7 +9,11 @@ import android.content.pm.PackageManager
 import android.os.Binder
 import android.os.ParcelFileDescriptor
 import android.os.Process
+import android.system.ErrnoException
+import android.system.Os
 import android.system.OsConstants
+import io.github.akane599.coulomb.core.model.kernel.KernelBoot
+import io.github.akane599.coulomb.core.model.kernel.KernelPaths
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DurablePermission
 import io.github.akane599.coulomb.core.privileged.ICoulombPrivileged
@@ -24,7 +28,9 @@ import io.github.akane599.coulomb.core.privileged.system.CmdCommands
 import io.github.akane599.coulomb.core.privileged.system.ServiceDumps
 import io.github.akane599.coulomb.core.privileged.system.ShellRunner
 import io.github.akane599.coulomb.core.privileged.system.Sysfs
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileDescriptor
 import java.io.IOException
 import java.io.OutputStream
 import kotlin.system.exitProcess
@@ -230,6 +236,99 @@ public class CoulombPrivilegedService(
         }
     }
 
+    // --- root kernel sources (ADR-0028, ADR-0029) ---------------------------------------------------
+
+    override fun readKernelFiles(
+        sources: Int,
+        out: ParcelFileDescriptor?,
+    ): Int {
+        enforceCaller(out)
+        if (out == null) return WorkerStatusCode.INVALID_ARGUMENT
+        ParcelFileDescriptor.AutoCloseOutputStream(out).use { raw ->
+            if (sources == 0 || sources and KERNEL_SOURCE_BITS.inv() != 0) return WorkerStatusCode.INVALID_ARGUMENT
+            return try {
+                val sink = BufferedOutputStream(raw, STREAM_BUFFER)
+                KernelFileWriter({ Sysfs.read(it, WorkerLimits.MAX_SYSFS_BYTES) }, { Sysfs.list(it, WorkerLimits.MAX_SYSFS_ENTRIES) }, sink)
+                    .write(sources)
+                WorkerStatusCode.OK
+            } catch (_: IOException) {
+                WorkerStatusCode.IO_ERROR
+            }
+        }
+    }
+
+    override fun readKernelLog(
+        bootKey: Long,
+        afterSeq: Long,
+        out: ParcelFileDescriptor?,
+    ): Int {
+        enforceCaller(out)
+        if (out == null) return WorkerStatusCode.INVALID_ARGUMENT
+        ParcelFileDescriptor.AutoCloseOutputStream(out).use { raw -> return kernelLogTo(raw, bootKey, afterSeq) }
+    }
+
+    private fun kernelLogTo(
+        raw: OutputStream,
+        bootKey: Long,
+        afterSeq: Long,
+    ): Int {
+        val bootId =
+            (Sysfs.read(KernelPaths.BOOT_ID, WorkerLimits.MAX_SYSFS_BYTES) as? Sysfs.Read.Ok)
+                ?.bytes
+                ?.toString(Charsets.US_ASCII)
+                ?.trim()
+        val key = bootId?.let(KernelBoot::key) ?: return WorkerStatusCode.IO_ERROR
+        return try {
+            val fd = Os.open(KernelPaths.KMSG, OsConstants.O_RDONLY or OsConstants.O_NONBLOCK, 0)
+            try {
+                val sink = BufferedOutputStream(raw, STREAM_BUFFER)
+                val cursor = afterSeq.takeIf { it >= 0 && key == bootKey }
+                copyKernelLog(fd, KernelLogCopier(bootId, cursor, WorkerLimits.MAX_KMSG_KEPT, debuggable, sink))
+                WorkerStatusCode.OK
+            } finally {
+                runCatching { Os.close(fd) }
+            }
+        } catch (e: ErrnoException) {
+            errnoStatus(e.errno)
+        } catch (_: IOException) {
+            WorkerStatusCode.IO_ERROR
+        }
+    }
+
+    /** Reads records until the ring has no more (EAGAIN), the copier is full or the read cap is hit. */
+    private fun copyKernelLog(
+        fd: FileDescriptor,
+        copier: KernelLogCopier,
+    ) {
+        val buf = ByteArray(WorkerLimits.KMSG_RECORD_BYTES)
+        var reads = 0
+        var going = true
+        while (going && reads++ < WorkerLimits.MAX_KMSG_READS) {
+            val n = readRecord(fd, buf)
+            going = if (n == SKIPPED) true else n > 0 && copier.record(buf, n)
+        }
+        copier.finish()
+    }
+
+    /**
+     * The bytes of the next record, 0 when the ring has no more, or [SKIPPED] when the kernel moved
+     * the reader on: EPIPE after records were overwritten under it, EINVAL after one did not fit.
+     * Either shows in the stream as a sequence gap. Other errors throw.
+     */
+    private fun readRecord(
+        fd: FileDescriptor,
+        buf: ByteArray,
+    ): Int =
+        try {
+            Os.read(fd, buf, 0, buf.size)
+        } catch (e: ErrnoException) {
+            when (e.errno) {
+                OsConstants.EAGAIN -> 0
+                OsConstants.EPIPE, OsConstants.EINVAL, OsConstants.EINTR -> SKIPPED
+                else -> throw e
+            }
+        }
+
     /** Null when the root id or path is not allowed. */
     private fun sysfsPath(
         root: Int,
@@ -343,5 +442,8 @@ public class CoulombPrivilegedService(
         const val MAX_SETTINGS_OUTPUT = 64L * 1024
         const val TEST_CHUNK = 64 * 1024
         const val MAX_CHUNK_DELAY_MS = 1_000
+        const val STREAM_BUFFER = 64 * 1024
+        const val SKIPPED = -1
+        const val KERNEL_SOURCE_BITS = KernelPaths.READ_SUSPEND_STATS or KernelPaths.READ_WAKEUP_REASONS or KernelPaths.READ_WAKEUP_SOURCES
     }
 }

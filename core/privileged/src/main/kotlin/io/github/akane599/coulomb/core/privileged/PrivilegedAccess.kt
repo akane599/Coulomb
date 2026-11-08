@@ -93,11 +93,39 @@ public interface PrivilegedAccess {
         relativeDir: String = "",
     ): PrivilegedResult<List<String>>
 
+    /**
+     * The root kernel files S25, S26 and S9 as the worker's framed stream (ADR-0029 §2), read in one
+     * call. Worker only, and only while the server runs as root; keep a result only when its
+     * [DumpResult.Complete.origin] is root and matches the other kernel reads of the snapshot.
+     * [sources] holds `KernelPaths.READ_*` bits.
+     */
+    public suspend fun <R> readKernelFiles(
+        sources: Int,
+        timeoutMs: Long = KERNEL_TIMEOUT_MS,
+        isComplete: (R) -> Boolean = { true },
+        consume: suspend (InputStream) -> R,
+    ): DumpResult<R>
+
+    /**
+     * S27: the worker's filtered `/dev/kmsg` stream after [afterSeq] (-1 for none), which applies
+     * only when [bootKey] is the running kernel's boot (ADR-0029 §2). Same rules as [readKernelFiles].
+     */
+    public suspend fun <R> readKernelLog(
+        bootKey: Long,
+        afterSeq: Long,
+        timeoutMs: Long = KERNEL_TIMEOUT_MS,
+        isComplete: (R) -> Boolean = { true },
+        consume: suspend (InputStream) -> R,
+    ): DumpResult<R>
+
     /** Unbinds the worker now (e.g. when the app leaves the foreground); it rebinds on demand. */
     public fun releaseWorker()
 
     public companion object {
         public const val DEFAULT_DUMP_TIMEOUT_MS: Long = 60_000L
+
+        /** Kernel reads stay inside the heavy snapshot's 4 s cap (SPEC 7.2). */
+        public const val KERNEL_TIMEOUT_MS: Long = 3_000L
     }
 }
 

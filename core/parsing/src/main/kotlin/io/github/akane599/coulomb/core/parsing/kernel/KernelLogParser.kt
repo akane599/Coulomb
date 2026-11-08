@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.parsing.kernel
 
 import io.github.akane599.coulomb.core.model.kernel.KernelBoot
+import io.github.akane599.coulomb.core.model.kernel.KernelLogAllowlist
 import io.github.akane599.coulomb.core.model.kernel.KernelLogEvent
 import io.github.akane599.coulomb.core.model.kernel.KernelLogRecord
 import io.github.akane599.coulomb.core.model.kernel.SeqGap
@@ -18,6 +19,11 @@ import java.io.InputStream
 public data class KernelLogRead(
     /** [KernelBoot.key] of the header's `boot_id`; null when the header is missing or unreadable. */
     val bootKey: Long?,
+    /**
+     * The cursor the worker applied: records up to it were skipped. Null when it read from the
+     * ring's start, because it had no cursor or the cursor belonged to another boot.
+     */
+    val afterSeq: Long?,
     val records: List<KernelLogRecord>,
     /** The first record past the cursor the worker read, kept or not; null when it read none. */
     val firstSeq: Long?,
@@ -37,8 +43,9 @@ public data class KernelLogRead(
  *
  * The worker reads from the ring's oldest record and skips those at or before the cursor it was
  * given, because `/dev/kmsg` cannot seek to a sequence number (ADR-0029 §2). The stream is:
- * - one header, `#begin boot=<boot_id> first=<seq>`: the kernel boot id and the first record past
- *   the cursor, kept or not, or `-` when the ring held none;
+ * - one header, `#begin boot=<boot_id> after=<seq> first=<seq>`: the kernel boot id, the cursor the
+ *   worker applied (`-` for none) and the first record past it, kept or not (`-` when the ring held
+ *   none);
  * - each kept record as `/dev/kmsg` prints its first line, `<prio>,<seq>,<µs>,<flags>[,…];<text>`
  *   (Documentation/ABI/testing/dev-kmsg, kernel/printk/printk.c `info_print_ext_header`),
  *   unchanged;
@@ -68,6 +75,7 @@ public object KernelLogParser {
         val read =
             KernelLogRead(
                 bootKey = walk.bootKey,
+                afterSeq = walk.after,
                 records = walk.records,
                 firstSeq = walk.first,
                 lastSeq = lastSeq,
@@ -84,6 +92,7 @@ public object KernelLogParser {
         var begun = false
         var ended = false
         var bootKey: Long? = null
+        var after: Long? = null
         var first: Long? = null
         var last: Long? = null
 
@@ -111,15 +120,21 @@ public object KernelLogParser {
             }
             val fields = fields(text.removePrefix(BEGIN))
             val key = fields["boot"]?.let(KernelBoot::key)
-            val firstText = fields["first"]
-            val firstValue = firstText?.let(::seqOrNone)
-            if (key == null || firstValue == null) {
+            val afterValue = fields["after"]?.let(::seqOrNone)
+            val firstValue = fields["first"]?.let(::seqOrNone)
+            if (key == null || afterValue == null || firstValue == null) {
                 ctx.issue(offset, "begin", "unreadable")
+                return
+            }
+            if (afterValue.value != null && firstValue.value != null && firstValue.value <= afterValue.value) {
+                ctx.issue(offset, "begin", "first not past the cursor")
                 return
             }
             begun = true
             bootKey = key
+            after = afterValue.value
             first = firstValue.value
+            cursor = afterValue.value ?: -1L
         }
 
         private fun gap(
@@ -307,8 +322,8 @@ public object KernelLogLines {
 
     /** `<what> failed after …` or `<what> aborted after …`; the completed form is not kept. */
     private fun freeze(rest: String): KernelLogEvent? {
-        val failed = rest.indexOf(" failed after ")
-        val aborted = rest.indexOf(" aborted after ")
+        val failed = rest.indexOf(KernelLogAllowlist.FREEZE_FAILED)
+        val aborted = rest.indexOf(KernelLogAllowlist.FREEZE_ABORTED)
         return when {
             failed > 0 -> KernelLogEvent.FreezeFailed(rest.substring(0, failed), aborted = false)
             aborted > 0 -> KernelLogEvent.FreezeFailed(rest.substring(0, aborted), aborted = true)
@@ -327,14 +342,14 @@ public object KernelLogLines {
         return KernelLogEvent.DeviceFailed(device, rest.substring(0, colon), errno)
     }
 
-    private const val SUSPEND_ENTRY = "PM: suspend entry ("
-    private const val SUSPEND_EXIT = "PM: suspend exit"
-    private const val RESUME_IRQ = "Resume caused by IRQ "
-    private const val RESUME_BY = "Resume caused by "
-    private const val RESUME_UNKNOWN = "Resume cause unknown"
-    private const val ABORT = "Abort: "
-    private const val DEVICES_FAILED = "PM: Some devices failed to suspend, or early wake event detected"
-    private const val FREEZING = "Freezing "
-    private const val DEVICE_FAILED = ": PM: failed to "
+    private const val SUSPEND_ENTRY = KernelLogAllowlist.SUSPEND_ENTRY
+    private const val SUSPEND_EXIT = KernelLogAllowlist.SUSPEND_EXIT
+    private const val RESUME_IRQ = KernelLogAllowlist.RESUME_IRQ
+    private const val RESUME_BY = KernelLogAllowlist.RESUME_BY
+    private const val RESUME_UNKNOWN = KernelLogAllowlist.RESUME_UNKNOWN
+    private const val ABORT = KernelLogAllowlist.ABORT
+    private const val DEVICES_FAILED = KernelLogAllowlist.DEVICES_FAILED
+    private const val FREEZING = KernelLogAllowlist.FREEZING
+    private const val DEVICE_FAILED = KernelLogAllowlist.DEVICE_FAILED
     private const val ERROR = ": error "
 }

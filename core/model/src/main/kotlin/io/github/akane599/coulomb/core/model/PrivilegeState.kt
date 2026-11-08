@@ -18,6 +18,12 @@ public data class PrivilegeState(
     val grants: GrantStatus = GrantStatus(),
     /** The single SPEC 4.5 row to show, or null when nothing needs the user's attention. */
     val issue: PrivilegeIssue? = null,
+    /**
+     * The manager binder this state describes: one higher for each binder received, 0 before the
+     * first. Worker results carry the number they ran under, so a mode switch between two reads
+     * shows (ADR-0029 §1).
+     */
+    val connection: Long = 0L,
 ) {
     /** Highest tier usable right now (SPEC 4.1). */
     val tier: AccessTier

@@ -19,7 +19,25 @@ public object KernelPaths {
     /** S9, drivers/base/power/wakeup_stats.c: one `wakeupN` directory per wakeup source. */
     public const val WAKEUP_CLASS: String = "/sys/class/wakeup"
 
-    /** S27, kernel/printk/printk.c `devkmsg_fops`. */
+    /**
+     * The attribute files of each `wakeupN` directory, `name` first (drivers/base/power/wakeup_stats.c
+     * `wakeup_source_attrs`, android16-6.12 L116-128; the same list on android15-6.6).
+     */
+    public val WAKEUP_ATTRIBUTES: List<String> =
+        listOf(
+            "name",
+            "active_count",
+            "event_count",
+            "wakeup_count",
+            "expire_count",
+            "active_time_ms",
+            "total_time_ms",
+            "max_time_ms",
+            "last_change_ms",
+            "prevent_suspend_time_ms",
+        )
+
+    /** S27, kernel/printk/printk.c `devkmsg_fops` (android16-6.12: open L948, read L829-896). */
     public const val KMSG: String = "/dev/kmsg"
 
     /** A random id per kernel boot (drivers/char/random.c `proc_do_uuid`, ctl_table `boot_id`, android16-6.12 L1614-1691). */

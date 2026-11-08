@@ -28,6 +28,7 @@ import io.github.akane599.coulomb.core.model.FixAction
 import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeState
+import io.github.akane599.coulomb.core.model.kernel.KernelPaths
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DumpResult
 import io.github.akane599.coulomb.core.privileged.FailureReason
@@ -70,7 +71,7 @@ public class CapabilityProber
                 add(batteryStatsDump(CapabilityId.BATTERYSTATS_CHECKIN, BatteryStatsMode.CHECKIN))
                 add(historyCursor())
                 add(kernelWakelocks())
-                add(sysfsListing(CapabilityId.WAKEUP_SOURCES, SysfsRoot.WAKEUP))
+                addAll(kernelSources())
                 add(serviceDump(CapabilityId.ALARM_DUMP, SystemService.ALARM))
                 add(serviceDump(CapabilityId.DEVICEIDLE_DUMP, SystemService.DEVICE_IDLE))
                 add(serviceDump(CapabilityId.POWER_DUMP, SystemService.POWER))
@@ -329,6 +330,112 @@ public class CapabilityProber
             return cap(id, DEGRADED, dumpTier(), "suspend_control_internal: $reason", null, mapOf("source" to "batterystats"))
         }
 
+        // --- root only (T3, ADR-0028) ------------------------------------------------------------------------
+
+        /**
+         * S9, S25, S26 and S27. While the server is not root they are not tried at all: SELinux denies
+         * shell every one of these paths (system/sepolicy private/genfs_contexts and private/shell.te,
+         * android-16.0.0_r4 and android-17.0.0_r1), so touching them would only log denials
+         * (ADR-0029 §6). As root, a path a vendor kernel or policy closes is reported per source.
+         */
+        private suspend fun kernelSources(): List<Capability> {
+            val ids = listOf(CapabilityId.WAKEUP_SOURCES, CapabilityId.SUSPEND_STATS, CapabilityId.WAKEUP_REASONS, CapabilityId.KERNEL_LOG)
+            val state = access.state.value
+            if (!state.workerUsable) return ids.map { unavailable(it, T3_ROOT, "no Shizuku connection", managerFix(state)) }
+            if (state.server?.isRoot !=
+                true
+            ) {
+                return ids.map { unavailable(it, T3_ROOT, "needs Shizuku started as root", FixAction.NEEDS_ROOT) }
+            }
+            val files = access.readKernelFiles(KernelFrames.ALL_SOURCES) { it.readBytes() }
+            val frames = files.valueOrNull()?.let(KernelFrames::walk)
+            val cost = "read_ms" to ((files as? DumpResult.Complete)?.durationMs?.toString() ?: "-")
+            return listOf(
+                frames?.let { wakeupSources(it, cost) } ?: failed(CapabilityId.WAKEUP_SOURCES, files, T3_ROOT),
+                frames?.let { suspendStats(it, cost) } ?: failed(CapabilityId.SUSPEND_STATS, files, T3_ROOT),
+                frames?.let(::wakeupReasons) ?: failed(CapabilityId.WAKEUP_REASONS, files, T3_ROOT),
+                kernelLog(),
+            )
+        }
+
+        private fun wakeupSources(
+            frames: KernelFrames,
+            cost: Pair<String, String>,
+        ): Capability {
+            val id = CapabilityId.WAKEUP_SOURCES
+            val dir = KernelPaths.WAKEUP_CLASS
+            frames.failed[dir]?.let { return closedPath(id, it) }
+            val entries = frames.readIn(dir).map { it.substringAfter("$dir/").substringBefore('/') }.toSet()
+            val broken =
+                frames
+                    .failedIn(dir)
+                    .keys
+                    .map { it.substringAfter("$dir/").substringBefore('/') }
+                    .toSet()
+            val detail = mapOf("entries" to (entries + broken).size.toString(), "unreadable" to broken.size.toString(), cost)
+            return when {
+                entries.isEmpty() && broken.isEmpty() -> cap(id, DEGRADED, T3_ROOT, "empty", null, detail)
+                entries.isEmpty() -> cap(id, UNAVAILABLE, T3_ROOT, "no source readable", FixAction.NONE, detail)
+                broken.isNotEmpty() -> cap(id, DEGRADED, T3_ROOT, "some sources unreadable", null, detail)
+                else -> available(id, T3_ROOT, detail)
+            }
+        }
+
+        private fun suspendStats(
+            frames: KernelFrames,
+            cost: Pair<String, String>,
+        ): Capability {
+            val id = CapabilityId.SUSPEND_STATS
+            val dir = KernelPaths.SUSPEND_STATS
+            frames.failed[dir]?.let { return closedPath(id, it) }
+            val names = frames.readIn(dir).map { it.substringAfterLast('/') }
+            val detail = mapOf("files" to names.sorted().joinToString(","), cost)
+            return when {
+                "success" in names && "fail" in names && frames.failedIn(dir).isEmpty() -> available(id, T3_ROOT, detail)
+                "success" in names && "fail" in names -> cap(id, DEGRADED, T3_ROOT, "some files unreadable", null, detail)
+                else -> cap(id, UNAVAILABLE, T3_ROOT, "no success and fail counters", FixAction.NONE, detail)
+            }
+        }
+
+        private fun wakeupReasons(frames: KernelFrames): Capability {
+            val id = CapabilityId.WAKEUP_REASONS
+            val reason = "${KernelPaths.WAKEUP_REASONS}/${KernelPaths.LAST_RESUME_REASON}"
+            val time = "${KernelPaths.WAKEUP_REASONS}/${KernelPaths.LAST_SUSPEND_TIME}"
+            return when {
+                reason in frames.read && time in frames.read -> available(id, T3_ROOT)
+                reason in frames.read -> cap(id, DEGRADED, T3_ROOT, "no last_suspend_time", null)
+                else -> closedPath(id, frames.failed[reason] ?: -1)
+            }
+        }
+
+        /** S27: one read from the ring's start; the kept count shows whether the allowlist matches this kernel. */
+        private suspend fun kernelLog(): Capability {
+            val id = CapabilityId.KERNEL_LOG
+            val result = access.readKernelLog(bootKey = 0L, afterSeq = -1L) { String(it.readBytes(), Charsets.US_ASCII) }
+            val text = result.valueOrNull() ?: return failed(id, result, T3_ROOT).withFix(FixAction.NONE)
+            val lines = text.lines()
+            val trailer = lines.lastOrNull { it.startsWith("#end ") }
+            val detail =
+                mapOf(
+                    "kept" to lines.count { it.isNotEmpty() && !it.startsWith("#") }.toString(),
+                    "lost" to (trailer?.substringAfter("lost=", "-") ?: "-"),
+                    "read_ms" to ((result as? DumpResult.Complete)?.durationMs?.toString() ?: "-"),
+                )
+            return if (result is DumpResult.Complete && trailer != null) {
+                available(id, T3_ROOT, detail)
+            } else {
+                cap(id, DEGRADED, T3_ROOT, "read cut short", null, detail)
+            }
+        }
+
+        /** A kernel path that root still cannot read: the kernel lacks it or a policy closes it. */
+        private fun closedPath(
+            id: CapabilityId,
+            errno: Int,
+        ): Capability = unavailable(id, T3_ROOT, "closed: errno $errno", FixAction.NONE)
+
+        private fun Capability.withFix(fix: FixAction): Capability = if (state == UNAVAILABLE) copy(fixAction = fix) else this
+
         // --- worker only (T2/T3) ---------------------------------------------------------------------------
 
         private suspend fun standbyBuckets(): Capability {
@@ -355,21 +462,6 @@ public class CapabilityProber
             if (found.isEmpty()) return unavailable(id, workerTier(), "no battery-related keys", FixAction.NONE)
             return available(id, workerTier(), mapOf("keys" to found.joinToString(",")))
         }
-
-        private suspend fun sysfsListing(
-            id: CapabilityId,
-            root: SysfsRoot,
-        ): Capability =
-            when (val r = access.listSysfs(root)) {
-                is PrivilegedResult.Success -> {
-                    val detail = mapOf("entries" to r.value.size.toString())
-                    if (r.value.isEmpty()) cap(id, DEGRADED, workerTier(), "empty", null, detail) else available(id, workerTier(), detail)
-                }
-
-                is PrivilegedResult.Failure -> {
-                    failedSmall(id, r)
-                }
-            }
 
         /** S23: which supplies exist and which standard battery attributes the worker can read. */
         private suspend fun powerSupply(): Capability {

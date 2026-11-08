@@ -63,6 +63,11 @@ internal class FakeWorker(
     var onGrant: (Int) -> Unit = {}
     var onAllowUsageStats: () -> Unit = {}
     var sysfs: Map<String, ByteArray> = emptyMap()
+    var workerUid: Int = 2000
+    var kernelFiles: ByteArray = "#end\n".toByteArray()
+    var kernelLog: ByteArray = "#begin boot=00000000-0000-0000-0000-000000000000 after=- first=-\n#end last=- lost=0\n".toByteArray()
+    var kernelStatus: Int = WorkerStatusCode.OK
+    val kernelLogCalls = mutableListOf<Pair<Long, Long>>()
 
     override fun asBinder(): IBinder? = null
 
@@ -72,7 +77,7 @@ internal class FakeWorker(
 
     override fun getVersion(): Long = reportedVersion
 
-    override fun getUid(): Int = 2000
+    override fun getUid(): Int = workerUid
 
     override fun getSeLinuxContext(): String = "u:r:shell:s0"
 
@@ -150,6 +155,24 @@ internal class FakeWorker(
         usageStatsAllowed += 1
         onAllowUsageStats()
         return WorkerStatusCode.OK
+    }
+
+    override fun readKernelFiles(
+        sources: Int,
+        pipe: ParcelFileDescriptor?,
+    ): Int {
+        if (kernelStatus == WorkerStatusCode.OK) pipes.output(pipe!!).write(kernelFiles)
+        return kernelStatus
+    }
+
+    override fun readKernelLog(
+        bootKey: Long,
+        afterSeq: Long,
+        pipe: ParcelFileDescriptor?,
+    ): Int {
+        kernelLogCalls += bootKey to afterSeq
+        if (kernelStatus == WorkerStatusCode.OK) pipes.output(pipe!!).write(kernelLog)
+        return kernelStatus
     }
 
     override fun streamTestPattern(

@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.parsing.kernel
 
+import io.github.akane599.coulomb.core.model.kernel.KernelPaths
 import io.github.akane599.coulomb.core.model.kernel.LastWakeup
 import io.github.akane599.coulomb.core.model.kernel.SuspendStats
 import io.github.akane599.coulomb.core.model.kernel.SuspendStep
@@ -193,19 +194,7 @@ public object WakeupSourceParser {
     private const val NAME = "name"
 
     /** The attribute files the worker reads in each directory, `name` included. */
-    public val ATTRIBUTES: List<String> =
-        listOf(
-            NAME,
-            "active_count",
-            "event_count",
-            "wakeup_count",
-            "expire_count",
-            "active_time_ms",
-            "total_time_ms",
-            "max_time_ms",
-            "last_change_ms",
-            "prevent_suspend_time_ms",
-        )
+    public val ATTRIBUTES: List<String> = KernelPaths.WAKEUP_ATTRIBUTES
 
     private val COUNTERS = ATTRIBUTES - NAME
 }

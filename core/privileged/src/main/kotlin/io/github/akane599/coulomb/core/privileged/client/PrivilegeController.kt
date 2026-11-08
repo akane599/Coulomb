@@ -19,7 +19,6 @@ import io.github.akane599.coulomb.core.privileged.FailureReason
 import io.github.akane599.coulomb.core.privileged.GrantKind
 import io.github.akane599.coulomb.core.privileged.GrantOutcome
 import io.github.akane599.coulomb.core.privileged.ICoulombPrivileged
-import io.github.akane599.coulomb.core.privileged.PartialReason
 import io.github.akane599.coulomb.core.privileged.PatternCheck
 import io.github.akane599.coulomb.core.privileged.PrivilegeConfig
 import io.github.akane599.coulomb.core.privileged.PrivilegeDiagnostics
@@ -32,7 +31,6 @@ import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SettingsNamespace
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
-import io.github.akane599.coulomb.core.privileged.TestPattern
 import io.github.akane599.coulomb.core.privileged.WorkerStatusCode
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +79,8 @@ internal class PrivilegeController(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
     private val clock: () -> Long,
+    /** [clock] time at which this process started; null when unknown (no boot grace). */
+    private val processStartMs: Long? = null,
 ) : PrivilegedAccess,
     PrivilegeDrills {
     private val api = platform.api
@@ -90,7 +90,16 @@ internal class PrivilegeController(
     private val inAppDumper = platform.inAppDumper
     private val pipes = platform.pipes
     private val foreground = platform.foreground
-    private val connector = WorkerConnector(api, scope, io, config.workerVersion, clock)
+    private val connector =
+        WorkerConnector(
+            api,
+            scope,
+            io,
+            config.workerVersion,
+            clock,
+            bindKnownGood = { managerIdentity()?.let { it == boundManager } == true },
+            onBound = ::rememberBoundManager,
+        )
     private val transfer = StreamTransfer(io, clock)
 
     private data class Core(
@@ -101,6 +110,9 @@ internal class PrivilegeController(
         val grants: GrantStatus = GrantStatus(),
         val grantsVerifiedBefore: Boolean = false,
         val fingerprintChanged: Boolean = false,
+        val connection: Long = 0L,
+        /** The binder died less than [STOPPED_NOTICE_MS] ago: the tier drops, the issue waits. */
+        val quietStop: Boolean = false,
     ) {
         val authorized: Boolean get() = manager == ManagerStatus.RUNNING && permission == ManagerPermission.GRANTED
     }
@@ -131,9 +143,17 @@ internal class PrivilegeController(
     // --- Shizuku events ----------------------------------------------------------------------------
 
     private sealed interface Event {
-        data object BinderReceived : Event
+        /** [attempt] > 0 is a retry of a binder whose server did not answer yet, from [epoch]. */
+        data class BinderReceived(
+            val attempt: Int = 0,
+            val epoch: Int? = null,
+        ) : Event
 
         data object BinderDead : Event
+
+        data class StoppedCheck(
+            val epoch: Int,
+        ) : Event
 
         data class PermissionResult(
             val requestCode: Int,
@@ -158,10 +178,17 @@ internal class PrivilegeController(
     private var permissionRequestedAt = 0L
     private var autoBootstrapStarted = false
 
+    /** One higher for each binder received or lost, so a delayed retry or notice can tell it is stale. */
+    private var binderEpoch = 0
+    private var connection = 0L
+
+    /** [LedgerRecord.boundManager], cached: read at start, written after a bind. */
+    @Volatile private var boundManager: String? = null
+
     private val listener =
         object : ShizukuEvents {
             override fun onBinderReceived() {
-                events.trySend(Event.BinderReceived)
+                events.trySend(Event.BinderReceived())
             }
 
             override fun onBinderDead() {
@@ -184,10 +211,23 @@ internal class PrivilegeController(
         }
         // Sticky: delivers BinderReceived at once when a binder is already there.
         api.setListener(listener)
+        val noBinderDelay = noBinderDelayMs()
         scope.launch {
-            delay(NO_BINDER_MS)
+            delay(noBinderDelay)
             events.send(Event.NoBinderCheck)
         }
+    }
+
+    /**
+     * SPEC 4.5 says "no binder within 2 s", but a manager started at boot may need a minute or two.
+     * When this process started soon after boot, the check waits until [BOOT_GRACE_MS] after process
+     * start; until then the manager stays UNKNOWN, which shows nothing (ADR-0029 §6). The sticky
+     * listener still delivers a binder the moment it arrives.
+     */
+    private fun noBinderDelayMs(): Long {
+        val start = processStartMs ?: return NO_BINDER_MS
+        if (start >= BOOT_WINDOW_MS) return NO_BINDER_MS
+        return maxOf(NO_BINDER_MS, BOOT_GRACE_MS - (clock() - start))
     }
 
     override fun requestManagerPermission() {
@@ -196,12 +236,17 @@ internal class PrivilegeController(
 
     private suspend fun handle(event: Event) {
         when (event) {
-            Event.BinderReceived -> {
-                onBinderReceived()
+            is Event.BinderReceived -> {
+                onBinderEvent(event)
             }
 
             Event.BinderDead -> {
+                binderEpoch += 1
                 onBinderDead()
+            }
+
+            is Event.StoppedCheck -> {
+                if (event.epoch == binderEpoch) core.update { it.copy(quietStop = false) }
             }
 
             is Event.PermissionResult -> {
@@ -229,12 +274,32 @@ internal class PrivilegeController(
         }
     }
 
-    private suspend fun onBinderReceived() {
-        val details = withContext(io) { if (api.pingBinder()) api.serverDetails() else null } ?: return
+    /** A binder from the listener starts a new epoch; a retry counts only within its own. */
+    private suspend fun onBinderEvent(event: Event.BinderReceived) {
+        if (event.epoch == null) binderEpoch += 1
+        if (event.epoch == null || event.epoch == binderEpoch) onBinderReceived(event.attempt)
+    }
+
+    private suspend fun onBinderReceived(attempt: Int) {
+        val details = withContext(io) { if (api.pingBinder()) api.serverDetails() else null }
+        if (details == null) {
+            // Right after boot or a restart the binder can arrive before its server answers. Try
+            // again at 1, 2, 4 and 8 s instead of waiting for a binder that already came.
+            if (attempt < BINDER_RETRIES) {
+                val epoch = binderEpoch
+                scope.launch {
+                    delay(BINDER_RETRY_MS shl attempt)
+                    events.send(Event.BinderReceived(attempt + 1, epoch))
+                }
+            }
+            return
+        }
         val sui = api.isSui()
         val manager = if (sui) null else withContext(io) { api.managerPackage() }
-        // SPEC 4.5 auto-resume: a new binder may be a different (working) server.
-        connector.reset()
+        // SPEC 4.5 auto-resume: a new binder may be a different (working) server, possibly in the
+        // other mode; its uid is read above, on every binder (ADR-0028 §3).
+        connection += 1
+        connector.reset(connection)
         if (details.apiVersion < MIN_SERVER_API) connector.markUnavailable(WorkerFailure.SERVER_TOO_OLD)
         val granted = withContext(io) { api.checkSelfPermission() }
         val previous = core.value.permission
@@ -259,6 +324,8 @@ internal class PrivilegeController(
                     ),
                 permission = permission,
                 permissionHanging = permission == ManagerPermission.PENDING && it.permissionHanging,
+                connection = connection,
+                quietStop = false,
             )
         }
         if (permission == ManagerPermission.GRANTED) maybeAutoBootstrap()
@@ -268,8 +335,32 @@ internal class PrivilegeController(
         connector.onManagerDead()
         permissionRequestId += 1
         core.update {
-            it.copy(manager = ManagerStatus.NOT_RUNNING, server = null, permission = ManagerPermission.UNKNOWN, permissionHanging = false)
+            it.copy(
+                manager = ManagerStatus.NOT_RUNNING,
+                server = null,
+                permission = ManagerPermission.UNKNOWN,
+                permissionHanging = false,
+                quietStop = true,
+            )
         }
+        // A restart or a mode switch brings a new binder within seconds; only a longer silence is
+        // "Shizuku is stopped" (ADR-0029 §6).
+        val epoch = binderEpoch
+        scope.launch {
+            delay(STOPPED_NOTICE_MS)
+            events.send(Event.StoppedCheck(epoch))
+        }
+    }
+
+    /** The manager's package and version, or Sui with its API level; null without a server. */
+    private fun managerIdentity(): String? =
+        core.value.server?.let { s -> if (s.isSui) "sui@${s.apiVersion}" else s.managerPackage?.let { "$it@${s.managerVersionName}" } }
+
+    private fun rememberBoundManager() {
+        val identity = managerIdentity() ?: return
+        if (identity == boundManager) return
+        boundManager = identity
+        scope.launch(io) { runCatching { ledger.write(ledger.read().copy(boundManager = identity)) } }
     }
 
     private suspend fun onNoBinderCheck() {
@@ -331,6 +422,7 @@ internal class PrivilegeController(
 
     private suspend fun verifyGrantsAtStart() {
         val record = withContext(io) { ledger.read() }
+        boundManager = record.boundManager
         val grants = withContext(io) { grantSource.read() }
         val changed = record.verifiedFingerprint != null && record.verifiedFingerprint != config.fingerprint
         applyGrants(grants, record, fingerprintChanged = changed)
@@ -345,7 +437,7 @@ internal class PrivilegeController(
         if (grants.durableCore && (!record.coreGrantsVerified || record.verifiedFingerprint != config.fingerprint)) {
             withContext(
                 io,
-            ) { runCatching { ledger.write(LedgerRecord(coreGrantsVerified = true, verifiedFingerprint = config.fingerprint)) } }
+            ) { runCatching { ledger.write(record.copy(coreGrantsVerified = true, verifiedFingerprint = config.fingerprint)) } }
         }
         core.update {
             it.copy(
@@ -475,6 +567,35 @@ internal class PrivilegeController(
             consume = consume,
         )
 
+    override suspend fun <R> readKernelFiles(
+        sources: Int,
+        timeoutMs: Long,
+        isComplete: (R) -> Boolean,
+        consume: suspend (InputStream) -> R,
+    ): DumpResult<R> = kernel(timeoutMs, isComplete, consume) { w, sink -> w.readKernelFiles(sources, sink) }
+
+    override suspend fun <R> readKernelLog(
+        bootKey: Long,
+        afterSeq: Long,
+        timeoutMs: Long,
+        isComplete: (R) -> Boolean,
+        consume: suspend (InputStream) -> R,
+    ): DumpResult<R> = kernel(timeoutMs, isComplete, consume) { w, sink -> w.readKernelLog(bootKey, afterSeq, sink) }
+
+    /**
+     * The root kernel reads (ADR-0028, ADR-0029). Not tried unless the live server runs as root, so
+     * shell mode costs no bind; the result's origin still says which uid served it.
+     */
+    private suspend fun <R> kernel(
+        timeoutMs: Long,
+        isComplete: (R) -> Boolean,
+        consume: suspend (InputStream) -> R,
+        viaWorker: (ICoulombPrivileged, android.os.ParcelFileDescriptor) -> Int,
+    ): DumpResult<R> {
+        if (core.value.server?.isRoot != true) return DumpResult.Unavailable(FailureReason.ACCESS_DENIED, "not root")
+        return dump(viaWorker = viaWorker, inApp = null, timeoutMs = timeoutMs, isComplete = isComplete, consume = consume)
+    }
+
     /** A dump Coulomb can also run in its own process (T1) when [allowedBy] the current grants. */
     private class InAppTarget(
         val binderName: String,
@@ -505,7 +626,7 @@ internal class PrivilegeController(
                     connector.call { w ->
                         transfer.run(pipes.create(), timeoutMs, { sink -> viaWorker(w, sink) }, WorkerStatusCode.OK, sniffing)
                     }
-                (call as? WorkerCall.Ok)?.value?.toSniffedResult(Route.WORKER, isComplete)
+                (call as? WorkerCall.Ok)?.let { it.value.toSniffedResult(Route.WORKER, isComplete, it.origin) }
             } else {
                 null
             }
@@ -532,39 +653,6 @@ internal class PrivilegeController(
                 sniffing,
             )
         return result.toSniffedResult(Route.IN_APP, isComplete)
-    }
-
-    /** A refusal line or a SecurityException from the dump call means "not permitted", never data. */
-    private fun <R> TransferResult<Sniffed<R>>.toSniffedResult(
-        route: Route,
-        isComplete: (R) -> Boolean,
-    ): DumpResult<R> {
-        val thrown = (producer as? ProducerOutcome.Threw)?.error as? SecurityException
-        val denied = (value as? Sniffed.Denied)?.line ?: thrown?.toString()
-        if (denied != null) return DumpResult.Unavailable(FailureReason.NOT_PERMITTED, denied)
-        val unwrapped = (value as? Sniffed.Value<R>)?.value
-        return TransferResult(unwrapped, consumerFinished, bytes, producer, partial, detail, durationMs).toDumpResult(route, isComplete)
-    }
-
-    private fun <R> TransferResult<R>.toDumpResult(
-        route: Route,
-        isComplete: (R) -> Boolean,
-    ): DumpResult<R> {
-        val status = (producer as? ProducerOutcome.Status)?.code
-        if (bytes == 0L && status != null &&
-            status != WorkerStatusCode.OK
-        ) {
-            return DumpResult.Unavailable(failureFor(status), "status $status")
-        }
-        partial?.let { return DumpResult.Partial(value, route, bytes, it, detail) }
-        // No partial reason means the consumer returned normally, so value holds its result.
-        @Suppress("UNCHECKED_CAST")
-        val v = value as R
-        return if (isComplete(v)) {
-            DumpResult.Complete(v, route, bytes, durationMs)
-        } else {
-            DumpResult.Partial(v, route, bytes, PartialReason.TRUNCATED, "content ended early")
-        }
     }
 
     // --- small calls -------------------------------------------------------------------------------
@@ -603,7 +691,7 @@ internal class PrivilegeController(
             is WorkerCall.Ok -> {
                 val (value, status) = call.value
                 if (status == WorkerStatusCode.OK) {
-                    PrivilegedResult.Success(value, Route.WORKER)
+                    PrivilegedResult.Success(value, Route.WORKER, call.origin)
                 } else {
                     PrivilegedResult.Failure(failureFor(status), "status $status")
                 }
@@ -647,42 +735,11 @@ internal class PrivilegeController(
                 }
             }
         return when (call) {
-            is WorkerCall.Ok -> call.value.toDumpResult(Route.WORKER) { it.complete }
+            is WorkerCall.Ok -> call.value.toDumpResult(Route.WORKER, { it.complete }, call.origin)
             is WorkerCall.Unavailable -> DumpResult.Unavailable(FailureReason.NO_ACCESS, call.failure?.name)
             is WorkerCall.Died -> DumpResult.Unavailable(FailureReason.WORKER_DIED, call.error.toString())
             is WorkerCall.Failed -> DumpResult.Unavailable(failureFor(call.error), call.error.message)
         }
-    }
-
-    private fun verifyPattern(
-        input: InputStream,
-        expected: Long,
-    ): PatternCheck {
-        val buffer = ByteArray(PATTERN_BUFFER)
-        val runtime = Runtime.getRuntime()
-        var offset = 0L
-        var mismatch: Long? = null
-        var peakHeap = 0L
-        while (true) {
-            val n = input.read(buffer)
-            if (n < 0) break
-            if (mismatch == null) mismatch = firstMismatch(buffer, n, offset)
-            offset += n
-            peakHeap = maxOf(peakHeap, runtime.totalMemory() - runtime.freeMemory())
-        }
-        return PatternCheck(expected, offset, mismatch, peakHeap)
-    }
-
-    private fun firstMismatch(
-        buffer: ByteArray,
-        length: Int,
-        offset: Long,
-    ): Long? {
-        // A plain loop: the drill measures heap, so no boxing per byte.
-        for (i in 0 until length) {
-            if (buffer[i] != TestPattern.byteAt(offset + i)) return offset + i
-        }
-        return null
     }
 
     override suspend fun simulateFingerprintChange() {
@@ -711,6 +768,7 @@ internal class PrivilegeController(
 
     private fun Core.toState(w: WorkerConnectionState): PrivilegeState {
         val failure = w.failure.takeIf { w.status == WorkerStatus.UNAVAILABLE }
+        val issueManager = if (quietStop && manager == ManagerStatus.NOT_RUNNING) ManagerStatus.UNKNOWN else manager
         return PrivilegeState(
             manager = manager,
             server = server,
@@ -718,13 +776,25 @@ internal class PrivilegeController(
             worker = w.status,
             workerFailure = failure,
             grants = grants,
-            issue = PrivilegeIssues.derive(manager, permission, permissionHanging, failure, grants, grantsVerifiedBefore),
+            issue = PrivilegeIssues.derive(issueManager, permission, permissionHanging, failure, grants, grantsVerifiedBefore),
+            connection = connection,
         )
     }
 
     internal companion object {
         /** SPEC 4.5: "No binder within 2 s". */
         const val NO_BINDER_MS = 2_000L
+
+        /** A process that started this soon after boot gets the boot grace (ADR-0029 §6). */
+        const val BOOT_WINDOW_MS = 10 * 60_000L
+
+        /** The boot grace, counted from process start. */
+        const val BOOT_GRACE_MS = 180_000L
+
+        /** "Shizuku is stopped" shows only after this long without a new binder. */
+        const val STOPPED_NOTICE_MS = 8_000L
+        const val BINDER_RETRY_MS = 1_000L
+        const val BINDER_RETRIES = 4
 
         /** SPEC 4.5: "No callback within 5 s". */
         const val PERMISSION_HANG_MS = 5_000L
@@ -738,7 +808,6 @@ internal class PrivilegeController(
         const val NO_STATUS = -1
         const val BATTERYSTATS = "batterystats"
         const val SIMULATED_OLD_FINGERPRINT = "coulomb/drill/simulated-previous-build"
-        private const val PATTERN_BUFFER = 64 * 1024
         private const val SNIFF_BUFFER = 64 * 1024
 
         fun bootstrapKinds(includeWriteSecureSettings: Boolean): List<GrantKind> =

@@ -158,7 +158,10 @@ class KernelParsersTest {
     private val boot = "8a5a3b74-1f2e-4d6c-9b7a-0c1d2e3f4a5b"
     private val bootKey = 0x8a5a3b741f2e4d6cuL.toLong()
 
-    private fun begin(first: String) = "#begin boot=$boot first=$first"
+    private fun begin(
+        first: String,
+        after: String = "-",
+    ) = "#begin boot=$boot after=$after first=$first"
 
     @Test
     fun theBootKeyIsTheFirstHalfOfBootId() {
@@ -252,7 +255,7 @@ class KernelParsersTest {
         // The ring no longer reached the record after the cursor (99), and lost 160..164 mid-read.
         val lines =
             arrayOf(
-                begin("140"),
+                begin("140", after = "99"),
                 "#gap from=100 to=139",
                 "6,150,1,-;PM: suspend exit",
                 "#gap from=160 to=164",
@@ -260,6 +263,7 @@ class KernelParsersTest {
             )
         val (read, report) = KernelLogParser.parse(kmsg(*lines, "#end last=900 lost=45"))
         assertThat(report.complete).isTrue()
+        assertThat(read.afterSeq).isEqualTo(99)
         assertThat(read.gaps).containsExactly(SeqGap(100, 139), SeqGap(160, 164)).inOrder()
         assertThat(read.lost).isEqualTo(45)
         assertThat(read.lastSeq).isEqualTo(900)
@@ -288,13 +292,17 @@ class KernelParsersTest {
         val noHeader = KernelLogParser.parse(kmsg("6,2,1,-;PM: suspend exit", "#end last=9 lost=0"))
         assertThat(noHeader.report.complete).isFalse()
         assertThat(noHeader.value.firstSeq).isNull()
-        val noBoot = KernelLogParser.parse(kmsg("#begin first=1", "#end last=1 lost=0"))
+        val noBoot = KernelLogParser.parse(kmsg("#begin after=- first=1", "#end last=1 lost=0"))
         assertThat(noBoot.report.complete).isFalse()
         assertThat(noBoot.value.bootKey).isNull()
         val lastBeforeRecord = KernelLogParser.parse(kmsg(begin("1"), "6,9,1,-;PM: suspend exit", "#end last=8 lost=0"))
         assertThat(lastBeforeRecord.report.complete).isFalse()
         val noLast = KernelLogParser.parse(kmsg(begin("1"), "#end last=- lost=0"))
         assertThat(noLast.report.complete).isFalse()
+        val firstAtCursor = KernelLogParser.parse(kmsg(begin("40", after = "40"), "#end last=40 lost=0"))
+        assertThat(firstAtCursor.report.complete).isFalse()
+        val gapAtCursor = KernelLogParser.parse(kmsg(begin("45", after = "40"), "#gap from=40 to=44", "#end last=50 lost=5"))
+        assertThat(gapAtCursor.report.complete).isFalse()
     }
 
     @Test

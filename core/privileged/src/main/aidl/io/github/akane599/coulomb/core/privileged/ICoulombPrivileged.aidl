@@ -53,6 +53,17 @@ interface ICoulombPrivileged {
     // Entry names directly under an allowlisted sysfs root or one of its subdirectories.
     String[] listSysfs(int root, String relativeDir, out int[] status) = 16;
 
+    // Root kernel sources (ADR-0028, ADR-0029). Reads boot_id, then S25, S26 and S9 as the
+    // `sources` bits ask (KernelPaths.READ_*), into `pipe` as length-framed records with a final
+    // `#end`. Paths are fixed in the worker. Returns INVALID_ARGUMENT for unknown bits.
+    int readKernelFiles(int sources, in ParcelFileDescriptor pipe) = 17;
+
+    // S27: the allowlisted suspend and resume records of /dev/kmsg, at most
+    // WorkerLimits.MAX_KMSG_KEPT per call. `afterSeq` (-1 for none) applies only when `bootKey`
+    // matches the running kernel's boot; otherwise the read starts at the ring's oldest record.
+    // ACCESS_DENIED when the kernel log cannot be opened (shell, or a closed path).
+    int readKernelLog(long bootKey, long afterSeq, in ParcelFileDescriptor pipe) = 18;
+
     // Bootstrap group (SPEC 4.4): grants one of three permissions to Coulomb's own package.
     int grantPermission(int permission) = 30;
 

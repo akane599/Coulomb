@@ -6,6 +6,7 @@ package io.github.akane599.coulomb.core.privileged.client
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.model.WorkerFailure
 import io.github.akane599.coulomb.core.model.WorkerStatus
+import io.github.akane599.coulomb.core.privileged.WorkerOrigin
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -32,7 +33,7 @@ class WorkerConnectorTest {
     fun bindsOnDemandAndChecksTheVersion() =
         runTest {
             val c = connector()
-            assertThat(c.call { it.version }).isEqualTo(WorkerCall.Ok(FakeWorker.VERSION))
+            assertThat(c.call { it.version }).isEqualTo(WorkerCall.Ok(FakeWorker.VERSION, WorkerOrigin(2000, 0)))
             assertThat(c.state.value.status).isEqualTo(WorkerStatus.BOUND)
             assertThat(c.state.value.workerUid).isEqualTo(2000)
             assertThat(api.binds).isEqualTo(1)
@@ -133,6 +134,6 @@ class WorkerConnectorTest {
             c.call { it.version }
             api.connects = true
             c.reset()
-            assertThat(c.call { it.version }).isEqualTo(WorkerCall.Ok(FakeWorker.VERSION))
+            assertThat(c.call { it.version }).isEqualTo(WorkerCall.Ok(FakeWorker.VERSION, WorkerOrigin(2000, 0)))
         }
 }

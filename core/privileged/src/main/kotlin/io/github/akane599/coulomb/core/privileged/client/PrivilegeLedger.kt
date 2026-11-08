@@ -16,6 +16,8 @@ internal data class LedgerRecord(
     val coreGrantsVerified: Boolean = false,
     /** `Build.FINGERPRINT` at the last successful verification. */
     val verifiedFingerprint: String? = null,
+    /** The manager (package and version, or Sui) that last started the worker (ADR-0029 §6). */
+    val boundManager: String? = null,
 )
 
 internal interface PrivilegeLedger {
@@ -39,7 +41,7 @@ internal class FilePrivilegeLedger(
         synchronized(lock) {
             runCatching {
                 val p = Properties().apply { file.openRead().use { load(it) } }
-                LedgerRecord(p.getProperty(KEY_VERIFIED) == "true", p.getProperty(KEY_FINGERPRINT))
+                LedgerRecord(p.getProperty(KEY_VERIFIED) == "true", p.getProperty(KEY_FINGERPRINT), p.getProperty(KEY_BOUND_MANAGER))
             }.getOrDefault(LedgerRecord())
         }
 
@@ -47,6 +49,7 @@ internal class FilePrivilegeLedger(
         val p = Properties()
         p.setProperty(KEY_VERIFIED, record.coreGrantsVerified.toString())
         record.verifiedFingerprint?.let { p.setProperty(KEY_FINGERPRINT, it) }
+        record.boundManager?.let { p.setProperty(KEY_BOUND_MANAGER, it) }
         synchronized(lock) {
             val out = file.startWrite()
             try {
@@ -62,5 +65,6 @@ internal class FilePrivilegeLedger(
     private companion object {
         const val KEY_VERIFIED = "core_grants_verified"
         const val KEY_FINGERPRINT = "verified_fingerprint"
+        const val KEY_BOUND_MANAGER = "bound_manager"
     }
 }

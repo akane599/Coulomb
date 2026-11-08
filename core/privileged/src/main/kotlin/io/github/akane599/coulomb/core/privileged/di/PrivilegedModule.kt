@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.privileged.di
 
 import android.app.Application
 import android.content.Context
+import android.os.Process
 import android.os.SystemClock
 import dagger.Module
 import dagger.Provides
@@ -53,6 +54,7 @@ public object PrivilegedModule {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             io = Dispatchers.IO,
             clock = SystemClock::elapsedRealtime,
+            processStartMs = Process.getStartElapsedRealtime(),
         )
 
     /** The same instance; the drills refuse to run in release builds. */

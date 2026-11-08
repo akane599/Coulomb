@@ -11,6 +11,8 @@ import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.model.WorkerFailure
+import io.github.akane599.coulomb.core.model.WorkerStatus
+import io.github.akane599.coulomb.core.model.kernel.KernelPaths
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DumpResult
 import io.github.akane599.coulomb.core.privileged.FailureReason
@@ -23,6 +25,7 @@ import io.github.akane599.coulomb.core.privileged.Route
 import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
+import io.github.akane599.coulomb.core.privileged.WorkerOrigin
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -44,7 +47,10 @@ class PrivilegeControllerTest {
     private val inApp = FakeInAppDumper(pipes)
     private var pausedAt: Long? = null
 
-    private fun TestScope.controller(debuggable: Boolean = true): PrivilegeController {
+    private fun TestScope.controller(
+        debuggable: Boolean = true,
+        processStartMs: Long? = null,
+    ): PrivilegeController {
         val io = StandardTestDispatcher(testScheduler)
         return PrivilegeController(
             config = PrivilegeConfig(PACKAGE, UID, FakeWorker.VERSION, debuggable, FINGERPRINT),
@@ -52,6 +58,7 @@ class PrivilegeControllerTest {
             scope = backgroundScope,
             io = io,
             clock = { currentTime },
+            processStartMs = processStartMs,
         )
     }
 
@@ -98,7 +105,14 @@ class PrivilegeControllerTest {
             assertThat(report.allGranted).isTrue()
             assertThat(report.items.map { it.route }.toSet()).containsExactly(Route.WORKER)
             assertThat(report.adbCommands).isEmpty()
-            assertThat(ledger.record).isEqualTo(LedgerRecord(coreGrantsVerified = true, verifiedFingerprint = FINGERPRINT))
+            assertThat(ledger.record)
+                .isEqualTo(
+                    LedgerRecord(
+                        coreGrantsVerified = true,
+                        verifiedFingerprint = FINGERPRINT,
+                        boundManager = "moe.shizuku.privileged.api@13.6.0",
+                    ),
+                )
             assertThat(c.state.value.tier).isEqualTo(AccessTier.T2_PRIVILEGED_WORKER)
             assertThat(c.state.value.issue).isNull()
             assertThat(binderGrants.calls).isEmpty()
@@ -172,8 +186,12 @@ class PrivilegeControllerTest {
             runCurrent()
             assertThat(c.state.value.manager).isEqualTo(ManagerStatus.NOT_RUNNING)
             assertThat(c.state.value.server).isNull()
-            assertThat(c.state.value.issue).isEqualTo(PrivilegeIssue.MANAGER_STOPPED)
             assertThat(c.state.value.tier).isEqualTo(AccessTier.T1_DURABLE_GRANTS)
+            // A restart usually brings a new binder within seconds: no "stopped" row until 8 s pass.
+            assertThat(c.state.value.issue).isNull()
+            advanceTimeBy(PrivilegeController.STOPPED_NOTICE_MS + 1)
+            runCurrent()
+            assertThat(c.state.value.issue).isEqualTo(PrivilegeIssue.MANAGER_STOPPED)
             api.startServer()
             runCurrent()
             assertThat(c.state.value.tier).isEqualTo(AccessTier.T2_PRIVILEGED_WORKER)
@@ -417,6 +435,145 @@ class PrivilegeControllerTest {
             ledger.record = LedgerRecord(true, FINGERPRINT)
             c.simulateFingerprintChange()
             assertThat(ledger.record.verifiedFingerprint).isEqualTo(FINGERPRINT)
+        }
+
+    @Test
+    fun soonAfterBootTheNoBinderCheckWaitsForTheGrace() =
+        runTest {
+            val c = controller(processStartMs = 0L)
+            c.start()
+            advanceTimeBy(PrivilegeController.NO_BINDER_MS + 1)
+            runCurrent()
+            assertThat(c.state.value.manager).isEqualTo(ManagerStatus.UNKNOWN)
+            assertThat(c.state.value.issue).isNull()
+            advanceTimeBy(PrivilegeController.BOOT_GRACE_MS)
+            runCurrent()
+            assertThat(c.state.value.issue).isEqualTo(PrivilegeIssue.MANAGER_STOPPED)
+        }
+
+    @Test
+    fun aBinderInsideTheGraceIsUsedAtOnce() =
+        runTest {
+            val c = controller(processStartMs = 0L)
+            c.start()
+            advanceTimeBy(60_000L)
+            api.permissionGranted = true
+            api.startServer()
+            runCurrent()
+            assertThat(c.state.value.manager).isEqualTo(ManagerStatus.RUNNING)
+            advanceTimeBy(PrivilegeController.BOOT_GRACE_MS)
+            runCurrent()
+            assertThat(c.state.value.manager).isEqualTo(ManagerStatus.RUNNING)
+            assertThat(c.state.value.issue).isNull()
+        }
+
+    @Test
+    fun aProcessStartedLongAfterBootGetsNoGrace() =
+        runTest {
+            val c = controller(processStartMs = PrivilegeController.BOOT_WINDOW_MS)
+            c.start()
+            advanceTimeBy(PrivilegeController.NO_BINDER_MS + 1)
+            runCurrent()
+            assertThat(c.state.value.issue).isEqualTo(PrivilegeIssue.MANAGER_STOPPED)
+        }
+
+    @Test
+    fun aBinderWhoseServerIsNotReadyIsRetried() =
+        runTest {
+            api.permissionGranted = true
+            val c = controller()
+            c.start()
+            runCurrent()
+            // The binder arrives before its server answers pingBinder.
+            api.events!!.onBinderReceived()
+            runCurrent()
+            assertThat(c.state.value.manager).isNotEqualTo(ManagerStatus.RUNNING)
+            advanceTimeBy(1_500L)
+            api.binderAlive = true
+            advanceTimeBy(2_000L)
+            runCurrent()
+            assertThat(c.state.value.manager).isEqualTo(ManagerStatus.RUNNING)
+            assertThat(c.state.value.connection).isEqualTo(1)
+        }
+
+    @Test
+    fun everyBinderGetsANewConnectionNumberAndWorkerResultsCarryIt() =
+        runTest {
+            api.binderAlive = true
+            api.permissionGranted = true
+            grants.status = allGranted
+            val c = controller()
+            c.start()
+            runCurrent()
+            assertThat(c.state.value.connection).isEqualTo(1)
+            val first = c.dumpText() as DumpResult.Complete
+            assertThat(first.origin).isEqualTo(WorkerOrigin(uid = 2000, connection = 1))
+            // Shizuku restarts as root: same process, new binder, new uid.
+            api.stopServer()
+            runCurrent()
+            api.details = api.details.copy(uid = 0, seLinuxContext = "u:r:su:s0")
+            worker.workerUid = 0
+            api.startServer()
+            runCurrent()
+            assertThat(c.state.value.connection).isEqualTo(2)
+            assertThat(c.state.value.tier).isEqualTo(AccessTier.T3_ROOT)
+            val second = c.dumpText() as DumpResult.Complete
+            assertThat(second.origin).isEqualTo(WorkerOrigin(uid = 0, connection = 2))
+            assertThat(c.state.value.issue).isNull()
+        }
+
+    @Test
+    fun kernelReadsRunOnlyWhileTheServerIsRoot() =
+        runTest {
+            api.binderAlive = true
+            api.permissionGranted = true
+            grants.status = allGranted
+            val c = controller()
+            c.start()
+            runCurrent()
+            val shell = c.readKernelFiles(KernelPaths.READ_SUSPEND_STATS) { String(it.readBytes()) }
+            assertThat(shell).isEqualTo(DumpResult.Unavailable(FailureReason.ACCESS_DENIED, "not root"))
+            assertThat(api.binds).isEqualTo(0)
+            api.stopServer()
+            runCurrent()
+            api.details = api.details.copy(uid = 0)
+            worker.workerUid = 0
+            worker.kernelFiles = "@/proc/sys/kernel/random/boot_id 1\nx\n#end\n".toByteArray()
+            api.startServer()
+            runCurrent()
+            val root = c.readKernelFiles(KernelPaths.READ_SUSPEND_STATS) { String(it.readBytes()) } as DumpResult.Complete
+            assertThat(root.origin?.isRoot).isTrue()
+            assertThat(root.value).endsWith("#end\n")
+            c.readKernelLog(bootKey = 7L, afterSeq = 41L) { it.readBytes() }
+            assertThat(worker.kernelLogCalls).containsExactly(7L to 41L)
+        }
+
+    @Test
+    fun aBindTimeoutWithAManagerThatBoundBeforeIsRetriedNotSticky() =
+        runTest {
+            ledger.record = LedgerRecord(boundManager = "moe.shizuku.privileged.api@13.6.0")
+            api.binderAlive = true
+            api.permissionGranted = true
+            api.connects = false
+            grants.status = allGranted
+            val c = controller()
+            c.start()
+            runCurrent()
+            val dump = async { c.dumpText() }
+            advanceTimeBy(WorkerConnector.BIND_TIMEOUT_MS + 1)
+            runCurrent()
+            assertThat((dump.await() as DumpResult.Complete).route).isEqualTo(Route.IN_APP)
+            assertThat(c.state.value.worker).isNotEqualTo(WorkerStatus.UNAVAILABLE)
+            assertThat(c.state.value.issue).isNull()
+            assertThat(c.state.value.tier).isEqualTo(AccessTier.T2_PRIVILEGED_WORKER)
+            // Inside the backoff no bind is attempted; after it the worker binds again.
+            api.connects = true
+            val binds = api.binds
+            assertThat((c.dumpText() as DumpResult.Complete).route).isEqualTo(Route.IN_APP)
+            assertThat(api.binds).isEqualTo(binds)
+            advanceTimeBy(WorkerConnector.RETRY_BACKOFF_MS.first())
+            runCurrent()
+            assertThat((c.dumpText() as DumpResult.Complete).route).isEqualTo(Route.WORKER)
         }
 
     private companion object {

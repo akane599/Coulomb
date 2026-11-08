@@ -29,6 +29,17 @@ public enum class RoutePreference {
     IN_APP_FIRST,
 }
 
+/**
+ * The connection a worker result ran under (ADR-0029 §1): the worker's uid from its handshake and
+ * the number of the manager binder it was bound through, one higher for each binder received.
+ */
+public data class WorkerOrigin(
+    val uid: Int,
+    val connection: Long,
+) {
+    val isRoot: Boolean get() = uid == 0
+}
+
 /** Outcome of a streamed dump. Partial results still carry whatever the consumer parsed (SPEC 4.5). */
 public sealed interface DumpResult<out R> {
     public data class Complete<R>(
@@ -36,6 +47,8 @@ public sealed interface DumpResult<out R> {
         val route: Route,
         val bytes: Long,
         val durationMs: Long,
+        /** Set when [route] is [Route.WORKER]. */
+        val origin: WorkerOrigin? = null,
     ) : DumpResult<R>
 
     public data class Partial<R>(
@@ -44,6 +57,8 @@ public sealed interface DumpResult<out R> {
         val bytes: Long,
         val reason: PartialReason,
         val detail: String?,
+        /** Set when [route] is [Route.WORKER]. */
+        val origin: WorkerOrigin? = null,
     ) : DumpResult<R>
 
     public data class Unavailable(
@@ -96,6 +111,8 @@ public sealed interface PrivilegedResult<out T> {
     public data class Success<T>(
         val value: T,
         val route: Route,
+        /** Set when [route] is [Route.WORKER]. */
+        val origin: WorkerOrigin? = null,
     ) : PrivilegedResult<T>
 
     public data class Failure(
