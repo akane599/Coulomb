@@ -7,10 +7,13 @@ import android.os.BatteryManager
 import io.github.akane599.coulomb.core.collect.CollectorClock
 import io.github.akane599.coulomb.core.collect.snapshot.HeavyReader
 import io.github.akane599.coulomb.core.collect.snapshot.HistoryRead
+import io.github.akane599.coulomb.core.collect.snapshot.KernelFilesRead
+import io.github.akane599.coulomb.core.collect.snapshot.KernelLogResult
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.collect.snapshot.LightSource
 import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
+import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
 import java.time.ZoneId
@@ -115,6 +118,19 @@ internal class StressWorld(
                 cursorMs: Long,
                 timeoutMs: Long,
             ): HistoryRead = history.read(cursorMs, monotonicMs())
+
+            // Shell mode, as on most phones: the kernel sources are never due (ADR-0029).
+            override fun liveMode(): PrivilegeMode = PrivilegeMode.SHELL
+
+            override fun kernelReadable(): Boolean = false
+
+            override suspend fun kernelFiles(timeoutMs: Long): KernelFilesRead = error("kernel files are read only in root mode")
+
+            override suspend fun kernelLog(
+                bootKey: Long,
+                afterSeq: Long,
+                timeoutMs: Long,
+            ): KernelLogResult = error("the kernel log is read only in root mode")
         }
 
     /** Runs the clocks, the battery and the statistics on to [targetWallMs]. */
