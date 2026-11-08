@@ -31,6 +31,7 @@ import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -80,6 +81,7 @@ class DrainReaderTest {
                     WindowRows(
                         uids = listOf(uid(APP, 100.0), uid(OTHER_APP, 50.0), uid(WindowUidEntity.OTHER_UID, 10.0)),
                         wakes = listOf(wake(4_000, 4)),
+                        stats = device(onBatteryMs = 2_000_000, screenOffMs = 1_400_000),
                     ),
                 )
             // Wholly screen-off, then mixed: only the first says when the wakelock was held.
@@ -105,7 +107,7 @@ class DrainReaderTest {
             assertThat(report.chargedInSpan).isFalse()
             assertThat(report.durationMs).isEqualTo(2_000_000)
             assertThat(report.screenOffMs).isEqualTo(1_400_000)
-            // All on battery and all measured: the stored window's own time.
+            // The stored window's own device rows, as its apps and records are its own.
             assertThat(report.onBatteryMs).isEqualTo(2_000_000)
             assertThat(report.screenOffOnBatteryMs).isEqualTo(1_400_000)
             assertThat(report.measuredMs).isEqualTo(2_000_000)
@@ -120,21 +122,63 @@ class DrainReaderTest {
         }
 
     @Test
-    fun aScreenOffShareIsKeptOnlyForRecordsCountedWithTheScreenOn() =
+    fun aScreenOffShareIsKeptOnlyForRecordsCountedWheneverOnBattery() =
         runTest {
             val a = heavy(1_000)
             val b = heavy(2_000)
             val c = heavy(3_000)
             val reason = { ms: Long, count: Int -> WindowWake(null, "425 ipa", WakeKind.WAKEUP_REASON, ms, count, null) }
-            store(window(a, b).copy(screenOnMs = 0, screenOffMs = 1_000_000), WindowRows(wakes = listOf(wake(3_000, 3), reason(3_000, 3))))
-            store(window(b, c).copy(screenOnMs = 1_000_000, screenOffMs = 0), WindowRows(wakes = listOf(reason(1_000, 1))))
+            val source = WindowWake(null, "IPA_WS", WakeKind.WAKEUP_SOURCE, 2_000, 2, 2)
+            store(
+                window(a, b).copy(screenOnMs = 0, screenOffMs = 1_000_000),
+                WindowRows(wakes = listOf(wake(3_000, 3), reason(3_000, 3), source), stats = device(1_000_000, 1_000_000)),
+            )
+            store(
+                window(b, c).copy(screenOnMs = 1_000_000, screenOffMs = 0),
+                WindowRows(wakes = listOf(reason(1_000, 1)), stats = device(1_000_000, 0)),
+            )
 
             val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
 
             assertThat(report.wakes.single { it.kind == WakeKind.PARTIAL }.screenOffShare).isNull()
             assertThat(report.wakes.single { it.kind == WakeKind.WAKEUP_REASON }.screenOffShare).isEqualTo(0.75)
+            // A root source counts on the charger too, where a window has no screen time to split by.
+            assertThat(report.wakes.single { it.kind == WakeKind.WAKEUP_SOURCE }.screenOffShare).isNull()
             assertThat(report.onBatteryMs).isEqualTo(2_000_000)
             assertThat(report.screenOffOnBatteryMs).isEqualTo(1_000_000)
+        }
+
+    @Test
+    fun theTimeOnBatteryIsBatterystatsOwnClock() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+            // Unplugged at a, then on a charger whose snapshot was light: batterystats counted half an hour.
+            store(window(a, b), WindowRows(stats = device(onBatteryMs = 1_800_000, screenOffMs = 1_200_000)))
+            // No S5 device section at either end: no time on battery is known.
+            store(window(b, c))
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.durationMs).isEqualTo(2 * 3_600_000L)
+            assertThat(report.onBatteryMs).isEqualTo(1_800_000)
+            assertThat(report.screenOffOnBatteryMs).isEqualTo(1_200_000)
+        }
+
+    @Test
+    fun theSmallAppsKeepTheirAlarmsTogether() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            store(window(a, b), WindowRows(stats = listOf(alarms(APP, 3), alarms(WindowUidEntity.OTHER_UID, 7))))
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.alarms.map { it.uid to it.wakeups })
+                .containsExactly(AlarmEntry.SMALL_APPS_UID to 7L, APP to 3L)
+                .inOrder()
+            assertThat(report.alarms.first().smallApps).isTrue()
         }
 
     @Test
@@ -195,8 +239,16 @@ class DrainReaderTest {
             val b = heavy(2_000)
             val c = heavy(3_000, plugType = 2)
             val d = heavy(4_000)
-            store(window(a, b).copy(measuredMah = 120.0), WindowRows(uids = listOf(uid(APP, 30.0)), stats = listOf(alarms(APP, 3))))
-            store(window(b, c).copy(measuredMah = 50.0, chargeSource = ChargeSource.LEVEL_DELTA), WindowRows(uids = listOf(uid(APP, 10.0))))
+            val hour = 3_600_000L
+            store(
+                window(a, b).copy(measuredMah = 120.0),
+                WindowRows(uids = listOf(uid(APP, 30.0)), stats = listOf(alarms(APP, 3)) + device(hour, hour)),
+            )
+            store(
+                window(b, c).copy(measuredMah = 50.0, chargeSource = ChargeSource.LEVEL_DELTA),
+                WindowRows(uids = listOf(uid(APP, 10.0)), stats = device(hour, hour)),
+            )
+            // On the charger, batterystats counts no time on battery.
             store(window(c, d).copy(measuredMah = -300.0), WindowRows(stats = listOf(alarms(APP, 2))))
 
             val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
@@ -517,6 +569,15 @@ class DrainReaderTest {
         uid: Int,
         wakeups: Long,
     ) = WindowStat(uid, UidKeys.ALARM_WAKEUPS, wakeups, Provenance.MEASURED)
+
+    /** A window's device rows: batterystats' time on battery, and with the screen off on battery. */
+    private fun device(
+        onBatteryMs: Long,
+        screenOffMs: Long,
+    ) = listOf(
+        WindowStat(UidPowerEntity.DEVICE_UID, DeviceKeys.BATTERY_REALTIME_MS, onBatteryMs, Provenance.MEASURED),
+        WindowStat(UidPowerEntity.DEVICE_UID, DeviceKeys.SCREEN_OFF_REALTIME_MS, screenOffMs, Provenance.MEASURED),
+    ).filter { it.value > 0 }
 
     private companion object {
         const val APP = 10_001

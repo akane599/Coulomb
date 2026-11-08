@@ -67,11 +67,7 @@ public data class ChainTotals(
     val unmodeledWindows: Int,
     val screenOnMs: Long,
     val screenOffMs: Long,
-    /** The time of the windows that started on battery: the hours batterystats counted. */
-    val dischargeMs: Long,
-    /** Of [dischargeMs], the time with the screen off. */
-    val dischargeScreenOffMs: Long,
-    /** Of [dischargeMs], the time of the windows with a measured value: the hours [dischargeMah] covers. */
+    /** The time of the windows that started on battery with a measured value: the hours [dischargeMah] covers. */
     val measuredMs: Long,
 )
 
@@ -223,8 +219,6 @@ public abstract class WindowDao {
             "SUM(w.modeledMah) AS modeledMah, " +
             "COALESCE(SUM(w.modeledMah IS NULL), 0) AS unmodeledWindows, " +
             "COALESCE(SUM(w.screenOnMs), 0) AS screenOnMs, COALESCE(SUM(w.screenOffMs), 0) AS screenOffMs, " +
-            "COALESCE(SUM(CASE WHEN f.plugType = 0 THEN w.screenOnMs + w.screenOffMs END), 0) AS dischargeMs, " +
-            "COALESCE(SUM(CASE WHEN f.plugType = 0 THEN w.screenOffMs END), 0) AS dischargeScreenOffMs, " +
             "COALESCE(SUM(CASE WHEN f.plugType = 0 AND w.measuredMah IS NOT NULL THEN w.screenOnMs + w.screenOffMs END), 0) " +
             "AS measuredMs " +
             "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +

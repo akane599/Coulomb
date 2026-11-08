@@ -420,7 +420,7 @@ private fun AlarmRow(
 ) {
     val value = pluralStringResource(R.plurals.drain_alarm_wakeups, entry.wakeups.toQuantity(), formats.integer(entry.wakeups))
     RecordRow(
-        formats.appName(entry.label, entry.uid),
+        if (entry.smallApps) stringResource(R.string.drain_small_apps) else formats.appName(entry.label, entry.uid),
         tag = null,
         meaning = null,
         facts = null,

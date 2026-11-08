@@ -24,6 +24,7 @@ import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -101,6 +102,7 @@ internal class DrainReader
                     levelEstimate = measured?.estimate,
                 )
             val names = inputs.meta.associateBy { it.uid }
+            val bases = bases(rows, chain)
             return DrainReport(
                 span = span,
                 drains = drains,
@@ -108,8 +110,8 @@ internal class DrainReader
                 endLevel = to.levelPct,
                 durationMs = exact?.let { it.screenOnMs + it.screenOffMs } ?: (totals.screenOnMs + totals.screenOffMs),
                 screenOffMs = exact?.screenOffMs ?: totals.screenOffMs,
-                onBatteryMs = onBattery(exact, totals)?.let { it.screenOnMs + it.screenOffMs } ?: totals.dischargeMs,
-                screenOffOnBatteryMs = onBattery(exact, totals)?.screenOffMs ?: totals.dischargeScreenOffMs,
+                onBatteryMs = bases.onBatteryMs,
+                screenOffOnBatteryMs = bases.screenOffOnBatteryMs,
                 measuredMs = measured?.ms ?: 0,
                 lowerBound = detail == null,
                 chargedInSpan = totals.pluggedWindows > 0,
@@ -120,14 +122,30 @@ internal class DrainReader
             )
         }
 
+        private class Bases(
+            val onBatteryMs: Long,
+            val screenOffOnBatteryMs: Long,
+        )
+
         /**
-         * The stored window when the reader trusts it to be all on battery, as [measured] does; else
-         * null, and the span's time on battery is its chain's windows that started unplugged (ADR-0036 §34).
+         * Batterystats' own time on battery and with the screen off on battery: the changes of the bt
+         * line's battery realtime (`mOnBatteryTimeBase`) and screen-off realtime
+         * (`mOnBatteryScreenOffTimeBase`) that each window stores as device rows (CounterMapper).
+         * They come from where the apps and wake records come from, the stored window's detail or its
+         * chain, so a window that met a charger, or one with no plug state at its start, counts
+         * only its time on battery, and a window without S5's device section counts none (ADR-0036
+         * §35). BatteryStatsImpl 16 L13946-13958, 17 L13543-13555; the bt line: BatteryStats 16
+         * L4288, 17 L4309-4318.
          */
-        private fun onBattery(
-            exact: WindowResultEntity?,
-            totals: ChainTotals,
-        ): WindowResultEntity? = exact?.takeIf { totals.windows == 0 || (totals.pluggedWindows == 0 && totals.unknownWindows == 0) }
+        private suspend fun bases(
+            rows: WindowRows?,
+            chain: Chain,
+        ): Bases {
+            suspend fun device(key: String): Long =
+                rows?.stats?.filter { it.uid == UidPowerEntity.DEVICE_UID && it.key == key }?.sumOf { it.value }
+                    ?: chain.stat(key).filter { it.uid == UidPowerEntity.DEVICE_UID }.sumOf { it.value }
+            return Bases(device(DeviceKeys.BATTERY_REALTIME_MS), device(DeviceKeys.SCREEN_OFF_REALTIME_MS))
+        }
 
         /** The device rows, which hold each component's total with the apps' share in it (CounterMapper). */
         private fun components(rows: List<WindowUidEntity>): List<ComponentDrain> =
@@ -306,9 +324,11 @@ internal class DrainReader
                         totalMs = total.totalMs,
                         count = total.count,
                         // Counted only with the screen off, a record's share is whole by construction.
+                        // A root record also counts on the charger, where batterystats keeps no screen
+                        // time, so a window there would read as screen-off: only on-battery kinds keep one.
                         screenOffShare =
                             split[total.key]
-                                ?.takeIf { known > 0 && total.key.kind.basis != WakeBasis.SCREEN_OFF_ON_BATTERY }
+                                ?.takeIf { known > 0 && total.key.kind.basis == WakeBasis.ON_BATTERY }
                                 ?.let { it.screenOffMs.toDouble() / known },
                         wakeups = total.wakeups,
                     )
@@ -323,8 +343,9 @@ internal class DrainReader
             val perUid =
                 rows?.stats?.filter { it.key == UidKeys.ALARM_WAKEUPS }?.map { it.uid to it.value }
                     ?: chain.stat(UidKeys.ALARM_WAKEUPS).map { it.uid to it.value }
+            // The UIDs a window keeps no rows for share one, small apps (ADR-0015), with their alarms.
             return perUid
-                .filter { (uid, wakeups) -> uid >= 0 && wakeups > 0 }
+                .filter { (uid, wakeups) -> (uid >= 0 || uid == WindowUidEntity.OTHER_UID) && wakeups > 0 }
                 .map { (uid, wakeups) ->
                     val name = names[uid]
                     AlarmEntry(uid, name?.label, name?.iconCacheKey?.takeIf { it.isNotEmpty() }, wakeups)

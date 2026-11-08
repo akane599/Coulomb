@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.data
 
+import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.WakeKind
 import java.time.LocalDate
 
@@ -49,11 +50,12 @@ public data class DrainReport(
     val durationMs: Long,
     val screenOffMs: Long,
     /**
-     * Of [durationMs], the time on battery: the windows that started unplugged. Batterystats counts
-     * power and wake time only then (ADR-0036 §34).
+     * Of [durationMs], the time on battery by batterystats' own clock, summed from the windows the
+     * apps and records come from. Batterystats counts power and most wake time only then (ADR-0036
+     * §34, §35).
      */
     val onBatteryMs: Long,
-    /** Of [onBatteryMs], the time with the screen off. */
+    /** Of [onBatteryMs], the time with the screen off, by the same clock. */
     val screenOffOnBatteryMs: Long,
     /** The time of the windows the measured total sums; 0 without one. */
     val measuredMs: Long,
@@ -194,18 +196,26 @@ public data class WakeEntry(
     val count: Long,
     /**
      * The share of its time with the screen off, 0 to 1, over the windows that were wholly screen-on
-     * or wholly screen-off; null when none was, and for kinds counted only with the screen off
-     * ([WakeBasis.SCREEN_OFF_ON_BATTERY]), whose share is always whole. Derived.
+     * or wholly screen-off. Only for kinds counted on battery ([WakeBasis.ON_BATTERY]): a kind counted
+     * only with the screen off is always whole, and a root kind also counts on the charger, where
+     * there is no screen time to split by. Null when no window qualified. Derived.
      */
     val screenOffShare: Double?,
     /** S9 sources only: how many times it woke the phone. */
     val wakeups: Long?,
 )
 
-/** One app's wakeup alarms in a span. Measured. */
+/** One app's wakeup alarms in a span, or the small apps' together ([SMALL_APPS_UID]). Measured. */
 public data class AlarmEntry(
     val uid: Int,
     val label: String?,
     val iconPackage: String?,
     val wakeups: Long,
-)
+) {
+    /** The UIDs no window kept rows for, together (ADR-0015). */
+    val smallApps: Boolean get() = uid == SMALL_APPS_UID
+
+    public companion object {
+        public const val SMALL_APPS_UID: Int = WindowUidEntity.OTHER_UID
+    }
+}

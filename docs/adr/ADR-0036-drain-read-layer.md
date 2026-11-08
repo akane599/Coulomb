@@ -220,3 +220,22 @@ found figures that claimed more than the data holds. These decisions answer them
     - R: found while choosing Compare's per-hour base (ADR-0038). A window that spent hours on the
       charger or with the screen on made every S5 wake bar look short. SPEC 0.2 puts measurement
       honesty above layout.
+35. **The time on battery and its screen-off part are batterystats' own clocks**, read from the same
+    windows as the figures they divide.
+    - S5's `bt` line carries the battery realtime and the screen-off realtime that its counters run
+      on: `mOnBatteryTimeBase` and `mOnBatteryScreenOffTimeBase` (`BatteryStatsImpl`
+      android-16.0.0_r4 L13946-13958, android-17.0.0_r1 L13543-13555; dumped by `BatteryStats`
+      16 L4288, 17 L4275-4318). Both parsers keep them, and each window stores them as device rows
+      (`DeviceKeys.BATTERY_REALTIME_MS`, `SCREEN_OFF_REALTIME_MS`).
+    - A span read from one stored window's rows takes them from that window; a span read from the
+      chain takes them from the chain. So the base always covers the windows its numerators came
+      from. §34 summed the wall-clock length of the windows that started unplugged, which counted a
+      window that was plugged in partway and missed the screen-on time inside a screen-off window.
+    - Only records counted whenever on battery (wakeup reasons) keep a screen-off share. A root
+      record's counter runs all the time, so the share of it held while on battery with the screen
+      off has no matching base.
+    - The small apps' wakeup alarms (the UIDs a window folds together, `OTHER_UID`) stay as one
+      row, "Small apps", instead of being dropped. The group's rate is then the whole count.
+    - `ChainTotals` drops its discharge sums, which §34 added and nothing reads now.
+    - R: found by the independent review of Compare (ADR-0038). Dividing by a clock other than the
+      counter's own makes every rate wrong by the gap between them (SPEC 0.2, measurement honesty).

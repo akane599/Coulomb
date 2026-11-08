@@ -100,9 +100,7 @@ class ChainTest : DatabaseTest() {
             assertThat(totals.unmodeledWindows).isEqualTo(1)
             assertThat(totals.screenOnMs).isEqualTo(1_000_000 + 400_000)
             assertThat(totals.screenOffMs).isEqualTo(1_000_000 + 600_000 + 2 * 3_600_000)
-            // On battery: a to b, b to c and d to e; measured: a to b and b to c.
-            assertThat(totals.dischargeMs).isEqualTo(1_000_000 + 1_000_000 + 3_600_000)
-            assertThat(totals.dischargeScreenOffMs).isEqualTo(1_000_000 + 3_600_000)
+            // Started on battery with a measured value: a to b and b to c.
             assertThat(totals.measuredMs).isEqualTo(1_000_000 + 1_000_000)
 
             val end = checkNotNull(snapshots.snapshot(c))
@@ -123,7 +121,6 @@ class ChainTest : DatabaseTest() {
             assertThat(totals.dischargeMah).isNull()
             assertThat(totals.modeledMah).isNull()
             assertThat(totals.screenOnMs).isEqualTo(0)
-            assertThat(totals.dischargeMs).isEqualTo(0)
             assertThat(totals.measuredMs).isEqualTo(0)
         }
 
