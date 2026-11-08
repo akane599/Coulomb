@@ -30,8 +30,13 @@ irreversible or public (releases, public repo, force-push to `main`, deleting br
 agent lacks, changing a non-negotiable (1.2) or the priority order, and the P3 design-direction review.
 Keep working on independent tasks while a hard-stop answer is pending.
 
-- Costly-to-reverse decisions (module boundaries, schema after P2, core library, parser strategy,
-  estimator method): get a second opinion from a fresh read-only subagent with a neutral brief, then ADR.
+- Second opinion only for hard or costly-to-reverse decisions (ADR-0027): architecture, data format,
+  database schema, external or public API, deleting or reverting something. Use a fresh read-only
+  subagent with a neutral brief, then write an ADR. Decide everything else yourself, with a one-line
+  reason in an ADR.
+- Optional work waits (ADR-0027). Anything the spec calls "optional" or "if time allows" goes to
+  `BACKLOG.md` as one line (what it is, where the spec has it) and is not built. Once the mandatory
+  phases and SPEC 18 pass, the owner picks from it.
 - Stuck (same failure after 3 attempts or ~45 min): debugging subagent with evidence only; then mark
   blocked in `docs/progress.md` and move on.
 - Parsers, calibration/estimators and attribution diffs get one independent subagent review before their gate.

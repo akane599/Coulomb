@@ -85,7 +85,8 @@ The agent works autonomously and never waits for a "continue". It asks the owner
 | Decision | Examples | What the agent does |
 | --- | --- | --- |
 | Cheap to reverse | Naming, internal structure, a UI detail within the `/impeccable` rules | Decide now; write an ADR only if it departs from the spec |
-| Costly to reverse | Module boundaries, the database schema after P2, a core library, a parser strategy, an estimator method | Get a second opinion from a subagent, then decide and write an ADR with both views |
+| Costly to reverse | Architecture, a data format, the database schema, an external or public API, deleting or reverting something (ADR-0027) | Get a second opinion from a subagent, then decide and write an ADR with both views |
+| Worth recording | A library or version pin, a component choice, a test strategy | Decide; give the reason in one line in an ADR (ADR-0027) |
 | Owner's call | The hard stops above | Ask |
 
 **Second-opinion protocol**
@@ -101,6 +102,8 @@ The agent works autonomously and never waits for a "continue". It asks the owner
 3. Ask the owner only when blocked tasks stop all remaining work.
 
 **Independent review of accuracy-critical code.** Parsers (5.1), calibration and estimators (6.1–6.5) and attribution diffs each get one review by a subagent that did not write them, before their phase gate.
+
+**Optional work waits** (ADR-0027). Anything this spec calls "optional" or "if time allows" is not built. It gets one line in `BACKLOG.md` (what it is, where the spec has it), and the owner picks from that list once the mandatory phases and section 18 pass. Backlog items count in no gate.
 
 **Questions that can wait** go to `docs/questions.md` together with the default the agent uses meanwhile. The owner answers when convenient; the agent re-reads the file at the start of each phase.
 
