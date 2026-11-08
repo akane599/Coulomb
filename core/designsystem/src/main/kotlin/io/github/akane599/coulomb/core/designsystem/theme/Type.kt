@@ -12,6 +12,8 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import io.github.akane599.coulomb.core.designsystem.R
@@ -36,12 +38,22 @@ public val SplineSansMono: FontFamily =
         Font(R.font.spline_sans_mono, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
     )
 
+/**
+ * Prose breaks its lines over the whole paragraph, so a last line is not left with one word, and
+ * headings balance their lines (DESIGN.md: prose wraps "pretty").
+ *
+ * Every role resolves its paragraph direction from the text's first strong character, falling back
+ * to the layout direction: TextView's default heuristic. Compose's unspecified direction instead
+ * forces the layout direction, which reorders the punctuation of English fallback strings under an
+ * RTL locale ("yet." drawn as ".yet").
+ */
 private fun role(
     size: Int,
     lineHeight: Int,
     weight: Int,
     tracking: Double = 0.0,
     family: FontFamily = HankenGrotesk,
+    lineBreak: LineBreak = LineBreak.Unspecified,
 ) = TextStyle(
     fontFamily = family,
     fontSize = size.sp,
@@ -49,6 +61,8 @@ private fun role(
     fontWeight = FontWeight(weight),
     letterSpacing = tracking.em,
     fontFeatureSettings = FIGURES,
+    textDirection = TextDirection.Content,
+    lineBreak = lineBreak,
 )
 
 /**
@@ -62,11 +76,11 @@ public data class CoulombTypography(
     /** The unit beside a [display] number. */
     val displayUnit: TextStyle = role(28, 34, 400),
     /** Screen titles on expanded layouts. */
-    val headline: TextStyle = role(28, 34, 600),
+    val headline: TextStyle = role(28, 34, 600, lineBreak = LineBreak.Heading),
     /** Section and app bar titles; the onboarding title on compact widths. */
-    val title: TextStyle = role(20, 26, 600),
+    val title: TextStyle = role(20, 26, 600, lineBreak = LineBreak.Heading),
     /** Story sentences, descriptions, switch labels. */
-    val body: TextStyle = role(16, 24, 400),
+    val body: TextStyle = role(16, 24, 400, lineBreak = LineBreak.Paragraph),
     /** Row names. */
     val bodyName: TextStyle = role(16, 24, 500),
     /** Subheads and card titles. */
@@ -80,7 +94,7 @@ public data class CoulombTypography(
     /** Buttons. */
     val labelButton: TextStyle = role(13, 18, 600, tracking = 0.01),
     /** Units, provenance, footnotes, secondary notes. */
-    val caption: TextStyle = role(12, 16, 400),
+    val caption: TextStyle = role(12, 16, 400, lineBreak = LineBreak.Paragraph),
     /** Navigation bar labels. */
     val captionNav: TextStyle = role(12, 16, 500),
     /** Wakelock tags, kernel names, commands. */

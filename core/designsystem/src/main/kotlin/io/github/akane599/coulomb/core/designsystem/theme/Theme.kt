@@ -18,10 +18,11 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// The theme's two locals are the design system's own, as MaterialTheme's are for Material roles.
+// The theme's locals are the design system's own, as MaterialTheme's are for Material roles.
 // build.gradle.kts exempts this file from the Compose CompositionLocal allowlist rule.
 private val LocalCoulombColors = staticCompositionLocalOf { LightColors }
 private val LocalCoulombTypography = staticCompositionLocalOf { CoulombTypography() }
+internal val LocalReducedMotion = staticCompositionLocalOf { false }
 
 /**
  * Coulomb's theme: its colour and type roles, also mapped onto Material 3 for the Material
@@ -32,11 +33,13 @@ private val LocalCoulombTypography = staticCompositionLocalOf { CoulombTypograph
  * DESIGN.md, so it reads on any fill.
  *
  * @param trueBlack the opt-in OLED theme; only applies when [darkTheme] is true (SPEC 11.4).
+ * @param reducedMotion SPEC 11.6's reduced motion, read from the system by default.
  */
 @Composable
 public fun CoulombTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     trueBlack: Boolean = false,
+    reducedMotion: Boolean = rememberReducedMotion(),
     content: @Composable () -> Unit,
 ) {
     val colors =
@@ -46,7 +49,11 @@ public fun CoulombTheme(
             else -> DarkColors
         }
     val typography = CoulombTypography()
-    CompositionLocalProvider(LocalCoulombColors provides colors, LocalCoulombTypography provides typography) {
+    CompositionLocalProvider(
+        LocalCoulombColors provides colors,
+        LocalCoulombTypography provides typography,
+        LocalReducedMotion provides reducedMotion,
+    ) {
         MaterialTheme(
             colorScheme = colors.toMaterial(darkTheme),
             motionScheme = CoulombMotionScheme,
@@ -72,6 +79,11 @@ public object CoulombTheme {
     public val typography: CoulombTypography
         @Composable @ReadOnlyComposable
         get() = LocalCoulombTypography.current
+
+    /** SPEC 11.6: every transition becomes a 150 ms crossfade, and nothing else moves. */
+    public val reducedMotion: Boolean
+        @Composable @ReadOnlyComposable
+        get() = LocalReducedMotion.current
 }
 
 /**

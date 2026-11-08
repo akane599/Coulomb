@@ -26,6 +26,8 @@ SVG = "{http://www.w3.org/2000/svg}"
 VIEWBOX = "0 -960 960 960"
 # The lab draws a mock status bar with these; the app never does, and lint fails on unused resources.
 LAB_ONLY = {"battery_android_5", "signal_cellular_alt", "wifi"}
+# Directional icons flip under an RTL layout, as Material's auto-mirrored set does (ADR-0034).
+MIRRORED = {"arrow_back", "chevron_right", "open_in_new", "undo"}
 
 
 def drawable(svg: Path) -> str:
@@ -36,6 +38,7 @@ def drawable(svg: Path) -> str:
     if len(paths) != 1 or paths[0].tag != f"{SVG}path" or set(paths[0].keys()) != {"d"}:
         sys.exit(f"{svg.name}: expected exactly one plain <path d=...>")
     name = svg.stem
+    mirrored = '    android:autoMirrored="true"\n' if name in MIRRORED else ""
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         f'<!-- Material Symbols Rounded "{name}" (Google LLC, Apache-2.0), from design-lab/icons by tools/design/icons.py. -->\n'
@@ -43,6 +46,7 @@ def drawable(svg: Path) -> str:
         '    android:width="24dp"\n'
         '    android:height="24dp"\n'
         '    android:viewportWidth="960"\n'
+        f"{mirrored}"
         '    android:viewportHeight="960">\n'
         '    <group android:translateY="960">\n'
         '        <path\n'

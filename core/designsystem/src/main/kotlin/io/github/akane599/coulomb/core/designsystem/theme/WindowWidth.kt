@@ -50,3 +50,8 @@ public fun currentWindowWidth(): WindowWidth {
 @ReadOnlyComposable
 public fun currentGutter(): Dp =
     if (currentWindowWidth() == WindowWidth.Compact) CoulombSpacing.GutterCompact else CoulombSpacing.GutterMedium
+
+/** The gap between a screen's sections (SPEC 11.5, ADR-0025): 24 dp on compact widths, 32 dp from medium up. */
+@Composable
+@ReadOnlyComposable
+public fun currentSectionGap(): Dp = if (currentWindowWidth() == WindowWidth.Compact) CoulombSpacing.Space24 else CoulombSpacing.Space32
