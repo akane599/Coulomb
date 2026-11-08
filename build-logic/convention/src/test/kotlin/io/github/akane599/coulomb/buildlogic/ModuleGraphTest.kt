@@ -15,6 +15,15 @@ class ModuleGraphTest {
     }
 
     @Test
+    fun `the read layer reads but never collects or renders`() {
+        val reads = setOf(":core:model", ":core:common", ":core:database", ":core:analytics", ":core:datastore")
+        assertThat(ModuleGraph.violations(":core:data", reads)).isEmpty()
+        assertThat(ModuleGraph.violations(":core:data", setOf(":core:collect", ":core:designsystem")))
+            .containsExactly(":core:collect", ":core:designsystem")
+        assertThat(ModuleGraph.violations(":feature:now", setOf(":core:data"))).isEmpty()
+    }
+
+    @Test
     fun `features never depend on each other`() {
         assertThat(ModuleGraph.violations(":feature:now", setOf(":feature:drain"))).containsExactly(":feature:drain")
     }

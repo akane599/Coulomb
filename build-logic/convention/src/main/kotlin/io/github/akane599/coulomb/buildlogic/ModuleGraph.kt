@@ -37,6 +37,8 @@ public object ModuleGraph {
             ":core:analytics" to setOf(":core:model"),
             ":core:collect" to setOf(":core:privileged", ":core:parsing", ":core:analytics", ":core:database"),
             ":core:insights" to setOf(":core:analytics", ":core:database"),
+            // ADR-0032: the shared read models.
+            ":core:data" to setOf(":core:model", ":core:common", ":core:database", ":core:analytics", ":core:datastore"),
             ":core:designsystem" to emptySet(),
             ":core:ui" to setOf(":core:designsystem", ":core:model"),
             ":feature:*" to setOf(ANY_CORE),

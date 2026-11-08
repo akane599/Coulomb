@@ -1068,6 +1068,7 @@ Coulomb is a multi-module Kotlin and Jetpack Compose app with a strict one-way f
 | `:core:analytics` | Calibration, sessions, capacity, attribution diffs, provenance | `:core:model` |
 | `:core:collect` | Foreground service, triggers, samplers, `CollectorActor` | privileged, parsing, analytics, database |
 | `:core:insights` | Rule engine, thresholds, Drain Story templates | analytics, database |
+| `:core:data` (ADR-0032) | Read models shared by screens and widgets: windows, battery state, app labels and icons | model, common, database, analytics, datastore |
 | `:core:designsystem` | Tokens, theme, type, motion scheme, components, charts | Compose only |
 | `:core:ui` | Shared composables (rows, metrics, states) | designsystem, model |
 | `:feature:now`, `:feature:drain`, `:feature:appdetail`, `:feature:timeline`, `:feature:health`, `:feature:charging`, `:feature:actions`, `:feature:onboarding`, `:feature:settings` | Screens and ViewModels | core modules, never each other |
