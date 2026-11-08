@@ -15,15 +15,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The battery right now, the live current and the open discharge session (SPEC 10.2, 10.8). Each
- * new sample re-reads them; nothing here polls (SPEC 7.4). Flows stop 5 s after the last screen
+ * The battery right now, the live current, the open discharge session and its level line (SPEC
+ * 10.2, 10.8). Each new sample re-reads them; nothing here polls (SPEC 7.4). Flows stop 5 s after the last screen
  * leaves, so a rotation keeps them.
  */
 @Singleton
@@ -39,36 +38,41 @@ public class BatteryRepository
     ) {
         private val latest: Flow<BatterySampleEntity?> = samples.observeLatest().distinctUntilChanged()
 
-        public val battery: StateFlow<BatteryNow?> =
-            latest
-                .map { it?.toBatteryNow() }
-                .flowOn(dispatchers.io)
-                .stateIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
+        private val trail = LevelTrailCache()
 
-        /** The last [LIVE_WINDOW_MS] of calibrated current, oldest first (SPEC 10.2's live chart). */
-        public val liveCurrent: StateFlow<List<CurrentPoint>> =
+        /**
+         * Everything one sample changes, read together: Now takes it whole, so a sample recomposes the
+         * screen once and the chart never pairs a new reading with an old window (ADR-0034).
+         */
+        public val reading: StateFlow<BatteryReading?> =
             latest
                 .mapLatest { sample ->
                     if (sample == null) {
-                        emptyList()
+                        trail.clear()
+                        null
                     } else {
-                        samples
-                            .samplesBetween(sample.wallMs - LIVE_WINDOW_MS, sample.wallMs + 1)
-                            .mapNotNull { s -> s.currentUa?.let { CurrentPoint(s.wallMs, it / UA_PER_MA) } }
-                    }
-                }.flowOn(dispatchers.io)
-                .stateIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
-
-        /** The open discharge session, or null while plugged in or before one opens. */
-        public val discharge: StateFlow<DischargeSummary?> =
-            latest
-                .mapLatest { sample ->
-                    sample?.let {
-                        val read = sessions.overlapping(DischargeSummaries.KINDS, it.wallMs - DischargeSummaries.LOOKBACK_MS)
-                        DischargeSummaries.build(it, read, zone.zone())
+                        read(sample)
                     }
                 }.flowOn(dispatchers.io)
                 .stateIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
+
+        private suspend fun read(sample: BatterySampleEntity): BatteryReading {
+            val overlapping = sessions.overlapping(DischargeSummaries.KINDS, sample.wallMs - DischargeSummaries.LOOKBACK_MS)
+            val discharge = DischargeSummaries.build(sample, overlapping, zone.zone())
+            val start = discharge?.startWallMs
+            val levels =
+                if (start == null) {
+                    trail.clear()
+                    emptyList()
+                } else {
+                    trail.read(start, sample.wallMs, samples::samplesBetween)
+                }
+            val live =
+                samples
+                    .samplesBetween(sample.wallMs - LIVE_WINDOW_MS, sample.wallMs + 1)
+                    .mapNotNull { s -> s.currentUa?.let { CurrentPoint(s.wallMs, it / UA_PER_MA) } }
+            return BatteryReading(sample.toBatteryNow(), discharge, levels, live)
+        }
 
         private fun BatterySampleEntity.toBatteryNow() =
             BatteryNow(

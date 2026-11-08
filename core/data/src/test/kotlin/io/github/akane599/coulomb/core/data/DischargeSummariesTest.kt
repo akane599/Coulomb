@@ -23,6 +23,7 @@ class DischargeSummariesTest {
         to: Double?,
         levels: Pair<Int, Int?>,
         awake: Double? = null,
+        cut: SessionCloseReason = SessionCloseReason.STATE_CHANGED,
     ) = SessionEntity(
         kind = kind,
         bootSeq = 1,
@@ -49,7 +50,7 @@ class DischargeSummariesTest {
         minutesAt100 = null,
         stressIndex = null,
         cycleEquivalents = null,
-        closeReason = if (to == null) null else SessionCloseReason.STATE_CHANGED,
+        closeReason = if (to == null) null else cut,
         // As stored: an open session's quality is 0 until it closes (SessionSummary.open).
         quality = if (to == null) 0.0 else 1.0,
     )
@@ -95,11 +96,60 @@ class DischargeSummariesTest {
         assertThat(summary.screenOn!!.pctPerHour).isWithin(1e-9).of(3.5)
         assertThat(summary.screenOn.hours).isWithin(1e-9).of(2.0)
         assertThat(summary.screenOff!!.pctPerHour).isWithin(1e-9).of(1.0)
-        assertThat(summary.deepSleepShare).isWithin(1e-9).of(0.8)
+        val sleep = summary.deepSleep!!
+        assertThat(sleep.share).isWithin(1e-9).of(0.8)
+        assertThat(sleep.hours).isWithin(1e-9).of(3.0)
+        assertThat(sleep.quality).isWithin(1e-9).of(1.0)
+        assertThat(sleep.ready).isTrue()
         // No history: the screen-on session alone, 80% at 3.5 %/h, as a range around 22.9 h.
         val left = summary.timeLeft!!
         assertThat(left.shortestHours).isLessThan(80 / 3.5)
         assertThat(left.longestHours).isGreaterThan(80 / 3.5)
+    }
+
+    private fun sleepAfter(hours: Double): DeepSleepShare {
+        val sessions =
+            listOf(
+                session(SessionKind.DISCHARGE, 8.0, null, 90 to null),
+                session(SessionKind.SCREEN_OFF, 8.0, 8.0 + hours, 90 to 90, awake = 0.1),
+            )
+        return DischargeSummaries.build(sample(9.5, 90), sessions, zone)!!.deepSleep!!
+    }
+
+    @Test
+    fun deepSleepWaitsForAQuarterHourThenGainsConfidenceUpToAnHour() {
+        // Not ready a minute short of 15 min, ready at 15 min.
+        assertThat(sleepAfter(0.25 - 1.0 / 60).ready).isFalse()
+        val quarter = sleepAfter(0.25)
+        assertThat(quarter.ready).isTrue()
+        // A clean quarter hour earns a quarter: low confidence (SPEC 6.7) until half an hour.
+        assertThat(quarter.quality).isWithin(1e-9).of(0.25)
+        assertThat(sleepAfter(0.5).quality).isWithin(1e-9).of(0.5)
+        assertThat(sleepAfter(1.25).quality).isWithin(1e-9).of(1.0)
+    }
+
+    @Test
+    fun deepSleepMarksSessionsCutShort() {
+        // One clean hour and three hours cut short by a reboot: quality (1 + 3 × 0.5) / 4.
+        val cut =
+            listOf(
+                session(SessionKind.DISCHARGE, 8.0, null, 90 to null),
+                session(SessionKind.SCREEN_OFF, 8.0, 9.0, 90 to 89, awake = 0.1),
+                session(SessionKind.SCREEN_OFF, 9.0, 12.0, 89 to 86, awake = 0.3, cut = SessionCloseReason.REBOOT),
+            )
+        val sleep = DischargeSummaries.build(sample(12.5, 85), cut, zone)!!.deepSleep!!
+        assertThat(sleep.share).isWithin(1e-9).of(1 - (0.1 + 3 * 0.3) / 4)
+        assertThat(sleep.quality).isWithin(1e-9).of(0.625)
+        assertThat(sleep.ready).isTrue()
+
+        // Forty minutes, all cut short: 0.5 × 40/60 is under 0.5, so the share is low confidence.
+        val short =
+            listOf(
+                session(SessionKind.DISCHARGE, 8.0, null, 90 to null),
+                session(SessionKind.SCREEN_OFF, 8.0, 8.0 + 40.0 / 60, 90 to 90, awake = 0.1, cut = SessionCloseReason.DATA_GAP),
+            )
+        val gap = DischargeSummaries.build(sample(9.0, 90), short, zone)!!.deepSleep!!
+        assertThat(gap.quality).isWithin(1e-6).of(0.5 * 40 / 60)
     }
 
     @Test
@@ -177,7 +227,7 @@ class DischargeSummariesTest {
         assertThat(DischargeSummaries.build(sample(9.0, 85), emptyList(), zone)).isNull()
         val summary = DischargeSummaries.build(sample(9.0, 85), open, zone)!!
         assertThat(summary.screenOn).isNull()
-        assertThat(summary.deepSleepShare).isNull()
+        assertThat(summary.deepSleep).isNull()
         assertThat(summary.timeLeft).isNull()
     }
 }

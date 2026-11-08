@@ -21,6 +21,25 @@ public data class BatteryNow(
     val wallMs: Long,
 )
 
+/** One sample's read of the battery (SPEC 10.2). */
+public data class BatteryReading(
+    val battery: BatteryNow,
+    /** The open discharge session, or null before one opens. */
+    val discharge: DischargeSummary?,
+    /** The level since that session began, oldest first; empty without one. */
+    val levels: List<LevelPoint>,
+    /** The last [BatteryRepository.LIVE_WINDOW_MS] of calibrated current, oldest first. */
+    val live: List<CurrentPoint>,
+)
+
+/** One level reading since the unplug (SPEC 10.2's scale); Modeled, as the level is. */
+public data class LevelPoint(
+    val wallMs: Long,
+    val levelPct: Int,
+    /** The phone rebooted before this reading: the line breaks here. */
+    val startsSegment: Boolean,
+)
+
 /** One point of the live current chart (SPEC 10.2). */
 public data class CurrentPoint(
     val wallMs: Long,
@@ -51,6 +70,26 @@ public data class StateRate(
     }
 }
 
+/**
+ * The share of screen-off time the CPU slept in the current discharge (SPEC 10.2's strip): one minus
+ * the screen-off sessions' awake share, weighted by their time in the discharge. Measured.
+ */
+public data class DeepSleepShare(
+    /** 0 to 1. */
+    val share: Double,
+    /** The screen-off hours [share] is read from. */
+    val hours: Double,
+    /**
+     * 0 to 1: the time-weighted completeness of those sessions (a half for one cut short by a reboot
+     * or a gap), times the window's length up to an hour. Below 0.5 the figure carries the
+     * low-confidence mark (SPEC 6.7).
+     */
+    val quality: Double,
+) {
+    /** As [StateRate.ready]: a share of a few minutes of screen-off time says little. */
+    val ready: Boolean get() = hours >= StateRate.MIN_HOURS
+}
+
 /** The open discharge session: SPEC 10.2's hero, verdict and session strip. */
 public data class DischargeSummary(
     val startWallMs: Long,
@@ -58,8 +97,8 @@ public data class DischargeSummary(
     val levelPct: Int,
     val screenOn: StateRate?,
     val screenOff: StateRate?,
-    /** Share of screen-off time the CPU slept, 0 to 1; Measured. Null before a screen-off session closes. */
-    val deepSleepShare: Double?,
+    /** Null until a screen-off session with an awake share overlaps the discharge. */
+    val deepSleep: DeepSleepShare?,
     /** SPEC 6.8, for the screen state the phone is in now; null when there is nothing to estimate from. */
     val timeLeft: TimeLeft?,
 )

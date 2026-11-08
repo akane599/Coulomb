@@ -16,9 +16,11 @@ android {
 dependencies {
     api(projects.core.model)
     api(projects.core.common)
-    implementation(projects.core.analytics)
+    // TimeLeft is part of DischargeSummary.
+    api(projects.core.analytics)
     implementation(projects.core.database)
     implementation(projects.core.datastore)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.robolectric)

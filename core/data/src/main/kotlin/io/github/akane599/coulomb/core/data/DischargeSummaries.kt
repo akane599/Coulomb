@@ -55,26 +55,35 @@ internal object DischargeSummaries {
             levelPct = latest.levelPct,
             screenOn = on?.let { StateRate(it.pctPerHour, it.hours, it.quality) },
             screenOff = off?.let { StateRate(it.pctPerHour, it.hours, it.quality) },
-            deepSleepShare = deepSleep(screens.filter { it.kind == SessionKind.SCREEN_OFF }, current, latest),
+            deepSleep = deepSleep(screens.filter { it.kind == SessionKind.SCREEN_OFF }, current, latest),
             timeLeft = TimeRemaining.estimate(latest.levelPct, if (latest.screenOn) on else off, history),
         )
     }
 
-    /** One minus the screen-off sessions' awake share, weighted by their time in [current]. */
+    /**
+     * One minus the screen-off sessions' awake share, weighted by their time in [current]. The
+     * quality (SPEC 6.7: sample count, window length) is their [levelQuality] weighted the same way,
+     * as a session cut short by a reboot or a gap misses part of its awake time too, times the
+     * window's length up to [FULL_SLEEP_HOURS]: a quarter hour earns a quarter.
+     */
     private fun deepSleep(
         screenOff: List<SessionEntity>,
         current: Discharge,
         latest: BatterySampleEntity,
-    ): Double? {
-        var hours = 0.0
+    ): DeepSleepShare? {
+        var ms = 0.0
         var awake = 0.0
+        var quality = 0.0
         for (session in screenOff) {
             val ratio = session.awakeRatio ?: continue
             val time = ScreenRates.discharging(session.toSpan(latest), listOf(current)).sumOf { (it.endWallMs - it.startWallMs).toDouble() }
-            hours += time
+            ms += time
             awake += ratio.coerceIn(0.0, 1.0) * time
+            quality += session.levelQuality() * time
         }
-        return if (hours > 0) 1 - awake / hours else null
+        if (ms <= 0) return null
+        val hours = ms / MS_PER_HOUR
+        return DeepSleepShare(share = 1 - awake / ms, hours = hours, quality = quality / ms * minOf(1.0, hours / FULL_SLEEP_HOURS))
     }
 
     /**
@@ -89,6 +98,10 @@ internal object DischargeSummaries {
         }
 
     private const val GAP_QUALITY = 0.5
+    private const val MS_PER_HOUR = 3_600_000.0
+
+    /** Screen-off time after which the share's window no longer lowers its quality. */
+    private const val FULL_SLEEP_HOURS = 1.0
 
     private fun SessionEntity.toDischarge(latest: BatterySampleEntity) =
         Discharge(startWall, endWall ?: latest.wallMs, startLevel, endLevel ?: latest.levelPct, levelQuality())

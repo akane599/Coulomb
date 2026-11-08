@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.util.LruCache
+import androidx.core.graphics.createBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import kotlinx.coroutines.withContext
@@ -39,7 +40,7 @@ public class AppIcons
             return withContext(dispatchers.io) {
                 try {
                     val drawable = pm.getApplicationIcon(packageName)
-                    Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888).also { bitmap ->
+                    createBitmap(sizePx, sizePx).also { bitmap ->
                         drawable.setBounds(0, 0, sizePx, sizePx)
                         drawable.draw(Canvas(bitmap))
                         cache.put(key, bitmap)
