@@ -6,6 +6,7 @@ package io.github.akane599.coulomb.feature.drain
 import androidx.compose.runtime.Immutable
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.model.PrivilegeIssue
 
 /** What Drain shows (SPEC 10.3), in the states of SPEC 10.11. */
 internal sealed interface DrainUiState {
@@ -27,5 +28,7 @@ internal sealed interface DrainUiState {
         val includeSystem: Boolean,
         /** Apps scaled to the measured total, labelled Derived (SPEC 6.5); off by default. */
         val scaled: Boolean,
+        /** What keeps snapshots from being taken, if anything (SPEC 4.5, 10.11 partial). */
+        val issue: PrivilegeIssue? = null,
     ) : DrainUiState
 }

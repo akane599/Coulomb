@@ -82,11 +82,43 @@ class WindowDrainsBuilderTest {
     }
 
     @Test
-    fun aLevelBasedWindowIsEstimatedAndSharesDivideByMeasured() {
-        val drains = WindowDrainsBuilder.build(window(1_000.0, ChargeSource.LEVEL_DELTA), 10, 20, listOf(row(10_100, 250.0)), emptyList())
+    fun aLevelBasedWindowIsEstimatedAndSharesDivideByTheModel() {
+        val drains =
+            WindowDrainsBuilder.build(
+                window(1_000.0, ChargeSource.LEVEL_DELTA, modeled = 500.0),
+                10,
+                20,
+                listOf(row(10_100, 250.0)),
+                emptyList(),
+            )
 
         assertThat(drains.measuredProvenance).isEqualTo(Provenance.ESTIMATED)
-        assertThat(drains.share(250.0)).isWithin(1e-9).of(0.25)
+        assertThat(drains.estimated).isTrue()
+        assertThat(drains.sharesOfMeasured).isFalse()
+        // A range is no share base (ADR-0036 §17): the model's 500 mAh is.
+        assertThat(drains.share(250.0)).isWithin(1e-9).of(0.5)
         assertThat(drains.apps.single().label).isNull()
+    }
+
+    @Test
+    fun anEstimatedRangeSpansOneSpreadEitherWayAndNeverGoesBelowZero() {
+        val estimate = LevelEstimate(spreadMah = 50.0, stretches = 1, withCounter = false)
+        val drains =
+            WindowDrainsBuilder.build(10, 20, 30.0, Provenance.ESTIMATED, 20.0, listOf(row(10_100, 20.0)), emptyList(), estimate)
+
+        assertThat(drains.measuredLowMah).isWithin(1e-9).of(0.0)
+        assertThat(drains.measuredHighMah).isWithin(1e-9).of(80.0)
+    }
+
+    @Test
+    fun aMeasuredTotalHasNoRange() {
+        val estimate = LevelEstimate(spreadMah = 50.0, stretches = 1, withCounter = false)
+        val drains =
+            WindowDrainsBuilder.build(10, 20, 300.0, Provenance.MEASURED, 200.0, listOf(row(10_100, 200.0)), emptyList(), estimate)
+
+        assertThat(drains.levelEstimate).isNull()
+        assertThat(drains.measuredLowMah).isWithin(1e-9).of(300.0)
+        assertThat(drains.measuredHighMah).isWithin(1e-9).of(300.0)
+        assertThat(drains.sharesOfMeasured).isTrue()
     }
 }

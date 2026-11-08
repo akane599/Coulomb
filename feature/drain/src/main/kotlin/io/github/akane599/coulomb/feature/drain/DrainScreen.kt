@@ -3,27 +3,37 @@
 
 package io.github.akane599.coulomb.feature.drain
 
+import android.annotation.SuppressLint
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -32,14 +42,20 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
+import io.github.akane599.coulomb.core.designsystem.component.CoulombSwitchRow
 import io.github.akane599.coulomb.core.designsystem.component.CoulombViewTabs
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
 import io.github.akane599.coulomb.core.designsystem.component.SkeletonBlock
+import io.github.akane599.coulomb.core.designsystem.theme.CoulombMotion
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
+import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -47,10 +63,12 @@ import java.time.ZoneId
  * Drain (SPEC 10.3): who and what used the battery in the chosen window.
  *
  * @param onOpenApp opens App detail for a UID; null while there is none to open.
+ * @param onOpenPrivileges opens Privileges, where a privilege issue is fixed.
  */
 @Composable
 public fun DrainScreen(
     onOpenApp: ((uid: Int) -> Unit)?,
+    onOpenPrivileges: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DrainViewModel = hiltViewModel(),
 ) {
@@ -64,6 +82,7 @@ public fun DrainScreen(
                 scale = viewModel::scale,
                 retry = viewModel::retry,
                 openApp = onOpenApp,
+                openPrivileges = onOpenPrivileges,
                 icon = viewModel::icon,
             ),
         modifier = modifier,
@@ -71,20 +90,41 @@ public fun DrainScreen(
 }
 
 /** What Drain's controls do; the screen itself holds no logic. */
+@Suppress("LongParameterList") // One callback per control.
 internal class DrainActions(
     val choose: (DrainSpan) -> Unit,
     val includeSystem: (Boolean) -> Unit,
     val scale: (Boolean) -> Unit,
     val retry: () -> Unit,
     val openApp: ((Int) -> Unit)?,
+    val openPrivileges: () -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
 )
 
 /** The three views of the same window (SPEC 10.3). */
 internal enum class Lens { APPS, COMPONENTS, WAKEUPS }
 
-/** Drain's column on wide windows, as Now's (ADR-0034). */
-private val MaxContentWidth = 720.dp
+/** Two columns have a gutter at each side and one between them. */
+private const val GUTTERS = 3
+
+/** Each column of the two-column layout needs this much for a row's name and figure (ADR-0036 §23). */
+private val MinColumnWidth = 280.dp
+
+/** The two columns side by side on very wide windows: the summary column, then the lens column. */
+private val MaxTwoColumnWidth = 1200.dp
+private const val SUMMARY_WEIGHT = 0.42f
+private const val LENS_WEIGHT = 0.58f
+
+/** What the lens lists keep open, saved per window: the remainder, and the groups showing all rows. */
+internal class ListState(
+    val remainderOpen: Boolean,
+    val setRemainderOpen: (Boolean) -> Unit,
+    /** Bit [WakeGroup.ordinal] for a group, bit [ALARMS_BIT] for the alarms. */
+    val openGroups: Int,
+    val toggleGroup: (Int) -> Unit,
+)
+
+internal const val ALARMS_BIT = 3
 
 @Composable
 internal fun DrainContent(
@@ -95,57 +135,20 @@ internal fun DrainContent(
     today: LocalDate = LocalDate.now(zone),
     initialLens: Lens = Lens.APPS,
 ) {
-    val formats = rememberFormats()
-    var lens by rememberSaveable { mutableStateOf(initialLens) }
+    val gutter = currentGutter()
     var sheet by rememberSaveable { mutableStateOf(false) }
-    Column(
-        modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = currentGutter(), end = currentGutter(), bottom = CoulombSpacing.Space48)
-            .wrapContentWidth(Alignment.Start)
-            .widthIn(max = MaxContentWidth)
-            .fillMaxWidth(),
-    ) {
-        when (state) {
-            DrainUiState.Loading -> {
-                Skeleton()
-            }
+    when (state) {
+        DrainUiState.Loading -> {
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { Skeleton() }
+        }
 
-            DrainUiState.Error -> {
-                ErrorState(actions.retry)
-            }
+        DrainUiState.Error -> {
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(actions.retry) }
+        }
 
-            is DrainUiState.Ready -> {
-                FadeInOnce {
-                    Column {
-                        WindowChoice(state.chosen, formats, onChoose = actions.choose, onMore = { sheet = true })
-                        val report = state.report
-                        if (report == null) {
-                            EmptyWindow(state.chosen)
-                        } else {
-                            WindowNote(report, formats, zone)
-                            Total(report, formats)
-                            val labels =
-                                listOf(
-                                    stringResource(R.string.drain_lens_apps),
-                                    stringResource(R.string.drain_lens_components),
-                                    stringResource(R.string.drain_lens_wakeups),
-                                )
-                            CoulombViewTabs(
-                                tabs = labels,
-                                selected = lens.ordinal,
-                                onSelect = { lens = Lens.entries[it] },
-                                modifier = Modifier.padding(top = currentSectionGap()),
-                            )
-                            when (lens) {
-                                Lens.APPS -> AppsLens(state, report, formats, actions)
-                                Lens.COMPONENTS -> ComponentsLens(report, formats)
-                                Lens.WAKEUPS -> WakeupsLens(report, formats)
-                            }
-                        }
-                    }
-                }
+        is DrainUiState.Ready -> {
+            FadeInOnce(modifier.fillMaxSize()) {
+                ReadyContent(state, actions, zone, initialLens, onMore = { sheet = true })
             }
         }
     }
@@ -162,6 +165,176 @@ internal fun DrainContent(
         )
     }
 }
+
+/**
+ * One list on compact widths. Where the window fits two columns of [MinColumnWidth] (SPEC 10.10
+ * medium and up), the selector spans both, the note and total scroll in the first and the lens in
+ * the second, so a landscape phone shows rows at once (ADR-0036 §23).
+ */
+@Composable
+private fun ReadyContent(
+    state: DrainUiState.Ready,
+    actions: DrainActions,
+    zone: ZoneId,
+    initialLens: Lens,
+    onMore: () -> Unit,
+) {
+    val formats = rememberFormats()
+    val gutter = currentGutter()
+    var lens by rememberSaveable { mutableStateOf(initialLens) }
+    val span = state.report?.span
+    var remainderOpen by rememberSaveable(span) { mutableStateOf(false) }
+    var openGroups by rememberSaveable(span) { mutableIntStateOf(0) }
+    val lists = ListState(remainderOpen, { remainderOpen = it }, openGroups, { bit -> openGroups = openGroups xor (1 shl bit) })
+    val apps = state.report?.let { remember(it, state.includeSystem, state.scaled) { appsView(it, state.includeSystem, state.scaled) } }
+    val bottom = CoulombSpacing.Space48
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= MinColumnWidth * 2
+        if (!twoColumns) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = gutter, end = gutter, bottom = bottom)) {
+                item(key = "summary", contentType = "summary") {
+                    Column {
+                        Controls(state, formats, actions, onMore)
+                        Summary(state, formats, zone, lens, actions)
+                    }
+                }
+                lensItems(state, apps, lens, { lens = it }, formats, actions, lists)
+            }
+        } else {
+            // The selector and an issue concern both columns, so they span them and stay in place.
+            Column(Modifier.widthIn(max = MaxTwoColumnWidth).fillMaxSize().padding(horizontal = gutter)) {
+                Controls(state, formats, actions, onMore)
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(gutter)) {
+                    Column(
+                        Modifier
+                            .weight(SUMMARY_WEIGHT)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = bottom),
+                    ) {
+                        Summary(state, formats, zone, lens, actions)
+                    }
+                    LazyColumn(Modifier.weight(LENS_WEIGHT).fillMaxHeight(), contentPadding = PaddingValues(bottom = bottom)) {
+                        lensItems(state, apps, lens, { lens = it }, formats, actions, lists, besideSummary = true)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The window selector, and a privilege issue under it. */
+@Composable
+private fun Controls(
+    state: DrainUiState.Ready,
+    formats: Formats,
+    actions: DrainActions,
+    onMore: () -> Unit,
+) = Column {
+    WindowChoice(state.chosen, formats, onChoose = actions.choose, onMore = onMore)
+    // Without snapshots the window stops where the last one was taken (SPEC 10.11 partial).
+    state.issue?.let { PrivilegeIssueBlock(it, actions.openPrivileges, Modifier.padding(top = CoulombSpacing.Space16)) }
+}
+
+/**
+ * The window's note and total, or why there are none. With the Apps lens, "Scale to measured" sits
+ * under the reconcile bar, whose gap it spreads over the apps (ADR-0036 §24).
+ */
+@Composable
+private fun Summary(
+    state: DrainUiState.Ready,
+    formats: Formats,
+    zone: ZoneId,
+    lens: Lens,
+    actions: DrainActions,
+) = Column {
+    val report = state.report
+    when {
+        // The previous window's figures never sit under the new choice (SPEC 0.2).
+        !state.current -> {
+            SummarySkeleton()
+        }
+
+        // With an issue, no snapshot is coming: the issue says why, without a promise.
+        report == null -> {
+            if (state.issue == null) EmptyWindow(state.chosen)
+        }
+
+        else -> {
+            WindowNote(report, formats, zone)
+            Total(report, formats)
+            if (lens == Lens.APPS && canScale(report.drains)) {
+                CoulombSwitchRow(
+                    stringResource(R.string.drain_scale),
+                    state.scaled,
+                    actions.scale,
+                    Modifier.padding(top = CoulombSpacing.Space8),
+                )
+            }
+        }
+    }
+}
+
+/** The lens tabs and the chosen lens's rows, each its own keyed item (SPEC 15: stable keys). */
+@Suppress("LongParameterList") // One list's inputs.
+private fun LazyListScope.lensItems(
+    state: DrainUiState.Ready,
+    apps: AppsView?,
+    lens: Lens,
+    choose: (Lens) -> Unit,
+    formats: Formats,
+    actions: DrainActions,
+    lists: ListState,
+    besideSummary: Boolean = false,
+) {
+    val report = state.report
+    if (!state.current) {
+        item(key = "lens-skeleton", contentType = "skeleton") { LensSkeleton(besideSummary) }
+        return
+    }
+    if (report == null || apps == null) return
+    item(key = "tabs", contentType = "tabs") { LensTabs(lens, choose, besideSummary) }
+    when (lens) {
+        Lens.APPS -> appsItems(state, report, apps, formats, actions, lists)
+        Lens.COMPONENTS -> item(key = "components", contentType = "components") { ComponentsLens(report, formats) }
+        Lens.WAKEUPS -> wakeupItems(report, formats, lists)
+    }
+}
+
+@Composable
+private fun LensTabs(
+    lens: Lens,
+    choose: (Lens) -> Unit,
+    besideSummary: Boolean,
+) {
+    val labels =
+        listOf(
+            stringResource(R.string.drain_lens_apps),
+            stringResource(R.string.drain_lens_components),
+            stringResource(R.string.drain_lens_wakeups),
+        )
+    CoulombViewTabs(
+        tabs = labels,
+        selected = lens.ordinal,
+        onSelect = { choose(Lens.entries[it]) },
+        // Beside the summary the tabs line up with the selector; under it they open a section.
+        modifier = Modifier.padding(top = if (besideSummary) CoulombSpacing.Space8 else currentSectionGap()),
+    )
+}
+
+/**
+ * A row's motion in Drain's lists: a reorder slides on the default spatial spring (SPEC 11.6). Under
+ * reduced motion the row takes its new place at once. `animateItem` is a member of the item scope,
+ * so this starts there rather than from a Modifier.
+ */
+@SuppressLint("ModifierFactoryExtensionFunction")
+@Composable
+internal fun LazyItemScope.rowMotion(): Modifier =
+    Modifier.animateItem(
+        fadeInSpec = null,
+        placementSpec = if (CoulombTheme.reducedMotion) null else CoulombMotion.spatial(),
+        fadeOutSpec = null,
+    )
 
 /** Why the chosen window has nothing to show yet (SPEC 10.11 empty). */
 @Composable
@@ -185,13 +358,29 @@ private fun EmptyWindow(chosen: DrainSpan) {
 /** SPEC 10.11 loading: a still skeleton in the final layout's shape. */
 @Composable
 private fun Skeleton() {
-    val loading = stringResource(R.string.drain_loading)
-    Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8).semantics { contentDescription = loading }) {
+    Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8)) {
         SkeletonBlock(40.dp, Modifier.width(300.dp))
+        SummarySkeleton()
+        LensSkeleton(besideSummary = false)
+    }
+}
+
+/** The note, total and reconcile bar's skeleton: while a newly chosen window loads, and in [Skeleton]. */
+@Composable
+private fun SummarySkeleton() {
+    val loading = stringResource(R.string.drain_loading)
+    Column(Modifier.fillMaxWidth().semantics { contentDescription = loading }) {
         SkeletonBlock(16.dp, Modifier.padding(top = CoulombSpacing.Space8).width(180.dp))
         SkeletonBlock(60.dp, Modifier.padding(top = CoulombSpacing.Space24).width(180.dp))
         SkeletonBlock(14.dp, Modifier.padding(top = CoulombSpacing.Space16).fillMaxWidth())
-        SkeletonBlock(40.dp, Modifier.padding(top = currentSectionGap()).fillMaxWidth())
+    }
+}
+
+/** The tabs and rows' skeleton, which TalkBack skips: [SummarySkeleton] already says it is loading. */
+@Composable
+private fun LensSkeleton(besideSummary: Boolean) {
+    Column(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
+        SkeletonBlock(40.dp, Modifier.padding(top = if (besideSummary) CoulombSpacing.Space8 else currentSectionGap()).fillMaxWidth())
         Column(Modifier.padding(top = CoulombSpacing.Space16)) {
             repeat(SKELETON_ROWS) {
                 Row(

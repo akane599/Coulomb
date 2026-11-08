@@ -6,8 +6,12 @@ package io.github.akane599.coulomb.feature.drain
 import androidx.compose.ui.graphics.Color
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.ComponentDrain
+import io.github.akane599.coulomb.core.data.LevelEstimate
 import io.github.akane599.coulomb.core.data.PowerComponent
+import io.github.akane599.coulomb.core.data.WakeCoverage
+import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -72,29 +76,96 @@ class DrainViewsTest {
     }
 
     @Test
-    fun kernelAndReasonGroupsPreferTheirFirstSource() {
-        val groups = wakeGroups(report()).toMap()
-        assertEquals(setOf(WakeKind.KERNEL), groups.getValue(WakeGroup.KERNEL).map { it.kind }.toSet())
-        assertEquals(setOf(WakeKind.WAKEUP_REASON), groups.getValue(WakeGroup.REASONS).map { it.kind }.toSet())
-        // Longest held first.
-        assertEquals("PowerManagerService.WakeLocks", groups.getValue(WakeGroup.KERNEL).first().tag)
+    fun anEstimatedTotalIsNoShareBaseAndNeitherScalesNorShowsAGap() {
+        val estimated =
+            labDrains().copy(
+                measuredProvenance = Provenance.ESTIMATED,
+                levelEstimate = LevelEstimate(spreadMah = 49.0, stretches = 1, withCounter = false),
+            )
+        val view = appsView(report(drains = estimated), includeSystem = true, scaled = true)
+        // A range is no share base (ADR-0036 §17): the modeled 1,062 mAh is, unscaled.
+        assertEquals(1.0, view.factor, 0.0)
+        assertEquals(1_062.0, view.denominator, 1e-9)
+        assertNull(view.unattributedMah)
     }
 
     @Test
-    fun withoutTheFirstSourceAGroupFallsBackToTheOther() {
+    fun kernelAndReasonGroupsPreferTheirFirstSource() {
+        val groups = wakeGroups(report()).associateBy { it.group }
+        assertEquals(
+            setOf(WakeKind.KERNEL),
+            groups
+                .getValue(WakeGroup.KERNEL)
+                .entries
+                .map { it.kind }
+                .toSet(),
+        )
+        assertEquals(
+            setOf(WakeKind.WAKEUP_REASON),
+            groups
+                .getValue(WakeGroup.REASONS)
+                .entries
+                .map { it.kind }
+                .toSet(),
+        )
+        // Longest held first, with S5's coverage.
+        assertEquals(
+            "PowerManagerService.WakeLocks",
+            groups
+                .getValue(WakeGroup.KERNEL)
+                .entries
+                .first()
+                .tag,
+        )
+        assertEquals(Coverage.WHOLE, groups.getValue(WakeGroup.KERNEL).coverage)
+    }
+
+    @Test
+    fun withoutTheFirstSourceAGroupFallsBackToTheOtherWithItsCoverage() {
         val report =
-            report().let { r ->
+            report(wakeCoverage = WakeCoverage(Coverage.WHOLE, Coverage.PARTIAL, Coverage.WHOLE)).let { r ->
                 r.copy(wakes = r.wakes.filter { it.kind != WakeKind.KERNEL && it.kind != WakeKind.WAKEUP_REASON })
             }
-        val groups = wakeGroups(report).toMap()
-        assertEquals(setOf(WakeKind.WAKEUP_SOURCE), groups.getValue(WakeGroup.KERNEL).map { it.kind }.toSet())
-        assertEquals(setOf(WakeKind.RESUME_CAUSE), groups.getValue(WakeGroup.REASONS).map { it.kind }.toSet())
+        val groups = wakeGroups(report).associateBy { it.group }
+        assertEquals(
+            setOf(WakeKind.WAKEUP_SOURCE),
+            groups
+                .getValue(WakeGroup.KERNEL)
+                .entries
+                .map { it.kind }
+                .toSet(),
+        )
+        assertEquals(Coverage.PARTIAL, groups.getValue(WakeGroup.KERNEL).coverage)
+        assertEquals(
+            setOf(WakeKind.RESUME_CAUSE),
+            groups
+                .getValue(WakeGroup.REASONS)
+                .entries
+                .map { it.kind }
+                .toSet(),
+        )
     }
 
     @Test
-    fun emptyGroupsAreLeftOut() {
+    fun anEmptyGroupStaysWithTheBetterCoverageOfItsSources() {
         val partialOnly = report().let { r -> r.copy(wakes = r.wakes.filter { it.kind == WakeKind.PARTIAL }) }
-        assertEquals(listOf(WakeGroup.PARTIAL), wakeGroups(partialOnly).map { it.first })
+        val groups = wakeGroups(partialOnly)
+        assertEquals(listOf(WakeGroup.PARTIAL, WakeGroup.KERNEL, WakeGroup.REASONS), groups.map { it.group })
+        // S5 covered the window, so its empty kernel and reason sections mean none.
+        assertEquals(listOf(Coverage.WHOLE, Coverage.WHOLE, Coverage.WHOLE), groups.map { it.coverage })
+    }
+
+    @Test
+    fun withoutS5AGroupWithNoRootSourceIsNotCollected() {
+        val rootOnly =
+            report(wakeCoverage = WakeCoverage(Coverage.NONE, Coverage.WHOLE, Coverage.NONE)).let { r ->
+                r.copy(wakes = r.wakes.filter { it.kind == WakeKind.WAKEUP_SOURCE })
+            }
+        val groups = wakeGroups(rootOnly).associateBy { it.group }
+        assertEquals(Coverage.NONE, groups.getValue(WakeGroup.PARTIAL).coverage)
+        assertEquals(Coverage.WHOLE, groups.getValue(WakeGroup.KERNEL).coverage)
+        assertTrue(groups.getValue(WakeGroup.REASONS).entries.isEmpty())
+        assertEquals(Coverage.NONE, groups.getValue(WakeGroup.REASONS).coverage)
     }
 
     @Test

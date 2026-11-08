@@ -4,16 +4,16 @@
 package io.github.akane599.coulomb.feature.drain
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
@@ -24,10 +24,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.DrainReport
+import io.github.akane599.coulomb.core.data.WindowDrains
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombSwitchRow
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
-import io.github.akane599.coulomb.core.designsystem.component.animatePlacement
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
@@ -91,8 +91,8 @@ internal fun appsView(
     scaled: Boolean,
 ): AppsView {
     val drains = report.drains
-    val measured = drains.measuredMah?.takeIf { it > 0 }
-    val scaleTo = measured?.takeIf { scaled && drains.modeledMah > 0 }
+    val measured = drains.measuredMah?.takeIf { it > 0 && !drains.estimated }
+    val scaleTo = measured?.takeIf { scaled && canScale(drains) }
     val scaling = scaleTo != null
     val factor = scaleTo?.let { it / drains.modeledMah } ?: 1.0
     val denominator = scaleTo ?: drains.total
@@ -117,40 +117,136 @@ internal const val ROW_SHARE = 0.03
 /** At least this many apps get rows, however small (SPEC 10.3 ranked list). */
 private const val MIN_ROWS = 3
 
+/**
+ * "Scale to measured" applies: the window has a measured and a modeled total (ADR-0036 §12), and the
+ * measured one is not a range (§17).
+ */
+internal fun canScale(drains: WindowDrains): Boolean {
+    val measured = drains.measuredMah ?: return false
+    return measured > 0 && !drains.estimated && drains.modeledMah > 0
+}
+
 /** SPEC 6.5: the unattributed row shows whenever it exceeds 10% of measured. */
 private const val UNATTRIBUTED_ROW = 0.10
 
 private val IconSize = 40.dp
 
-@Composable
-internal fun AppsLens(
+/**
+ * The Apps lens as list items: the switches and caption, then each row keyed by its UID, so a
+ * reorder moves the rows instead of rewriting them (SPEC 11.6, 15).
+ */
+@Suppress("LongParameterList") // One lens's inputs.
+internal fun LazyListScope.appsItems(
     state: DrainUiState.Ready,
     report: DrainReport,
+    view: AppsView,
     formats: Formats,
     actions: DrainActions,
+    lists: ListState,
 ) {
-    val view = appsView(report, state.includeSystem, state.scaled)
-    val drains = report.drains
-    val measured = drains.measuredMah?.takeIf { it > 0 }
-    Column(Modifier.padding(top = CoulombSpacing.Space8)) {
-        CoulombSwitchRow(stringResource(R.string.drain_include_system), state.includeSystem, actions.includeSystem)
-        if (measured != null && drains.modeledMah > 0) {
-            CoulombSwitchRow(stringResource(R.string.drain_scale), state.scaled, actions.scale)
+    val provenance = if (view.scaled) Provenance.DERIVED else Provenance.MODELED
+    item(key = "apps-head", contentType = "apps-head") {
+        Column(Modifier.padding(top = CoulombSpacing.Space8)) {
+            CoulombSwitchRow(stringResource(R.string.drain_include_system), state.includeSystem, actions.includeSystem)
+            Captions(view, report, formats)
+            if (view.empty) {
+                Text(
+                    stringResource(R.string.drain_no_apps),
+                    Modifier.padding(top = CoulombSpacing.Space12),
+                    color = CoulombTheme.colors.textSecondary,
+                    style = CoulombTheme.typography.body,
+                )
+            } else {
+                Spacer(Modifier.height(CoulombSpacing.Space12))
+            }
         }
-        Captions(view, report, formats)
-        if (view.empty) {
-            Text(
-                stringResource(R.string.drain_no_apps),
-                Modifier.padding(top = CoulombSpacing.Space12),
-                color = CoulombTheme.colors.textSecondary,
-                style = CoulombTheme.typography.body,
+    }
+    if (!view.empty) {
+        itemsIndexed(view.rows, key = { _, entry -> entry.key }, contentType = { _, _ -> "row" }) { index, entry ->
+            when (entry) {
+                is AppsEntry.App -> AppRow(entry.app, view, index == 0, provenance, formats, actions, rowMotion())
+                is AppsEntry.Device -> DeviceRow(entry.mah, view, index == 0, provenance, formats, rowMotion())
+            }
+        }
+        if (view.remainderMah > 0) remainderItems(view, provenance, formats, actions, lists)
+    }
+    view.unattributedMah?.let { gap -> item(key = "gap", contentType = "gap") { Unattributed(gap, view, formats) } }
+}
+
+/** The remainder row, or once opened, each app it folds, then "Show fewer". */
+private fun LazyListScope.remainderItems(
+    view: AppsView,
+    provenance: Provenance,
+    formats: Formats,
+    actions: DrainActions,
+    lists: ListState,
+) {
+    val first = view.rows.isEmpty()
+    if (!lists.remainderOpen) {
+        item(key = "remainder", contentType = "row") {
+            Remainder(view, provenance, formats, first, expand = { lists.setRemainderOpen(true) }, rowMotion())
+        }
+        return
+    }
+    itemsIndexed(view.rest, key = { _, app -> appKey(app.uid) }, contentType = { _, _ -> "row" }) { index, app ->
+        AppRow(app, view, first && index == 0, provenance, formats, actions, rowMotion())
+    }
+    if (view.hidden.isNotEmpty()) {
+        item(key = "hidden", contentType = "row") {
+            val hiddenMah = view.hidden.sumOf { it.mah }
+            val share = view.share(hiddenMah)
+            AppDrainRow(
+                icon = null,
+                name = pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, view.hidden.size),
+                detail = null,
+                value = formats.mah(hiddenMah * view.factor),
+                provenance = provenance,
+                share = share,
+                shareText = formats.share(share),
+                first = first && view.rest.isEmpty(),
+                onClick = null,
+                modifier = rowMotion(),
+                standIn = IconStandIn.Remainder("+${formats.integer(view.hidden.size.toLong())}"),
             )
-        } else {
-            AppRows(view, report, formats, actions)
         }
-        view.unattributedMah?.let { Unattributed(it, view, formats) }
+    }
+    if (view.otherMah > 0) {
+        item(key = "small", contentType = "row") {
+            val share = view.share(view.otherMah)
+            AppDrainRow(
+                icon = null,
+                name = stringResource(R.string.drain_small_apps),
+                detail = null,
+                value = formats.mah(view.otherMah * view.factor),
+                provenance = provenance,
+                share = share,
+                shareText = formats.share(share),
+                first = first && view.rest.isEmpty() && view.hidden.isEmpty(),
+                onClick = null,
+                modifier = rowMotion(),
+                standIn = IconStandIn.Remainder("+"),
+            )
+        }
+    }
+    item(key = "fewer", contentType = "button") {
+        CoulombTextButton(
+            text = stringResource(R.string.drain_show_fewer),
+            onClick = { lists.setRemainderOpen(false) },
+            modifier = rowMotion().padding(top = CoulombSpacing.Space4),
+            edge = ButtonEdge.Start,
+        )
     }
 }
+
+/** An app's key in the list, the same whether its row is ranked or opened from the remainder. */
+private fun appKey(uid: Int) = "app-$uid"
+
+private val AppsEntry.key: String
+    get() =
+        when (this) {
+            is AppsEntry.App -> appKey(app.uid)
+            is AppsEntry.Device -> DEVICE_KEY
+        }
 
 /** The list caption names every share's denominator (DESIGN.md); a lower bound says so. */
 @Composable
@@ -164,45 +260,12 @@ private fun Captions(
     val shares =
         when {
             view.scaled -> stringResource(R.string.drain_scaled_caption, total)
-            (drains.measuredMah ?: 0.0) >= drains.modeledMah -> stringResource(R.string.drain_shares_of_measured, total)
+            drains.sharesOfMeasured -> stringResource(R.string.drain_shares_of_measured, total)
             else -> stringResource(R.string.drain_shares_of_modeled, total)
         }
     val captions = listOfNotNull(shares, if (report.lowerBound) stringResource(R.string.drain_lower_bound) else null)
     Column(Modifier.padding(top = CoulombSpacing.Space8)) {
         captions.forEach { Text(it, color = CoulombTheme.colors.textSecondary, style = CoulombTheme.typography.caption) }
-    }
-}
-
-@Composable
-private fun AppRows(
-    view: AppsView,
-    report: DrainReport,
-    formats: Formats,
-    actions: DrainActions,
-) {
-    var expanded by rememberSaveable(report.span) { mutableStateOf(false) }
-    val provenance = if (view.scaled) Provenance.DERIVED else Provenance.MODELED
-    Column(Modifier.padding(top = CoulombSpacing.Space12)) {
-        // Keyed, so a reorder moves the rows instead of rewriting them (SPEC 11.6).
-        view.rows.forEachIndexed { index, entry ->
-            val first = index == 0
-            when (entry) {
-                is AppsEntry.App -> {
-                    key(entry.app.uid) { AppRow(entry.app, view, first, provenance, formats, actions, Modifier.animatePlacement()) }
-                }
-
-                is AppsEntry.Device -> {
-                    key(DEVICE_KEY) { DeviceRow(entry.mah, view, first, provenance, formats, Modifier.animatePlacement()) }
-                }
-            }
-        }
-        if (view.remainderMah > 0) {
-            if (expanded) {
-                Expanded(view, provenance, formats, actions, first = view.rows.isEmpty(), collapse = { expanded = false })
-            } else {
-                Remainder(view, provenance, formats, first = view.rows.isEmpty(), expand = { expanded = true })
-            }
-        }
     }
 }
 
@@ -268,6 +331,7 @@ private fun Remainder(
     formats: Formats,
     first: Boolean,
     expand: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val count = view.rest.size + view.hidden.size
     val share = view.share(view.remainderMah)
@@ -289,62 +353,8 @@ private fun Remainder(
         shareText = formats.share(share),
         first = first,
         onClick = expand,
-        modifier = Modifier.animatePlacement(),
+        modifier = modifier,
         standIn = IconStandIn.Remainder(if (count > 0) "+${formats.integer(count.toLong())}" else "+"),
-    )
-}
-
-/** The remainder opened: each small app, the hidden system apps as one row, the folded UIDs, and "Show fewer". */
-@Composable
-private fun Expanded(
-    view: AppsView,
-    provenance: Provenance,
-    formats: Formats,
-    actions: DrainActions,
-    first: Boolean,
-    collapse: () -> Unit,
-) = Column {
-    view.rest.forEachIndexed { index, app ->
-        key(app.uid) { AppRow(app, view, first && index == 0, provenance, formats, actions, Modifier.animatePlacement()) }
-    }
-    val hiddenMah = view.hidden.sumOf { it.mah }
-    if (view.hidden.isNotEmpty()) {
-        val share = view.share(hiddenMah)
-        AppDrainRow(
-            icon = null,
-            name = pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, view.hidden.size),
-            detail = null,
-            value = formats.mah(hiddenMah * view.factor),
-            provenance = provenance,
-            share = share,
-            shareText = formats.share(share),
-            first = first && view.rest.isEmpty(),
-            onClick = null,
-            modifier = Modifier.animatePlacement(),
-            standIn = IconStandIn.Remainder("+${formats.integer(view.hidden.size.toLong())}"),
-        )
-    }
-    if (view.otherMah > 0) {
-        val share = view.share(view.otherMah)
-        AppDrainRow(
-            icon = null,
-            name = stringResource(R.string.drain_small_apps),
-            detail = null,
-            value = formats.mah(view.otherMah * view.factor),
-            provenance = provenance,
-            share = share,
-            shareText = formats.share(share),
-            first = first && view.rest.isEmpty() && view.hidden.isEmpty(),
-            onClick = null,
-            modifier = Modifier.animatePlacement(),
-            standIn = IconStandIn.Remainder("+"),
-        )
-    }
-    CoulombTextButton(
-        text = stringResource(R.string.drain_show_fewer),
-        onClick = collapse,
-        modifier = Modifier.padding(top = CoulombSpacing.Space4),
-        edge = ButtonEdge.Start,
     )
 }
 

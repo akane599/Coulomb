@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.PowerComponent
+import io.github.akane599.coulomb.core.designsystem.component.ShareBar
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombColors
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
@@ -62,11 +63,16 @@ internal fun ComponentsLens(
             Text(stringResource(R.string.drain_components_empty), color = colors.textSecondary, style = type.body)
             return@Column
         }
-        Text(stringResource(R.string.drain_components_caption), color = colors.textSecondary, style = type.caption)
+        val total = components.sumOf { it.mah }
+        // DESIGN.md: the caption names the denominator of every share, here Android's model.
+        Text(
+            stringResource(R.string.drain_components_caption, formats.mah(total).joined()),
+            color = colors.textSecondary,
+            style = type.caption,
+        )
         if (components.any { it.component == PowerComponent.OTHER }) {
             Text(stringResource(R.string.drain_components_coarse), color = colors.textSecondary, style = type.caption)
         }
-        val total = components.sumOf { it.mah }
         val names = components.map { stringResource(it.component.label) }
         val description =
             stringResource(
@@ -128,7 +134,8 @@ private fun StackedBar(
 
 /**
  * One component: a 10 dp swatch in its hue, the name, the mAh with the Modeled mark and its share
- * under it (DESIGN.md, Breakdown and Rows). Hairlines divide rows; TalkBack reads one item.
+ * under it, and a neutral share bar (DESIGN.md, Breakdown and Rows). Hairlines divide rows; TalkBack
+ * reads one item.
  */
 @Composable
 private fun ComponentRow(
@@ -150,22 +157,27 @@ private fun ComponentRow(
                 drawLine(colors.hairline, Offset(0f, size.height - stroke / 2), Offset(size.width, size.height - stroke / 2), stroke)
             }.semantics(mergeDescendants = true) {}
             .heightIn(min = RowHeight)
-            .padding(vertical = CoulombSpacing.Space8),
+            .padding(vertical = CoulombSpacing.Space12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space12),
     ) {
         Box(Modifier.size(Swatch).background(hue, RoundedCornerShape(SwatchCorner)))
-        Text(name, Modifier.weight(1f), color = colors.textPrimary, style = type.bodyName)
-        Column(horizontalAlignment = Alignment.End) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                FigureText(
-                    formats.mah(part.mah).affixed(),
-                    numberStyle = type.data,
-                    unitStyle = type.data.copy(fontWeight = type.body.fontWeight),
-                )
-                ProvenanceMark(Provenance.MODELED)
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16)) {
+                Text(name, Modifier.weight(1f), color = colors.textPrimary, style = type.bodyName)
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        FigureText(
+                            formats.mah(part.mah).affixed(),
+                            numberStyle = type.data,
+                            unitStyle = type.data.copy(fontWeight = type.body.fontWeight),
+                        )
+                        ProvenanceMark(Provenance.MODELED)
+                    }
+                    Text(formats.share(share), color = colors.textSecondary, style = type.caption, textAlign = TextAlign.End)
+                }
             }
-            Text(formats.share(share), color = colors.textSecondary, style = type.caption, textAlign = TextAlign.End)
+            ShareBar(share.toFloat(), Modifier.padding(top = CoulombSpacing.Space8))
         }
     }
 }
@@ -209,10 +221,6 @@ internal val PowerComponent.label: Int
             PowerComponent.OTHER -> R.string.drain_component_other
         }
 
-private val BarBox = 18.dp
-private val BarHeight = 14.dp
-private val BarEnd = 2.dp
-private val SegmentGap = 2.dp
 private val Swatch = 10.dp
 private val SwatchCorner = 2.dp
 private val Hairline = 1.dp

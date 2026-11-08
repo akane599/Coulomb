@@ -5,18 +5,17 @@ package io.github.akane599.coulomb.feature.drain
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -24,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,93 +32,215 @@ import io.github.akane599.coulomb.core.data.AlarmEntry
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.WakeEntry
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
-import io.github.akane599.coulomb.core.designsystem.component.CoulombSectionHead
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTerm
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
-import io.github.akane599.coulomb.core.ui.MarkedText
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.format.Formats
 
-/** The Wakeups lens's groups, in order (SPEC 10.3). */
+/** The Wakeups lens's groups, in order (SPEC 10.3), each with its SPEC 19.3 glossary line. */
 internal enum class WakeGroup(
     @param:StringRes val title: Int,
+    @param:StringRes val definition: Int,
 ) {
-    PARTIAL(R.string.drain_wake_partial),
-    KERNEL(R.string.drain_wake_kernel),
-    REASONS(R.string.drain_wake_reasons),
+    PARTIAL(R.string.drain_wake_partial, R.string.drain_wake_partial_definition),
+    KERNEL(R.string.drain_wake_kernel, R.string.drain_wake_kernel_definition),
+    REASONS(R.string.drain_wake_reasons, R.string.drain_wake_reasons_definition),
 }
+
+/** One group of the Wakeups lens: its records, and how much of the window their source covered. */
+@Immutable
+internal data class WakeGroupView(
+    val group: WakeGroup,
+    val entries: List<WakeEntry>,
+    val coverage: Coverage,
+)
 
 /**
  * The wake records of [report] by group, longest held first, then most frequent. S9 wakeup sources
  * overlap S5's kernel wakelocks and S27 resume causes overlap wakeup reasons, so each group shows one
- * source: S5's where it has rows, the other otherwise (`WakeKind`). Empty groups are left out.
+ * source: S5's where it has rows, the other otherwise (`WakeKind`). Every group is listed, with the
+ * coverage of the source it shows; an empty group takes the better of its two sources' coverage, so
+ * it says "none" only where a source covered the window (ADR-0028 §3).
  */
-internal fun wakeGroups(report: DrainReport): List<Pair<WakeGroup, List<WakeEntry>>> {
+internal fun wakeGroups(report: DrainReport): List<WakeGroupView> {
     val byKind = report.wakes.groupBy { it.kind }
+    val cover = report.wakeCoverage
 
-    fun of(vararg kinds: WakeKind) =
-        kinds
-            .firstNotNullOfOrNull { byKind[it]?.takeIf(List<WakeEntry>::isNotEmpty) }
-            .orEmpty()
-            .sortedWith(compareByDescending<WakeEntry> { it.totalMs }.thenByDescending { it.count })
+    fun of(
+        group: WakeGroup,
+        first: Pair<WakeKind, Coverage>,
+        second: Pair<WakeKind, Coverage>? = null,
+    ): WakeGroupView {
+        val (kind, coverage) =
+            listOfNotNull(first, second).firstOrNull { !byKind[it.first].isNullOrEmpty() }
+                // Coverage levels are declared from none to whole.
+                ?: (first.first to maxOf(first.second, second?.second ?: Coverage.NONE))
+        val entries =
+            byKind[kind]
+                .orEmpty()
+                .sortedWith(compareByDescending<WakeEntry> { it.totalMs }.thenByDescending { it.count })
+        return WakeGroupView(group, entries, coverage)
+    }
     return listOf(
-        WakeGroup.PARTIAL to of(WakeKind.PARTIAL),
-        WakeGroup.KERNEL to of(WakeKind.KERNEL, WakeKind.WAKEUP_SOURCE),
-        WakeGroup.REASONS to of(WakeKind.WAKEUP_REASON, WakeKind.RESUME_CAUSE),
-    ).filter { it.second.isNotEmpty() }
+        of(WakeGroup.PARTIAL, WakeKind.PARTIAL to cover.batteryStats),
+        of(WakeGroup.KERNEL, WakeKind.KERNEL to cover.batteryStats, WakeKind.WAKEUP_SOURCE to cover.wakeupSources),
+        of(WakeGroup.REASONS, WakeKind.WAKEUP_REASON to cover.batteryStats, WakeKind.RESUME_CAUSE to cover.kernelLog),
+    )
 }
 
-@Composable
-internal fun WakeupsLens(
+/**
+ * The Wakeups lens as list items: the caption, then each group's heading and rows, each row keyed by
+ * its record (SPEC 15). When no source covered the window, one line says so.
+ */
+internal fun LazyListScope.wakeupItems(
     report: DrainReport,
     formats: Formats,
+    lists: ListState,
 ) {
-    val colors = CoulombTheme.colors
-    val type = CoulombTheme.typography
     val groups = wakeGroups(report)
-    Column(Modifier.padding(top = CoulombSpacing.Space16)) {
-        if (groups.isEmpty() && report.alarms.isEmpty()) {
-            Text(stringResource(R.string.drain_wake_none), color = colors.textSecondary, style = type.body)
-            return@Column
+    // S5 counts the wakeup alarms (UidKeys.ALARM_WAKEUPS).
+    val alarmsCoverage = report.wakeCoverage.batteryStats
+    val coverages = groups.map { it.coverage } + alarmsCoverage
+    val empty = groups.all { it.entries.isEmpty() } && report.alarms.isEmpty()
+    val only =
+        when {
+            coverages.all { it == Coverage.NONE } -> R.string.drain_wake_not_collected
+            empty && coverages.all { it == Coverage.WHOLE } -> R.string.drain_wake_none
+            else -> null
         }
-        Text(stringResource(R.string.drain_wakeups_caption), color = colors.textSecondary, style = type.caption)
-        groups.forEach { (group, entries) ->
-            Group(stringResource(group.title), entries.size, report, formats) { first, entry -> WakeRow(entries[entry], first, formats) }
+    if (only != null) {
+        item(key = "wake-only", contentType = "note") {
+            Text(
+                stringResource(only),
+                Modifier.padding(top = CoulombSpacing.Space16),
+                color = CoulombTheme.colors.textSecondary,
+                style = CoulombTheme.typography.body,
+            )
         }
-        if (report.alarms.isNotEmpty()) {
-            Group(stringResource(R.string.drain_wake_alarms), report.alarms.size, report, formats) { first, entry ->
-                AlarmRow(report.alarms[entry], first, formats)
+        return
+    }
+    item(key = "wake-caption", contentType = "note") {
+        Text(
+            stringResource(R.string.drain_wakeups_caption),
+            Modifier.padding(top = CoulombSpacing.Space16),
+            color = CoulombTheme.colors.textSecondary,
+            style = CoulombTheme.typography.caption,
+        )
+    }
+    groups.forEach { view ->
+        group(
+            key = view.group.name,
+            head = { GroupHead(stringResource(view.group.title), stringResource(view.group.definition)) },
+            count = view.entries.size,
+            coverage = view.coverage,
+            open = lists.openGroups and (1 shl view.group.ordinal) != 0,
+            toggle = { lists.toggleGroup(view.group.ordinal) },
+            formats = formats,
+            rowKey = { view.entries[it].let { e -> "wake-${e.kind}-${e.uid}-${e.tag}" } },
+        ) { first, index -> WakeRow(view.entries[index], first, formats) }
+    }
+    group(
+        key = "ALARMS",
+        head = { GroupHead(stringResource(R.string.drain_wake_alarms), definition = null) },
+        count = report.alarms.size,
+        coverage = alarmsCoverage,
+        open = lists.openGroups and (1 shl ALARMS_BIT) != 0,
+        toggle = { lists.toggleGroup(ALARMS_BIT) },
+        formats = formats,
+        rowKey = { "alarm-${report.alarms[it].uid}" },
+    ) { first, index -> AlarmRow(report.alarms[index], first, formats) }
+}
+
+/**
+ * A titled group: its heading, then the first [SHOWN] rows, then "Show all" for the rest and "Show
+ * fewer" once they are out. An empty group says whether its source covered the window; a partly
+ * covered one says its counts may be low.
+ */
+@Suppress("LongParameterList") // One group's inputs.
+private fun LazyListScope.group(
+    key: String,
+    head: @Composable () -> GroupHead,
+    count: Int,
+    coverage: Coverage,
+    open: Boolean,
+    toggle: () -> Unit,
+    formats: Formats,
+    rowKey: (Int) -> String,
+    row: @Composable (first: Boolean, index: Int) -> Unit,
+) {
+    item(key = "group-$key", contentType = "group-head") {
+        val colors = CoulombTheme.colors
+        val type = CoulombTheme.typography
+        Column(rowMotion().padding(top = CoulombSpacing.Space24, bottom = if (count > 0) CoulombSpacing.Space12 else 0.dp)) {
+            GroupHeading(head())
+            if (count == 0) {
+                val text =
+                    when (coverage) {
+                        Coverage.NONE -> R.string.drain_wake_group_not_collected
+                        Coverage.PARTIAL -> R.string.drain_wake_group_none_partial
+                        Coverage.WHOLE -> R.string.drain_wake_group_none
+                    }
+                Text(stringResource(text), Modifier.padding(top = CoulombSpacing.Space8), color = colors.textSecondary, style = type.body)
+            } else if (coverage == Coverage.PARTIAL) {
+                Text(
+                    stringResource(R.string.drain_wake_group_partial),
+                    Modifier.padding(top = CoulombSpacing.Space4),
+                    color = colors.textSecondary,
+                    style = type.caption,
+                )
             }
+        }
+    }
+    val shown = if (open) count else minOf(count, SHOWN)
+    items(shown, key = rowKey, contentType = { "record" }) { index ->
+        Box(rowMotion()) { row(index == 0, index) }
+    }
+    if (count > SHOWN) {
+        item(key = "group-$key-more", contentType = "button") {
+            CoulombTextButton(
+                text =
+                    if (open) {
+                        stringResource(
+                            R.string.drain_show_fewer,
+                        )
+                    } else {
+                        stringResource(R.string.drain_show_all, formats.integer(count.toLong()))
+                    },
+                onClick = toggle,
+                modifier = rowMotion().padding(top = CoulombSpacing.Space4),
+                edge = ButtonEdge.Start,
+            )
         }
     }
 }
 
-/** A titled group of rows: the first [SHOWN], then "Show all" for the rest. */
+/** A group's heading: its name, and the glossary line that explains it where SPEC 19.3 has one. */
+private class GroupHead(
+    val title: String,
+    val definition: String?,
+)
+
+/**
+ * A list-group heading in Label (DESIGN.md), the name as a glossary term where it has one, and the
+ * Measured mark that covers every value in the group: each group has one source (DESIGN.md,
+ * Provenance marks).
+ */
 @Composable
-private fun Group(
-    title: String,
-    count: Int,
-    report: DrainReport,
-    formats: Formats,
-    row: @Composable (first: Boolean, index: Int) -> Unit,
-) {
-    var all by rememberSaveable(report.span, title) { mutableStateOf(false) }
-    Column(Modifier.padding(top = CoulombSpacing.Space24)) {
-        CoulombSectionHead(title)
-        Column(Modifier.padding(top = CoulombSpacing.Space12)) {
-            val shown = if (all) count else minOf(count, SHOWN)
-            repeat(shown) { row(it == 0, it) }
+private fun GroupHeading(head: GroupHead) {
+    val colors = CoulombTheme.colors
+    val type = CoulombTheme.typography
+    Row(Modifier.semantics { heading() }, verticalAlignment = Alignment.CenterVertically) {
+        if (head.definition != null) {
+            CoulombTerm(head.title, head.definition, stringResource(R.string.drain_term_action), type.label, colors.textSecondary)
+        } else {
+            Text(head.title, color = colors.textSecondary, style = type.label)
         }
-        if (!all && count > SHOWN) {
-            CoulombTextButton(
-                text = stringResource(R.string.drain_show_all, formats.integer(count.toLong())),
-                onClick = { all = true },
-                modifier = Modifier.padding(top = CoulombSpacing.Space4),
-                edge = ButtonEdge.Start,
-            )
-        }
+        ProvenanceMark(Provenance.MEASURED)
     }
 }
 
@@ -141,7 +263,7 @@ private fun WakeRow(
     val facts =
         listOfNotNull(if (held) times else null, screenOff, woke)
             .reduceOrNull { a, b -> resources.getString(R.string.drain_detail_separator, a, b) }
-    RecordRow(name, if (partial) entry.tag else null, facts, if (held) formats.held(entry.totalMs) else times, first)
+    RecordRow(name, if (partial) entry.tag else null, facts, if (held) formats.held(entry.totalMs) else times, first, rawName = !partial)
 }
 
 @Composable
@@ -155,8 +277,9 @@ private fun AlarmRow(
 }
 
 /**
- * A counter row: the name in Body name, a wakelock's [tag] and the [facts] in Caption, and the
- * Measured [value] at the end (DESIGN.md, Rows, without an icon or share bar: times held do not add
+ * A counter row: the name in Body name (in Mono when it is a kernel identifier, [rawName]), a
+ * wakelock's [tag] in Mono and the [facts] in Caption, and the
+ * [value] at the end, its mark on the group's heading (DESIGN.md, Rows, without an icon or share bar: times held do not add
  * up to a whole). Only the tag, an identifier that can run to a hundred characters, is cut at two
  * lines; the name and the facts wrap at any text size.
  */
@@ -167,6 +290,7 @@ private fun RecordRow(
     facts: String?,
     value: String,
     first: Boolean,
+    rawName: Boolean = false,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -184,17 +308,12 @@ private fun RecordRow(
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(name, color = colors.textPrimary, style = type.bodyName)
-            if (tag != null) Text(tag, color = colors.textSecondary, style = type.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(name, color = colors.textPrimary, style = if (rawName) type.mono else type.bodyName)
+            if (tag != null) Text(tag, color = colors.textSecondary, style = type.mono, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (facts != null) Text(facts, color = colors.textSecondary, style = type.caption)
         }
-        MarkedText(
-            value,
-            Provenance.MEASURED,
-            type.data.copy(textAlign = TextAlign.End),
-            colors.textPrimary,
-            Modifier.widthIn(max = ValueMax),
-        )
+        // The group's heading carries the value's Measured mark.
+        Text(value, Modifier.widthIn(max = ValueMax), color = colors.textPrimary, style = type.data.copy(textAlign = TextAlign.End))
     }
 }
 

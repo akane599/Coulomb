@@ -9,10 +9,12 @@ import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.PowerComponent
+import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.data.WakeEntry
 import io.github.akane599.coulomb.core.data.WindowDrains
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import java.time.Instant
 
 internal const val MINUTE = 60_000L
@@ -97,10 +99,14 @@ internal fun alarms(): List<AlarmEntry> =
         AlarmEntry(10_123, "Halcyon", null, 1),
     )
 
+/** Shell mode over a whole window: S5's records, no root kernel sources (ADR-0028). */
+internal val SHELL_COVERAGE = WakeCoverage(Coverage.WHOLE, Coverage.NONE, Coverage.NONE)
+
 internal fun report(
     span: DrainSpan = DrainSpan.SinceUnplugged,
     drains: WindowDrains = labDrains(),
     components: List<ComponentDrain> = coarseComponents(),
+    wakeCoverage: WakeCoverage = SHELL_COVERAGE,
 ) = DrainReport(
     span = span,
     drains = drains,
@@ -111,6 +117,7 @@ internal fun report(
     lowerBound = false,
     chargedInSpan = false,
     wakes = wakes(),
+    wakeCoverage = wakeCoverage,
     alarms = alarms(),
     components = components,
 )
@@ -118,6 +125,6 @@ internal fun report(
 internal fun ready(
     report: DrainReport? = report(),
     chosen: DrainSpan = report?.span ?: DrainSpan.SinceUnplugged,
-    includeSystem: Boolean = true,
+    includeSystem: Boolean = false,
     scaled: Boolean = false,
 ) = DrainUiState.Ready(chosen, report, current = true, includeSystem = includeSystem, scaled = scaled)

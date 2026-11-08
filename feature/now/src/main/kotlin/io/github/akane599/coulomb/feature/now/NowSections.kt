@@ -56,7 +56,6 @@ import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
-import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.AppDrainRow
 import io.github.akane599.coulomb.core.ui.FigureText
@@ -67,7 +66,7 @@ import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.Rounding
-import io.github.akane599.coulomb.core.ui.privilege.copy
+import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import java.time.ZoneId
 import kotlin.math.roundToInt
 import io.github.akane599.coulomb.core.ui.R as UiR
@@ -450,7 +449,7 @@ internal fun TopDrains(
                 },
         )
         // The issue first, then the captions right above the rows they explain.
-        state.issue?.let { Issue(it, actions.openPrivileges, Modifier.padding(top = CoulombSpacing.Space12)) }
+        state.issue?.let { PrivilegeIssueBlock(it, actions.openPrivileges, Modifier.padding(top = CoulombSpacing.Space12)) }
         val captions =
             buildList {
                 if (state.battery.plugged && drains != null) {
@@ -459,8 +458,12 @@ internal fun TopDrains(
                 if (drains != null && state.topDrains.isNotEmpty()) {
                     // DESIGN.md: the list caption names the denominator of every share.
                     val total = formats.mah(drains.total).joined()
-                    val measuredIsTotal = (drains.measuredMah ?: 0.0) >= drains.modeledMah
-                    add(stringResource(if (measuredIsTotal) R.string.now_shares_of_measured else R.string.now_shares_of_modeled, total))
+                    add(
+                        stringResource(
+                            if (drains.sharesOfMeasured) R.string.now_shares_of_measured else R.string.now_shares_of_modeled,
+                            total,
+                        ),
+                    )
                 }
             }
         captions.forEachIndexed { index, caption ->
@@ -542,28 +545,6 @@ private fun DrainRow(
         onClick = null,
         modifier = modifier,
     )
-}
-
-/** SPEC 10.11 partial: the missing capability, why it matters and the fix (SPEC 4.5 copy). */
-@Composable
-private fun Issue(
-    issue: PrivilegeIssue,
-    openPrivileges: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val copy = issue.copy()
-    val colors = CoulombTheme.colors
-    val type = CoulombTheme.typography
-    Column(modifier.fillMaxWidth()) {
-        Text(stringResource(copy.title), Modifier.semantics { heading() }, color = colors.textPrimary, style = type.bodySubhead)
-        Text(stringResource(copy.body), Modifier.padding(top = CoulombSpacing.Space4), color = colors.textSecondary, style = type.body)
-        CoulombTextButton(
-            text = stringResource(R.string.now_open_privileges),
-            onClick = openPrivileges,
-            modifier = Modifier.padding(top = CoulombSpacing.Space4),
-            edge = ButtonEdge.Start,
-        )
-    }
 }
 
 /** SPEC 10.2 live current: the last 10 minutes while the screen is open. */

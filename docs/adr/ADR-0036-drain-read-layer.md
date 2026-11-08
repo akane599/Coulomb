@@ -93,3 +93,62 @@ stored. Each has one line of reason (ADR-0027).
 16. **A custom range is whole days within the last 30, picked in Material's range picker; one day is
     a range of one.**
     - R: consecutive windows are kept 30 days (ADR-0021); Material's picker is the platform's.
+
+## Critique and audit fixes (added 2026-11-08)
+
+The Drain critique and audit (`docs/design-gates/2026-11-08-critique-drain.md`, `-audit-drain.md`)
+found figures that claimed more than the data holds. These decisions answer them.
+
+17. **An Estimated drain is a range.** Its half-width is one level step for each stretch of
+    level-based windows (`LevelEstimate`). A stretch is a run of consecutive discharge windows read
+    from the level; a counter window, a window on the charger or one without a value ends it. The
+    step is the level windows' mAh per point. A stored level-based window gives way to its chain
+    when the chain covers it within a minute and measured every window, so only the windows the
+    counter could not read add to the range. When Estimated:
+    - the header shows "low – high mAh" in Headline, with the Estimated mark;
+    - shares divide by the modeled total, and a sentence replaces the reconcile bar;
+    - the unattributed row and "Scale to measured" go.
+    - R: levels are whole points, so each stretch is good to one point either way. Consecutive
+      windows share their ends, so a stretch adds one error, not one per window. A share of a
+      range would be a range too, and SPEC 1.2 forbids a precise-looking figure that isn't.
+18. **"Show system apps" and "Scale to measured" are stored settings** (Proto DataStore in
+    `:core:datastore`), Off by default as SPEC 14.4 says. ADR-0035's "Component breakdown" joins
+    them there.
+    - R: SPEC 14.4 lists them as settings; a setting survives a restart and the Settings screen
+      reads the same store.
+19. **While a newly chosen window loads, the body under the selector is the skeleton.**
+    - R: the previous window's figures must never sit under the new choice (SPEC 0.2).
+20. **The components caption names its share base, and each row has a share bar of that base.**
+    - R: a percentage with no stated base reads as a share of the measured drain.
+21. **A privilege issue shows under the selector, in Now's block (`PrivilegeIssueBlock`).** With an
+    issue and no report, the empty text, which promises the next snapshot, does not show.
+    - R: SPEC 10.11's partial state. No snapshot comes until the issue is fixed, so the promise
+      would be false.
+22. **Wake records carry their sources' coverage (`WakeCoverage`), and no missing source shows as
+    zero** (ADR-0028 §3).
+    - S5's records count as collected for a window that kept its detail and has a modeled total.
+      The modeled total needs S5's device section at both ends. S9 and S27 take the window's
+      `kernelCoverage`, and pruned records count as never collected.
+    - Over a span, a source is whole when every window had it whole and none when no window had
+      it; anything between is partial.
+    - Every group is listed. An empty group says "None recorded" where a source covered the
+      window, and "Not collected" where none did. A partly covered group says its counts may be
+      higher. When nothing was collected at all, one line says so.
+    - Kernel names and wakelock tags are set in Mono (DESIGN.md). The caption says that records
+      with no time held rank by count.
+    - R: S5's wake rows and its device section come from the same dump, so the modeled total
+      stands in for "S5 read at both ends" without a schema change.
+23. **Layout: one list on compact widths, two columns once both fit.** Two columns need a window
+    of Medium or wider with at least 2 × 280 dp of content between the gutters. Narrower Medium
+    windows, for example 700 dp beside the rail, stay one column. The selector and the issue block
+    span both columns and do not scroll. The window's note and total scroll in a column at 42%
+    width, the lens list takes 58%, and content stops at 1200 dp.
+    - Every list is lazy. Each item has a stable key, so rows keep their place and state as the
+      choice changes. Rows move with `animateItem` placement, which reduced motion turns off.
+    - The list–detail pane (`ListDetailPaneScaffold`, SPEC 10.1) arrives with App detail.
+    - R: 280 dp is what a row's name, figure and share need without wrapping at 100% text. Below
+      that, two columns would wrap every row, and one column reads better. A lazy list composes
+      only what is on screen, so a long remainder costs nothing until it is opened (SPEC 16.4).
+24. **"Scale to measured" sits under the reconcile bar and shows only with the Apps lens.**
+    - R: the switch spreads the bar's unattributed gap over the apps, so it belongs with the bar
+      it changes. Components and Wakeups do not scale.

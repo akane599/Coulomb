@@ -33,6 +33,16 @@
     <string name="drain_measured_counter">Measured by the battery’s charge counter</string>
     <string name="drain_estimated_level">Estimated from the level change and the battery’s capacity</string>
     <string name="drain_modeled_only">Modeled by Android’s power model; the battery measured no change</string>
+    <plurals name="drain_estimated_levels">
+        <item quantity="one">Estimated from the level change and the battery’s capacity, to a point either way</item>
+        <item quantity="other">Estimated from %1$d level changes and the battery’s capacity, each to a point either way</item>
+    </plurals>
+    <plurals name="drain_estimated_mixed">
+        <item quantity="one">Measured by the battery’s charge counter, except one stretch estimated from the level change</item>
+        <item quantity="other">Measured by the battery’s charge counter, except %1$d stretches estimated from the level change</item>
+    </plurals>
+    <string name="drain_reconcile_estimated">Android’s power model counts %1$s of it, so %2$s is unattributed.</string>
+    <string name="drain_up_to">up to %1$s</string>
     <string name="drain_modeled">Modeled %1$s</string>
     <string name="drain_unattributed">Unattributed %1$s</string>
     <!-- %1$s measured, %2$s modeled, %3$s unattributed, %4$s its share. -->
@@ -67,7 +77,7 @@
     <string name="drain_unattributed_detail">Outside Android’s power model: weak signal, kernel activity, model gaps</string>
     <string name="drain_no_apps">No app used measurable power in this window.</string>
 
-    <string name="drain_components_caption">The device’s power by component, apps included.</string>
+    <string name="drain_components_caption">The device’s power by component, apps included, as Android models it. Shares are of the %1$s modeled.</string>
     <string name="drain_components_coarse">Android names only some components for this window; the rest is under Other.</string>
     <string name="drain_components_empty">No component breakdown for this window.</string>
     <string name="drain_components_chart">Power by component: %1$s</string>
@@ -91,7 +101,7 @@
     <string name="drain_component_custom">Device-specific</string>
     <string name="drain_component_other">Other</string>
 
-    <string name="drain_wakeups_caption">Ranked by time held. Short wakeups cost more than the power model counts.</string>
+    <string name="drain_wakeups_caption">Ranked by time held, or by count where no time is kept. Short wakeups cost more than the power model counts.</string>
     <string name="drain_wake_partial">Partial wakelocks</string>
     <string name="drain_wake_kernel">Kernel wakelocks</string>
     <string name="drain_wake_reasons">Wakeup reasons</string>
@@ -100,7 +110,7 @@
         <item quantity="one">%1$s time</item>
         <item quantity="other">%1$s times</item>
     </plurals>
-    <string name="drain_screen_off_share">%1$s with the screen off</string>
+    <string name="drain_screen_off_share">%1$s held with the screen off</string>
     <plurals name="drain_woke">
         <item quantity="one">Woke the phone %1$s time</item>
         <item quantity="other">Woke the phone %1$s times</item>
@@ -118,4 +128,15 @@
     <string name="drain_empty_last_24h">Nothing is stored for the last 24 hours yet.</string>
     <string name="drain_empty_last_night">No screen-off stretch of an hour or more in the last day.</string>
     <string name="drain_empty_days">Nothing is stored for those days.</string>
+    <!-- ADR-0028 §3: a source that was not collected is never shown as zero. -->
+    <string name="drain_wake_not_collected">Wakeups weren’t collected for this window.</string>
+    <string name="drain_wake_group_not_collected">Not collected for this window.</string>
+    <string name="drain_wake_group_none">None recorded.</string>
+    <string name="drain_wake_group_partial">Only part of this window was collected, so the real counts may be higher.</string>
+    <string name="drain_wake_group_none_partial">None recorded in the part of this window that was collected.</string>
+    <!-- SPEC 19.3 glossary. -->
+    <string name="drain_wake_partial_definition">An app’s request to keep the CPU running with the screen off.</string>
+    <string name="drain_wake_kernel_definition">A hold by a driver that keeps the phone from going into deep sleep.</string>
+    <string name="drain_wake_reasons_definition">The interrupt that brought the phone out of deep sleep.</string>
+    <string name="drain_term_action">Show meaning</string>
 </resources>

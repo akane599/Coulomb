@@ -22,8 +22,13 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.LevelEstimate
+import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,6 +55,18 @@ class DrainScreenshotTest {
     @Test
     @Config(qualifiers = "$COMPACT_SIZE-night-xhdpi")
     fun appsDark() = shoot("apps-dark", ready(), dark = true)
+
+    @Test
+    @Config(qualifiers = "$COMPACT_SIZE-night-xhdpi")
+    fun appsBlack() = shoot("apps-black", ready(), dark = true, black = true)
+
+    @Test
+    fun appsText130() = shoot("apps-130", ready(), fontScale = 1.3f)
+
+    /** A phone on its side: an expanded width with a short height, so the column is capped. */
+    @Test
+    @Config(qualifiers = "w915dp-h412dp-xhdpi")
+    fun appsLandscape() = shoot("apps-landscape", ready())
 
     @Test
     @Config(qualifiers = "w412dp-h2200dp-xhdpi")
@@ -118,6 +135,44 @@ class DrainScreenshotTest {
     fun wakeupsLargeText() = shoot("wakeups-200", ready(), lens = Lens.WAKEUPS, fontScale = 2f)
 
     @Test
+    @Config(qualifiers = "w412dp-h2600dp-xhdpi")
+    fun wakeupsPartlyCollected() {
+        // Root for part of the window, S5 lost at one end: S5 groups partial, S27 never collected.
+        val coverage = WakeCoverage(Coverage.PARTIAL, Coverage.PARTIAL, Coverage.NONE)
+        val report = report(wakeCoverage = coverage).let { r -> r.copy(wakes = r.wakes.filter { it.kind == WakeKind.PARTIAL }) }
+        shoot("wakeups-partial", ready(report), lens = Lens.WAKEUPS)
+    }
+
+    @Test
+    fun wakeupsNotCollected() {
+        val nothing = WakeCoverage(Coverage.NONE, Coverage.NONE, Coverage.NONE)
+        shoot(
+            "wakeups-not-collected",
+            ready(report(wakeCoverage = nothing).copy(wakes = emptyList(), alarms = emptyList())),
+            lens = Lens.WAKEUPS,
+        )
+    }
+
+    @Test
+    fun estimatedRange() {
+        val estimated =
+            labDrains().copy(
+                measuredProvenance = Provenance.ESTIMATED,
+                levelEstimate = LevelEstimate(spreadMah = 49.0, stretches = 1, withCounter = false),
+            )
+        shoot("estimated", ready(report(drains = estimated)))
+    }
+
+    @Test
+    fun staleWhileANewChoiceLoads() = shoot("stale", ready(chosen = DrainSpan.Today).copy(current = false))
+
+    @Test
+    fun privilegeIssue() = shoot("issue", ready().copy(issue = PrivilegeIssue.MANAGER_STOPPED))
+
+    @Test
+    fun privilegeIssueWithoutData() = shoot("issue-empty", ready(report = null).copy(issue = PrivilegeIssue.MANAGER_STOPPED))
+
+    @Test
     fun lastNight() = shoot("last-night", ready(lastNightReport()))
 
     @Test
@@ -150,6 +205,7 @@ class DrainScreenshotTest {
         name: String,
         state: DrainUiState,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         rtl: Boolean = false,
         lens: Lens = Lens.APPS,
@@ -161,7 +217,7 @@ class DrainScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         DrainContent(
                             state = state,
@@ -182,7 +238,7 @@ private const val COMPACT_SIZE = "w412dp-h915dp"
 private const val COMPACT = "$COMPACT_SIZE-xhdpi"
 
 private val NoActions =
-    DrainActions(choose = {}, includeSystem = {}, scale = {}, retry = {}, openApp = {}, icon = { _, _ -> null })
+    DrainActions(choose = {}, includeSystem = {}, scale = {}, retry = {}, openApp = {}, openPrivileges = {}, icon = { _, _ -> null })
 
 /** Last night: 23:40 to 07:10 with the screen off, lab-sized figures. */
 private fun lastNightReport() =

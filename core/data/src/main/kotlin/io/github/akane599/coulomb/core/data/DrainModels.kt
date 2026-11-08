@@ -57,6 +57,8 @@ public data class DrainReport(
     val chargedInSpan: Boolean,
     /** Every wakelock, kernel source, wakeup reason and resume cause, longest first. */
     val wakes: List<WakeEntry>,
+    /** Which sources of [wakes] and [alarms] the span collected; a missing source is never zero. */
+    val wakeCoverage: WakeCoverage,
     /** Wakeup alarms per app, most first (S5 reports wakeup alarms only). */
     val alarms: List<AlarmEntry>,
     /** The device's power by component, apps included, largest first. Modeled. */

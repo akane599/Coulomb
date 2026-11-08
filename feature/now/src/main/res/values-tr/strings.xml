@@ -38,7 +38,6 @@
     <string name="now_last_discharge">Son pil kullanımından (bitiş: %1$s).</string>
     <string name="now_drains_empty">Uygulama başına tüketim, Coulomb telefonun şarjdan çıkarıldığını gördükten sonra görünür.</string>
     <string name="now_drains_collecting">Uygulama başına tüketim, şarjdan çıkardıktan sonraki ilk ölçümle görünür.</string>
-    <string name="now_open_privileges">Yetkileri aç</string>
 
     <string name="now_live_current">Anlık akım</string>
     <string name="now_live_caption">Son 10 dakika. Bu ekran açıkken güncellenir.</string>

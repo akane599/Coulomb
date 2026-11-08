@@ -117,7 +117,8 @@ public data class AppDrain(
 /**
  * Who used the battery in a window (SPEC 6.5). Shares divide by [total]: the measured drain, or the
  * modeled total where that is larger, so the apps, [otherMah], [deviceMah] and [unattributedMah]
- * add up to the whole.
+ * add up to the whole. An Estimated drain is a range, so shares divide by the modeled total then
+ * (ADR-0036 §17).
  */
 public data class WindowDrains(
     val fromWallMs: Long,
@@ -136,8 +137,22 @@ public data class WindowDrains(
      * 6.5's friendly system rows). Modeled.
      */
     val deviceMah: Double = 0.0,
+    /** How far an Estimated [measuredMah] can be off; null when it is Measured or the step is unknown. */
+    val levelEstimate: LevelEstimate? = null,
 ) {
-    val total: Double get() = maxOf(measuredMah ?: 0.0, modeledMah)
+    /** [measuredMah] is a range: [measuredLowMah] to [measuredHighMah]. */
+    val estimated: Boolean get() = measuredProvenance == Provenance.ESTIMATED
+
+    /** The measured drain is the share base: Measured, and at least the modeled total. */
+    val sharesOfMeasured: Boolean get() = !estimated && (measuredMah ?: 0.0) >= modeledMah
+
+    val total: Double get() = if (sharesOfMeasured) measuredMah ?: 0.0 else modeledMah
+
+    /** The low end of an Estimated drain, never below zero; the drain itself when Measured. */
+    val measuredLowMah: Double? get() = measuredMah?.let { (it - (levelEstimate?.spreadMah ?: 0.0)).coerceAtLeast(0.0) }
+
+    /** The high end of an Estimated drain; the drain itself when Measured. */
+    val measuredHighMah: Double? get() = measuredMah?.let { it + (levelEstimate?.spreadMah ?: 0.0) }
 
     /** Measured minus modeled, where measured is larger (SPEC 6.5 reconciliation); Derived. */
     val unattributedMah: Double get() = ((measuredMah ?: 0.0) - modeledMah).coerceAtLeast(0.0)

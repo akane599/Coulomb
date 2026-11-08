@@ -10,16 +10,19 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.TypeConverters
 import io.github.akane599.coulomb.core.database.entity.DetailCodes
+import io.github.akane599.coulomb.core.database.entity.KernelCodes
 import io.github.akane599.coulomb.core.database.entity.StatKeyEntity
 import io.github.akane599.coulomb.core.database.entity.WakeTagEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
+import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
 import kotlinx.coroutines.flow.Flow
 
 /** A [WindowWakeEntity] with its tag as text. */
@@ -93,6 +96,25 @@ public data class ChainWake(
 public data class ChainStat(
     val uid: Int,
     val value: Long,
+)
+
+/**
+ * One consecutive window of a chain, in order: what its measured drain came from, whether it started
+ * on battery, the levels at its ends, and which records it kept. A span's Estimated total takes its
+ * range from these, and its wake records their coverage (ADR-0028 §3).
+ */
+public data class ChainStep(
+    val chargeSource: ChargeSource?,
+    val measuredMah: Double?,
+    /** The start snapshot's plug type; 0 on battery, null when unknown. */
+    val plugType: Int?,
+    val fromLevel: Int?,
+    val toLevel: Int?,
+    val detailPruned: Boolean = false,
+    /** Null without S5's device section at both ends, and so without S5's records. */
+    val modeledMah: Double? = null,
+    @TypeConverters(KernelCodes::class)
+    val kernelCoverage: KernelCoverage? = null,
 )
 
 /** The per-UID records of one window. The uid rows' `windowId` is ignored on insert. */
@@ -204,6 +226,20 @@ public abstract class WindowDao {
         toBootSeq: Int,
         toElapsedNs: Long,
     ): ChainTotals
+
+    /** As [chainTotals], each window in time order ([ChainStep]). */
+    @Query(
+        "SELECT w.chargeSource, w.measuredMah, f.plugType, f.levelPct AS fromLevel, s.levelPct AS toLevel, " +
+            "w.detailPruned, w.modeledMah, w.kernelCoverage " +
+            "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
+            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN ORDER BY s.bootSeq, s.elapsedNs",
+    )
+    public abstract suspend fun chainSteps(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<ChainStep>
 
     /** As [chainTotals], each UID's modeled mAh per component (device rows included). */
     @Query(

@@ -87,6 +87,7 @@ internal object WindowDrainsBuilder {
         modeledMah: Double?,
         rows: List<WindowUidEntity>,
         meta: List<UidMetaEntity>,
+        levelEstimate: LevelEstimate? = null,
     ): WindowDrains {
         val names = meta.associateBy { it.uid }
         val perUid =
@@ -116,6 +117,7 @@ internal object WindowDrainsBuilder {
             apps = apps,
             otherMah = perUid[WindowUidEntity.OTHER_UID] ?: 0.0,
             deviceMah = modeled - uidSum,
+            levelEstimate = levelEstimate?.takeIf { measuredMah != null && measuredProvenance == Provenance.ESTIMATED },
         )
     }
 

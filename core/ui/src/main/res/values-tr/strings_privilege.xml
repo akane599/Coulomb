@@ -27,4 +27,6 @@
 
     <string name="privilege_show_adb">ADB komutlarını göster</string>
 
+    <!-- SPEC 10.11: the way from a partial screen to Privileges. -->
+    <string name="privilege_open">Yetkileri aç</string>
 </resources>

@@ -169,7 +169,7 @@ class AppScreens(
                     )
                 },
                 // App detail arrives later in P4; until then the rows open nothing.
-                drain = { DrainScreen(onOpenApp = null) },
+                drain = { navigator -> DrainScreen(onOpenApp = null, onOpenPrivileges = { navigator.open(Route.Privileges) }) },
             )
     }
 }

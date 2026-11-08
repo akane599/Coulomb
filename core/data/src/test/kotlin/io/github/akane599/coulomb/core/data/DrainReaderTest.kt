@@ -29,6 +29,8 @@ import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -108,6 +110,24 @@ class DrainReaderTest {
             assertThat(wake.count).isEqualTo(4)
             assertThat(wake.label).isEqualTo("Halcyon")
             assertThat(wake.screenOffShare).isEqualTo(1.0)
+            // The stored window read S5 at both ends and no root source.
+            assertThat(report.wakeCoverage).isEqualTo(WakeCoverage(Coverage.WHOLE, Coverage.NONE, Coverage.NONE))
+        }
+
+    @Test
+    fun aChainSaysWhichWakeSourcesItsWindowsCollected() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+            val root = KernelCoverage(Coverage.WHOLE, Coverage.WHOLE, Coverage.WHOLE)
+            store(window(a, b).copy(modeledMah = 10.0, kernelCoverage = root))
+            store(window(b, c).copy(modeledMah = 10.0))
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            // Root for the first window only: its kernel rows are a lower bound for the span.
+            assertThat(report.wakeCoverage).isEqualTo(WakeCoverage(Coverage.WHOLE, Coverage.PARTIAL, Coverage.PARTIAL))
         }
 
     @Test
@@ -167,6 +187,86 @@ class DrainReaderTest {
             assertThat(report.lowerBound).isTrue()
             assertThat(report.drains.apps.map { it.uid to it.mah }).containsExactly(APP to 40.0)
             assertThat(report.alarms.map { it.uid to it.wakeups }).containsExactly(APP to 5L)
+        }
+
+    @Test
+    fun aChainWithLevelWindowsIsARangeOfOneStepForEachStretch() =
+        runTest {
+            val a = heavy(1_000, level = 80)
+            val b = heavy(2_000, level = 78)
+            val c = heavy(3_000, level = 75)
+            val d = heavy(4_000, level = 74)
+            val e = heavy(5_000, level = 73)
+            // Two level windows in a row (50 mAh a point), the counter, then one more level window.
+            store(window(a, b).copy(measuredMah = 100.0, chargeSource = ChargeSource.LEVEL_DELTA))
+            store(window(b, c).copy(measuredMah = 150.0, chargeSource = ChargeSource.LEVEL_DELTA))
+            store(window(c, d).copy(measuredMah = 40.0))
+            store(window(d, e).copy(measuredMah = 50.0, chargeSource = ChargeSource.LEVEL_DELTA))
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.drains.measuredMah).isEqualTo(340.0)
+            assertThat(report.drains.measuredProvenance).isEqualTo(Provenance.ESTIMATED)
+            // 300 mAh over 6 points: 50 a point, for each of the two stretches.
+            assertThat(report.drains.levelEstimate).isEqualTo(LevelEstimate(100.0, stretches = 2, withCounter = true))
+            assertThat(report.drains.measuredLowMah).isEqualTo(240.0)
+            assertThat(report.drains.measuredHighMah).isEqualTo(440.0)
+        }
+
+    @Test
+    fun aStoredLevelWindowGivesWayToTheChainThatCoversIt() =
+        runTest {
+            val a = heavy(1_000, level = 80)
+            val b = heavy(2_000, level = 79)
+            val c = heavy(3_000, level = 77)
+            val session = sessions.insert(discharge(a))
+            val reference = reference(AutoReference.SINCE_UNPLUGGED, a)
+            // A reboot made the stored window level-based; the counter read both windows inside it.
+            val stored =
+                store(
+                    window(a, c, WindowKind.REFERENCE).copy(
+                        measuredMah = 150.0,
+                        chargeSource = ChargeSource.LEVEL_DELTA,
+                        screenOffMs = 2_000_000,
+                    ),
+                )
+            store(window(a, b).copy(measuredMah = 45.0, screenOffMs = 1_000_000))
+            store(window(b, c).copy(measuredMah = 95.0, screenOffMs = 1_000_000))
+
+            val report =
+                checkNotNull(
+                    reader.read(DrainSpan.SinceUnplugged, DrainInputs(listOf(stored), listOf(reference), sessions.byId(session), meta)),
+                )
+
+            assertThat(report.drains.measuredMah).isEqualTo(140.0)
+            assertThat(report.drains.measuredProvenance).isEqualTo(Provenance.MEASURED)
+            assertThat(report.drains.levelEstimate).isNull()
+        }
+
+    @Test
+    fun aStoredLevelWindowItsChainDoesNotCoverIsOneStep() =
+        runTest {
+            val a = heavy(1_000, level = 80)
+            val c = heavy(3_000, level = 76)
+            val session = sessions.insert(discharge(a))
+            val reference = reference(AutoReference.SINCE_UNPLUGGED, a)
+            val stored =
+                store(
+                    window(a, c, WindowKind.REFERENCE).copy(
+                        measuredMah = 160.0,
+                        chargeSource = ChargeSource.LEVEL_DELTA,
+                        screenOffMs = 2_000_000,
+                    ),
+                )
+
+            val report =
+                checkNotNull(
+                    reader.read(DrainSpan.SinceUnplugged, DrainInputs(listOf(stored), listOf(reference), sessions.byId(session), meta)),
+                )
+
+            assertThat(report.drains.measuredMah).isEqualTo(160.0)
+            assertThat(report.drains.measuredProvenance).isEqualTo(Provenance.ESTIMATED)
+            assertThat(report.drains.levelEstimate).isEqualTo(LevelEstimate(40.0, stretches = 1, withCounter = false))
         }
 
     @Test
@@ -255,6 +355,7 @@ class DrainReaderTest {
         elapsedS: Long,
         wallMs: Long = BASE_WALL + elapsedS * 1_000,
         plugType: Int = 0,
+        level: Int = 80,
     ): Long =
         snapshots.insert(
             SnapshotEntity(
@@ -263,7 +364,7 @@ class DrainReaderTest {
                 wallMs = wallMs,
                 trigger = SnapshotTrigger.SCREEN_OFF,
                 kind = SnapshotKind.HEAVY,
-                levelPct = 80,
+                levelPct = level,
                 chargeUah = 4_000_000,
                 currentRaw = -250,
                 voltageMv = 4_100,

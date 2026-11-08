@@ -29,4 +29,6 @@
     <string name="privilege_show_adb">Show ADB commands</string>
 
     <!-- SPEC 4.5: a feature blocked by SELinux at T2. -->
+    <!-- SPEC 10.11: the way from a partial screen to Privileges. -->
+    <string name="privilege_open">Open Privileges</string>
 </resources>

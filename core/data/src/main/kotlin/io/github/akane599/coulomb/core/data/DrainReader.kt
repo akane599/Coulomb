@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.common.ZoneSource
+import io.github.akane599.coulomb.core.database.dao.ChainStep
 import io.github.akane599.coulomb.core.database.dao.ChainTotals
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
@@ -27,6 +28,7 @@ import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
+import kotlin.math.abs
 
 /** What the stored rows say about the reference windows (ADR-0032 §3); [DrainReader.inputs] observes them. */
 internal class DrainInputs(
@@ -73,7 +75,7 @@ internal class DrainReader
             val totals = chain.totals()
             val detail = exact?.takeIf { !it.detailPruned }
             val rows = detail?.let { windows.rows(it.id) }
-            val measured = measured(exact, totals)
+            val measured = measured(exact, totals, chain, from, to)
             val uids =
                 rows?.uids ?: chain.uids().map {
                     WindowUidEntity(
@@ -96,6 +98,7 @@ internal class DrainReader
                     modeledMah = modeled,
                     rows = uids,
                     meta = inputs.meta,
+                    levelEstimate = measured?.estimate,
                 )
             val names = inputs.meta.associateBy { it.uid }
             return DrainReport(
@@ -108,6 +111,7 @@ internal class DrainReader
                 lowerBound = detail == null,
                 chargedInSpan = totals.pluggedWindows > 0,
                 wakes = wakes(rows, chain, names),
+                wakeCoverage = if (detail != null) WakeCoverage.ofWindow(detail) else WakeCoverage.ofChain(chain.steps()),
                 alarms = alarms(rows, chain, names),
                 components = components(uids),
             )
@@ -211,27 +215,58 @@ internal class DrainReader
         private class Measured(
             val mah: Double,
             val provenance: Provenance,
+            val estimate: LevelEstimate? = null,
         )
 
         /**
          * The stored window's own drain when every window in its chain started on battery; otherwise the
          * drain of the chain's discharge windows alone, since a charge would cancel drain out. Measured
-         * when every summed window was read by the charge counter, else Estimated (ADR-0018).
+         * when every summed window was read by the charge counter, else Estimated (ADR-0018), with its
+         * range (ADR-0036 §17).
+         *
+         * A stored window read from the level, as one across a reboot is, gives way to its chain when
+         * the chain covers it and measured every window: then only the windows the counter could not
+         * read are level-based, and the range is a step for each stretch of them, not for the span.
          */
-        private fun measured(
+        private suspend fun measured(
             exact: WindowResultEntity?,
             totals: ChainTotals,
+            chain: Chain,
+            from: SnapshotEntity,
+            to: SnapshotEntity,
         ): Measured? {
             val onBatteryOnly = totals.pluggedWindows == 0 && totals.unknownWindows == 0
-            if (exact != null && (totals.windows == 0 || onBatteryOnly)) {
-                return exact.measuredMah?.let {
-                    Measured(it, if (exact.chargeSource == ChargeSource.CHARGE_COUNTER) Provenance.MEASURED else Provenance.ESTIMATED)
-                }
+            val stored = exact?.takeIf { totals.windows == 0 || onBatteryOnly } ?: return chainMeasured(totals, chain)
+            val mah = stored.measuredMah ?: return null
+            return when {
+                stored.chargeSource == ChargeSource.CHARGE_COUNTER -> Measured(mah, Provenance.MEASURED)
+                coveredByChain(stored, totals) -> chainMeasured(totals, chain)
+                else -> Measured(mah, Provenance.ESTIMATED, LevelEstimate.ofWindow(mah, from.levelPct, to.levelPct))
             }
+        }
+
+        /** The chain's discharge windows summed: Measured when the counter read each one it could. */
+        private suspend fun chainMeasured(
+            totals: ChainTotals,
+            chain: Chain,
+        ): Measured? {
             val mah = totals.dischargeMah ?: return null
             val measuredWindows = totals.dischargeWindows - totals.unmeasuredWindows
-            return Measured(mah, if (totals.counterWindows == measuredWindows) Provenance.MEASURED else Provenance.ESTIMATED)
+            return if (totals.counterWindows == measuredWindows) {
+                Measured(mah, Provenance.MEASURED)
+            } else {
+                Measured(mah, Provenance.ESTIMATED, LevelEstimate.ofChain(chain.steps()))
+            }
         }
+
+        /** The chain spans [stored] within a minute and measured every window, so it can stand in. */
+        private fun coveredByChain(
+            stored: WindowResultEntity,
+            totals: ChainTotals,
+        ): Boolean =
+            totals.windows > 0 &&
+                totals.unmeasuredWindows == 0 &&
+                abs(totals.screenOnMs + totals.screenOffMs - stored.screenOnMs - stored.screenOffMs) <= COVER_SLACK_MS
 
         private suspend fun wakes(
             rows: WindowRows?,
@@ -297,6 +332,12 @@ internal class DrainReader
         ) {
             suspend fun totals() = windows.chainTotals(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
 
+            private var steps: List<ChainStep>? = null
+
+            /** Read once: the range and the wake coverage both need them. */
+            suspend fun steps(): List<ChainStep> =
+                steps ?: windows.chainSteps(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs).also { steps = it }
+
             suspend fun uids() = windows.chainUids(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
 
             suspend fun wakes() = windows.chainWakes(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
@@ -312,6 +353,9 @@ internal class DrainReader
 
             /** SPEC 10.7 lists screen-off sessions of an hour or more. */
             const val NIGHT_MIN_NS: Long = 3_600_000_000_000L
+
+            /** A chain covers a stored window when their times differ by at most a minute. */
+            const val COVER_SLACK_MS: Long = 60_000L
 
             /** [a] comes strictly before [b] in boot and elapsed order (SPEC 7.8). */
             fun before(

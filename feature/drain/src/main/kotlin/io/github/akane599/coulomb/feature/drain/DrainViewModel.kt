@@ -5,7 +5,6 @@ package io.github.akane599.coulomb.feature.drain
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,20 +12,25 @@ import io.github.akane599.coulomb.core.data.AppIcons
 import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.datastore.SettingsStore
+import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
  * Drain (SPEC 10.3) for the window chosen across screens ([ChosenWindow]). A report is read again
- * after every heavy snapshot (ADR-0036); nothing here polls.
+ * after every heavy snapshot (ADR-0036); nothing here polls. The two switches are SPEC 14.4
+ * settings, kept in [SettingsStore]. A privilege issue shows as Now's does (SPEC 10.11 partial).
  */
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -36,30 +40,36 @@ public class DrainViewModel
         drains: DrainRepository,
         private val window: ChosenWindow,
         private val icons: AppIcons,
-        private val saved: SavedStateHandle,
+        private val settings: SettingsStore,
+        access: PrivilegedAccess,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
-        private val includeSystem = saved.getStateFlow(KEY_SYSTEM, true)
-        private val scaled = saved.getStateFlow(KEY_SCALED, false)
 
         internal val state: StateFlow<DrainUiState> =
             attempt
                 .flatMapLatest {
                     val reports = window.span.flatMapLatest { span -> drains.report(span).map { span to it } }
-                    combine(window.span, reports, includeSystem, scaled) { chosen, (span, report), system, scale ->
-                        DrainUiState.Ready(chosen, report, current = span == chosen, includeSystem = system, scaled = scale)
-                            as DrainUiState
+                    val issues = access.state.map { it.issue }.distinctUntilChanged()
+                    combine(window.span, reports, settings.settings, issues) { chosen, (span, report), prefs, issue ->
+                        DrainUiState.Ready(
+                            chosen = chosen,
+                            report = report,
+                            current = span == chosen,
+                            includeSystem = prefs.showSystemApps,
+                            scaled = prefs.scaleToMeasured,
+                            issue = issue,
+                        ) as DrainUiState
                     }.catch { emit(DrainUiState.Error) }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DrainUiState.Loading)
 
         internal fun choose(span: DrainSpan) = window.choose(span)
 
         internal fun includeSystem(include: Boolean) {
-            saved[KEY_SYSTEM] = include
+            viewModelScope.launch { settings.showSystemApps(include) }
         }
 
         internal fun scale(scaled: Boolean) {
-            saved[KEY_SCALED] = scaled
+            viewModelScope.launch { settings.scaleToMeasured(scaled) }
         }
 
         /** After [DrainUiState.Error]: reads everything again. */
@@ -75,7 +85,5 @@ public class DrainViewModel
 
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
-            const val KEY_SYSTEM = "includeSystem"
-            const val KEY_SCALED = "scaled"
         }
     }
