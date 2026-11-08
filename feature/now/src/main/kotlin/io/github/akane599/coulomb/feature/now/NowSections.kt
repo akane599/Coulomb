@@ -67,6 +67,7 @@ import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.Rounding
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
+import io.github.akane599.coulomb.core.ui.rememberAppIcon
 import java.time.ZoneId
 import kotlin.math.roundToInt
 import io.github.akane599.coulomb.core.ui.R as UiR
@@ -83,7 +84,6 @@ private val LevelMarkGap = 2.dp
 
 // About 70 characters of Body (SPEC 11.3 measure).
 private val VerdictMeasure = 560.dp
-private val IconSize = 40.dp
 
 /** SPEC 10.2 hero: the level, time left and state, then the scale and the verdict. */
 @Composable
@@ -526,13 +526,8 @@ private fun DrainRow(
     icon: suspend (String, Int) -> ImageBitmap?,
     modifier: Modifier = Modifier,
 ) {
-    val sizePx = with(LocalDensity.current) { IconSize.roundToPx() }
-    val load by rememberUpdatedState(icon)
-    val bitmap by produceState<ImageBitmap?>(null, app.iconPackage, sizePx) {
-        value = app.iconPackage?.let { load(it, sizePx) }
-    }
     AppDrainRow(
-        icon = bitmap,
+        icon = rememberAppIcon(app.iconPackage, icon),
         name = formats.appName(app.label, app.uid),
         // A bare UID has no name to take an initial from.
         standIn = if (app.label == null && !app.isSystem) IconStandIn.Initial("#") else null,

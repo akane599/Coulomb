@@ -22,6 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -33,6 +36,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -161,6 +165,23 @@ private fun NameBesideValue(
 /** About eleven characters of a name: room for a long word such as "Application" at any text size. */
 private const val NAME_MIN_EM = 7.5f
 
+/**
+ * [iconPackage]'s icon from [load] (the shared icon cache), at the size [AppDrainRow] draws it, so
+ * the bitmap is never scaled. Null until it loads, or when there is no package.
+ */
+@Composable
+public fun rememberAppIcon(
+    iconPackage: String?,
+    load: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
+): ImageBitmap? {
+    val sizePx = with(LocalDensity.current) { IconSize.roundToPx() }
+    val current by rememberUpdatedState(load)
+    val bitmap by produceState<ImageBitmap?>(null, iconPackage, sizePx) {
+        value = iconPackage?.let { current(it, sizePx) }
+    }
+    return bitmap
+}
+
 /** What stands in a row's icon slot while there is no icon. */
 public sealed interface IconStandIn {
     /** What the tile says. */
@@ -173,6 +194,14 @@ public sealed interface IconStandIn {
 
     /** The remainder row's hairline-outlined tile ("+22"; DESIGN.md, Remainder and gap). */
     public data class Remainder(
+        override val text: String,
+    ) : IconStandIn
+
+    /**
+     * A group inside an opened remainder that opens nothing ("+3" system apps hidden): the count
+     * with no tile, so it does not look like the tappable remainder.
+     */
+    public data class Group(
         override val text: String,
     ) : IconStandIn
 
@@ -203,6 +232,7 @@ private fun AppIcon(
         when (standIn) {
             is IconStandIn.Initial, IconStandIn.Device -> Modifier.background(colors.surfaceRaised, shape)
             is IconStandIn.Remainder -> Modifier.border(Hairline, colors.hairline, shape)
+            is IconStandIn.Group -> Modifier
             IconStandIn.Gap -> Modifier.dashedOutline(colors.textSecondary)
         }
     // At least 40 dp, and wider when a count outgrows it (DESIGN.md: text fits its container). The

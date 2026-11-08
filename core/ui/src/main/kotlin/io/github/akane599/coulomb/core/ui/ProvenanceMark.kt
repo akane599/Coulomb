@@ -15,10 +15,13 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
@@ -29,6 +32,7 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.LayoutDirection
 import io.github.akane599.coulomb.core.designsystem.component.ProvenanceGlyph
 import io.github.akane599.coulomb.core.designsystem.component.ProvenanceGlyphSize
 import io.github.akane599.coulomb.core.designsystem.component.ProvenanceShape
@@ -36,6 +40,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import kotlinx.coroutines.launch
+import java.text.Bidi
 
 /** The shape that marks [this] provenance (DESIGN.md, Provenance marks; ADR-0023 §1). */
 public val Provenance.shape: ProvenanceShape
@@ -148,8 +153,28 @@ public fun MarkedText(
         modifier = modifier,
         color = color,
         style = style,
-        inlineContent = mapOf(MARK to InlineTextContent(placeholder) { ProvenanceMark(provenance) }),
+        inlineContent =
+            mapOf(
+                MARK to
+                    InlineTextContent(placeholder) {
+                        // The mark's gap faces the text: lay it out in the paragraph's direction,
+                        // which Text takes from the first strong character, not the screen's.
+                        CompositionLocalProvider(LocalLayoutDirection provides paragraphDirection(text.text)) {
+                            ProvenanceMark(provenance)
+                        }
+                    },
+            ),
     )
+}
+
+/** The direction Text gives a paragraph of [text]: its first strong character's, else the screen's. */
+@Composable
+private fun paragraphDirection(text: String): LayoutDirection {
+    val screen = LocalLayoutDirection.current
+    return remember(text, screen) {
+        val fallback = if (screen == LayoutDirection.Rtl) Bidi.DIRECTION_DEFAULT_RIGHT_TO_LEFT else Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT
+        if (Bidi(text, fallback).baseIsLeftToRight()) LayoutDirection.Ltr else LayoutDirection.Rtl
+    }
 }
 
 private const val WORD_JOINER = '\u2060'

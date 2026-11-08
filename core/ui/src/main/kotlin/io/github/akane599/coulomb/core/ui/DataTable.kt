@@ -30,15 +30,25 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.model.Provenance
 
-/** A chart's data as rows of text; the first column is the label, the others are figures. */
+/**
+ * A chart's data as rows of text; the first column is the label, the others are figures. Either
+ * every figure has one source, [provenance], or each row has its own, [rowProvenance].
+ */
 @Immutable
 public data class DataTable(
     val title: String,
     val columns: List<String>,
     val rows: List<List<String>>,
     /** The single source of every figure, marked once on the header (SPEC 10.1). */
-    val provenance: Provenance,
-)
+    val provenance: Provenance?,
+    /** Each row's source, marked after its last figure, where the rows differ. */
+    val rowProvenance: List<Provenance>? = null,
+) {
+    init {
+        require((provenance == null) != (rowProvenance == null)) { "One source for the table, or one for each row" }
+        require(rowProvenance == null || rowProvenance.size == rows.size) { "One source for each row" }
+    }
+}
 
 private val TableRowHeight = 48.dp
 private val Hairline = 1.dp
@@ -61,18 +71,20 @@ public fun DataTableSheet(
         shape = RoundedCornerShape(topStart = CoulombRadius.Sheet, topEnd = CoulombRadius.Sheet),
         containerColor = colors.surfaceRaised,
     ) {
-        // One mark on the header covers every figure (SPEC 10.1).
-        MarkedText(
-            text = table.title,
-            provenance = table.provenance,
-            style = type.title,
-            color = colors.textPrimary,
-            modifier = Modifier.padding(horizontal = gutter).semantics { heading() },
-        )
+        val title = Modifier.padding(horizontal = gutter).semantics { heading() }
+        // One mark on the header covers every figure (SPEC 10.1), unless the rows differ.
+        val provenance = table.provenance
+        if (provenance != null) {
+            MarkedText(text = table.title, provenance = provenance, style = type.title, color = colors.textPrimary, modifier = title)
+        } else {
+            Text(text = table.title, modifier = title, color = colors.textPrimary, style = type.title)
+        }
         LazyColumn(Modifier.padding(top = CoulombSpacing.Space12, bottom = CoulombSpacing.Space24)) {
-            item { TableRow(table.columns, header = true, gutter = gutter) }
+            item { TableRow(table.columns, header = true, gutter = gutter, provenance = null) }
             // The table is a snapshot taken when the sheet opens, so a row's index is its key (SPEC 15.5).
-            itemsIndexed(table.rows, key = { index, _ -> index }) { _, row -> TableRow(row, header = false, gutter = gutter) }
+            itemsIndexed(table.rows, key = { index, _ -> index }) { index, row ->
+                TableRow(row, header = false, gutter = gutter, provenance = table.rowProvenance?.get(index))
+            }
         }
     }
 }
@@ -82,6 +94,7 @@ private fun TableRow(
     cells: List<String>,
     header: Boolean,
     gutter: Dp,
+    provenance: Provenance?,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -97,13 +110,13 @@ private fun TableRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         cells.forEachIndexed { index, cell ->
-            Text(
-                text = cell,
-                modifier = Modifier.weight(1f),
-                color = if (header) colors.textSecondary else colors.textPrimary,
-                style = if (header) type.label else type.data,
-                textAlign = if (index == 0) TextAlign.Start else TextAlign.End,
-            )
+            val color = if (header) colors.textSecondary else colors.textPrimary
+            val style = (if (header) type.label else type.data).copy(textAlign = if (index == 0) TextAlign.Start else TextAlign.End)
+            if (provenance != null && index == cells.lastIndex) {
+                MarkedText(cell, provenance, style, color, Modifier.weight(1f))
+            } else {
+                Text(text = cell, modifier = Modifier.weight(1f), color = color, style = style)
+            }
         }
     }
 }
