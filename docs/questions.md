@@ -11,6 +11,13 @@ start of every phase. Answered questions move to the bottom with the answer and 
 - 2026-11-07. Protocol B's rounding: levels are whole percents, so a night's level-delta rate is known
   only to about 1/hours %/h. A gap above the 0.1 %/h pass mark but within that rounding reads
   "inconclusive" (ADR-0020). Default: inconclusive is neither pass nor fail; a second night decides.
+- 2026-11-08. Time left on Now projects the current screen state's rate, as the reviewed lab shows: with
+  the screen on, it is the time left if the screen stays on. The independent review proposed instead
+  integrating hour-of-day profiles of whole past discharges (nights included) forward to empty, which
+  reads longer and closer to a typical day. Default: per screen state (ADR-0033 §5).
+- 2026-11-08. Work-profile apps: `PackageManager.getPackagesForUid` may not resolve another user's UIDs
+  without cross-user access, which would leave those apps unnamed. Default: they show the fallback name
+  until an emulator check with a work profile settles it.
 
 ## Answered
 
