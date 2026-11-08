@@ -18,6 +18,9 @@ start of every phase. Answered questions move to the bottom with the answer and 
 - 2026-11-08. Work-profile apps: `PackageManager.getPackagesForUid` may not resolve another user's UIDs
   without cross-user access, which would leave those apps unnamed. Default: they show the fallback name
   until an emulator check with a work profile settles it.
+- 2026-11-09. Drain at 1000 dp and up leaves the summary column mostly empty below the reconcile bar
+  (`drain-apps-expanded`). Default: left as is until the list-detail decision for App detail
+  (ADR-0036 §23), which may fill that space.
 
 - 2026-11-08. Now on expanded widths: one column capped at 720 dp, or two panes at 840 dp and up
   (hero, verdict and strip on the left; drains and live current on the right). Default: the capped

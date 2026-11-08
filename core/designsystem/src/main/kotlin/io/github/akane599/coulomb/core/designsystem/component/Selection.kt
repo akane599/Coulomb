@@ -6,7 +6,6 @@ package io.github.akane599.coulomb.core.designsystem.component
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -62,7 +62,6 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombMotion
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombRadius
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
-import io.github.akane599.coulomb.core.designsystem.theme.REDUCED_FADE_MS
 import io.github.akane599.coulomb.core.designsystem.theme.crossfadeTo
 
 /**
@@ -158,35 +157,31 @@ private fun WindowChoice(
     }
 }
 
-/** The leading check of a chosen choice or tab: it slides in, or only fades under reduced motion. */
+/** The leading check of a chosen choice or tab: it slides in, or only crossfades under reduced motion. */
 @Composable
 private fun CheckLead(
     chosen: Boolean,
     tint: Color,
 ) {
-    val reduced = CoulombTheme.reducedMotion
-    AnimatedVisibility(
-        visible = chosen,
-        enter =
-            if (reduced) {
-                fadeIn(tween(REDUCED_FADE_MS))
-            } else {
-                expandHorizontally(CoulombMotion.spatial()) +
-                    fadeIn(CoulombMotion.effects())
-            },
-        exit =
-            if (reduced) {
-                fadeOut(tween(REDUCED_FADE_MS))
-            } else {
-                shrinkHorizontally(CoulombMotion.spatial()) +
-                    fadeOut(CoulombMotion.effects())
-            },
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    val check: @Composable (Modifier) -> Unit = { modifier ->
+        Row(modifier, verticalAlignment = Alignment.CenterVertically) {
             Icon(painterResource(CoulombIcons.Check), contentDescription = null, modifier = Modifier.size(IconSize), tint = tint)
             Spacer(Modifier.width(IconGap))
         }
     }
+    if (CoulombTheme.reducedMotion) {
+        // A tween would finish at once with animations off; the real-clock crossfade keeps the check
+        // in step with the fill's (selectionProgress).
+        val alpha = remember { Animatable(if (chosen) 1f else 0f) }
+        LaunchedEffect(chosen) { alpha.crossfadeTo(if (chosen) 1f else 0f) }
+        if (chosen || alpha.value > 0f) check(Modifier.graphicsLayer { this.alpha = alpha.value })
+        return
+    }
+    AnimatedVisibility(
+        visible = chosen,
+        enter = expandHorizontally(CoulombMotion.spatial()) + fadeIn(CoulombMotion.effects()),
+        exit = shrinkHorizontally(CoulombMotion.spatial()) + fadeOut(CoulombMotion.effects()),
+    ) { check(Modifier) }
 }
 
 /** 0 when not selected and 1 when selected, on the spatial spring; a 150 ms crossfade under reduced motion (SPEC 11.6). */

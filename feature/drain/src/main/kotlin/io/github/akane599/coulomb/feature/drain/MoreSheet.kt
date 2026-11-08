@@ -32,6 +32,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -47,6 +49,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombRadius
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
+import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -81,6 +84,7 @@ internal fun MoreSheet(
         return
     }
     val colors = CoulombTheme.colors
+    val formats = rememberFormats()
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     val scope = rememberCoroutineScope()
     // The sheet slides away before it leaves the composition (SPEC 11.6: motion explains change).
@@ -116,7 +120,7 @@ internal fun MoreSheet(
                     pluralStringResource(
                         R.plurals.drain_custom_range_detail,
                         DrainSpan.CUSTOM_DAYS.toInt(),
-                        DrainSpan.CUSTOM_DAYS.toInt(),
+                        formats.integer(DrainSpan.CUSTOM_DAYS),
                     ),
                 chosen = chosen is DrainSpan.Days,
                 onClick = { close { picking = true } },
@@ -191,13 +195,21 @@ internal fun RangeDialog(
                 override fun isSelectableYear(year: Int): Boolean = year in earliest.year..today.year
             }
         }
+    // In a short window the range picker opens for typing. The window's own height, as the width
+    // classes read it (WindowWidth.kt), not the screen's.
+    val short =
+        with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.height
+                .toDp()
+        } < ShortWindowHeight
     val state =
         rememberDateRangePickerState(
             initialSelectedStartDateMillis = initial?.first?.utcMillis(),
             initialSelectedEndDateMillis = initial?.last?.utcMillis(),
             initialDisplayedMonthMillis = today.utcMillis(),
             yearRange = earliest.year..today.year,
-            initialDisplayMode = DisplayMode.Picker,
+            // In a short window the month grid shrinks to a few rows; typing the dates fits.
+            initialDisplayMode = if (short) DisplayMode.Input else DisplayMode.Picker,
             selectableDates = selectable,
         )
     val start = state.selectedStartDateMillis

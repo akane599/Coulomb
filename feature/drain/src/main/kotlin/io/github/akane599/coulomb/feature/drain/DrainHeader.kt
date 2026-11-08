@@ -151,18 +151,25 @@ internal fun Total(
                         modifier = Modifier.alignByBaseline(),
                     )
                 } else {
+                    // A refresh rolls the digits (SPEC 11.6); a new window remounts it, so its first value is still.
                     FigureText(
                         formats.mah(measured ?: drains.modeledMah).affixed(),
                         numberStyle = type.display,
                         unitStyle = type.displayUnit,
                         modifier = Modifier.alignByBaseline(),
+                        rolling = true,
                     )
                 }
                 // The mark sits on the numeral's baseline, as the level's on Now.
                 // The caption under the figure names its provenance in words, so TalkBack reads it once.
                 Box(Modifier.alignBy { it.measuredHeight }.padding(start = MarkGap).clearAndSetSemantics {}) { ProvenanceMark(provenance) }
             }
-            Text(totalCaption(measured, provenance, estimate), Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.body)
+            Text(
+                totalCaption(measured, provenance, estimate, formats),
+                Modifier.fillMaxWidth(),
+                color = colors.textSecondary,
+                style = type.body,
+            )
         }
         if (measured != null && drains.modeledMah > 0) Reconcile(drains, measured, formats, onViewTable)
     }
@@ -174,13 +181,32 @@ private fun totalCaption(
     measured: Double?,
     provenance: Provenance,
     estimate: LevelEstimate?,
+    formats: Formats,
 ): String =
     when {
-        measured == null -> stringResource(R.string.drain_modeled_only)
-        provenance == Provenance.MEASURED -> stringResource(R.string.drain_measured_counter)
-        estimate == null -> stringResource(R.string.drain_estimated_level)
-        estimate.withCounter -> pluralStringResource(R.plurals.drain_estimated_mixed, estimate.stretches, estimate.stretches)
-        else -> pluralStringResource(R.plurals.drain_estimated_levels, estimate.stretches, estimate.stretches)
+        measured == null -> {
+            stringResource(R.string.drain_modeled_only)
+        }
+
+        provenance == Provenance.MEASURED -> {
+            stringResource(R.string.drain_measured_counter)
+        }
+
+        estimate == null -> {
+            stringResource(R.string.drain_estimated_level)
+        }
+
+        estimate.withCounter -> {
+            pluralStringResource(
+                R.plurals.drain_estimated_mixed,
+                estimate.stretches,
+                formats.integer(estimate.stretches.toLong()),
+            )
+        }
+
+        else -> {
+            pluralStringResource(R.plurals.drain_estimated_levels, estimate.stretches, formats.integer(estimate.stretches.toLong()))
+        }
     }
 
 /**

@@ -145,6 +145,9 @@ internal data class ComparedWakeGroup(
     /** Ranked by change; empty when [basis] is null. */
     val rows: List<ComparedRow>,
 ) {
+    /** The rate that fills a bar, found once rather than for each row. */
+    val scale: Double = barScale(rows)
+
     /** The two periods read the group from the same source, so its rows compare. */
     val comparable: Boolean get() = basis != null
 
@@ -186,6 +189,10 @@ internal data class Comparison(
     val components: List<ComparedRow>,
     val wakes: List<ComparedWakeGroup>,
 ) {
+    /** Each list's rate that fills a bar, found once rather than for each row. */
+    val appsScale: Double = barScale(apps)
+    val componentsScale: Double = barScale(components)
+
     /** Either period summed its apps over shorter windows, so their figures are lower bounds (ADR-0032 §4). */
     val lowerBound: Boolean get() = first.report?.lowerBound == true || second.report?.lowerBound == true
 
@@ -214,6 +221,9 @@ internal data class Comparison(
         }
 }
 
+/** The list's largest rate fills a bar (ADR-0038 §8). */
+private fun barScale(rows: List<ComparedRow>): Double = rows.maxOfOrNull { maxOf(it.first ?: 0.0, it.second ?: 0.0) } ?: 0.0
+
 /** Builds a [Comparison]. Pure. */
 internal fun compare(
     first: Period,
@@ -229,13 +239,19 @@ internal fun compare(
                     .filter { it.isSystem }
                     .map { it.uid }
             }.toSet()
+    // Each period's groups once; every group reads its own view.
+    val viewsA = a?.let(::wakeGroups)
+    val viewsB = b?.let(::wakeGroups)
     return Comparison(
         first = first,
         second = second,
         apps = rows(appFigures(a, includeSystem), appFigures(b, includeSystem)),
         hiddenSystem = if (includeSystem) 0 else hidden.size,
         components = rows(componentFigures(a), componentFigures(b)),
-        wakes = WakeGroup.entries.map { wakeGroup(it, a, b) } + alarmGroup(a, b),
+        wakes =
+            WakeGroup.entries.map { group ->
+                wakeGroup(group, a, viewsA?.first { it.group == group }, b, viewsB?.first { it.group == group })
+            } + alarmGroup(a, b),
     )
 }
 
@@ -320,10 +336,10 @@ private val BY_CHANGE: Comparator<ComparedRow> =
 private fun wakeGroup(
     group: WakeGroup,
     a: DrainReport?,
+    viewA: WakeGroupView?,
     b: DrainReport?,
+    viewB: WakeGroupView?,
 ): ComparedWakeGroup {
-    val viewA = a?.let { report -> wakeGroups(report).first { it.group == group } }
-    val viewB = b?.let { report -> wakeGroups(report).first { it.group == group } }
     val basis = sharedKind(viewA, viewB)?.basis
     val timed = listOfNotNull(viewA, viewB).any { view -> view.entries.any { it.totalMs > 0 } }
     val unit = if (timed) RateUnit.MINUTES else RateUnit.COUNT

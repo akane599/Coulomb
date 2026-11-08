@@ -28,15 +28,21 @@ import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import javax.inject.Inject
 import kotlin.math.abs
 
-/** What the stored rows say about the reference windows (ADR-0032 §3); [DrainReader.inputs] observes them. */
-internal class DrainInputs(
+/**
+ * What the stored rows say about the reference windows (ADR-0032 §3); [DrainReader.inputs] observes
+ * them. Equal inputs read the same reports, so the flow drops repeats.
+ */
+internal data class DrainInputs(
     val stored: List<WindowResultEntity>,
     val references: List<ReferenceEntity>,
     val discharge: SessionEntity?,
     val meta: List<UidMetaEntity>,
+    /** The newest consecutive window: a new one means a heavy snapshot landed. */
+    val latestWindowId: Long? = null,
 )
 
 /**
@@ -55,7 +61,9 @@ internal class DrainReader
     ) {
         /**
          * What a report is read from. A new consecutive window is the signal that a heavy snapshot
-         * landed, so every span ending at the latest one is read again (ADR-0036 §6).
+         * landed, so every span ending at the latest one is read again (ADR-0036 §6). Room re-runs
+         * the snapshot joins on every write to `snapshot`, light ones included; those leave the
+         * inputs equal, so they are dropped here rather than read again (optimize gate, 2026-11-09).
          */
         fun inputs(): Flow<DrainInputs> =
             combine(
@@ -64,7 +72,9 @@ internal class DrainReader
                 sessions.observeRecent(SessionKind.DISCHARGE, 1),
                 devices.observeUidMeta(),
                 windows.observeRecent(WindowKind.CONSECUTIVE, 1),
-            ) { stored, references, discharge, meta, _ -> DrainInputs(stored, references, discharge.firstOrNull(), meta) }
+            ) { stored, references, discharge, meta, latest ->
+                DrainInputs(stored, references, discharge.firstOrNull(), meta, latest.firstOrNull()?.id)
+            }.distinctUntilChanged()
 
         suspend fun read(
             span: DrainSpan,

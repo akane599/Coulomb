@@ -151,6 +151,8 @@ internal fun LazyListScope.appsItems(
     item(key = "apps-head", contentType = "apps-head") {
         Column(Modifier.padding(top = CoulombSpacing.Space8)) {
             CoulombSwitchRow(stringResource(R.string.drain_include_system), state.includeSystem, actions.includeSystem)
+            // Under the tabs, so switching lenses never moves them (ADR-0036 §24).
+            if (canScale(report.drains)) CoulombSwitchRow(stringResource(R.string.drain_scale), state.scaled, actions.scale)
             Captions(view, report, formats)
             if (view.empty) {
                 Text(
@@ -201,7 +203,7 @@ private fun LazyListScope.remainderItems(
             val share = view.share(hiddenMah)
             AppDrainRow(
                 icon = null,
-                name = pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, view.hidden.size),
+                name = pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, formats.integer(view.hidden.size.toLong())),
                 detail = null,
                 value = formats.mah(hiddenMah * view.factor),
                 provenance = provenance,
@@ -293,7 +295,7 @@ private fun AppRow(
     val share = view.share(app.mah)
     val open = actions.openApp
     AppDrainRow(
-        icon = rememberAppIcon(app.iconPackage, actions.icon),
+        icon = rememberAppIcon(app.iconPackage, actions.icon, actions.peekIcon),
         name = formats.appName(app.label, app.uid),
         // A bare UID has no name to take an initial from.
         standIn = if (app.label == null && !app.isSystem) IconStandIn.Initial("#") else null,
@@ -351,14 +353,22 @@ private fun Remainder(
     val name =
         when {
             count == 0 -> stringResource(R.string.drain_small_apps)
-            view.otherMah > 0 -> pluralStringResource(R.plurals.drain_more_apps_and_small, count, count)
-            else -> pluralStringResource(R.plurals.drain_more_apps, count, count)
+            view.otherMah > 0 -> pluralStringResource(R.plurals.drain_more_apps_and_small, count, formats.integer(count.toLong()))
+            else -> pluralStringResource(R.plurals.drain_more_apps, count, formats.integer(count.toLong()))
         }
     val detail =
         when {
-            view.hidden.isNotEmpty() -> pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, view.hidden.size)
-            view.rest.isNotEmpty() -> stringResource(R.string.drain_each_under, formats.share(ROW_SHARE))
-            else -> null
+            view.hidden.isNotEmpty() -> {
+                pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, formats.integer(view.hidden.size.toLong()))
+            }
+
+            view.rest.isNotEmpty() -> {
+                stringResource(R.string.drain_each_under, formats.share(ROW_SHARE))
+            }
+
+            else -> {
+                null
+            }
         }
     val state = stringResource(if (open) R.string.drain_state_expanded else R.string.drain_state_collapsed)
     AppDrainRow(
@@ -401,7 +411,8 @@ private fun Unattributed(
     Column(Modifier.padding(top = CoulombSpacing.Space24)) {
         Text(
             stringResource(R.string.drain_gap_heading),
-            Modifier.padding(bottom = CoulombSpacing.Space4).semantics { heading() },
+            // Full width, as the captions around it, so it aligns to the same edge in RTL.
+            Modifier.fillMaxWidth().padding(bottom = CoulombSpacing.Space4).semantics { heading() },
             color = CoulombTheme.colors.textSecondary,
             style = CoulombTheme.typography.label,
         )

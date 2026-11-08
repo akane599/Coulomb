@@ -33,7 +33,12 @@ import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.UidKeys
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -62,6 +67,32 @@ class DrainReaderTest {
 
     @After
     fun close() = db.close()
+
+    /**
+     * A light snapshot changes no input, so reports are not read again; a new consecutive window
+     * (a heavy snapshot's) is the signal (ADR-0036 §6; optimize gate 2026-11-09).
+     */
+    @Test
+    fun aLightSnapshotReadsNothingAgain() =
+        runTest {
+            val a = heavy(1_000)
+            val emissions = mutableListOf<DrainInputs>()
+            val job = launch(Dispatchers.Default) { reader.inputs().collect { synchronized(emissions) { emissions += it } } }
+
+            fun count() = synchronized(emissions) { emissions.size }
+            withContext(Dispatchers.Default) {
+                withTimeout(WAIT_MS) { while (count() < 1) delay(POLL_MS) }
+                heavy(1_500, kind = SnapshotKind.LIGHT)
+                // Room re-runs the snapshot joins after a write; give it time to (not) emit.
+                delay(SETTLE_MS)
+                assertThat(count()).isEqualTo(1)
+                val b = heavy(2_000)
+                store(window(a, b), WindowRows())
+                withTimeout(WAIT_MS) { while (count() < 2) delay(POLL_MS) }
+            }
+            assertThat(synchronized(emissions) { emissions.last().latestWindowId }).isNotNull()
+            job.cancel()
+        }
 
     @Test
     fun sinceUnpluggedReadsTheStoredWindowAndItsOwnApps() =
@@ -436,6 +467,7 @@ class DrainReaderTest {
         wallMs: Long = BASE_WALL + elapsedS * 1_000,
         plugType: Int = 0,
         level: Int = 80,
+        kind: SnapshotKind = SnapshotKind.HEAVY,
     ): Long =
         snapshots.insert(
             SnapshotEntity(
@@ -443,7 +475,7 @@ class DrainReaderTest {
                 elapsedNs = elapsedS * NS_PER_S,
                 wallMs = wallMs,
                 trigger = SnapshotTrigger.SCREEN_OFF,
-                kind = SnapshotKind.HEAVY,
+                kind = kind,
                 levelPct = level,
                 chargeUah = 4_000_000,
                 currentRaw = -250,
@@ -587,5 +619,11 @@ class DrainReaderTest {
 
         /** Wall times near the snapshots' elapsed ones, a day back from a fixed instant. */
         const val BASE_WALL = 1_793_000_000_000L
+
+        const val WAIT_MS = 5_000L
+        const val POLL_MS = 10L
+
+        /** Long enough for Room's invalidation to re-run the queries. */
+        const val SETTLE_MS = 500L
     }
 }

@@ -149,9 +149,10 @@ found figures that claimed more than the data holds. These decisions answer them
     - R: 280 dp is what a row's name, figure and share need without wrapping at 100% text. Below
       that, two columns would wrap every row, and one column reads better. A lazy list composes
       only what is on screen, so a long remainder costs nothing until it is opened (SPEC 16.4).
-24. **"Scale to measured" sits under the reconcile bar and shows only with the Apps lens.**
-    - R: the switch spreads the bar's unattributed gap over the apps, so it belongs with the bar
-      it changes. Components and Wakeups do not scale.
+24. **"Scale to measured" sits at the top of the Apps lens, under "Include system apps".**
+    - R: it changes the apps' figures, and Components and Wakeups do not scale. Amended
+      2026-11-09 (animate gate): it first sat under the reconcile bar, above the tabs, so
+      switching lenses moved the tabs 64 dp under the finger.
 25. **The reconcile and component bars carry "View as table" as a semantics action, without a
     visible button.** The action opens a table sheet with the bar's rows (`DrainTable.kt`), with a
     provenance mark per row or for the whole table (`DataTable`).

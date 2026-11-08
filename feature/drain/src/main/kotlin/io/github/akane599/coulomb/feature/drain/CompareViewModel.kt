@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.ZoneSource
 import io.github.akane599.coulomb.core.data.AppIcons
 import io.github.akane599.coulomb.core.data.DrainRepository
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -45,7 +47,9 @@ internal data class CompareUiState(
  * Compare two periods (ADR-0038). The periods open as yesterday and today and survive process
  * death; a restored period outside the days still kept falls back to its default. Each report is
  * read again after every heavy snapshot, as on Drain; nothing here polls. The last day a period may
- * end on is read again with each report, so the pickers move on past midnight.
+ * end on is read again with each report, so the pickers move on past midnight. The comparison is
+ * worked out off the main thread, and coming back to the screen keeps the comparison already shown
+ * for the same periods until the new one is ready, rather than a skeleton.
  */
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,6 +61,7 @@ public class CompareViewModel
         private val settings: SettingsStore,
         private val saved: SavedStateHandle,
         private val zone: ZoneSource,
+        dispatchers: AppDispatchers,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
         private val periods =
@@ -75,8 +80,9 @@ public class CompareViewModel
                             comparison = compare(Period(first, a), Period(second, b), prefs.showSystemApps),
                             includeSystem = prefs.showSystemApps,
                         )
-                    }.onStart { emit(loading) }
+                    }.onStart { if (!shows(first, second)) emit(loading) }
                         .catch { emit(loading.copy(failed = true)) }
+                        .flowOn(dispatchers.default)
                 }.stateIn(
                     viewModelScope,
                     SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -102,6 +108,12 @@ public class CompareViewModel
             sizePx: Int,
         ): ImageBitmap? = icons.icon(packageName, sizePx)?.asImageBitmap()
 
+        /** The app's icon if the cache already holds it, so a row scrolled back shows it at once. */
+        internal fun peekIcon(
+            packageName: String,
+            sizePx: Int,
+        ): ImageBitmap? = icons.peek(packageName, sizePx)?.asImageBitmap()
+
         private fun choose(
             key: String,
             days: DrainSpan.Days,
@@ -112,6 +124,12 @@ public class CompareViewModel
         }
 
         private fun today(): LocalDate = LocalDate.now(zone.zone())
+
+        /** Whether the screen already shows a comparison of these periods, as after resubscribing. */
+        private fun shows(
+            first: DrainSpan.Days,
+            second: DrainSpan.Days,
+        ): Boolean = state.value.let { it.first == first && it.second == second && it.comparison != null }
 
         /** A saved period, if it still lies within the days the pickers offer. */
         private fun restore(

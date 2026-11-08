@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -169,17 +170,21 @@ private const val NAME_MIN_EM = 7.5f
 
 /**
  * [iconPackage]'s icon from [load] (the shared icon cache), at the size [AppDrainRow] draws it, so
- * the bitmap is never scaled. Null until it loads, or when there is no package.
+ * the bitmap is never scaled. An icon [peek] finds in memory shows from the first frame; otherwise
+ * null until it loads, or when there is no package.
  */
 @Composable
 public fun rememberAppIcon(
     iconPackage: String?,
     load: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
+    peek: (packageName: String, sizePx: Int) -> ImageBitmap? = { _, _ -> null },
 ): ImageBitmap? {
     val sizePx = with(LocalDensity.current) { IconSize.roundToPx() }
     val current by rememberUpdatedState(load)
-    val bitmap by produceState<ImageBitmap?>(null, iconPackage, sizePx) {
-        value = iconPackage?.let { current(it, sizePx) }
+    val cache by rememberUpdatedState(peek)
+    val cached = remember(iconPackage, sizePx) { iconPackage?.let { peek(it, sizePx) } }
+    val bitmap by produceState(cached, iconPackage, sizePx) {
+        value = iconPackage?.let { cache(it, sizePx) ?: current(it, sizePx) }
     }
     return bitmap
 }

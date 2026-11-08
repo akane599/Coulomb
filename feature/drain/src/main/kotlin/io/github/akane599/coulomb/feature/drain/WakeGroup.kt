@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -71,7 +72,12 @@ internal data class WakeGroupView(
     val entries: List<WakeEntry>,
     val coverage: Coverage,
     val kind: WakeKind,
-)
+) {
+    /** The Kernel group's subsystem for each record name, worked out once per view, not per composition. */
+    val subsystems: Map<String, WakeSubsystem> by lazy {
+        if (group == WakeGroup.KERNEL) entries.map { it.tag }.distinct().associateWith(WakeDictionary::subsystem) else emptyMap()
+    }
+}
 
 /**
  * The wake records of [report] by group, longest held first, then most frequent. S9 wakeup sources
@@ -204,7 +210,7 @@ internal data class WakeSection(
 internal fun WakeGroupView.sections(open: Boolean): List<WakeSection> {
     val shown = if (open) entries else entries.take(SHOWN)
     if (group != WakeGroup.KERNEL) return listOf(WakeSection(null, shown))
-    return shown.groupBy { WakeDictionary.subsystem(it.tag) }.map { (subsystem, rows) -> WakeSection(subsystem, rows) }
+    return shown.groupBy { subsystems.getValue(it.tag) }.map { (subsystem, rows) -> WakeSection(subsystem, rows) }
 }
 
 /**
@@ -465,8 +471,16 @@ private fun RecordRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16)) {
             Column(Modifier.weight(1f)) {
-                Text(name, color = colors.textPrimary, style = if (rawName) type.mono else type.bodyName)
-                if (tag != null) Text(tag, color = colors.textSecondary, style = type.mono, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(if (rawName) breakable(name) else name, color = colors.textPrimary, style = if (rawName) type.mono else type.bodyName)
+                if (tag != null) {
+                    Text(
+                        breakable(tag),
+                        color = colors.textSecondary,
+                        style = type.mono,
+                        maxLines = tagLines(),
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 if (meaning != null) Text(meaning, color = colors.textSecondary, style = type.caption)
                 if (facts != null) Text(facts, color = colors.textSecondary, style = type.caption)
             }
@@ -476,6 +490,26 @@ private fun RecordRow(
         if (share != null) ShareBar(share.toFloat(), Modifier.padding(top = CoulombSpacing.Space8))
     }
 }
+
+/**
+ * A raw identifier ("PowerManagerService.WakeLocks", "app.halcyon/.sync.SyncJob") that may
+ * wrap after its separators rather than mid-word: a zero-width space follows each. TalkBack does
+ * not read it.
+ */
+internal fun breakable(raw: String): String = raw.replace(SEPARATORS) { it.value + ZERO_WIDTH_SPACE }
+
+private val SEPARATORS = Regex("[./_:]")
+private const val ZERO_WIDTH_SPACE = "\u200B"
+
+/**
+ * A wakelock tag is cut at two lines; at large text it wraps in full, since the cut would drop
+ * the end that tells two tags apart.
+ */
+@Composable
+internal fun tagLines(): Int = if (LocalDensity.current.fontScale > LARGE_TEXT) Int.MAX_VALUE else TAG_LINES
+
+private const val LARGE_TEXT = 1.3f
+private const val TAG_LINES = 2
 
 /** A count as a plural quantity; counts past Int's range take its largest. */
 private fun Long.toQuantity(): Int = coerceAtMost(Int.MAX_VALUE.toLong()).toInt()

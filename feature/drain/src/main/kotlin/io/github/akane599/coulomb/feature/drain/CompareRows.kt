@@ -126,9 +126,10 @@ private fun LazyListScope.componentItems(
             if (coarse) Caption(stringResource(R.string.drain_components_coarse))
         }
     }
+    val scale = comparison.componentsScale
     rowItems("components", comparison.components, RateUnit.MAH, Lens.COMPONENTS.ordinal, formats, lists) { row, first ->
         val component = (row.subject as CompareSubject.Component).component
-        CompareRow(stringResource(component.label), detail = null, row, RateUnit.MAH, scale(comparison.components), first, formats)
+        CompareRow(stringResource(component.label), detail = null, row, RateUnit.MAH, scale, first, formats)
     }
 }
 
@@ -178,7 +179,7 @@ private fun LazyListScope.rowItems(
     row: @Composable (ComparedRow, first: Boolean) -> Unit,
 ) {
     if (rows.isEmpty()) {
-        item(key = "$key-none", contentType = "note") { Note(stringResource(R.string.drain_compare_none)) }
+        item(key = "$key-none", contentType = "note") { Note(stringResource(R.string.drain_compare_none), rowMotion()) }
         return
     }
     val open = lists.isOpen(bit)
@@ -210,9 +211,6 @@ private fun LazyListScope.rowItems(
         }
     }
 }
-
-/** The list's largest rate fills a bar (ADR-0038 §8). */
-private fun scale(rows: List<ComparedRow>): Double = rows.maxOfOrNull { maxOf(it.first ?: 0.0, it.second ?: 0.0) } ?: 0.0
 
 /**
  * What a list's figures are and where they come from, with the Derived mark that covers its rows
@@ -362,12 +360,12 @@ private fun AppCompareRow(
     actions: CompareActions,
     first: Boolean,
 ) {
-    val scale = scale(comparison.apps)
+    val scale = comparison.appsScale
     when (val subject = row.subject) {
         is CompareSubject.App -> {
             val app = subject.app
             val name = formats.appName(app.label, app.uid)
-            val icon = rememberAppIcon(app.iconPackage, actions.icon)
+            val icon = rememberAppIcon(app.iconPackage, actions.icon, actions.peekIcon)
             // A bare UID has no name to take an initial from.
             val standIn = if (app.label == null && !app.isSystem) IconStandIn.Initial("#") else IconStandIn.initialOf(name)
             val open = actions.openApp
@@ -401,7 +399,7 @@ private fun AppCompareRow(
                 pluralStringResource(
                     R.plurals.drain_hidden_system,
                     count,
-                    count,
+                    formats.integer(count.toLong()),
                 ),
                 null,
                 row,
@@ -428,7 +426,7 @@ private fun WakeCompareRow(
     formats: Formats,
     first: Boolean,
 ) {
-    val scale = scale(group.rows)
+    val scale = group.scale
     when (val subject = row.subject) {
         is CompareSubject.Wake -> {
             val entry = subject.entry
@@ -479,19 +477,7 @@ private fun CompareRow(
     val after = row.second ?: 0.0
     val change = after - before
     val figure = rowFigure(before, after, formats)
-    val spoken =
-        spokenRow(
-            if (detail !=
-                null
-            ) {
-                stringResource(R.string.drain_compare_row_name_tag, name, detail)
-            } else {
-                name
-            },
-            row,
-            unit,
-            formats,
-        )
+    val spoken = spokenRow(detail?.let { stringResource(R.string.drain_compare_row_name_tag, name, it) } ?: name, row, unit, formats)
     val clickable = if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier
     Row(
         Modifier
@@ -514,20 +500,7 @@ private fun CompareRow(
         }
         Column(Modifier.weight(1f)) {
             NameBesideValue(
-                name = {
-                    Column {
-                        Text(name, color = colors.textPrimary, style = if (monoName) type.mono else type.bodyName)
-                        if (detail != null) {
-                            Text(
-                                detail,
-                                color = colors.textSecondary,
-                                style = if (monoDetail) type.mono else type.caption,
-                                maxLines = if (monoDetail) 2 else Int.MAX_VALUE,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                },
+                name = { RowName(name, detail, monoName, monoDetail) },
                 value = {
                     FigureText(
                         rate(unit, formats.signedAmount(change)),
@@ -545,6 +518,32 @@ private fun CompareRow(
                 modifier = Modifier.padding(top = CoulombSpacing.Space8),
             )
         }
+    }
+}
+
+/** A row's name, and its detail under it; kernel identifiers in Mono, a wakelock's tag cut at [tagLines]. */
+@Composable
+private fun RowName(
+    name: String,
+    detail: String?,
+    monoName: Boolean,
+    monoDetail: Boolean,
+) = Column {
+    val colors = CoulombTheme.colors
+    val type = CoulombTheme.typography
+    Text(
+        if (monoName) breakable(name) else name,
+        color = colors.textPrimary,
+        style = if (monoName) type.mono else type.bodyName,
+    )
+    if (detail != null) {
+        Text(
+            if (monoDetail) breakable(detail) else detail,
+            color = colors.textSecondary,
+            style = if (monoDetail) type.mono else type.caption,
+            maxLines = if (monoDetail) tagLines() else Int.MAX_VALUE,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

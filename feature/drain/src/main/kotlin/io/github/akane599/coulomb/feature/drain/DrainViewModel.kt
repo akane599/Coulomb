@@ -108,6 +108,12 @@ public class DrainViewModel
             sizePx: Int,
         ): ImageBitmap? = icons.icon(packageName, sizePx)?.asImageBitmap()
 
+        /** The app's icon if the cache already holds it, so a row scrolled back shows it at once. */
+        internal fun peekIcon(
+            packageName: String,
+            sizePx: Int,
+        ): ImageBitmap? = icons.peek(packageName, sizePx)?.asImageBitmap()
+
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
             const val REFRESH_WAIT_MS = 5_000L

@@ -73,9 +73,11 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     data on the phone removes them; that is the owner's call;
   - gate runs so far: critique and audit (`docs/design-gates/2026-11-08-*-drain.md`); Compare was the
     critique's open item and has landed, reviewed independently (ADR-0038 Consequences). Harden and
-    clarify passed with every finding fixed (`docs/design-gates/2026-11-09-*-drain.md`).
+    clarify passed with every finding fixed (`docs/design-gates/2026-11-09-*-drain.md`). Animate,
+    adapt and optimize passed with no critical or major finding left open; one adapt nit waits for
+    the list-detail decision (`docs/questions.md`).
   - Open before the Drain gates close:
-    - animate, adapt, optimize and polish;
+    - polish;
     - on the API 37 emulator: the rail's insets with 3-button navigation in landscape, and TalkBack
       on the opened lists.
 

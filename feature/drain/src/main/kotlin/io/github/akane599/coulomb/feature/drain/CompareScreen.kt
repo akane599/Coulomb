@@ -4,7 +4,9 @@
 package io.github.akane599.coulomb.feature.drain
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -20,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -39,8 +44,10 @@ import io.github.akane599.coulomb.core.designsystem.component.CoulombFigure
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFigureStrip
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
+import io.github.akane599.coulomb.core.designsystem.theme.CoulombMotion
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.designsystem.theme.crossfadeTo
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.model.Provenance
@@ -72,6 +79,7 @@ public fun CompareScreen(
                 retry = viewModel::retry,
                 openApp = onOpenApp,
                 icon = viewModel::icon,
+                peekIcon = viewModel::peekIcon,
             )
         }
     CompareContent(state, actions, modifier)
@@ -85,6 +93,7 @@ internal class CompareActions(
     val retry: () -> Unit,
     val openApp: ((Int) -> Unit)?,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
+    val peekIcon: (packageName: String, sizePx: Int) -> ImageBitmap? = { _, _ -> null },
 )
 
 /** Which period a picker or a note is about. */
@@ -187,8 +196,35 @@ private fun CompareSummary(
     when {
         state.failed -> ErrorState(actions.retry)
         comparison == null -> SummarySkeleton()
-        else -> Totals(comparison, formats)
+        else -> FadeInPerPeriods("${state.first}/${state.second}") { Totals(comparison, formats) }
     }
+}
+
+/**
+ * Fades the figures in when they replace the skeleton, once per pair of periods: a rotation or a
+ * return to the screen shows them at once, as [FadeInOnce] does for the screen (animate gate,
+ * 2026-11-09). Under reduced motion the fade is a crossfade on the real clock.
+ */
+@Composable
+private fun FadeInPerPeriods(
+    key: String,
+    content: @Composable () -> Unit,
+) {
+    var shownFor by rememberSaveable { mutableStateOf<String?>(null) }
+    val alpha = remember { Animatable(if (shownFor == key) 1f else 0f) }
+    val reduced = CoulombTheme.reducedMotion
+    LaunchedEffect(key) {
+        if (shownFor != key) {
+            if (reduced) alpha.crossfadeTo(1f) else alpha.animateTo(1f, CoulombMotion.effects())
+            shownFor = key
+        }
+    }
+    Box(
+        Modifier.graphicsLayer {
+            this.alpha = alpha.value
+            compositingStrategy = CompositingStrategy.ModulateAlpha
+        },
+    ) { content() }
 }
 
 /** A period's name over a button with its days, which opens the picker. TalkBack reads them as one. */
@@ -310,10 +346,10 @@ private fun PeriodFigure(
     }
 }
 
-/** A strip value: the number in Title, its unit in Label (as on Now). */
+/** A strip value: the number in Title, its unit in Label (as on Now). A refresh rolls its digits (SPEC 11.6). */
 @Composable
 private fun StripFigure(figure: Affixed) {
-    FigureText(figure, numberStyle = CoulombTheme.typography.title, unitStyle = CoulombTheme.typography.label)
+    FigureText(figure, numberStyle = CoulombTheme.typography.title, unitStyle = CoulombTheme.typography.label, rolling = true)
 }
 
 /** In place of a strip figure: why there is none, in Body. */

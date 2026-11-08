@@ -17,10 +17,10 @@
     <string name="drain_sheet_title">More options</string>
     <string name="drain_last_night_detail">The longest screen-off stretch of an hour or more in the last day</string>
     <string name="drain_custom_range">Custom range</string>
-    <!-- %1$d: how many days back a range may start. -->
+    <!-- %1$s: how many days back a range may start. -->
     <plurals name="drain_custom_range_detail">
-        <item quantity="one">Whole days, up to %1$d day back</item>
-        <item quantity="other">Whole days, up to %1$d days back</item>
+        <item quantity="one">Whole days, up to %1$s day back</item>
+        <item quantity="other">Whole days, up to %1$s days back</item>
     </plurals>
     <string name="drain_range_title">Choose days</string>
     <string name="drain_range_confirm">Show</string>
@@ -36,11 +36,11 @@
     <string name="drain_modeled_only">Modeled by Android’s power model; the battery measured no change</string>
     <plurals name="drain_estimated_levels">
         <item quantity="one">Estimated from the level change and the battery’s capacity, to a point either way</item>
-        <item quantity="other">Estimated from %1$d level changes and the battery’s capacity, each to a point either way</item>
+        <item quantity="other">Estimated from %1$s level changes and the battery’s capacity, each to a point either way</item>
     </plurals>
     <plurals name="drain_estimated_mixed">
         <item quantity="one">Measured by the battery’s charge counter, except one stretch estimated from the level change</item>
-        <item quantity="other">Measured by the battery’s charge counter, except %1$d stretches estimated from the level change</item>
+        <item quantity="other">Measured by the battery’s charge counter, except %1$s stretches estimated from the level change</item>
     </plurals>
     <string name="drain_reconcile_estimated">Android’s power model counts %1$s of it, so %2$s is unattributed.</string>
     <string name="drain_reconcile_unknown">Android’s power model counts %1$s of it. The estimate is too rough to say how much is unattributed.</string>
@@ -62,20 +62,20 @@
     <string name="drain_scaled_caption">Scaled to the %1$s measured; scaled figures are Derived.</string>
     <string name="drain_lower_bound">Summed from shorter windows, so each app’s figure may be a little low.</string>
     <plurals name="drain_more_apps">
-        <item quantity="one">%1$d more app</item>
-        <item quantity="other">%1$d more apps</item>
+        <item quantity="one">%1$s more app</item>
+        <item quantity="other">%1$s more apps</item>
     </plurals>
     <plurals name="drain_more_apps_and_small">
-        <item quantity="one">%1$d more app and small ones</item>
-        <item quantity="other">%1$d more apps and small ones</item>
+        <item quantity="one">%1$s more app and small ones</item>
+        <item quantity="other">%1$s more apps and small ones</item>
     </plurals>
     <string name="drain_state_expanded">Expanded</string>
     <string name="drain_state_collapsed">Collapsed</string>
     <string name="drain_small_apps">Small apps</string>
     <string name="drain_each_under">Each under %1$s</string>
     <plurals name="drain_hidden_system">
-        <item quantity="one">%1$d system app hidden</item>
-        <item quantity="other">%1$d system apps hidden</item>
+        <item quantity="one">%1$s system app hidden</item>
+        <item quantity="other">%1$s system apps hidden</item>
     </plurals>
     <string name="drain_show_fewer">Show fewer</string>
     <string name="drain_device">The phone itself</string>

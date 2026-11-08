@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -92,6 +93,7 @@ public fun DrainScreen(
                 openPrivileges = onOpenPrivileges,
                 openCompare = onOpenCompare,
                 icon = viewModel::icon,
+                peekIcon = viewModel::peekIcon,
             )
         }
     DrainContent(state = state, actions = actions, modifier = modifier, refreshing = refreshing)
@@ -109,6 +111,7 @@ internal class DrainActions(
     val openPrivileges: () -> Unit,
     val openCompare: () -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
+    val peekIcon: (packageName: String, sizePx: Int) -> ImageBitmap? = { _, _ -> null },
 )
 
 /** The three views of the same window (SPEC 10.3). */
@@ -117,20 +120,35 @@ internal enum class Lens { APPS, COMPONENTS, WAKEUPS }
 /** Two columns have a gutter at each side and one between them. */
 private const val GUTTERS = 3
 
-/** Each column of the two-column layout needs this much for a row's name and figure (ADR-0036 §23). */
+/**
+ * Each column of the two-column layout needs this much for a row's name and figure at 100% text
+ * (ADR-0036 §23); larger text needs it in proportion.
+ */
 private val MinColumnWidth = 280.dp
+
+/**
+ * Below this height the selector scrolls with the summary, so it cannot crowd the columns out, and
+ * the range picker opens for typing (adapt gate, 2026-11-09).
+ */
+internal val ShortWindowHeight = 480.dp
 
 /** The two columns side by side on very wide windows: the summary column, then the lens column. */
 internal val MaxTwoColumnWidth = 1200.dp
 internal const val SUMMARY_WEIGHT = 0.42f
 internal const val LENS_WEIGHT = 0.58f
 
-/** The window fits two columns of [MinColumnWidth] (SPEC 10.10 medium and up; ADR-0036 §23). */
+/**
+ * The window fits two columns of [MinColumnWidth], scaled with the text (SPEC 10.10 medium and up;
+ * ADR-0036 §23). A landscape phone at 200% text keeps one list.
+ */
 @Composable
 internal fun fitsTwoColumns(
     maxWidth: Dp,
     gutter: Dp,
-): Boolean = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= MinColumnWidth * 2
+): Boolean {
+    val column = MinColumnWidth * LocalDensity.current.fontScale.coerceAtLeast(1f)
+    return currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= column * 2
+}
 
 /** What the lens lists keep open, saved per window: the remainder, and the groups showing all rows. */
 internal class ListState(
@@ -148,8 +166,9 @@ internal fun DrainContent(
     state: DrainUiState,
     actions: DrainActions,
     modifier: Modifier = Modifier,
-    zone: ZoneId = ZoneId.systemDefault(),
-    today: LocalDate = LocalDate.now(zone),
+    // Read again with each state, so the pickers move on past midnight, but not on every recomposition.
+    zone: ZoneId = remember(state) { ZoneId.systemDefault() },
+    today: LocalDate = remember(state, zone) { LocalDate.now(zone) },
     initialLens: Lens = Lens.APPS,
     refreshing: Boolean = false,
 ) {
@@ -157,7 +176,12 @@ internal fun DrainContent(
     var sheet by rememberSaveable { mutableStateOf(false) }
     when (state) {
         DrainUiState.Loading -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { Skeleton() }
+            BoxWithConstraints(modifier.fillMaxSize()) {
+                val twoColumns = fitsTwoColumns(maxWidth, gutter)
+                Column(Modifier.widthIn(max = MaxTwoColumnWidth).fillMaxSize().padding(horizontal = gutter)) {
+                    Skeleton(twoColumns)
+                }
+            }
         }
 
         DrainUiState.Error -> {
@@ -221,15 +245,17 @@ private fun ReadyContent(
                 item(key = "summary", contentType = "summary") {
                     Column {
                         Controls(state, formats, actions, onMore)
-                        Summary(state, formats, zone, today, lens, actions, viewTable)
+                        Summary(state, formats, zone, today, viewTable)
                     }
                 }
                 lensItems(state, views, lens, { lens = it }, formats, actions, lists, viewTable)
             }
         } else {
-            // The selector and an issue concern both columns, so they span them and stay in place.
+            // The selector and an issue concern both columns, so they span them and stay in place;
+            // in a short window they scroll with the summary instead, so the columns keep their height.
+            val short = maxHeight < ShortWindowHeight
             Column(Modifier.widthIn(max = MaxTwoColumnWidth).fillMaxSize().padding(horizontal = gutter)) {
-                Controls(state, formats, actions, onMore)
+                if (!short) Controls(state, formats, actions, onMore)
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(gutter)) {
                     Column(
                         Modifier
@@ -238,7 +264,8 @@ private fun ReadyContent(
                             .verticalScroll(rememberScrollState())
                             .padding(bottom = bottom),
                     ) {
-                        Summary(state, formats, zone, today, lens, actions, viewTable)
+                        if (short) Controls(state, formats, actions, onMore)
+                        Summary(state, formats, zone, today, viewTable)
                     }
                     LazyColumn(Modifier.weight(LENS_WEIGHT).fillMaxHeight(), contentPadding = PaddingValues(bottom = bottom)) {
                         lensItems(state, views, lens, { lens = it }, formats, actions, lists, viewTable, besideSummary = true)
@@ -265,10 +292,7 @@ private fun Controls(
     state.issue?.let { PrivilegeIssueBlock(it, actions.openPrivileges, Modifier.padding(top = CoulombSpacing.Space16)) }
 }
 
-/**
- * The window's note and total, or why there are none. With the Apps lens, "Scale to measured" sits
- * under the reconcile bar, whose gap it spreads over the apps (ADR-0036 §24).
- */
+/** The window's note and total, or why there are none. */
 @Composable
 @Suppress("LongParameterList") // The window's state, its clock and the lens it serves.
 private fun Summary(
@@ -276,8 +300,6 @@ private fun Summary(
     formats: Formats,
     zone: ZoneId,
     today: LocalDate,
-    lens: Lens,
-    actions: DrainActions,
     viewTable: (DrainTable) -> Unit,
 ) = Column {
     val report = state.report
@@ -295,14 +317,6 @@ private fun Summary(
         else -> {
             WindowNote(report, formats, zone, today)
             Total(report, formats, onViewTable = { viewTable(DrainTable.RECONCILE) })
-            if (lens == Lens.APPS && canScale(report.drains)) {
-                CoulombSwitchRow(
-                    stringResource(R.string.drain_scale),
-                    state.scaled,
-                    actions.scale,
-                    Modifier.padding(top = CoulombSpacing.Space8),
-                )
-            }
         }
     }
 }
@@ -333,9 +347,7 @@ private fun LazyListScope.lensItems(
         }
 
         Lens.COMPONENTS -> {
-            item(key = "components", contentType = "components") {
-                ComponentsLens(report, formats, onViewTable = { viewTable(DrainTable.COMPONENTS) })
-            }
+            componentItems(report, formats, onViewTable = { viewTable(DrainTable.COMPONENTS) })
         }
 
         Lens.WAKEUPS -> {
@@ -373,18 +385,21 @@ internal fun LensTabs(
 }
 
 /**
- * A row's motion in Drain's lists: a reorder slides on the default spatial spring (SPEC 11.6). Under
- * reduced motion the row takes its new place at once. `animateItem` is a member of the item scope,
- * so this starts there rather than from a Modifier.
+ * A row's motion in Drain's lists: a reorder slides on the default spatial spring, and a row added
+ * by a tap or a new report fades in on the effects spring, so it never draws over the rows sliding
+ * past it (SPEC 11.6; animate gate 2026-11-09). Under reduced motion the row takes its place at
+ * once. `animateItem` is a member of the item scope, so this starts there rather than from a Modifier.
  */
 @SuppressLint("ModifierFactoryExtensionFunction")
 @Composable
-internal fun LazyItemScope.rowMotion(): Modifier =
-    Modifier.animateItem(
-        fadeInSpec = null,
-        placementSpec = if (CoulombTheme.reducedMotion) null else CoulombMotion.spatial(),
+internal fun LazyItemScope.rowMotion(): Modifier {
+    val reduced = CoulombTheme.reducedMotion
+    return Modifier.animateItem(
+        fadeInSpec = if (reduced) null else CoulombMotion.effects(),
+        placementSpec = if (reduced) null else CoulombMotion.spatial(),
         fadeOutSpec = null,
     )
+}
 
 /** Why the chosen window has nothing to show yet (SPEC 10.11 empty). */
 @Composable
@@ -407,11 +422,19 @@ private fun EmptyWindow(chosen: DrainSpan) {
 
 /** SPEC 10.11 loading: a still skeleton in the final layout's shape. */
 @Composable
-private fun Skeleton() {
+private fun Skeleton(twoColumns: Boolean) {
     Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8)) {
         SkeletonBlock(40.dp, Modifier.width(300.dp))
-        SummarySkeleton()
-        LensSkeleton(besideSummary = false)
+        // The same columns as the content that replaces it (SPEC 10.11).
+        if (twoColumns) {
+            Row(horizontalArrangement = Arrangement.spacedBy(currentGutter())) {
+                Column(Modifier.weight(SUMMARY_WEIGHT)) { SummarySkeleton() }
+                Column(Modifier.weight(LENS_WEIGHT)) { LensSkeleton(besideSummary = true) }
+            }
+        } else {
+            SummarySkeleton()
+            LensSkeleton(besideSummary = false)
+        }
     }
 }
 
@@ -450,10 +473,13 @@ internal fun LensSkeleton(besideSummary: Boolean) {
 
 private const val SKELETON_ROWS = 4
 
+private val ErrorMaxWidth = 560.dp
+
 /** SPEC 10.11 error: what happened and what to do. */
 @Composable
 internal fun ErrorState(retry: () -> Unit) {
-    Column(Modifier.padding(top = CoulombSpacing.Space24)) {
+    // A reading measure, so the message does not run across a tablet.
+    Column(Modifier.widthIn(max = ErrorMaxWidth).padding(top = CoulombSpacing.Space24)) {
         Text(
             stringResource(R.string.drain_error_title),
             Modifier.fillMaxWidth().semantics { heading() },

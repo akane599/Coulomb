@@ -73,6 +73,21 @@ class DrainScreenshotTest {
     @Config(qualifiers = "w915dp-h412dp-xhdpi")
     fun appsLandscape() = shoot("apps-landscape", ready())
 
+    /** On its side at 200% text two columns no longer fit, so the screen is one list again. */
+    @Test
+    @Config(qualifiers = "w915dp-h412dp-xhdpi")
+    fun appsLandscapeLargeText() = shoot("apps-landscape-200", ready(), fontScale = 2f)
+
+    /** On its side with an issue: the selector and the block scroll with the summary, so the rows keep their height. */
+    @Test
+    @Config(qualifiers = "w915dp-h412dp-xhdpi")
+    fun privilegeIssueLandscape() = shoot("issue-landscape", ready().copy(issue = PrivilegeIssue.MANAGER_STOPPED))
+
+    /** A 700 dp window beside the rail leaves about 620 dp: one list. */
+    @Test
+    @Config(qualifiers = "w620dp-h1400dp-xhdpi")
+    fun appsMediumBesideRail() = shoot("apps-medium-rail", ready())
+
     @Test
     @Config(qualifiers = "w412dp-h2200dp-xhdpi")
     fun appsPage() = shoot("apps-page", ready())
@@ -235,6 +250,19 @@ class DrainScreenshotTest {
         compose.onNodeWithText("Custom range").performClick()
         compose.waitForIdle()
         captureScreenRoboImage("src/test/screenshots/drain-range.png")
+    }
+
+    /** In a short window the picker opens for typing the dates. */
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    @Config(qualifiers = "w915dp-h412dp-xhdpi")
+    fun rangeDialogLandscape() {
+        shoot("range-landscape", ready(), today = LocalDate.of(2025, 6, 18), capture = false)
+        compose.onNodeWithText("More").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Custom range").performClick()
+        compose.waitForIdle()
+        captureScreenRoboImage("src/test/screenshots/drain-range-landscape.png")
     }
 
     @Test

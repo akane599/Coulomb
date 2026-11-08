@@ -17,8 +17,8 @@
     <string name="drain_last_night_detail">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı en uzun süre</string>
     <string name="drain_custom_range">Özel aralık</string>
     <plurals name="drain_custom_range_detail">
-        <item quantity="one">Tam günler, en çok %1$d gün geriye</item>
-        <item quantity="other">Tam günler, en çok %1$d gün geriye</item>
+        <item quantity="one">Tam günler, en çok %1$s gün geriye</item>
+        <item quantity="other">Tam günler, en çok %1$s gün geriye</item>
     </plurals>
     <string name="drain_range_title">Günleri seç</string>
     <string name="drain_range_confirm">Göster</string>
@@ -33,11 +33,11 @@
     <string name="drain_modeled_only">Android’in güç modeliyle modellendi; pil bir değişim ölçmedi</string>
     <plurals name="drain_estimated_levels">
         <item quantity="one">Seviye değişimi ve pil kapasitesinden tahmin edildi; bir puan sapabilir</item>
-        <item quantity="other">%1$d seviye değişimi ve pil kapasitesinden tahmin edildi; her biri bir puan sapabilir</item>
+        <item quantity="other">%1$s seviye değişimi ve pil kapasitesinden tahmin edildi; her biri bir puan sapabilir</item>
     </plurals>
     <plurals name="drain_estimated_mixed">
         <item quantity="one">Pilin şarj sayacıyla ölçüldü; yalnızca bir aralık seviye değişiminden tahmin edildi</item>
-        <item quantity="other">Pilin şarj sayacıyla ölçüldü; yalnızca %1$d aralık seviye değişiminden tahmin edildi</item>
+        <item quantity="other">Pilin şarj sayacıyla ölçüldü; yalnızca %1$s aralık seviye değişiminden tahmin edildi</item>
     </plurals>
     <string name="drain_reconcile_estimated">Android’in güç modeli bunun %1$s kadarını sayıyor; %2$s atanmamış.</string>
     <string name="drain_reconcile_unknown">Android’in güç modeli bunun %1$s kadarını sayıyor. Tahmin, ne kadarının atanmamış olduğunu söyleyecek kadar kesin değil.</string>
@@ -58,20 +58,20 @@
     <string name="drain_scaled_caption">Ölçülen %1$s değerine ölçeklendi; ölçeklenen değerler Türetilmiş.</string>
     <string name="drain_lower_bound">Daha kısa aralıklardan toplandı; her uygulamanın değeri biraz düşük olabilir.</string>
     <plurals name="drain_more_apps">
-        <item quantity="one">%1$d uygulama daha</item>
-        <item quantity="other">%1$d uygulama daha</item>
+        <item quantity="one">%1$s uygulama daha</item>
+        <item quantity="other">%1$s uygulama daha</item>
     </plurals>
     <plurals name="drain_more_apps_and_small">
-        <item quantity="one">%1$d uygulama daha ve küçük uygulamalar</item>
-        <item quantity="other">%1$d uygulama daha ve küçük uygulamalar</item>
+        <item quantity="one">%1$s uygulama daha ve küçük uygulamalar</item>
+        <item quantity="other">%1$s uygulama daha ve küçük uygulamalar</item>
     </plurals>
     <string name="drain_state_expanded">Genişletildi</string>
     <string name="drain_state_collapsed">Daraltıldı</string>
     <string name="drain_small_apps">Küçük uygulamalar</string>
     <string name="drain_each_under">Her biri %1$s altında</string>
     <plurals name="drain_hidden_system">
-        <item quantity="one">%1$d sistem uygulaması gizli</item>
-        <item quantity="other">%1$d sistem uygulaması gizli</item>
+        <item quantity="one">%1$s sistem uygulaması gizli</item>
+        <item quantity="other">%1$s sistem uygulaması gizli</item>
     </plurals>
     <string name="drain_show_fewer">Daha az göster</string>
     <string name="drain_device">Telefonun kendisi</string>

@@ -10,11 +10,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,23 +52,43 @@ import io.github.akane599.coulomb.core.ui.format.Formats
 /**
  * The Components lens (SPEC 10.3): the device's modeled power by component, as one stacked bar in
  * the data hues and a ranked list with a swatch on each row. Components with no hue of their own
- * share the neutral Other hue and sit together at the bar's end (DESIGN.md, Data palette).
+ * share the neutral Other hue and sit together at the bar's end (DESIGN.md, Data palette). The
+ * head holds the caption and the bar; each row is its own keyed item, so a reorder after a new
+ * report slides (SPEC 11.6).
  */
-@Composable
-internal fun ComponentsLens(
+internal fun LazyListScope.componentItems(
     report: DrainReport,
+    formats: Formats,
+    onViewTable: () -> Unit,
+) {
+    val components = report.components
+    val total = components.sumOf { it.mah }
+    item(key = "components-head", contentType = "components-head") { ComponentsHead(components, total, formats, onViewTable) }
+    if (components.isEmpty()) return
+    item(key = "components-gap", contentType = "gap") { Spacer(Modifier.height(CoulombSpacing.Space16)) }
+    itemsIndexed(components, key = { _, part -> "component-${part.component}" }, contentType = { _, _ -> "component" }) { index, part ->
+        val colors = CoulombTheme.colors
+        Box(rowMotion()) {
+            ComponentRow(part, stringResource(part.component.label), part.mah / total, index == 0, colors.hue(part.component), formats)
+        }
+    }
+}
+
+/** The lens's caption, the coarse note where Android names only some components, and the stacked bar. */
+@Composable
+private fun ComponentsHead(
+    components: List<ComponentDrain>,
+    total: Double,
     formats: Formats,
     onViewTable: () -> Unit,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
-    val components = report.components
     Column(Modifier.padding(top = CoulombSpacing.Space16)) {
         if (components.isEmpty()) {
             Text(stringResource(R.string.drain_components_empty), Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.body)
             return@Column
         }
-        val total = components.sumOf { it.mah }
         // DESIGN.md: the caption names the denominator of every share, here Android's model.
         Text(
             stringResource(R.string.drain_components_caption, formats.mah(total).joined()),
@@ -97,11 +120,6 @@ internal fun ComponentsLens(
                 .height(BarBox)
                 .chartSemantics(description, stringResource(R.string.drain_view_table), onViewTable),
         )
-        Column(Modifier.padding(top = CoulombSpacing.Space16)) {
-            components.forEachIndexed { index, part ->
-                ComponentRow(part, names[index], part.mah / total, index == 0, colors.hue(part.component), formats)
-            }
-        }
     }
 }
 
