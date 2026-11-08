@@ -57,3 +57,39 @@ stored. Each has one line of reason (ADR-0027).
 6. **A report is read again after every heavy snapshot.** The signal is a new consecutive window.
    - R: every span ends at the latest heavy snapshot or before; nothing between two snapshots
      changes a report.
+
+## The screen (added with the Drain UI)
+
+7. **The chosen window lives in memory, shared by Now and Drain (`ChosenWindow`).** Now's "See all"
+   chooses Since unplugged; the app starts there again after a restart.
+   - R: a window is a question about the present, so a choice from last week should not greet the
+     user; no stored setting means nothing to migrate.
+8. **An app gets its own row at 3% of the total or more, and at least three apps get rows.** The rest
+   fold into one remainder row ("5 more apps", "Each under 3%") that opens in place, with "Show
+   fewer" to close it.
+   - R: the lab's threshold; three rows keep the list useful in a window where no app stands out.
+9. **The power no app was charged for is a row of its own, "The phone itself", ranked by size and
+   never folded.** Its tile carries the phone glyph.
+   - R: SPEC 6.5's friendly system rows; idle and standby are often the largest item, and an app
+     initial would misname it.
+10. **Hiding system apps moves them into the remainder, as "N system apps hidden", so the rows still
+    add up.**
+    - R: SPEC 11.8: visible rows sum to the whole; hiding must not shrink the total.
+11. **The unattributed row shows only above 10% of measured; the reconcile bar always shows the gap.**
+    - R: SPEC 6.5 sets the row's threshold; the bar keeps a smaller gap visible.
+12. **"Scale to measured" shows only when the window has a measured and a modeled total.** Scaled
+    figures carry the Derived mark, and the unattributed row goes.
+    - R: SPEC 6.5; without both totals there is nothing to scale by.
+13. **When the model counts more than the battery measured, a sentence replaces the reconcile bar.**
+    - R: there is no gap to draw, and a full bar would hide the disagreement.
+14. **Components: every hued component in rank order, then the neutral ones as one segment at the
+    bar's end.** Ambient display takes the screen hue and calls take the radio hue. The list keeps
+    each component, and a note says when Android named only some of them.
+    - R: DESIGN.md has eight hues; scattered grey segments read as one broken bar.
+15. **Wakeups: four groups, the top five each, then "Show all".** Kernel wakelocks fall back to S9
+    wakeup sources and wakeup reasons to S27 resume causes, never both. Names and counted facts wrap
+    at any text size; only a wakelock's tag is cut at two lines.
+    - R: the sources overlap (`WakeKind`); a tag is an identifier, the facts are the measurement.
+16. **A custom range is whole days within the last 30, picked in Material's range picker; one day is
+    a range of one.**
+    - R: consecutive windows are kept 30 days (ADR-0021); Material's picker is the platform's.

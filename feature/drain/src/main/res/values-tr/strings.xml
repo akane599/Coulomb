@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="drain_loading">Yükleniyor</string>
+    <string name="drain_error_title">Coulomb pil kayıtlarını okuyamadı</string>
+    <string name="drain_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
+    <string name="drain_error_action">Yeniden dene</string>
+
+    <string name="drain_since_unplugged">Fişten çekileli</string>
+    <string name="drain_today">Bugün</string>
+    <string name="drain_last_24h">Son 24 sa</string>
+    <string name="drain_more">Diğer</string>
+    <string name="drain_last_night">Dün gece</string>
+
+    <string name="drain_sheet_title">Diğer aralıklar</string>
+    <string name="drain_last_night_detail">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı en uzun süre</string>
+    <string name="drain_custom_range">Özel aralık</string>
+    <plurals name="drain_custom_range_detail">
+        <item quantity="one">Tam günler, en çok %1$d gün geriye</item>
+        <item quantity="other">Tam günler, en çok %1$d gün geriye</item>
+    </plurals>
+    <string name="drain_range_title">Günleri seç</string>
+    <string name="drain_range_confirm">Göster</string>
+    <string name="drain_range_cancel">İptal</string>
+
+    <string name="drain_note_levels">%1$s, %2$s seviyesinden %3$s seviyesine</string>
+    <string name="drain_note_charged">Arada şarj oldu; toplam yalnızca pilde geçen süreyi sayar.</string>
+
+    <string name="drain_measured_counter">Pilin şarj sayacıyla ölçüldü</string>
+    <string name="drain_estimated_level">Seviye değişimi ve pil kapasitesinden tahmin edildi</string>
+    <string name="drain_modeled_only">Android’in güç modeliyle modellendi; pil bir değişim ölçmedi</string>
+    <string name="drain_modeled">Modellenen %1$s</string>
+    <string name="drain_unattributed">Atanmamış %1$s</string>
+    <string name="drain_reconcile_description">Ölçülen %1$s. Güç modeline göre uygulamalar ve sistem %2$s tutuyor; %3$s, yani %4$s, atanmamış.</string>
+    <string name="drain_model_over">Android’in güç modeli %1$s sayıyor; pilin ölçtüğünden fazla.</string>
+
+    <string name="drain_lens_apps">Uygulamalar</string>
+    <string name="drain_lens_components">Bileşenler</string>
+    <string name="drain_lens_wakeups">Uyandırmalar</string>
+
+    <string name="drain_include_system">Sistem uygulamalarını dahil et</string>
+    <string name="drain_scale">Ölçülene ölçekle</string>
+    <string name="drain_shares_of_measured">Paylar ölçülen %1$s üzerinden.</string>
+    <string name="drain_shares_of_modeled">Paylar Android’in modellediği %1$s üzerinden.</string>
+    <string name="drain_scaled_caption">Ölçülen %1$s değerine ölçeklendi; ölçeklenen değerler Türetilmiş.</string>
+    <string name="drain_lower_bound">Daha kısa aralıklardan toplandı; her uygulamanın değeri biraz düşük olabilir.</string>
+    <plurals name="drain_more_apps">
+        <item quantity="one">%1$d uygulama daha</item>
+        <item quantity="other">%1$d uygulama daha</item>
+    </plurals>
+    <string name="drain_small_apps">Küçük uygulamalar</string>
+    <string name="drain_each_under">Her biri %1$s altında</string>
+    <plurals name="drain_hidden_system">
+        <item quantity="one">%1$d sistem uygulaması gizli</item>
+        <item quantity="other">%1$d sistem uygulaması gizli</item>
+    </plurals>
+    <string name="drain_show_fewer">Daha az göster</string>
+    <string name="drain_device">Telefonun kendisi</string>
+    <string name="drain_device_detail">Boşta bekleme, ağ beklemesi ve hiçbir uygulamaya yazılmayan diğer güç</string>
+    <string name="drain_gap_heading">Ölçüldü ama hiçbir uygulamaya düşmüyor</string>
+    <string name="drain_unattributed_name">Atanmamış</string>
+    <string name="drain_unattributed_detail">Android’in güç modelinin dışında: zayıf sinyal, çekirdek etkinliği, model boşlukları</string>
+    <string name="drain_no_apps">Bu aralıkta hiçbir uygulama ölçülebilir güç kullanmadı.</string>
+
+    <string name="drain_components_caption">Cihazın gücü bileşenlere göre, uygulamalar dahil.</string>
+    <string name="drain_components_coarse">Android bu aralık için bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
+    <string name="drain_components_empty">Bu aralık için bileşen dökümü yok.</string>
+    <string name="drain_components_chart">Bileşenlere göre güç: %1$s</string>
+    <string name="drain_component_screen">Ekran</string>
+    <string name="drain_component_cpu">İşlemci</string>
+    <string name="drain_component_mobile_radio">Mobil ağ</string>
+    <string name="drain_component_wifi">Wi-Fi</string>
+    <string name="drain_component_bluetooth">Bluetooth</string>
+    <string name="drain_component_gnss">GPS</string>
+    <string name="drain_component_sensors">Sensörler</string>
+    <string name="drain_component_camera">Kamera</string>
+    <string name="drain_component_audio">Ses</string>
+    <string name="drain_component_video">Video</string>
+    <string name="drain_component_flashlight">Fener</string>
+    <string name="drain_component_wakelock">Uyanık tutmalar</string>
+    <string name="drain_component_memory">Bellek</string>
+    <string name="drain_component_phone">Aramalar</string>
+    <string name="drain_component_ambient_display">Her zaman açık ekran</string>
+    <string name="drain_component_idle">Telefon boşta</string>
+    <string name="drain_component_system_services">Sistem hizmetleri</string>
+    <string name="drain_component_custom">Cihaza özgü</string>
+    <string name="drain_component_other">Diğer</string>
+
+    <string name="drain_wakeups_caption">Tutulma süresine göre sıralı. Kısa uyandırmalar güç modelinin saydığından fazlasına mal olur.</string>
+    <string name="drain_wake_partial">Kısmi uyanık tutmalar</string>
+    <string name="drain_wake_kernel">Çekirdek uyanık tutmaları</string>
+    <string name="drain_wake_reasons">Uyandırma nedenleri</string>
+    <string name="drain_wake_alarms">Alarmlar</string>
+    <plurals name="drain_times">
+        <item quantity="one">%1$s kez</item>
+        <item quantity="other">%1$s kez</item>
+    </plurals>
+    <string name="drain_screen_off_share">%1$s ekran kapalıyken</string>
+    <plurals name="drain_woke">
+        <item quantity="one">Telefonu %1$s kez uyandırdı</item>
+        <item quantity="other">Telefonu %1$s kez uyandırdı</item>
+    </plurals>
+    <plurals name="drain_alarm_wakeups">
+        <item quantity="one">%1$s uyandıran alarm</item>
+        <item quantity="other">%1$s uyandıran alarm</item>
+    </plurals>
+    <string name="drain_show_all">Tümünü göster (%1$s)</string>
+    <string name="drain_wake_none">Bu aralıkta kayıt yok.</string>
+    <string name="drain_detail_separator">%1$s · %2$s</string>
+
+    <string name="drain_empty_since_unplugged">Uygulama başına tüketim, şarjdan çıkardıktan sonraki ilk ölçümle görünür.</string>
+    <string name="drain_empty_today">Bugün için henüz bir şey kaydedilmedi.</string>
+    <string name="drain_empty_last_24h">Son 24 saat için henüz bir şey kaydedilmedi.</string>
+    <string name="drain_empty_last_night">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı bir süre yok.</string>
+    <string name="drain_empty_days">O günler için kayıtlı bir şey yok.</string>
+</resources>

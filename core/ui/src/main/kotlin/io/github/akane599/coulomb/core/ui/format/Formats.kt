@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalResources
 import io.github.akane599.coulomb.core.ui.R
 import java.text.NumberFormat
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -55,6 +56,7 @@ public class Formats(
     hourPattern: String = clockPattern,
     dayClockPattern: String = "EEE $clockPattern",
     weekdayPattern: String = "EEE",
+    dayPattern: String = "MMM d",
 ) {
     private val integer = NumberFormat.getIntegerInstance(locale)
     private val oneDecimal =
@@ -74,6 +76,7 @@ public class Formats(
     private val hour = DateTimeFormatter.ofPattern(hourPattern, locale)
     private val dayClock = DateTimeFormatter.ofPattern(dayClockPattern, locale)
     private val weekday = DateTimeFormatter.ofPattern(weekdayPattern, locale)
+    private val day = DateTimeFormatter.ofPattern(dayPattern, locale)
 
     /** A whole number with the locale's grouping ("1,240"; Turkish "1.240"). */
     public fun integer(value: Long): String = integer.format(value)
@@ -144,6 +147,23 @@ public class Formats(
             else -> resources.getString(R.string.format_hours_minutes, integer.format(hours), integer.format(rest))
         }
     }
+
+    /**
+     * A held time, such as a wakelock's (SPEC 6.7: times as h and min): "<1 min" under a minute,
+     * else [duration] to the nearest minute.
+     */
+    public fun held(ms: Long): String =
+        if (ms < MS_PER_MINUTE) {
+            resources.getString(R.string.format_less_than, duration(1))
+        } else {
+            duration((ms + MS_PER_MINUTE / 2) / MS_PER_MINUTE)
+        }
+
+    /** A day, or whole days, without the year: "Nov 1", "Nov 1 – Nov 7". */
+    public fun days(
+        first: LocalDate,
+        last: LocalDate,
+    ): String = if (first == last) day.format(first) else range(day.format(first), day.format(last))
 
     /** [duration] for a span in hours, to the minute. */
     public fun hours(hours: Double): String = duration(Rounding.minutes(hours))
@@ -217,6 +237,7 @@ public class Formats(
         private const val SMALL_MAH = 10.0
         private const val MA_PER_A = 1_000.0
         private const val MINUTES_PER_HOUR = 60L
+        private const val MS_PER_MINUTE = 60_000L
         private const val MINUS = '−'
 
         /**
@@ -270,6 +291,7 @@ public fun rememberFormats(): Formats {
             hourPattern = DateFormat.getBestDateTimePattern(locale, if (is24Hour) "Hm" else "h"),
             dayClockPattern = DateFormat.getBestDateTimePattern(locale, "EEE${hours}m"),
             weekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEE"),
+            dayPattern = DateFormat.getBestDateTimePattern(locale, "MMMd"),
         )
     }
 }

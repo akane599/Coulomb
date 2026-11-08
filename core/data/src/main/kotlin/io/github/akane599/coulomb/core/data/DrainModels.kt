@@ -59,7 +59,71 @@ public data class DrainReport(
     val wakes: List<WakeEntry>,
     /** Wakeup alarms per app, most first (S5 reports wakeup alarms only). */
     val alarms: List<AlarmEntry>,
+    /** The device's power by component, apps included, largest first. Modeled. */
+    val components: List<ComponentDrain> = emptyList(),
 )
+
+/** One power component's share of a span: the device's total for it, apps included. Modeled. */
+public data class ComponentDrain(
+    val component: PowerComponent,
+    val mah: Double,
+)
+
+/**
+ * A power component as Drain names it (SPEC 6.5). S5 names the device's items by the old sipper
+ * kinds and leaves the rest unnamed ([OTHER]); S4 names every standard component (ADR-0035).
+ */
+public enum class PowerComponent {
+    SCREEN,
+    CPU,
+    MOBILE_RADIO,
+    WIFI,
+    BLUETOOTH,
+    GNSS,
+    SENSORS,
+    CAMERA,
+    AUDIO,
+    VIDEO,
+    FLASHLIGHT,
+    WAKELOCK,
+    MEMORY,
+    PHONE,
+    AMBIENT_DISPLAY,
+    IDLE,
+    SYSTEM_SERVICES,
+    CUSTOM,
+    OTHER,
+    ;
+
+    public companion object {
+        /**
+         * The component a stored row names: S5's sipper kinds (`SipperKind`, upper case) or the
+         * platform's component names (`BatteryConsumer.sPowerComponentNames`, lower case).
+         */
+        public fun ofStored(name: String): PowerComponent =
+            when (name) {
+                "SCREEN", "screen" -> SCREEN
+                "cpu" -> CPU
+                "CELL", "mobile_radio" -> MOBILE_RADIO
+                "WIFI", "wifi" -> WIFI
+                "BLUETOOTH", "bluetooth" -> BLUETOOTH
+                "gnss" -> GNSS
+                "sensors" -> SENSORS
+                "CAMERA", "camera" -> CAMERA
+                "audio" -> AUDIO
+                "video" -> VIDEO
+                "FLASHLIGHT", "flashlight" -> FLASHLIGHT
+                "wakelock" -> WAKELOCK
+                "MEMORY", "memory" -> MEMORY
+                "PHONE", "phone" -> PHONE
+                "AMBIENT_DISPLAY", "ambient_display" -> AMBIENT_DISPLAY
+                "IDLE", "idle" -> IDLE
+                "system_services" -> SYSTEM_SERVICES
+                "custom" -> CUSTOM
+                else -> OTHER
+            }
+    }
+}
 
 /** One wakelock, kernel wakelock, wakeup reason or root kernel record in a span (SPEC 10.3, Wakeups lens). */
 public data class WakeEntry(

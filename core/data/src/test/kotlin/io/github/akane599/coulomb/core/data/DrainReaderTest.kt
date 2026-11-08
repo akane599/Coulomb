@@ -111,6 +111,41 @@ class DrainReaderTest {
         }
 
     @Test
+    fun theDevicesRowsBecomeComponentsByTheirFriendlyKind() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val session = sessions.insert(discharge(a))
+            val reference = reference(AutoReference.SINCE_UNPLUGGED, a)
+            val device = UidPowerEntity.DEVICE_UID
+            val stored =
+                store(
+                    window(a, b, WindowKind.REFERENCE).copy(measuredMah = 100.0, modeledMah = 90.0),
+                    WindowRows(
+                        uids =
+                            listOf(
+                                uid(APP, 30.0),
+                                uid(device, 40.0, "SCREEN"),
+                                uid(device, 20.0, "CELL"),
+                                uid(device, 5.0, "unnamed"),
+                                uid(device, 3.0, "something_else"),
+                                uid(device, 0.0, "WIFI"),
+                            ),
+                    ),
+                )
+
+            val report =
+                checkNotNull(
+                    reader.read(DrainSpan.SinceUnplugged, DrainInputs(listOf(stored), listOf(reference), sessions.byId(session), meta)),
+                )
+
+            // Unknown kinds share Other; a zero row is left out; largest first.
+            assertThat(report.components.map { it.component to it.mah })
+                .containsExactly(PowerComponent.SCREEN to 40.0, PowerComponent.MOBILE_RADIO to 20.0, PowerComponent.OTHER to 8.0)
+                .inOrder()
+        }
+
+    @Test
     fun aSpanWithAChargeCountsOnlyItsDischarge() =
         runTest {
             val a = heavy(1_000)
@@ -333,10 +368,11 @@ class DrainReaderTest {
     private fun uid(
         uid: Int,
         mah: Double,
+        component: String = WindowDrainsBuilder.ALL_COMPONENTS,
     ) = WindowUidEntity(
         0,
         uid,
-        WindowDrainsBuilder.ALL_COMPONENTS,
+        component,
         UidPowerEntity.ANY_STATE,
         WindowUidEntity.WHOLE_UID,
         mah,

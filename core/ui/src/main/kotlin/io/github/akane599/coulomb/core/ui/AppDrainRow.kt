@@ -19,23 +19,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.designsystem.component.ShareBar
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
@@ -45,6 +52,7 @@ private val IconSize = 40.dp
 private val IconCorner = 12.dp
 private val RowMinHeight = 72.dp
 private val Hairline = 1.dp
+private val GlyphSize = 20.dp
 
 /**
  * A ranked row with a share bar (DESIGN.md, Rows with share bars; lab `.app-row`): the 40 dp icon,
@@ -93,13 +101,8 @@ public fun AppDrainRow(
                     Column {
                         Text(text = name, color = colors.textPrimary, style = type.bodyName)
                         if (detail != null) {
-                            Text(
-                                text = detail,
-                                color = colors.textSecondary,
-                                style = type.caption,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            // Never cut: a detail explains the row, and wraps at any text size.
+                            Text(text = detail, color = colors.textSecondary, style = type.caption)
                         }
                     }
                 },
@@ -172,6 +175,16 @@ public sealed interface IconStandIn {
     public data class Remainder(
         override val text: String,
     ) : IconStandIn
+
+    /** The phone's own row (SPEC 6.5 friendly system rows): the phone glyph on a quiet tile. */
+    public data object Device : IconStandIn {
+        override val text: String = ""
+    }
+
+    /** The unattributed row's dashed tile with the info glyph (DESIGN.md, Remainder and gap). */
+    public data object Gap : IconStandIn {
+        override val text: String = ""
+    }
 }
 
 /** The app's icon as the system draws it (DESIGN.md: no radius token applies), or [standIn]. */
@@ -188,8 +201,9 @@ private fun AppIcon(
     val shape = RoundedCornerShape(IconCorner)
     val tile =
         when (standIn) {
-            is IconStandIn.Initial -> Modifier.background(colors.surfaceRaised, shape)
+            is IconStandIn.Initial, IconStandIn.Device -> Modifier.background(colors.surfaceRaised, shape)
             is IconStandIn.Remainder -> Modifier.border(Hairline, colors.hairline, shape)
+            IconStandIn.Gap -> Modifier.dashedOutline(colors.textSecondary)
         }
     // At least 40 dp, and wider when a count outgrows it (DESIGN.md: text fits its container). The
     // stand-in is decoration: the row's name already says what it stands for.
@@ -201,15 +215,46 @@ private fun AppIcon(
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = standIn.text,
-            modifier = Modifier.padding(horizontal = CoulombSpacing.Space4),
-            color = colors.textSecondary,
-            style = CoulombTheme.typography.labelButton,
-            maxLines = 1,
-        )
+        val glyph =
+            when (standIn) {
+                // Lab `.unattributed`: the info glyph in the dashed tile.
+                IconStandIn.Gap -> CoulombIcons.Info
+
+                IconStandIn.Device -> CoulombIcons.Mobile
+
+                else -> null
+            }
+        if (glyph != null) {
+            Icon(painterResource(glyph), contentDescription = null, Modifier.size(GlyphSize), tint = colors.textSecondary)
+        } else {
+            Text(
+                text = standIn.text,
+                modifier = Modifier.padding(horizontal = CoulombSpacing.Space4),
+                color = colors.textSecondary,
+                style = CoulombTheme.typography.labelButton,
+                maxLines = 1,
+            )
+        }
     }
 }
+
+/** A 1 dp dashed outline on the icon tile's 12 dp corners. */
+private fun Modifier.dashedOutline(color: Color): Modifier =
+    drawBehind {
+        val stroke = Hairline.toPx()
+        val inset = stroke / 2
+        val corner = IconCorner.toPx() - inset
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(inset, inset),
+            size = Size(size.width - stroke, size.height - stroke),
+            cornerRadius = CornerRadius(corner),
+            style = Stroke(width = stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(DASH * stroke, DASH * stroke))),
+        )
+    }
+
+/** Dash and gap lengths in hairlines. */
+private const val DASH = 3f
 
 /** SPEC 6.7's "low confidence" mark for a figure with quality below 0.5, in Caption beside it. */
 @Composable

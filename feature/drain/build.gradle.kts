@@ -3,4 +3,9 @@
 
 plugins {
     alias(libs.plugins.coulomb.android.feature)
+    alias(libs.plugins.coulomb.android.screenshot)
+}
+
+dependencies {
+    implementation(projects.core.data)
 }

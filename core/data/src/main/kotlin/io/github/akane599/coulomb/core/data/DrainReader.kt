@@ -109,8 +109,18 @@ internal class DrainReader
                 chargedInSpan = totals.pluggedWindows > 0,
                 wakes = wakes(rows, chain, names),
                 alarms = alarms(rows, chain, names),
+                components = components(uids),
             )
         }
+
+        /** The device rows, which hold each component's total with the apps' share in it (CounterMapper). */
+        private fun components(rows: List<WindowUidEntity>): List<ComponentDrain> =
+            rows
+                .filter { it.uid == UidPowerEntity.DEVICE_UID }
+                .groupBy { PowerComponent.ofStored(it.component) }
+                .map { (component, parts) -> ComponentDrain(component, parts.sumOf { it.mAh }) }
+                .filter { it.mah > 0 }
+                .sortedByDescending { it.mah }
 
         private data class Bounds(
             val from: SnapshotEntity,

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPEC 10.3 Drain. Sentence case, no exclamation marks (SPEC 9.3, 11). -->
+<resources>
+    <string name="drain_loading">Loading</string>
+    <string name="drain_error_title">Coulomb couldn’t read its battery records</string>
+    <string name="drain_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
+    <string name="drain_error_action">Try again</string>
+
+    <string name="drain_since_unplugged">Since unplugged</string>
+    <string name="drain_today">Today</string>
+    <string name="drain_last_24h">Last 24 h</string>
+    <string name="drain_more">More</string>
+    <string name="drain_last_night">Last night</string>
+
+    <string name="drain_sheet_title">More windows</string>
+    <string name="drain_last_night_detail">The longest screen-off stretch of an hour or more in the last day</string>
+    <string name="drain_custom_range">Custom range</string>
+    <!-- %1$d: how many days back a range may start. -->
+    <plurals name="drain_custom_range_detail">
+        <item quantity="one">Whole days, up to %1$d day back</item>
+        <item quantity="other">Whole days, up to %1$d days back</item>
+    </plurals>
+    <string name="drain_range_title">Choose days</string>
+    <string name="drain_range_confirm">Show</string>
+    <string name="drain_range_cancel">Cancel</string>
+
+    <!-- %1$s: a duration; %2$s and %3$s: battery levels. -->
+    <string name="drain_note_levels">%1$s, from %2$s to %3$s</string>
+    <string name="drain_note_charged">It charged in between, so the total counts only the time on battery.</string>
+
+    <string name="drain_measured_counter">Measured by the battery’s charge counter</string>
+    <string name="drain_estimated_level">Estimated from the level change and the battery’s capacity</string>
+    <string name="drain_modeled_only">Modeled by Android’s power model; the battery measured no change</string>
+    <string name="drain_modeled">Modeled %1$s</string>
+    <string name="drain_unattributed">Unattributed %1$s</string>
+    <!-- %1$s measured, %2$s modeled, %3$s unattributed, %4$s its share. -->
+    <string name="drain_reconcile_description">Measured %1$s. Apps and system account for %2$s by the power model; %3$s, %4$s, is unattributed.</string>
+    <string name="drain_model_over">Android’s power model counts %1$s, more than the battery measured.</string>
+
+    <string name="drain_lens_apps">Apps</string>
+    <string name="drain_lens_components">Components</string>
+    <string name="drain_lens_wakeups">Wakeups</string>
+
+    <string name="drain_include_system">Include system apps</string>
+    <string name="drain_scale">Scale to measured</string>
+    <string name="drain_shares_of_measured">Shares are of the %1$s measured.</string>
+    <string name="drain_shares_of_modeled">Shares are of the %1$s that Android modeled.</string>
+    <string name="drain_scaled_caption">Scaled to the %1$s measured; scaled figures are Derived.</string>
+    <string name="drain_lower_bound">Summed from shorter windows, so each app’s figure may be a little low.</string>
+    <plurals name="drain_more_apps">
+        <item quantity="one">%1$d more app</item>
+        <item quantity="other">%1$d more apps</item>
+    </plurals>
+    <string name="drain_small_apps">Small apps</string>
+    <string name="drain_each_under">Each under %1$s</string>
+    <plurals name="drain_hidden_system">
+        <item quantity="one">%1$d system app hidden</item>
+        <item quantity="other">%1$d system apps hidden</item>
+    </plurals>
+    <string name="drain_show_fewer">Show fewer</string>
+    <string name="drain_device">The phone itself</string>
+    <string name="drain_device_detail">Idle, network standby and other power no app was charged for</string>
+    <string name="drain_gap_heading">Measured, but no app accounts for it</string>
+    <string name="drain_unattributed_name">Unattributed</string>
+    <string name="drain_unattributed_detail">Outside Android’s power model: weak signal, kernel activity, model gaps</string>
+    <string name="drain_no_apps">No app used measurable power in this window.</string>
+
+    <string name="drain_components_caption">The device’s power by component, apps included.</string>
+    <string name="drain_components_coarse">Android names only some components for this window; the rest is under Other.</string>
+    <string name="drain_components_empty">No component breakdown for this window.</string>
+    <string name="drain_components_chart">Power by component: %1$s</string>
+    <string name="drain_component_screen">Screen</string>
+    <string name="drain_component_cpu">CPU</string>
+    <string name="drain_component_mobile_radio">Mobile network</string>
+    <string name="drain_component_wifi">Wi-Fi</string>
+    <string name="drain_component_bluetooth">Bluetooth</string>
+    <string name="drain_component_gnss">GPS</string>
+    <string name="drain_component_sensors">Sensors</string>
+    <string name="drain_component_camera">Camera</string>
+    <string name="drain_component_audio">Audio</string>
+    <string name="drain_component_video">Video</string>
+    <string name="drain_component_flashlight">Flashlight</string>
+    <string name="drain_component_wakelock">Wakelocks</string>
+    <string name="drain_component_memory">Memory</string>
+    <string name="drain_component_phone">Calls</string>
+    <string name="drain_component_ambient_display">Always-on display</string>
+    <string name="drain_component_idle">Phone idle</string>
+    <string name="drain_component_system_services">System services</string>
+    <string name="drain_component_custom">Device-specific</string>
+    <string name="drain_component_other">Other</string>
+
+    <string name="drain_wakeups_caption">Ranked by time held. Short wakeups cost more than the power model counts.</string>
+    <string name="drain_wake_partial">Partial wakelocks</string>
+    <string name="drain_wake_kernel">Kernel wakelocks</string>
+    <string name="drain_wake_reasons">Wakeup reasons</string>
+    <string name="drain_wake_alarms">Alarms</string>
+    <plurals name="drain_times">
+        <item quantity="one">%1$s time</item>
+        <item quantity="other">%1$s times</item>
+    </plurals>
+    <string name="drain_screen_off_share">%1$s with the screen off</string>
+    <plurals name="drain_woke">
+        <item quantity="one">Woke the phone %1$s time</item>
+        <item quantity="other">Woke the phone %1$s times</item>
+    </plurals>
+    <plurals name="drain_alarm_wakeups">
+        <item quantity="one">%1$s wakeup alarm</item>
+        <item quantity="other">%1$s wakeup alarms</item>
+    </plurals>
+    <string name="drain_show_all">Show all %1$s</string>
+    <string name="drain_wake_none">None recorded in this window.</string>
+    <string name="drain_detail_separator">%1$s · %2$s</string>
+
+    <string name="drain_empty_since_unplugged">Per-app drain appears with the first snapshot after the unplug.</string>
+    <string name="drain_empty_today">Nothing is stored for today yet.</string>
+    <string name="drain_empty_last_24h">Nothing is stored for the last 24 hours yet.</string>
+    <string name="drain_empty_last_night">No screen-off stretch of an hour or more in the last day.</string>
+    <string name="drain_empty_days">Nothing is stored for those days.</string>
+</resources>

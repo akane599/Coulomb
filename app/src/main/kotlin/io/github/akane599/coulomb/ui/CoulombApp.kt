@@ -54,6 +54,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.feature.drain.DrainScreen
 import io.github.akane599.coulomb.feature.now.NowScreen
 import io.github.akane599.coulomb.navigation.AppNavigator
 import io.github.akane599.coulomb.navigation.Destination
@@ -156,6 +157,7 @@ private fun Navigation(
 @Immutable
 class AppScreens(
     val now: @Composable (AppNavigator) -> Unit,
+    val drain: @Composable (AppNavigator) -> Unit,
 ) {
     companion object {
         val Default: AppScreens =
@@ -166,6 +168,8 @@ class AppScreens(
                         onOpenPrivileges = { navigator.open(Route.Privileges) },
                     )
                 },
+                // App detail arrives later in P4; until then the rows open nothing.
+                drain = { DrainScreen(onOpenApp = null) },
             )
     }
 }
@@ -176,7 +180,7 @@ private fun appEntries(
 ): (NavKey) -> NavEntry<NavKey> =
     entryProvider {
         entry<Route.Now> { DestinationScreen(Destination.Now, navigator::open) { screens.now(navigator) } }
-        entry<Route.Drain> { DestinationScreen(Destination.Drain, navigator::open) { NotBuilt() } }
+        entry<Route.Drain> { DestinationScreen(Destination.Drain, navigator::open) { screens.drain(navigator) } }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { NotBuilt() } }
         entry<Route.Health> { DestinationScreen(Destination.Health, navigator::open) { NotBuilt() } }
         entry<Route.ActionCenter> { InnerScreen(R.string.screen_action_center, navigator::back) { NotBuilt() } }

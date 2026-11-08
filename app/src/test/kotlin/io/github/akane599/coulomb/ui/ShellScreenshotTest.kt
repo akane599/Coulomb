@@ -71,7 +71,7 @@ class ShellScreenshotTest {
     ) {
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale)) {
-                CoulombTheme(darkTheme = dark) { CoulombApp(screens = AppScreens(now = {})) }
+                CoulombTheme(darkTheme = dark) { CoulombApp(screens = AppScreens(now = {}, drain = {})) }
             }
         }
     }

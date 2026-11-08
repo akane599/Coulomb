@@ -11,7 +11,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.akane599.coulomb.core.collect.Collector
 import io.github.akane599.coulomb.core.data.AppIcons
 import io.github.akane599.coulomb.core.data.BatteryRepository
+import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
+import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,6 +47,7 @@ public class NowViewModel
         access: PrivilegedAccess,
         private val icons: AppIcons,
         private val collector: Collector,
+        private val window: ChosenWindow,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
         private val refreshing = MutableStateFlow(false)
@@ -88,6 +91,9 @@ public class NowViewModel
                 refreshing.value = false
             }
         }
+
+        /** "See all": Drain opens on the window Now shows. */
+        internal fun seeAllDrains() = window.choose(DrainSpan.SinceUnplugged)
 
         /** The app's icon at [sizePx], from the shared cache. */
         internal suspend fun icon(

@@ -42,6 +42,8 @@ public object CoulombIcons {
 
     @DrawableRes public val Lock: Int = R.drawable.ic_lock
 
+    @DrawableRes public val Mobile: Int = R.drawable.ic_mobile
+
     @DrawableRes public val MoreVert: Int = R.drawable.ic_more_vert
 
     @DrawableRes public val OpenInNew: Int = R.drawable.ic_open_in_new

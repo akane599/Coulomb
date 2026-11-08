@@ -68,7 +68,10 @@ public fun NowScreen(
             NowActions(
                 refresh = viewModel::refresh,
                 retry = viewModel::retry,
-                seeAllDrains = onSeeAllDrains,
+                seeAllDrains = {
+                    viewModel.seeAllDrains()
+                    onSeeAllDrains()
+                },
                 openPrivileges = onOpenPrivileges,
                 icon = viewModel::icon,
             ),
