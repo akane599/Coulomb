@@ -35,6 +35,33 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
   - screenshot tests on the build server (Roborazzi on Robolectric): compact light and dark, 200%
     text, medium width with the rail, and an inner screen.
   - Screens not built yet show a placeholder.
+- Read models (ADR-0032), reviewed independently with the estimators; outcomes in ADR-0033.
+- Now (SPEC 10.2, ADR-0034):
+  - hero with the level and its source, the time-left range and the state;
+  - the projection scale, the interim verdict, the session strip with a "Deep sleep" glossary term;
+  - the top three drains with an "Everything else" remainder and a denominator caption;
+  - the live current, sampled every 5 s while the screen is open.
+  - Motion per SPEC 11.6: digits roll, charts draw in once, rows animate a reorder. Under reduced
+    motion each is a 150 ms crossfade.
+  - Gate runs (SPEC 11.12), in `docs/design-gates/2026-11-08-*-now.md`:
+    - critique: 28/40;
+    - audit: 14/20;
+    - all critical and major findings fixed, or verified against platform behaviour;
+    - harden, clarify, animate, adapt, optimize and polish: no critical or major finding left open
+      (ADR-0034 §27–36);
+    - the gate summary is at the end of the polish doc.
+  - Goldens: light, dark, black, 130% and 200% text, medium, expanded, landscape, Turkish, Arabic,
+    RTL with hardened data at 100% and 200%, every SPEC 10.11 state, and the table sheet at 100%
+    and 200%. `NowMotionTest` covers the reorder slide, its reduced-motion jump and the rolling
+    figure's single text. `DayClockTest` covers day-aware times.
+  - Open minors, each with its home:
+    - an "as of" time when the latest reading is stale, from collector health (Privileges, P4);
+    - a spoken form for units in `FigureText` (P4 accessibility pass, all screens);
+    - app rows that open App detail (when App detail lands in P4).
+  - Open, found by the deep-sleep review: nothing writes a session's `awakeRatio` yet
+    (`SessionSummary` opens it as null and never sets it). Until a source fills it at session close
+    (S8 suspend stats, or batterystats' screen-off awake time), the strip's deep sleep stays
+    "Collecting" on a device. This is the next collection item in P4.
 
 ## P3 Design lab (gate passed 2026-11-07)
 

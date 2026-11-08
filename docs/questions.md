@@ -19,6 +19,17 @@ start of every phase. Answered questions move to the bottom with the answer and 
   without cross-user access, which would leave those apps unnamed. Default: they show the fallback name
   until an emulator check with a work profile settles it.
 
+- 2026-11-08. Now on expanded widths: one column capped at 720 dp, or two panes at 840 dp and up
+  (hero, verdict and strip on the left; drains and live current on the right). Default: the capped
+  column (ADR-0034 §15); two panes would need their own screenshots and an ADR. The same question
+  covers a phone in landscape (915 × 412 dp): there the drains fall below the fold
+  (`now-discharging-landscape`).
+- 2026-11-08. Now's remainder row folds the unattributed energy into "Everything else"; Drain shows
+  it separately on a dashed tile, as DESIGN.md describes. Default: folded on Now (ADR-0034 §14),
+  because three rows plus two remainders crowd the screen and Drain is one tap away.
+- 2026-11-08. Right after unplugging, Now hides the scale until time left exists (about 15 minutes).
+  Default: hidden (ADR-0034 §16); the verdict and the strip still show.
+
 ## Answered
 
 - 2026-11-06. License: GPL-3.0-or-later, with the Apache-2.0 `NOTICE` for the AOSP protos kept as planned.
