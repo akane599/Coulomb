@@ -37,6 +37,9 @@ internal class ParseContext(
         unknown[key] = (unknown[key] ?: 0) + count
     }
 
+    /** No issue was recorded so far. */
+    fun issueCountIsZero(): Boolean = issueCount == 0
+
     fun report(
         bytesRead: Long,
         complete: Boolean,

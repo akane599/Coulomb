@@ -47,6 +47,9 @@ public enum class CapabilityId(
     BATTERY_DUMP("s21.battery"),
     PROTECTION_SETTINGS("s22.protection_settings"),
     POWER_SUPPLY_SYSFS("s23.power_supply"),
+    SUSPEND_STATS("s25.suspend_stats"),
+    WAKEUP_REASONS("s26.wakeup_reasons"),
+    KERNEL_LOG("s27.kernel_log"),
     PROMOTED_NOTIFICATIONS("live_update_promotion"),
     WORKER_BIND("worker_bind"),
 }

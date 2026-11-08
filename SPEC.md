@@ -502,7 +502,7 @@ Order by `elapsedRealtimeNanos` plus boot count; display wall-clock time. Wall-c
 
 ## 8. Domain model and database schema
 
-The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested. ADR-0015 records the keys, foreign-key actions, retention and size budget of version 1; ADR-0021 records version 2.
+The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested. ADR-0015 records the keys, foreign-key actions, retention and size budget of version 1; ADR-0021 records version 2; ADR-0029 records version 3 (collection mode and root kernel data).
 
 ```kotlin
 // Units are in field names. Times: elapsed = elapsedRealtimeNanos, wall = epoch ms.
@@ -536,7 +536,8 @@ entity ChargeDetail(sessionId PK/FK, plugType, chargerProfileId?, peakW?, avgW?,
 entity Snapshot(id PK, bootSeq, elapsedNs, wallMs, trigger, kind /*LIGHT|HEAVY*/,
   levelPct?, chargeUah?, currentRaw?, voltageMv?, tempDeciC?, plugType?, status?,
   statsStartWall?, statsRealtimeMs? /*ADR-0018*/, historyCursorMs? /*NEXT: value, ADR-0014*/, historyEventId?,
-  sourceStatusJson, blobPath?, partial, countersPruned, durationMs)
+  sourceStatusJson, blobPath?, partial, countersPruned, durationMs,
+  uptimeMs? /*ADR-0029*/, privilegeMode? /*null none|shell|root|other uid, ADR-0029*/)
 
 entity UidPower(snapshotId FK, uid, component, processState, mAh, provenance)
 entity UidMeta(uid PK, packages /*json*/, label, isSystem, iconCacheKey, updatedWall)
@@ -544,6 +545,11 @@ entity UidPackage(uid, packageName, firstSeenWall, lastSeenWall)
 
 entity WakeStat(snapshotId FK, uid?, tag, kind /*PARTIAL|KERNEL|WAKEUP_REASON*/,
   totalMs, count, maxMs?, screenOffMs?)
+entity KernelRead(snapshotId PK/FK, kernelBoot, S25 counters?, S26 last wakeup?,
+  kmsgAfterSeq?, kmsgFirstSeq?, kmsgLastSeq?, kmsgGaps?)            // root only (ADR-0029)
+entity WakeupSourceStat((snapshotId, instance) PK, name, nine counters) // S9, root only (ADR-0029)
+entity KernelLogEvent(id PK, kernelBoot, seq, monotonicUs, kind, irq?, tagId?, errno?,
+  readSnapshotId FK) // UNIQUE(kernelBoot, seq); S27 ring (ADR-0029)
 entity AlarmStat(snapshotId FK, uid, wakeups, total?)
 entity JobStat(snapshotId FK, uid, jobs, runtimeMs?, abandoned?, topStopReason?)
 entity NetStat(snapshotId FK, uid, mobileRxB?, mobileTxB?, wifiRxB?, wifiTxB?, radioActiveMs?)
@@ -553,9 +559,10 @@ entity DeviceStat(snapshotId FK, key, value)
 
 entity WindowResult(id PK, kind /*CONSECUTIVE|SESSION|DAY|REFERENCE*/, sessionId?,
   fromSnapshotId, toSnapshotId, measuredMah?, chargeSource?, modeledMah?, unattributedMah?,
-  screenOnMs, screenOffMs, awakeMsScreenOff?, quality, detailPruned)
+  screenOnMs, screenOffMs, awakeMsScreenOff?, quality, detailPruned,
+  kernelCoverage? /*2 bits each for S25, S9, S27: none, partial, whole (ADR-0029)*/)
 entity WindowUid(windowId FK, uid, component, processState, process, mAh, provenance)
-entity WindowWake(windowId FK, uid?, tagId, kind, totalMs, count, screenOffMs?)
+entity WindowWake(windowId FK, uid?, tagId, kind, totalMs, count, screenOffMs?, wakeups?)
 entity WindowStat(windowId FK, uid, keyId, value, provenance)
 entity WakeTag(id PK, tag)
 entity StatKey(id PK, name)
