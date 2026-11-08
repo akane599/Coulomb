@@ -104,6 +104,6 @@ column.
   no measured drain gave a zero or negative rate, that hidden system apps vanished from the list,
   and that the small apps' alarms were dropped. All are fixed above.
 - The review also raised that S5 may time a tag's partial wakelocks as pooled time, overlapping
-  holds counted once, beside a separate actual time. That is not yet checked against AOSP. It is open
-  in `docs/progress.md`, to settle before the Drain gates close.
+  holds counted once, beside a separate actual time. AOSP confirmed it; the parsers now store the
+  actual time (ADR-0039).
 - DESIGN.md gains Paired bars under Rows with share bars.

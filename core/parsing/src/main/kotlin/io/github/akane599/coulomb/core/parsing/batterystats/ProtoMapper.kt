@@ -59,7 +59,11 @@ import okio.ByteString
 internal class ProtoMapper(
     private val ctx: ParseContext,
 ) {
-    fun uid(p: UidProto): UidStats {
+    /** Maps one UID; [offset] is where its message starts, for issues. */
+    fun uid(
+        p: UidProto,
+        offset: Long,
+    ): UidStats {
         unknown("UidProto", p)
         return UidStats(
             uid = p.uid.orZero(),
@@ -71,7 +75,7 @@ internal class ProtoMapper(
                 },
             cpuUserMs = (p.cpu?.user_duration_ms).orZero(),
             cpuSystemMs = (p.cpu?.system_duration_ms).orZero(),
-            partialWakelocks = p.wakelocks.mapNotNull(::wakelock),
+            partialWakelocks = p.wakelocks.mapNotNull { wakelock(it, offset) },
             aggregatedPartialWakelockMs = (p.aggregated_wakelock?.partial_duration_ms).orZero(),
             aggregatedBackgroundPartialWakelockMs = (p.aggregated_wakelock?.background_partial_duration_ms).orZero(),
             wakeupAlarms = p.wakeup_alarm.map { NamedCount(it.name.orEmpty(), it.count.orZeroLong()) },
@@ -108,11 +112,28 @@ internal class ProtoMapper(
         )
     }
 
-    private fun wakelock(w: UidProto.Wakelock): WakelockStat? {
+    /**
+     * The partial timer's `duration_ms` is pooled; `total_duration_ms` is the actual time held, on
+     * the same time base (see `CheckinUid.wakelock`, ADR-0039). The writer leaves it out at -1
+     * (`BatteryStats.dumpTimer`, android-16.0.0_r4 L3837-3838, android-17.0.0_r1 L3858-3859), and a
+     * zero is not written either, so absent reads as zero. The actual time is never below the pooled
+     * one, give or take the pooled time's rounding; a row that says otherwise keeps the pooled time
+     * and records an issue, as in checkin.
+     */
+    private fun wakelock(
+        w: UidProto.Wakelock,
+        offset: Long,
+    ): WakelockStat? {
         unknown("UidProto.Wakelock", w)
         // An empty partial timer is not written; such a wakelock has no partial time to show.
         val partial = w.partial ?: return null
-        return WakelockStat(w.name.orEmpty(), timer(partial), duration(w.background_partial))
+        val pooled = timer(partial)
+        val actual = partial.total_duration_ms.orZero()
+        if (!actualCovers(actual, pooled.totalMs)) {
+            ctx.issue(offset, "UidProto.Wakelock", "partial wakelock without its actual time")
+            return WakelockStat(w.name.orEmpty(), pooled, duration(w.background_partial))
+        }
+        return WakelockStat(w.name.orEmpty(), pooled.copy(totalMs = actual), duration(w.background_partial))
     }
 
     fun system(p: SystemProto): DeviceStats {
@@ -374,6 +395,15 @@ internal class ProtoMapper(
 }
 
 private fun Long?.orZero(): Long = this ?: 0L
+
+/**
+ * A partial wakelock's actual time is whole milliseconds and never below its pooled time, which is
+ * rounded from microseconds (`BatteryStats.roundUsToMs`), so the two may differ by 1 ms the wrong way.
+ */
+internal fun actualCovers(
+    actualMs: Long,
+    pooledMs: Long,
+): Boolean = actualMs >= 0 && actualMs + 1 >= pooledMs
 
 private fun Int?.orZero(): Int = this ?: 0
 

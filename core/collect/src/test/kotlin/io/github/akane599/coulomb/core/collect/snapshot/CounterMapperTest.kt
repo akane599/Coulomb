@@ -7,8 +7,12 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
+import io.github.akane599.coulomb.core.model.stats.TimerStat
 import io.github.akane599.coulomb.core.model.stats.UidKeys
+import io.github.akane599.coulomb.core.model.stats.UidStats
+import io.github.akane599.coulomb.core.model.stats.WakelockStat
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryStatsProtoParser
 import org.junit.Test
 import java.io.File
@@ -84,5 +88,27 @@ class CounterMapperTest {
         val packages = CounterMapper.packages(phoneDump())
         assertThat(packages).isNotEmpty()
         assertThat(packages.values.all { it.isNotEmpty() }).isTrue()
+    }
+
+    /**
+     * A tag listed twice under one UID becomes one counter: the actual times held add up, so the
+     * row is an upper bound (ADR-0039); counts add, and the longest hold is the longer one.
+     */
+    @Test
+    fun aTagListedTwiceIsOneCounter() {
+        val uid =
+            UidStats(
+                uid = 10_123,
+                partialWakelocks =
+                    listOf(
+                        WakelockStat("sync", TimerStat(totalMs = 500, count = 2, maxMs = 400)),
+                        WakelockStat("sync", TimerStat(totalMs = 300, count = 1, maxMs = 300)),
+                        WakelockStat("idle", TimerStat(totalMs = 0, count = 0)),
+                    ),
+            )
+        val rows = CounterMapper.rows(BatteryStatsDump(header = null, device = null, uids = listOf(uid), uidsComplete = true))
+        val partial = rows.wakeStats.filter { it.kind == WakeKind.PARTIAL }
+        assertThat(partial.map { listOf(it.tag, it.totalMs, it.count.toLong(), it.maxMs) })
+            .containsExactly(listOf("sync", 800L, 3L, 400L))
     }
 }

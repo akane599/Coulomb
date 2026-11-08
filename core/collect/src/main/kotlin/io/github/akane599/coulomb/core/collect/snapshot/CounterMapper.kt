@@ -80,7 +80,10 @@ internal object CounterMapper {
                 it.packages
         }
 
-    /** One row per tag: a tag the platform lists twice is summed, so a window diff sees one counter. */
+    /**
+     * One row per tag: a tag the platform lists twice is summed, so a window diff sees one counter.
+     * The times are actual times held (ADR-0039), which can overlap, so such a sum is an upper bound.
+     */
     private fun partialWakelocks(uid: UidStats): List<WakeStatEntity> =
         uid.partialWakelocks
             .filter { it.partial.totalMs > 0 || it.partial.count > 0 }

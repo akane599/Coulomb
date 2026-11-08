@@ -112,16 +112,34 @@ internal class CheckinUid(
         cpu = row.long(CpuCol.USER) to row.long(CpuCol.SYSTEM)
     }
 
+    /**
+     * The partial block's total is pooled: while N partial wakelocks run at once, each accrues 1/N
+     * (`StopwatchTimer.computeRunTimeLocked`, android-16.0.0_r4 L3868-3876, android-17.0.0_r1
+     * L3419-3427). Its last column is the actual time held, on the same time base and since the
+     * same reset (`DurationTimer`, 16 L3491-3699, 17 L3042-3250), printed by `printWakeLockCheckin`
+     * (`BatteryStats` 16 L3719-3750, 17 L3740-3771). That is the time the app kept the CPU awake,
+     * so it is the time stored (ADR-0039). Missing, untracked (-1) or below the pooled time, the
+     * row keeps the pooled time and records an issue: a dropped row would make the next window
+     * count its whole total since the reset.
+     */
     private fun wakelock(row: CheckinRow) {
         row.expect(WakelockCol.entries.size)
         val name = row.text(WakelockCol.NAME)
-        val total = row.long(WakelockCol.PARTIAL_TOTAL)
+        val pooled = row.long(WakelockCol.PARTIAL_TOTAL)
         val count = row.long(WakelockCol.PARTIAL_COUNT)
-        if (name == null || total == null || count == null) return
+        if (name == null || pooled == null || count == null) return
         // A missing partial timer prints zeros; either way there is no partial time to show.
-        if (total == 0L && count == 0L) return
+        if (pooled == 0L && count == 0L) return
+        val actual = row.long(WakelockCol.PARTIAL_DURATION)
+        val held =
+            if (actual != null && actualCovers(actual, pooled)) {
+                actual
+            } else {
+                row.issue("partial wakelock without its actual time")
+                pooled
+            }
         val max = row.long(WakelockCol.PARTIAL_MAX)?.takeIf { it >= 0 }
-        wakelocks += WakelockStat(name, TimerStat(total, count, max), row.long(WakelockCol.BG_PARTIAL_TOTAL))
+        wakelocks += WakelockStat(name, TimerStat(held, count, max), row.long(WakelockCol.BG_PARTIAL_TOTAL))
     }
 
     private fun aggregated(row: CheckinRow) {

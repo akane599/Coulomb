@@ -10,6 +10,7 @@ import io.github.akane599.coulomb.core.model.stats.UidProcessState
 import io.github.akane599.coulomb.core.parsing.Fixtures
 import io.github.akane599.coulomb.core.parsing.aosp.os.BatteryStatsProto
 import io.github.akane599.coulomb.core.parsing.aosp.os.SystemProto
+import io.github.akane599.coulomb.core.parsing.aosp.os.TimerProto
 import io.github.akane599.coulomb.core.parsing.aosp.os.UidProto
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -108,6 +109,53 @@ class BatteryStatsProtoParserTest {
         assertThat(issue.section).isEqualTo("UidProto")
         // The entry's tag byte, after the outer tag and its one-byte length.
         assertThat(issue.offset).isEqualTo((1 + varint(inner.size).size + brokenAt).toLong())
+    }
+
+    /** The partial timer's actual time, not its pooled one, is the time held (ADR-0039). */
+    @Test
+    fun partialWakelockTimeIsTheActualTimeHeld() {
+        for (device in Fixtures.ALL) {
+            val wakelocks = parse(Fixtures.bytes(device, "batterystats.proto.bin")).value.uids.flatMap { it.partialWakelocks }
+            // The emulator held none with the screen off.
+            if (device == Fixtures.PHONE) assertWithMessage(device).that(wakelocks).isNotEmpty()
+            for (w in wakelocks) assertWithMessage("$device ${w.tag}").that(w.partial.totalMs).isAtLeast(w.partial.maxMs ?: 0)
+        }
+
+        fun wakelock(
+            name: String,
+            actual: Long?,
+            pooled: Long = 300,
+        ) = UidProto.Wakelock(
+            name = name,
+            partial = TimerProto(duration_ms = pooled, count = 4, max_duration_ms = 1, total_duration_ms = actual),
+        )
+        val rows =
+            listOf(
+                wakelock("a", 500),
+                // The pooled time is rounded from microseconds, so 1 ms below it is the actual time.
+                wakelock("rounded", 299),
+                // A zero is not written: absent with at most 1 ms pooled is zero held.
+                wakelock("instant", null, pooled = 1),
+                // Untracked, or below the pooled time: the pooled time stays, with an issue.
+                wakelock("b", null),
+                wakelock("c", 250),
+                wakelock("d", 298),
+            )
+        val uid = UidProto(uid = 1000, wakelocks = rows).encode()
+        val stats = BatteryStatsProto(report_version = 37, system = SystemProto(battery = SystemProto.Battery(start_clock_time_ms = 1)))
+        val inner = stats.encode() + uidEntry(uid)
+        val (value, report) = parse(byteArrayOf(DUMP_TAG) + varint(inner.size) + inner)
+        assertThat(
+            value.uids
+                .single()
+                .partialWakelocks
+                .map { it.tag to it.partial.totalMs },
+        ).containsExactly("a" to 500L, "rounded" to 299L, "instant" to 0L, "b" to 300L, "c" to 300L, "d" to 300L).inOrder()
+        assertThat(report.issues.map { it.message }).containsExactly(
+            "partial wakelock without its actual time",
+            "partial wakelock without its actual time",
+            "partial wakelock without its actual time",
+        )
     }
 
     private fun uidEntry(bytes: ByteArray) = byteArrayOf(UIDS_TAG) + varint(bytes.size) + bytes

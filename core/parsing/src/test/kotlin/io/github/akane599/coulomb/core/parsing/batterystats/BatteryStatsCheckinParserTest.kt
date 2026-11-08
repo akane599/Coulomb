@@ -243,6 +243,39 @@ class BatteryStatsCheckinParserTest {
         assertThat(forgedReport.issues.single().message).startsWith("history wakelock tag printed without escaping")
     }
 
+    /**
+     * A partial wakelock's time is the actual time held, not the pooled time batterystats splits
+     * between wakelocks held at once (ADR-0039). The actual time covers the longest single hold;
+     * the pooled time fell below it in about half the phone's rows.
+     */
+    @Test
+    fun partialWakelockTimeIsTheActualTimeHeld() {
+        for (device in Fixtures.ALL) {
+            val wakelocks = parse(checkin(device)).value.uids.flatMap { it.partialWakelocks }
+            // The emulator held none with the screen off.
+            if (device == Fixtures.PHONE) assertWithMessage(device).that(wakelocks).isNotEmpty()
+            for (w in wakelocks) assertWithMessage("$device ${w.tag}").that(w.partial.totalMs).isAtLeast(w.partial.maxMs ?: 0)
+        }
+        val head = "9,0,i,vers,36,216,A,A\n9,0,l,bt,0,1,1,1,1,1,1,1,1,1,1,1\n"
+
+        // Pooled 300 ms with an actual time of 500 ms, and 299 ms (the pooled time is rounded from
+        // microseconds); then untracked, below the pooled time, and cut off: those keep the pooled time.
+        fun row(
+            name: String,
+            actual: String,
+        ) = "9,1000,l,wl,$name,0,f,0,0,0,0,300,p,4,0,1,$actual,0,bp,0,0,0,0,0,w,0,0,0,0\n"
+        val (dump, report) =
+            parse(
+                head + row("a", "500") + row("rounded", "299") + row("b", "-1") + row("c", "250") + row("d", "298") +
+                    "9,1000,l,wl,e,0,f,0,0,0,0,300,p,4,0,1\n",
+            )
+        val kept = dump.uids.single().partialWakelocks
+        assertThat(kept.map { it.tag to it.partial.totalMs })
+            .containsExactly("a" to 500L, "rounded" to 299L, "b" to 300L, "c" to 300L, "d" to 300L, "e" to 300L)
+            .inOrder()
+        assertThat(report.issues.map { it.message }.filter { it == "partial wakelock without its actual time" }).hasSize(4)
+    }
+
     @Test
     fun appPackagesFollowTheAppIdIntoEveryUser() {
         val text =

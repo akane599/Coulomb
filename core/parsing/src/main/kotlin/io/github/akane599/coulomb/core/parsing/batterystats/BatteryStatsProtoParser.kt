@@ -154,7 +154,7 @@ public object BatteryStatsProtoParser {
             offset: Long,
         ): UidStats? =
             try {
-                mapper.uid(UidProto.ADAPTER.decode(bytes))
+                mapper.uid(UidProto.ADAPTER.decode(bytes), offset)
             } catch (e: IOException) {
                 dropUid(offset, e)
             } catch (e: RuntimeException) {

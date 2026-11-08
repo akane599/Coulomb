@@ -52,6 +52,11 @@ internal class CheckinRow(
         }
     }
 
+    /** Records an issue at this line; [message] never holds a value. */
+    fun issue(message: String) {
+        ctx.issue(offset, type, message)
+    }
+
     private fun bad(col: Int) {
         ctx.issue(offset, type, "column ${col + 1} is not a number")
     }
