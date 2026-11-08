@@ -17,6 +17,9 @@ import io.github.akane599.coulomb.core.collect.retention.Retention
 import io.github.akane599.coulomb.core.collect.snapshot.CounterMapper
 import io.github.akane599.coulomb.core.collect.snapshot.HeavyReader
 import io.github.akane599.coulomb.core.collect.snapshot.HistoryRead
+import io.github.akane599.coulomb.core.collect.snapshot.KernelFilesRead
+import io.github.akane599.coulomb.core.collect.snapshot.KernelLogResult
+import io.github.akane599.coulomb.core.collect.snapshot.KernelSnapshot
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.collect.snapshot.LightSource
 import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
@@ -30,6 +33,7 @@ import io.github.akane599.coulomb.core.database.entity.BootEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.model.AutoReference
+import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
@@ -191,6 +195,10 @@ internal class CollectorEngine(
      * One snapshot row, its counters and what follows from them, in one transaction (SPEC 7.5). It
      * is heavy only when the counters' source ([counterSource]) was read whole without the CPU
      * sleeping; otherwise it is stored light, without counters, and the statuses say why.
+     *
+     * On a root server the kernel reads join in (ADR-0029 §5): S5, then S25, S26 and S9, then S7,
+     * then S27, all inside the budget. On any other server they are not due, and the snapshot's
+     * mode says why.
      */
     private suspend fun snapshot(
         trigger: SnapshotTrigger,
@@ -202,15 +210,15 @@ internal class CollectorEngine(
         val startNs = clock.elapsedNs()
         val stats = if (wantHeavy) sleepChecked(heavy.stats(SOURCE_TIMEOUT_MS), read) else null
         val dump = stats?.dump?.takeIf { counterSource(stats.statuses) != null }
-        dump
-            ?.device
-            ?.powerSummary
-            ?.capacityMah
-            ?.takeIf { it > 0 }
-            ?.let { capacityMah = it }
+        rememberCapacity(dump)
+        val liveMode = heavy.liveMode()
+        val kernelDue = wantHeavy && liveMode == PrivilegeMode.ROOT
+        val files = kernelFiles(kernelDue, dump != null, startNs, read)
         val history = if (wantHeavy) history(startNs, boot) else null
+        val log = kernelLog(kernelDue, files, startNs)
+        val kernel = KernelSnapshot.combine(files, log, liveMode)
         val ingest = (history as? HistoryOutcome.Read)?.result
-        val statuses = stats?.statuses.orEmpty() + listOfNotNull(history?.let { HeavyReader.S7 to it.status })
+        val statuses = stats?.statuses.orEmpty() + listOfNotNull(history?.let { HeavyReader.S7 to it.status }) + kernel.statuses
         val rows = dump?.let(CounterMapper::rows) ?: SnapshotRows()
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
@@ -223,6 +231,8 @@ internal class CollectorEngine(
                 blobPath = blob,
                 partial = statuses.values.any { it != SourceStatus.OK },
                 durationMs = (clock.elapsedNs() - startNs) / NS_PER_MS,
+                uptimeMs = read.uptimeMs,
+                privilegeMode = kernel.mode,
             )
         val context =
             WriteContext(
@@ -239,7 +249,7 @@ internal class CollectorEngine(
         db.withTransaction {
             // A read that set no cursor stored nothing: the events before this snapshot are not all in.
             val eventId = ingest?.takeIf { it.nextCursorMs != null }?.let { db.historyDao().insertRead(it.events, it.gaps) }
-            val id = db.snapshotDao().insert(entity.copy(historyEventId = eventId), rows)
+            val id = db.snapshotDao().insert(entity.copy(historyEventId = eventId), rows, kernel.rows)
             ingest?.newOffsetMs?.let { db.deviceDao().setHistoryOffset(boot.bootSeq, it) }
             writer.afterSnapshot(entity.copy(id = id, historyEventId = eventId), rows, context)
             if (dump != null) recordPackages(dump, reading)
@@ -257,9 +267,65 @@ internal class CollectorEngine(
         read: Read,
     ): StatsRead {
         val source = counterSource(stats.statuses) ?: return stats
+        return if (!slept(read)) stats else stats.copy(statuses = stats.statuses + (source to SourceStatus.SLEPT))
+    }
+
+    /** Whether the CPU slept for more than [MAX_SLEEP_MS] since the light read. */
+    private fun slept(read: Read): Boolean {
         val elapsedMs = (clock.elapsedNs() - read.reading.elapsedNs) / NS_PER_MS
         val awakeMs = clock.uptimeMs() - read.uptimeMs
-        return if (elapsedMs - awakeMs <= MAX_SLEEP_MS) stats else stats.copy(statuses = stats.statuses + (source to SourceStatus.SLEPT))
+        return elapsedMs - awakeMs > MAX_SLEEP_MS
+    }
+
+    /** The capacity a usable dump's power summary reports, kept for the windows written after it. */
+    private fun rememberCapacity(dump: BatteryStatsDump?) {
+        dump
+            ?.device
+            ?.powerSummary
+            ?.capacityMah
+            ?.takeIf { it > 0 }
+            ?.let { capacityMah = it }
+    }
+
+    /** What is left of the heavy snapshot's budget, in ms. */
+    private fun leftMs(startNs: Long): Long = (BUDGET_NS - (clock.elapsedNs() - startNs)) / NS_PER_MS
+
+    /**
+     * S25, S26 and S9, right after S5 and only when its counters were usable: they are stored only on
+     * heavy snapshots. They get the same sleep check as S5 (ADR-0029 §5). Null when not [due].
+     */
+    private suspend fun kernelFiles(
+        due: Boolean,
+        counters: Boolean,
+        startNs: Long,
+        read: Read,
+    ): KernelFilesRead? {
+        val leftMs = leftMs(startNs)
+        return when {
+            !due -> null
+            !heavy.kernelReadable() -> KernelFilesRead.all(SourceStatus.FAILED)
+            !counters || leftMs <= 0 -> KernelFilesRead.all(SourceStatus.SKIPPED)
+            else -> heavy.kernelFiles(minOf(SOURCE_TIMEOUT_MS, leftMs)).let { if (slept(read)) it.slept() else it }
+        }
+    }
+
+    /**
+     * S27, last. Its cursor is the stored one for the files' kernel boot, never one kept in memory
+     * (ADR-0029 §5). Without that boot the read starts at the ring's oldest record; records already
+     * stored are ignored on insert. Null when not [due].
+     */
+    private suspend fun kernelLog(
+        due: Boolean,
+        files: KernelFilesRead?,
+        startNs: Long,
+    ): KernelLogResult? {
+        if (!due) return null
+        if (!heavy.kernelReadable()) return KernelLogResult.of(SourceStatus.FAILED)
+        val leftMs = leftMs(startNs)
+        if (leftMs <= 0) return KernelLogResult.of(SourceStatus.SKIPPED)
+        val bootKey = files?.bootKey
+        val cursor = bootKey?.let { db.snapshotDao().kmsgCursor(it) }
+        return heavy.kernelLog(bootKey ?: NO_BOOT, cursor ?: NO_CURSOR, minOf(SOURCE_TIMEOUT_MS, leftMs))
     }
 
     /**
@@ -335,7 +401,7 @@ internal class CollectorEngine(
         boot: BootEntity,
     ): HistoryOutcome {
         val cursorAt = db.snapshotDao().latestWithHistoryCursor()
-        val leftMs = (BUDGET_NS - (clock.elapsedNs() - startNs)) / NS_PER_MS
+        val leftMs = leftMs(startNs)
         val catchUpDue = lastCatchUpNs.let { it == null || startNs - it >= CATCH_UP_EVERY_NS }
         return when {
             (cursorAt == null || lastHistoryFailed) && catchUpDue -> {
@@ -536,6 +602,10 @@ internal class CollectorEngine(
 
         /** A level this far above the last one stored is a charge, not gauge noise. */
         private const val LEVEL_NOISE = 1
+
+        /** No kernel boot or cursor: the worker reads S27 from the ring's oldest record. */
+        private const val NO_BOOT = 0L
+        private const val NO_CURSOR = -1L
         private const val NS_PER_MS = 1_000_000L
 
         private val BLOB_TRIGGERS =

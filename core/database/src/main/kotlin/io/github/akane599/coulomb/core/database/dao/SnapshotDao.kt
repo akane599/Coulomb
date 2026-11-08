@@ -528,8 +528,13 @@ public abstract class SnapshotDao {
         /** Rows keyed before `(:cutBootSeq, :cutElapsedNs)`. */
         const val BEFORE_CUT = "(bootSeq < :cutBootSeq OR (bootSeq = :cutBootSeq AND elapsedNs < :cutElapsedNs))"
 
-        /** A kernel read whose sources were all cleared. S25 and S26 are cleared together. */
-        const val KERNEL_READ_EMPTY = "suspendSuccess IS NULL AND resumeReason IS NULL AND kmsgGaps IS NULL"
+        /**
+         * A kernel read whose sources were all cleared. S25 and S26 are cleared together; S9 rows
+         * need the row's kernel boot while they last.
+         */
+        const val KERNEL_READ_EMPTY =
+            "suspendSuccess IS NULL AND resumeReason IS NULL AND kmsgGaps IS NULL " +
+                "AND NOT EXISTS (SELECT 1 FROM wakeup_source_stat w WHERE w.snapshotId = kernel_read.snapshotId)"
 
         /** Ids per `IN (...)`, well below SQLite's bound-parameter limit. */
         const val MAX_IDS = 500

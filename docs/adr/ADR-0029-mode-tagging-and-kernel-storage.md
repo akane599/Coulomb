@@ -30,9 +30,17 @@ format, the worker's AIDL and the connection logic, all costly to reverse.
 - This replaces the drafted per-source routes JSON. The batterystats dumps go in-app first, so a
   routes JSON reads `app` whether Shizuku is stopped, in shell mode or root. It would also cost space
   in rows that are kept, and the size margin is 3% (ADR-0021) (R).
-- Kernel sources that were not tried get an explicit status, never silence. `sourceStatusJson` gains
-  `unavailable`: "not tried, because the connection is not root". Any kernel value with status `ok`
-  was read as root by construction (R).
+- Kernel statuses appear exactly where the kernel reads were due: on a heavy snapshot whose live
+  Shizuku server is root. There `sourceStatusJson` always holds all four (S25, S26, S9, S27): `failed`
+  when the root worker could not serve them or the reads were discarded under the rules above,
+  `skipped` when the 4 s cap had run out or, for the kernel files only, when the snapshot had no
+  usable S5 counters to join. Any kernel value with status `ok` was read as root by construction (R).
+- Elsewhere a snapshot holds no kernel key, and `privilegeMode` says why: null for no connection,
+  1 for shell, 3 for another uid. A light snapshot reads no kernel source in any mode.
+  - Amended during the collector work. The draft gave every snapshot an explicit `unavailable` per
+    kernel source. `privilegeMode` already records the same fact, and the four keys would cost about
+    80 bytes on each shell heavy snapshot: 3.2 MB a year at the budget's snapshot rate, against a 3%
+    margin.
 
 ### 2. Worker surface
 
@@ -151,8 +159,13 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
   boot key, never from memory, and never across boots (R).
 - Counters are cumulative, so a retried read is just another reading. Events are unique per
   `(kernelBoot, seq)`.
-- Kernel file reads get the same sleep check as S5. A read during which the CPU slept is not stored
-  (ADR-0018).
+- Kernel file reads get the same sleep check as S5. A read during which the CPU slept is not stored,
+  and its sources read `slept` (ADR-0018). S27 needs no such check: each record carries its own
+  sequence number and time stamp.
+- The kernel files are read only when the snapshot's S5 counters are usable, since their counters
+  end windows beside S5's. The S27 read does not depend on them.
+- Without a kernel boot from the files, the S27 read has no stored cursor to use and starts at the
+  ring's oldest record. Records already stored are ignored on insert, so nothing is counted twice.
 - Order inside a heavy snapshot: S5, then S25, S26 and S9, then S7, then S27, all inside the 4 s cap
   (R).
 
@@ -224,6 +237,9 @@ sources per heavy snapshot, and 20 kernel rows per kept window.
 - Bytes per row: an S27 event takes 69.2, an S9 row 58.7 and a kernel window row 47.1.
 - Root adds 5.5 MB after a year. A 30-day S27 ring would add 10.3 MB, most of it events.
 - The test fails above 6 MB, or when an event row grows past 72 bytes.
+- The kernel status keys need no extra line: the snapshot row is measured with 18 status keys,
+  and the engine writes at most 7 (S5, S6, S7 and the four kernel keys). The snapshot row is now
+  measured with `uptimeMs` and `privilegeMode` set, as every snapshot stores them.
 
 With shell data, the year projects to 115.7 MB at ADR-0015's rates plus 5.5 MB from root. At the
 stress test's history rate (145.5 MB, ADR-0021) plus root's upper bound, the total is about 151 MB,

@@ -4,7 +4,10 @@
 package io.github.akane599.coulomb.core.collect.engine
 
 import io.github.akane599.coulomb.core.collect.snapshot.HistoryRead
+import io.github.akane599.coulomb.core.collect.snapshot.KernelFilesRead
+import io.github.akane599.coulomb.core.collect.snapshot.KernelLogResult
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
+import io.github.akane599.coulomb.core.model.PrivilegeMode
 import java.time.ZoneId
 
 /** The privileged part of a heavy snapshot; `HeavyReader` in the app, a fake in tests. */
@@ -18,6 +21,22 @@ internal interface HeavySource {
         cursorMs: Long,
         timeoutMs: Long,
     ): HistoryRead
+
+    /** The mode of the live Shizuku connection, or null without one (ADR-0029 §1). */
+    fun liveMode(): PrivilegeMode?
+
+    /** Whether the kernel reads can run now: a usable worker on a root server (tier T3). */
+    fun kernelReadable(): Boolean
+
+    /** S25, S26 and S9 in one worker read (ADR-0029 §2). */
+    suspend fun kernelFiles(timeoutMs: Long): KernelFilesRead
+
+    /** S27 after [afterSeq] (-1 for none), which the worker applies only under [bootKey]. */
+    suspend fun kernelLog(
+        bootKey: Long,
+        afterSeq: Long,
+        timeoutMs: Long,
+    ): KernelLogResult
 }
 
 /** The device the collector runs on. */

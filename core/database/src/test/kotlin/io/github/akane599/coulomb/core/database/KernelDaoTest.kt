@@ -168,18 +168,24 @@ class KernelDaoTest : DatabaseTest() {
             assertThat(dao.kernelLog(BOOT_A, null, Long.MAX_VALUE)).isEmpty()
         }
 
-    /** S25 and S26 each keep the row on their own; a read exactly at the cut is kept. */
+    /** S25, S26 and S9 each keep the row on their own; a read exactly at the cut is kept. */
     @Test
-    fun theLogRingLeavesSuspendStatsWakeupReasonsAndReadsAtTheCut() =
+    fun theLogRingLeavesSuspendStatsWakeupReasonsSourcesAndReadsAtTheCut() =
         runTest {
             val suspendOnly = dao.insert(snapshot(elapsedS = 10), kernel = KernelRows(KernelReadEntity.of(0, BOOT_A, suspendStats = STATS)))
             val wakeupOnly = dao.insert(snapshot(elapsedS = 11), kernel = KernelRows(KernelReadEntity.of(0, BOOT_A, lastWakeup = WAKEUP)))
+            val sourcesOnly =
+                dao.insert(
+                    snapshot(elapsedS = 12),
+                    kernel = KernelRows(KernelReadEntity.of(0, BOOT_A), listOf(WakeupSourceStatEntity.of(0, SOURCE_1))),
+                )
             val atCut = dao.insert(snapshot(elapsedS = 20), kernel = rows(BOOT_A, after = 100, last = 110, events = EVENTS))
 
             dao.pruneKernelLog(1, 20 * NS_PER_S)
 
             assertThat(dao.kernelRead(suspendOnly)?.suspendStats).isEqualTo(STATS)
             assertThat(dao.kernelRead(wakeupOnly)?.lastWakeup).isEqualTo(WAKEUP)
+            assertThat(dao.kernelRead(sourcesOnly)?.kernelBoot).isEqualTo(BOOT_A)
             assertThat(dao.kernelRead(atCut)?.kmsgLastSeq).isEqualTo(110)
             assertThat(dao.kernelLog(BOOT_A, null, Long.MAX_VALUE)).hasSize(3)
         }

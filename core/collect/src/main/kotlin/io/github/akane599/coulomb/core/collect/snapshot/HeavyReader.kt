@@ -5,6 +5,8 @@ package io.github.akane599.coulomb.core.collect.snapshot
 
 import io.github.akane599.coulomb.core.collect.engine.HeavySource
 import io.github.akane599.coulomb.core.model.AccessTier
+import io.github.akane599.coulomb.core.model.ManagerStatus
+import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.history.BatteryHistory
 import io.github.akane599.coulomb.core.model.history.HistoryRecord
 import io.github.akane599.coulomb.core.model.parse.Parsed
@@ -40,14 +42,32 @@ internal data class HistoryRead(
 
 /**
  * The privileged part of a heavy snapshot (SPEC 7.2, ADR-0018): S5, with S6 when S5 fails, then
- * the incremental history read. Dumps go in-app first: the background collector should not
- * start the worker process for every snapshot. Never throws for an expected failure.
+ * the incremental history read, and the root kernel reads through [KernelReader] (ADR-0029). Dumps
+ * go in-app first: the background collector should not start the worker process for every
+ * snapshot. Never throws for an expected failure.
  */
 internal class HeavyReader(
     private val access: PrivilegedAccess,
     private val sdkInt: Int,
 ) : HeavySource {
+    private val kernel = KernelReader(access)
+
     override fun available(): Boolean = access.state.value.tier != AccessTier.T0_UNPRIVILEGED
+
+    override fun liveMode(): PrivilegeMode? {
+        val state = access.state.value
+        return state.server?.takeIf { state.manager == ManagerStatus.RUNNING }?.let { PrivilegeMode.ofUid(it.uid) }
+    }
+
+    override fun kernelReadable(): Boolean = access.state.value.tier == AccessTier.T3_ROOT
+
+    override suspend fun kernelFiles(timeoutMs: Long): KernelFilesRead = kernel.files(timeoutMs)
+
+    override suspend fun kernelLog(
+        bootKey: Long,
+        afterSeq: Long,
+        timeoutMs: Long,
+    ): KernelLogResult = kernel.log(bootKey, afterSeq, timeoutMs)
 
     override suspend fun stats(timeoutMs: Long): StatsRead {
         val copy = CappedCopy(MAX_RAW_BYTES)

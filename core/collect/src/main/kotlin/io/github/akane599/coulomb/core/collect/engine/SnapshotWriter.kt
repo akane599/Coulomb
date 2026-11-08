@@ -9,11 +9,17 @@ import io.github.akane599.coulomb.core.analytics.DeviceState
 import io.github.akane599.coulomb.core.analytics.OpenSession
 import io.github.akane599.coulomb.core.analytics.SessionChange
 import io.github.akane599.coulomb.core.analytics.SessionRules
+import io.github.akane599.coulomb.core.collect.snapshot.KernelEnd
+import io.github.akane599.coulomb.core.collect.snapshot.KernelReader
+import io.github.akane599.coulomb.core.collect.snapshot.KernelWindow
+import io.github.akane599.coulomb.core.collect.snapshot.KernelWindowRows
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
+import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.WindowBuilder
 import io.github.akane599.coulomb.core.collect.snapshot.WindowEnd
 import io.github.akane599.coulomb.core.collect.snapshot.WindowSettings
 import io.github.akane599.coulomb.core.collect.snapshot.counterSource
+import io.github.akane599.coulomb.core.collect.snapshot.sourceStatus
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
@@ -299,8 +305,45 @@ internal class SnapshotWriter(
     ) {
         val settings = WindowSettings(context.counterReliable, context.capacityMah, context.ownUid)
         val (window, rows) = WindowBuilder.build(kind, sessionId, chain, settings, detail)
-        windows.insert(window, rows)
+        val kernel = if (detail) kernelRows(chain.first().snapshot, chain.last().snapshot) else null
+        if (kernel == null) {
+            windows.insert(window, rows)
+        } else {
+            windows.insert(
+                window.copy(kernelCoverage = kernel.coverage),
+                rows.copy(
+                    wakes = rows.wakes + kernel.wakes,
+                    stats =
+                        rows.stats + kernel.stats,
+                ),
+            )
+        }
     }
+
+    /**
+     * The window's root kernel rows (ADR-0029 §4), which are detail like the rest. Null when its
+     * start read no kernel source: every kernel source needs the start's reading.
+     */
+    private suspend fun kernelRows(
+        from: SnapshotEntity,
+        to: SnapshotEntity,
+    ): KernelWindowRows? {
+        val start = KernelEnd(from, snapshots.kernelRead(from.id) ?: return null, sourcesIfOk(from))
+        val end = KernelEnd(to, snapshots.kernelRead(to.id), sourcesIfOk(to))
+        val reads = snapshots.kmsgReadsBetween(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
+        val range = KernelWindow.logRange(start, reads, end)
+        val events = range?.let { snapshots.kernelLog(it.kernelBoot, it.afterSeq, it.lastSeq) }.orEmpty()
+        return KernelWindow.build(start, end, range, events)
+    }
+
+    private suspend fun sourcesIfOk(snapshot: SnapshotEntity) =
+        if (sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) ==
+            SourceStatus.OK
+        ) {
+            snapshots.wakeupSources(snapshot.id)
+        } else {
+            emptyList()
+        }
 
     private fun localDate(
         wallMs: Long,

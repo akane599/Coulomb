@@ -15,7 +15,10 @@ internal enum class SourceStatus(
     /** Not read: no route could serve it, or it failed before any data. */
     FAILED("failed"),
 
-    /** Not tried: the snapshot's time budget had run out (ADR-0018). */
+    /**
+     * Not tried: the snapshot's time budget had run out (ADR-0018), or, for the kernel files, the
+     * snapshot had no counters for them to join (ADR-0029).
+     */
     SKIPPED("skipped"),
 
     /**
@@ -36,6 +39,12 @@ internal fun counterSource(statuses: Map<String, SourceStatus>): String? = COUNT
 internal fun counterSource(json: String): String? = COUNTER_SOURCES.firstOrNull { "\"$it\":\"${SourceStatus.OK.text}\"" in json }
 
 private val COUNTER_SOURCES = listOf(HeavyReader.S5, HeavyReader.S6)
+
+/** Source [id]'s status in a stored `sourceStatusJson`, or null when it has none. */
+internal fun sourceStatus(
+    json: String,
+    id: String,
+): SourceStatus? = SourceStatus.entries.firstOrNull { "\"$id\":\"${it.text}\"" in json }
 
 /** `{"S5":"ok","S7":"partial"}`: source ids and statuses only, never values (ADR-0015). */
 internal fun sourceStatusJson(statuses: Map<String, SourceStatus>): String =

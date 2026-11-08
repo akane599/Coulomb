@@ -17,6 +17,7 @@ import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
+import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.history.HistoryChange
@@ -153,7 +154,7 @@ class SizeBudgetTest : DatabaseTest() {
             val aggregates = bytesPer(MEASURED_ROWS) { insertAggregates(MEASURED_ROWS) }
             val snapshots =
                 bytesPer(MEASURED_ROWS) {
-                    repeat(MEASURED_ROWS) { db.snapshotDao().insert(snapshot(elapsedS = it + 1L).copy(sourceStatusJson = HEAVY_STATUS)) }
+                    repeat(MEASURED_ROWS) { db.snapshotDao().insert(heavySnapshot(it + 1L)) }
                 }
             val counters =
                 bytesPer(SNAPSHOTS * (UID_POWER_ROWS + WAKE_ROWS)) {
@@ -209,6 +210,12 @@ class SizeBudgetTest : DatabaseTest() {
             assertThat(events).isLessThan(72.0)
             assertThat(rootMb).isLessThan(ROOT_BUDGET_MB)
         }
+
+    /** A heavy snapshot as the engine stores it, with days of uptime and a Shizuku mode. */
+    private fun heavySnapshot(elapsedS: Long) =
+        snapshot(
+            elapsedS,
+        ).copy(sourceStatusJson = HEAVY_STATUS, uptimeMs = UPTIME_MS + elapsedS * 1_000, privilegeMode = PrivilegeMode.ROOT)
 
     /** S27 reads of mostly resume interrupts, one in ten an abort, each span with one gap. */
     private suspend fun insertKernelLogReads() {
@@ -271,7 +278,10 @@ class SizeBudgetTest : DatabaseTest() {
         val COMPONENTS = listOf("cpu", "screen", "wifi", "mobile_radio", "wakelock")
         val STAT_KEYS = listOf("alarm_wakeups", "job_runtime_ms")
 
-        /** A heavy snapshot's outcome for each source it read. */
+        /**
+         * A heavy snapshot's outcome for each source it read: 18 keys, an upper bound, since the
+         * engine writes at most 7 (S5, S6, S7 and root's S25, S26, S9 and S27).
+         */
         val HEAVY_STATUS =
             (listOf(1, 2) + (4..13) + listOf(15, 16, 17, 19, 21, 22)).joinToString(",", "{", "}") { "\"S$it\":\"ok\"" }
 
@@ -279,6 +289,7 @@ class SizeBudgetTest : DatabaseTest() {
         const val HISTORY_EVENTS_KEPT = 1_400_000.0 // 30 days at about 1,950 stored events an hour
         const val RAW_SAMPLES_KEPT = 14 * 5_000.0
         const val AGGREGATES_KEPT = 180 * 900.0 + 365 * 24.0
+        const val UPTIME_MS = 5 * 86_400_000L
         const val SNAPSHOTS_PER_YEAR = 365 * 110.0 // heavy ones and the light ones that mark something
         const val COUNTER_ROWS_KEPT = 20 * 2_000.0
         const val WINDOWS_PER_YEAR = 365 * 220.0
