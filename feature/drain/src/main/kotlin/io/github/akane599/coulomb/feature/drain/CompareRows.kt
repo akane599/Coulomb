@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.data.WakeBasis
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombSwitchRow
@@ -117,6 +118,12 @@ private fun LazyListScope.componentItems(
     item(key = "components-head", contentType = "list-head") {
         Column(Modifier.padding(top = CoulombSpacing.Space16)) {
             ListCaption(R.string.drain_compare_caption_model, comparison, formats)
+            // As on Drain: a device that reports some power only as "Other" says so.
+            val coarse =
+                listOf(comparison.first, comparison.second).any { period ->
+                    period.report?.components?.any { it.component == PowerComponent.OTHER } == true
+                }
+            if (coarse) Caption(stringResource(R.string.drain_components_coarse))
         }
     }
     rowItems("components", comparison.components, RateUnit.MAH, Lens.COMPONENTS.ordinal, formats, lists) { row, first ->
@@ -130,12 +137,22 @@ private fun LazyListScope.wakeItems(
     formats: Formats,
     lists: CompareLists,
 ) {
+    // A period no wake source covered says so once. Rows need both periods, so the groups then wait.
+    val uncollected =
+        listOf(Slot.FIRST to comparison.first, Slot.SECOND to comparison.second)
+            .filter { (_, period) -> period.report != null && !period.wakesCollected }
+            .map { it.first }
+            .toSet()
     item(key = "wakes-head", contentType = "list-head") {
         Column(Modifier.padding(top = CoulombSpacing.Space16)) {
-            ListCaption(R.string.drain_compare_caption_wakes, comparison, formats)
-            Caption(stringResource(R.string.drain_compare_wake_lower))
+            if (uncollected.isEmpty()) {
+                ListCaption(R.string.drain_compare_caption_wakes, comparison, formats)
+                Caption(stringResource(R.string.drain_compare_wake_lower))
+            }
+            uncollected.forEach { slot -> Note(stringResource(R.string.drain_compare_note_no_wakes, stringResource(slot.label))) }
         }
     }
+    if (uncollected.isNotEmpty()) return
     comparison.wakes.forEachIndexed { index, group ->
         item(key = "group-${group.key}", contentType = "group-head") { GroupTop(group, formats) }
         if (group.comparable && group.firstCounted && group.secondCounted) {
@@ -233,7 +250,10 @@ private fun Caption(text: String) {
     )
 }
 
-/** A period with too little time on battery for the apps' and components' rates (SPEC 6.2). */
+/**
+ * Why a period has no apps' or components' rates: S5 was not collected, or too little time on
+ * battery was counted (SPEC 6.2).
+ */
 @Composable
 private fun BatteryNotes(
     comparison: Comparison,
@@ -241,12 +261,22 @@ private fun BatteryNotes(
 ) = Column(Modifier.padding(top = CoulombSpacing.Space4)) {
     listOf(Slot.FIRST to comparison.first, Slot.SECOND to comparison.second)
         .filter { (_, period) -> period.report != null && !period.ratesCounted }
-        .forEach { (slot, _) ->
-            Note(stringResource(R.string.drain_compare_note_short_battery, stringResource(slot.label), formats.held(MIN_RATE_MS)))
+        .forEach { (slot, period) ->
+            val name = stringResource(slot.label)
+            Note(
+                if (period.statsCollected) {
+                    stringResource(R.string.drain_compare_note_short_battery, name, formats.held(MIN_RATE_MS))
+                } else {
+                    stringResource(R.string.drain_compare_note_no_stats, name)
+                },
+            )
         }
 }
 
-/** A Wakeups group's top: its name, when its counter ran in each period, and why it is not compared. */
+/**
+ * A Wakeups group's top: its name, when its counter ran in each period, and why it is not compared
+ * or what limits it.
+ */
 @Composable
 private fun LazyItemScope.GroupTop(
     group: ComparedWakeGroup,
@@ -279,8 +309,20 @@ private fun LazyItemScope.GroupTop(
                 listOf(
                     Triple(Slot.FIRST, group.firstCounted, group.firstCoverage),
                     Triple(Slot.SECOND, group.secondCounted, group.secondCoverage),
-                ).filter { (_, counted, _) -> !counted }
-                    .forEach { (slot, _, coverage) -> Note(groupNote(slot, coverage, basis, formats)) }
+                ).forEach { (slot, counted, coverage) ->
+                    when {
+                        !counted -> {
+                            Note(groupNote(slot, coverage, basis, formats))
+                        }
+
+                        // Batterystats' rates divide by the time its windows covered; say that it was part.
+                        coverage == Coverage.PARTIAL -> {
+                            Note(
+                                stringResource(R.string.drain_compare_note_partial, stringResource(slot.label)),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -436,20 +478,19 @@ private fun CompareRow(
     val before = row.first ?: 0.0
     val after = row.second ?: 0.0
     val change = after - before
-    val step = formats.amount(abs(change))
-    val direction =
-        when {
-            step == formats.amount(0.0) -> stringResource(R.string.drain_compare_same)
-            change > 0 -> stringResource(R.string.drain_compare_up, stringResource(unit.template, step))
-            else -> stringResource(R.string.drain_compare_down, stringResource(unit.template, step))
-        }
+    val figure = rowFigure(before, after, formats)
     val spoken =
-        stringResource(
-            R.string.drain_compare_row_spoken,
-            name,
-            stringResource(unit.template, formats.amount(before)),
-            stringResource(unit.template, formats.amount(after)),
-            direction,
+        spokenRow(
+            if (detail !=
+                null
+            ) {
+                stringResource(R.string.drain_compare_row_name_tag, name, detail)
+            } else {
+                name
+            },
+            row,
+            unit,
+            formats,
         )
     val clickable = if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier
     Row(
@@ -499,12 +540,53 @@ private fun CompareRow(
             PairedBars(
                 first = fraction(before),
                 second = fraction(after),
-                firstText = formats.amount(before),
-                secondText = formats.amount(after),
+                firstText = figure(before),
+                secondText = figure(after),
                 modifier = Modifier.padding(top = CoulombSpacing.Space8),
             )
         }
     }
+}
+
+/**
+ * How a row prints its rates: as [Formats.amount], or one digit finer where the two round alike
+ * around a change that shows, so the row never reads "0.6, 0.6, up 0.1".
+ */
+private fun rowFigure(
+    before: Double,
+    after: Double,
+    formats: Formats,
+): (Double) -> String {
+    val shows = formats.amount(abs(after - before)) != formats.amount(0.0)
+    return if (shows && formats.amount(before) == formats.amount(after)) formats::fineAmount else formats::amount
+}
+
+/** A row as TalkBack reads it: the name (with its tag), both rates and the direction of the change. */
+@Composable
+private fun spokenRow(
+    name: String,
+    row: ComparedRow,
+    unit: RateUnit,
+    formats: Formats,
+): String {
+    val before = row.first ?: 0.0
+    val after = row.second ?: 0.0
+    val change = after - before
+    val step = formats.amount(abs(change))
+    val figure = rowFigure(before, after, formats)
+    val direction =
+        when {
+            step == formats.amount(0.0) -> stringResource(R.string.drain_compare_same)
+            change > 0 -> stringResource(R.string.drain_compare_up, stringResource(unit.template, step))
+            else -> stringResource(R.string.drain_compare_down, stringResource(unit.template, step))
+        }
+    return stringResource(
+        R.string.drain_compare_row_spoken,
+        name,
+        stringResource(unit.template, figure(before)),
+        stringResource(unit.template, figure(after)),
+        direction,
+    )
 }
 
 private val Hairline = 1.dp

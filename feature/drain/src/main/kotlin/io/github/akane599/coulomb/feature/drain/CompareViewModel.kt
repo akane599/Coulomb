@@ -43,7 +43,9 @@ internal data class CompareUiState(
 
 /**
  * Compare two periods (ADR-0038). The periods open as yesterday and today and survive process
- * death. Each report is read again after every heavy snapshot, as on Drain; nothing here polls.
+ * death; a restored period outside the days still kept falls back to its default. Each report is
+ * read again after every heavy snapshot, as on Drain; nothing here polls. The last day a period may
+ * end on is read again with each report, so the pickers move on past midnight.
  */
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -54,21 +56,22 @@ public class CompareViewModel
         private val icons: AppIcons,
         private val settings: SettingsStore,
         private val saved: SavedStateHandle,
-        zone: ZoneSource,
+        private val zone: ZoneSource,
     ) : ViewModel() {
-        private val today = LocalDate.now(zone.zone())
         private val attempt = MutableStateFlow(0)
         private val periods =
-            MutableStateFlow(
-                restore(FIRST) ?: today.minusDays(1).let { DrainSpan.Days(it, it) },
-            ).let { first -> first to MutableStateFlow(restore(SECOND) ?: DrainSpan.Days(today, today)) }
+            today().let { today ->
+                MutableStateFlow(restore(FIRST, today) ?: today.minusDays(1).let { DrainSpan.Days(it, it) }) to
+                    MutableStateFlow(restore(SECOND, today) ?: DrainSpan.Days(today, today))
+            }
 
         internal val state: StateFlow<CompareUiState> =
             combine(attempt, periods.first, periods.second) { _, first, second -> first to second }
                 .flatMapLatest { (first, second) ->
-                    val loading = CompareUiState(first, second, today)
+                    val loading = CompareUiState(first, second, today())
                     combine(drains.report(first), drains.report(second), settings.settings) { a, b, prefs ->
                         loading.copy(
+                            today = today(),
                             comparison = compare(Period(first, a), Period(second, b), prefs.showSystemApps),
                             includeSystem = prefs.showSystemApps,
                         )
@@ -77,7 +80,7 @@ public class CompareViewModel
                 }.stateIn(
                     viewModelScope,
                     SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-                    CompareUiState(periods.first.value, periods.second.value, today),
+                    CompareUiState(periods.first.value, periods.second.value, today()),
                 )
 
         internal fun chooseFirst(days: DrainSpan.Days) = choose(FIRST, days, periods.first)
@@ -108,9 +111,16 @@ public class CompareViewModel
             into.value = days
         }
 
-        private fun restore(key: String): DrainSpan.Days? {
+        private fun today(): LocalDate = LocalDate.now(zone.zone())
+
+        /** A saved period, if it still lies within the days the pickers offer. */
+        private fun restore(
+            key: String,
+            today: LocalDate,
+        ): DrainSpan.Days? {
             val (first, last) = saved.get<LongArray>(key)?.takeIf { it.size == 2 }?.map(LocalDate::ofEpochDay) ?: return null
-            return if (last.isBefore(first)) null else DrainSpan.Days(first, last)
+            val earliest = today.minusDays(DrainSpan.CUSTOM_DAYS - 1)
+            return if (last.isBefore(first) || first.isBefore(earliest) || last.isAfter(today)) null else DrainSpan.Days(first, last)
         }
 
         private companion object {

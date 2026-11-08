@@ -218,8 +218,9 @@ private fun PeriodPicker(
 }
 
 /**
- * The figure strip: each period's measured drain per hour, then the change between them. Under the
- * strip, a period with no records says there is nothing to compare.
+ * The figure strip: each period's measured drain per hour, then the change between them when both
+ * were measured by the counter. Under the strip, a period with no records says so, and an estimated
+ * period says why there is no change.
  */
 @Composable
 private fun Totals(
@@ -239,9 +240,13 @@ private fun Totals(
     listOf(Slot.FIRST to comparison.first, Slot.SECOND to comparison.second)
         .filter { (_, period) -> period.report == null }
         .forEach { (slot, _) -> Note(stringResource(R.string.drain_compare_note_no_records, stringResource(slot.label))) }
+    if (comparison.changeEstimated) Note(stringResource(R.string.drain_compare_note_estimated))
 }
 
-/** A period's measured drain per hour (Derived), with its time on battery; or why it has none. */
+/**
+ * A period's drain per hour (Derived; Estimated from the level, as a range), with the time it was
+ * counted over; or why it has none.
+ */
 @Composable
 private fun PeriodFigure(
     period: Period,
@@ -257,20 +262,49 @@ private fun PeriodFigure(
 
         perHour == null -> {
             val (text, caption) =
-                if (period.tooShort) {
-                    R.string.drain_compare_too_short to stringResource(R.string.drain_compare_under, formats.held(MIN_RATE_MS))
-                } else {
-                    R.string.drain_compare_not_measured to stringResource(R.string.drain_compare_not_measured_caption)
+                when {
+                    period.tooShort -> {
+                        R.string.drain_compare_too_short to stringResource(R.string.drain_compare_under, formats.held(MIN_RATE_MS))
+                    }
+
+                    period.noDrain -> {
+                        R.string.drain_compare_no_drain to stringResource(R.string.drain_compare_no_drain_caption)
+                    }
+
+                    else -> {
+                        R.string.drain_compare_not_measured to stringResource(R.string.drain_compare_not_measured_caption)
+                    }
                 }
             CoulombFigure(label, caption) { Missing(stringResource(text)) }
         }
 
         else -> {
+            val onBattery = formats.held(report.onBatteryMs)
             val caption =
-                stringResource(R.string.drain_compare_on_battery, formats.held(report.onBatteryMs), formats.held(period.screenOnMs))
+                when {
+                    // Without S5 there is no time on battery; the counter's windows give the time instead.
+                    !period.statsCollected -> {
+                        stringResource(R.string.drain_compare_measured_over, formats.held(report.measuredMs))
+                    }
+
+                    period.estimated -> {
+                        stringResource(
+                            R.string.drain_compare_on_battery_estimated,
+                            onBattery,
+                            formats.held(period.screenOnMs),
+                        )
+                    }
+
+                    else -> {
+                        stringResource(R.string.drain_compare_on_battery, onBattery, formats.held(period.screenOnMs))
+                    }
+                }
+            val range = period.drainRangePerHour
             CoulombFigure(label, caption) {
-                StripFigure(rate(RateUnit.MAH, formats.amount(perHour)))
-                ProvenanceMark(Provenance.DERIVED)
+                val number =
+                    range?.let { (low, high) -> formats.range(formats.amount(low), formats.amount(high)) } ?: formats.amount(perHour)
+                StripFigure(rate(RateUnit.MAH, number))
+                ProvenanceMark(if (period.estimated) Provenance.ESTIMATED else Provenance.DERIVED)
             }
         }
     }

@@ -41,6 +41,34 @@ internal data class Period(
             return mah / (ms / MS_PER_HOUR)
         }
 
+    /** The drain was estimated from the level, not read from the counter (ADR-0018). */
+    val estimated: Boolean get() = report?.drains?.estimated == true
+
+    /**
+     * An Estimated [drainPerHour] as the range it stands for, low to high per hour (ADR-0036 §17);
+     * null when it is Measured or how far it can be off is unknown.
+     */
+    val drainRangePerHour: Pair<Double, Double>?
+        get() {
+            val drains = report?.drains ?: return null
+            if (drainPerHour == null || !drains.estimated || drains.levelEstimate == null) return null
+            val hours = report.measuredMs / MS_PER_HOUR
+            val low = drains.measuredLowMah ?: return null
+            val high = drains.measuredHighMah ?: return null
+            return low / hours to high / hours
+        }
+
+    /** The counter was read and showed no charge used. */
+    val noDrain: Boolean get() = !tooShort && (report?.drains?.measuredMah ?: 1.0) <= 0
+
+    /** S5 was read at both ends of some window, so the period has app and component figures. */
+    val statsCollected: Boolean get() = report != null && report.wakeCoverage.batteryStats != Coverage.NONE
+
+    /** Some wake source covered part of the period. */
+    val wakesCollected: Boolean
+        get() =
+            report?.wakeCoverage?.let { listOf(it.batteryStats, it.wakeupSources, it.kernelLog).any { c -> c != Coverage.NONE } } == true
+
     /** The screen-on part of the time on battery. */
     val screenOnMs: Long get() = report?.let { (it.onBatteryMs - it.screenOffOnBatteryMs).coerceAtLeast(0) } ?: 0
 
@@ -164,20 +192,25 @@ internal data class Comparison(
     /** Both periods ran long enough on battery for the apps' and components' rates. */
     val ratesCounted: Boolean get() = first.ratesCounted && second.ratesCounted
 
-    /** The second period's drain rate less the first's; null unless both are known. */
+    /** Both periods have a drain rate, and at least one was estimated, so the change is not shown (ADR-0038 §6). */
+    val changeEstimated: Boolean
+        get() = first.drainPerHour != null && second.drainPerHour != null && (first.estimated || second.estimated)
+
+    /** The second period's drain rate less the first's; null unless both were measured by the counter. */
     val drainDifference: Double?
         get() {
+            if (changeEstimated) return null
             val before = first.drainPerHour ?: return null
             val after = second.drainPerHour ?: return null
             return after - before
         }
 
-    /** The second period's drain rate over the first's, less one; null unless both are known. */
+    /** The second period's drain rate over the first's, less one; null unless both were measured by the counter. */
     val drainChange: Double?
         get() {
+            val difference = drainDifference ?: return null
             val before = first.drainPerHour ?: return null
-            val after = second.drainPerHour ?: return null
-            return if (before > 0) after / before - 1 else null
+            return if (before > 0) difference / before else null
         }
 }
 

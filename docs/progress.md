@@ -72,9 +72,10 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     snapshots, so windows that span the upgrade read high for up to 30 days. Clearing the app's
     data on the phone removes them; that is the owner's call;
   - gate runs so far: critique and audit (`docs/design-gates/2026-11-08-*-drain.md`); Compare was the
-    critique's open item and has landed, reviewed independently (ADR-0038 Consequences).
+    critique's open item and has landed, reviewed independently (ADR-0038 Consequences). Harden and
+    clarify passed with every finding fixed (`docs/design-gates/2026-11-09-*-drain.md`).
   - Open before the Drain gates close:
-    - harden, clarify, animate, adapt, optimize and polish;
+    - animate, adapt, optimize and polish;
     - on the API 37 emulator: the rail's insets with 3-button navigation in landscape, and TalkBack
       on the opened lists.
 

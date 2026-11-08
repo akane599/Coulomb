@@ -112,6 +112,9 @@ public class Formats(
     /** An amount without its unit, such as a rate: whole, or one decimal under 10 ("36", "4.5"). */
     public fun amount(value: Double): String = if (abs(value) < SMALL_MAH) oneDecimal.format(value) else integer.format(value.roundToLong())
 
+    /** [amount] one digit finer, where two amounts round alike: one decimal, or two under 10 ("21.4", "0.56"). */
+    public fun fineAmount(value: Double): String = if (abs(value) < SMALL_MAH) twoDecimals.format(value) else oneDecimal.format(value)
+
     /** [amount] of a change, with a true sign: "+24", "−3.5". A change that rounds to zero takes none. */
     public fun signedAmount(value: Double): String {
         val size = amount(abs(value))

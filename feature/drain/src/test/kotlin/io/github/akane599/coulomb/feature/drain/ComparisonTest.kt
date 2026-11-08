@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.LevelEstimate
 import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.data.WakeBasis
 import io.github.akane599.coulomb.core.data.WakeCoverage
@@ -161,6 +162,45 @@ class ComparisonTest {
         assertEquals(20.0, period(today, onBatteryMs = 15 * MINUTE, measuredMah = 5.0).drainPerHour!!, 1e-9)
     }
 
+    /** A drain estimated from the level is a range, and the change waits for two measured periods (ADR-0038 §6). */
+    @Test
+    fun anEstimatedPeriodIsARangeAndGivesNoChange() {
+        val estimated =
+            period(today, measuredMah = 200.0, provenance = Provenance.ESTIMATED, estimate = LevelEstimate(50.0, 1, withCounter = false))
+        val (low, high) = estimated.drainRangePerHour!!
+        assertEquals(75.0, low, 1e-9)
+        assertEquals(125.0, high, 1e-9)
+        assertNull(period(today).drainRangePerHour)
+
+        val comparison = compare(period(yesterday), estimated, includeSystem = false)
+        assertTrue(comparison.changeEstimated)
+        assertNull(comparison.drainDifference)
+        assertNull(comparison.drainChange)
+
+        val measured = compare(period(yesterday), period(today, measuredMah = 300.0), includeSystem = false)
+        assertFalse(measured.changeEstimated)
+        assertEquals(50.0, measured.drainDifference!!, 1e-9)
+        assertEquals(0.5, measured.drainChange!!, 1e-9)
+    }
+
+    /** Why a period has no figure: no drain on the counter, no counter, or S5 and the wake sources not read. */
+    @Test
+    fun aPeriodSaysWhatItLacks() {
+        assertTrue(period(today, measuredMah = 0.0).noDrain)
+        assertFalse(period(today).noDrain)
+        assertFalse(period(today, onBatteryMs = 5 * MINUTE, measuredMah = 0.0).noDrain)
+
+        val none = WakeCoverage(Coverage.NONE, Coverage.NONE, Coverage.NONE)
+        val unread = period(today, onBatteryMs = 0, measuredMs = 2 * HOUR, coverage = none)
+        assertFalse(unread.statsCollected)
+        assertFalse(unread.wakesCollected)
+        assertFalse(unread.ratesCounted)
+        // The counter still gives a rate over its own windows.
+        assertEquals(100.0, unread.drainPerHour!!, 1e-9)
+        assertTrue(period(today).statsCollected)
+        assertTrue(period(today, coverage = WakeCoverage(Coverage.NONE, Coverage.PARTIAL, Coverage.NONE)).wakesCollected)
+    }
+
     @Test
     fun rootGroupsArePerHourOfTheWholePeriodAndNeedItWhole() {
         val root = WakeCoverage(Coverage.WHOLE, Coverage.WHOLE, Coverage.WHOLE)
@@ -270,6 +310,8 @@ class ComparisonTest {
         alarms: List<AlarmEntry> = emptyList(),
         durationMs: Long = onBatteryMs,
         coverage: WakeCoverage = SHELL_COVERAGE,
+        provenance: Provenance = Provenance.MEASURED,
+        estimate: LevelEstimate? = null,
     ) = Period(
         days,
         DrainReport(
@@ -279,11 +321,12 @@ class ComparisonTest {
                     fromWallMs = 0,
                     toWallMs = durationMs,
                     measuredMah = measuredMah,
-                    measuredProvenance = Provenance.MEASURED,
+                    measuredProvenance = provenance,
                     modeledMah = apps.sumOf { it.mah } + deviceMah + otherMah,
                     apps = apps,
                     otherMah = otherMah,
                     deviceMah = deviceMah,
+                    levelEstimate = estimate,
                 ),
             startLevel = 90,
             endLevel = 60,

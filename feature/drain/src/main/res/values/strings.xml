@@ -14,7 +14,7 @@
     <string name="drain_more">More</string>
     <string name="drain_last_night">Last night</string>
 
-    <string name="drain_sheet_title">More windows</string>
+    <string name="drain_sheet_title">More options</string>
     <string name="drain_last_night_detail">The longest screen-off stretch of an hour or more in the last day</string>
     <string name="drain_custom_range">Custom range</string>
     <!-- %1$d: how many days back a range may start. -->
@@ -145,7 +145,7 @@
     <string name="drain_wake_none">None recorded in this window.</string>
     <string name="drain_detail_separator">%1$s · %2$s</string>
 
-    <string name="drain_empty_since_unplugged">Per-app drain appears with the first snapshot after the unplug.</string>
+    <string name="drain_empty_since_unplugged">Per-app drain appears with the first full reading after the unplug.</string>
     <string name="drain_empty_today">Nothing is stored for today yet.</string>
     <string name="drain_empty_last_24h">Nothing is stored for the last 24 hours yet.</string>
     <string name="drain_empty_last_night">No screen-off stretch of an hour or more in the last day.</string>
@@ -196,7 +196,7 @@
 
     <!-- Compare two periods (ADR-0038). -->
     <string name="drain_compare_title">Compare two periods</string>
-    <string name="drain_compare_detail">Two ranges of days side by side, per hour of use</string>
+    <string name="drain_compare_detail">Two ranges of days side by side, per hour on battery</string>
     <string name="drain_compare_first">First period</string>
     <string name="drain_compare_second">Second period</string>
     <string name="drain_compare_choose_first">Choose the first period</string>
@@ -216,21 +216,33 @@
     <string name="drain_compare_under">Under %1$s on battery</string>
     <string name="drain_compare_not_measured">Not measured</string>
     <string name="drain_compare_not_measured_caption">No battery counter reading</string>
+    <string name="drain_compare_no_drain">No drain measured</string>
+    <string name="drain_compare_no_drain_caption">The counter shows no charge used</string>
+    <!-- %1$s: time on battery; %2$s: the screen-on part of it. -->
+    <string name="drain_compare_on_battery_estimated">From the level; %1$s on battery, screen on %2$s</string>
+    <!-- %1$s: how long the measured windows ran. -->
+    <string name="drain_compare_measured_over">Measured over %1$s</string>
     <string name="drain_compare_caption_model">Per hour on battery, from Android’s power model. Largest change first.</string>
     <string name="drain_compare_caption_wakes">Per hour of the time each group was counted. Largest change first.</string>
     <!-- TalkBack reads a row as one sentence. %1$s: its name; %2$s, %3$s: the two rates; %4$s: the change. -->
     <string name="drain_compare_row_spoken">%1$s: %2$s in the first period, %3$s in the second, %4$s.</string>
+    <!-- A row with a tag under its name. %1$s: the name; %2$s: the tag. -->
+    <string name="drain_compare_row_name_tag">%1$s, %2$s</string>
     <string name="drain_compare_up">up %1$s</string>
     <string name="drain_compare_down">down %1$s</string>
     <string name="drain_compare_same">no change</string>
     <!-- Notes about one period. %1$s: First period or Second period. -->
-    <string name="drain_compare_note_no_records">%1$s: no records yet, so there is nothing to compare.</string>
+    <string name="drain_compare_note_no_records">%1$s: no records for these days. Choose other days to compare.</string>
     <!-- %2$s: the shortest time a rate needs. -->
-    <string name="drain_compare_note_short_battery">%1$s: under %2$s on battery, too little for rates.</string>
+    <string name="drain_compare_note_short_battery">%1$s: under %2$s on battery, too little for rates. Choose a longer period.</string>
+    <string name="drain_compare_note_no_stats">%1$s: Android’s battery stats were not collected, so there are no app or component rates.</string>
+    <string name="drain_compare_note_estimated">The change is shown only when both periods were measured by the battery counter.</string>
+    <string name="drain_compare_note_partial">%1$s: collected for only part of the period; these rates are per hour of that part.</string>
+    <string name="drain_compare_note_no_wakes">%1$s: wakeups were not collected.</string>
     <string name="drain_compare_note_not_collected">%1$s: not collected.</string>
     <string name="drain_compare_note_short_count">%1$s: counted under %2$s, too little for a rate.</string>
     <string name="drain_compare_note_part_root">%1$s: collected for only part of the period, so not compared.</string>
-    <string name="drain_compare_wake_lower">Each window keeps its longest records, so a figure may be a little low.</string>
+    <string name="drain_compare_wake_lower">Coulomb keeps only the largest records of each stretch, so a small one may be missing.</string>
     <string name="drain_compare_sources_differ">Read from different sources in the two periods, so not compared.</string>
     <string name="drain_compare_none">None in either period.</string>
     <!-- When a group was counted in each period. %1$s, %2$s: the first and second period's time. -->

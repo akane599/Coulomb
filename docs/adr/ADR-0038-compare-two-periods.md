@@ -76,6 +76,17 @@ column.
    or Android's power model.
    - R: a rate is arithmetic on a Measured, Estimated or Modeled value. Now's rates are Derived
      for the same reason (`StateRate`).
+   - A period whose drain was estimated from the level shows a range per hour with the Estimated
+     mark, as Drain shows its total (ADR-0036 §17), and its caption starts "From the level". The
+     change between the periods shows only when both were measured by the counter; otherwise a
+     note says why. R: a difference of a range and a reading would look exact and is not.
+   - A period without S5 has no time on battery. Its strip caption gives the time the counter's
+     windows ran instead, and the Apps and Components lenses say that S5 was not collected rather
+     than that the period was too short.
+   - Two rates that round alike around a change that shows take one more digit, so the row never
+     reads "0.6, 0.6, up 0.1". A batterystats group collected for part of a period says that its
+     rates are per hour of that part. A period no wake source covered says so once, and the groups
+     wait, since rows need both periods.
 7. **Compare is its own screen below Drain**, opened from the More sheet. It has the two periods at
    the top, the totals, then the lenses Apps · Components · Wakeups.
    - R: a comparison is its own task with its own inputs. Folding it into Drain's window would put

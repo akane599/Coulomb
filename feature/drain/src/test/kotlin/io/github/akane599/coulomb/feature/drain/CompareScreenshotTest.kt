@@ -20,8 +20,10 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.akane599.coulomb.core.data.AlarmEntry
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.LevelEstimate
 import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import org.junit.Rule
@@ -102,6 +104,29 @@ class CompareScreenshotTest {
         shoot("too-short", compared(second = short))
     }
 
+    /** Today estimated from the level: a range per hour, and no change against a measured day. */
+    @Test
+    fun secondPeriodEstimated() {
+        val estimated =
+            today().let {
+                it.copy(
+                    drains =
+                        it.drains.copy(
+                            measuredProvenance = Provenance.ESTIMATED,
+                            levelEstimate = LevelEstimate(spreadMah = 50.0, stretches = 1, withCounter = false),
+                        ),
+                )
+            }
+        shoot("estimated", compared(second = estimated))
+    }
+
+    /** Today without S5 or any wake source: the counter's rate stands, and each lens says what is missing. */
+    @Test
+    fun secondPeriodWithoutStats() = shoot("no-stats", compared(second = unread()))
+
+    @Test
+    fun wakeupsWithoutStats() = shoot("wakeups-no-stats", compared(second = unread()), lens = Lens.WAKEUPS)
+
     @Test
     fun loading() = shoot("loading", state(comparison = null))
 
@@ -115,6 +140,15 @@ class CompareScreenshotTest {
                 // unrounded rates (11.6), not from the shown ones.
                 "Wayline: 21\u00A0mAh/h in the first period, 32\u00A0mAh/h in the second, up 12\u00A0mAh/h.",
             ).assertExists()
+    }
+
+    /** A row with a tag reads the tag after the name. */
+    @Test
+    fun aTaggedRowReadsItsTag() {
+        shoot("spoken-tag", compared(), lens = Lens.WAKEUPS, capture = false)
+        compose
+            .onNodeWithContentDescription("Wayline, LocationUpdates: ", substring = true)
+            .assertExists()
     }
 
     @Suppress("LongParameterList") // Test variants.
@@ -155,6 +189,18 @@ private fun compared(
 
 /** Today so far: the lab's window (5 h 12 min on battery, 1,204 mAh measured). */
 private fun today(): DrainReport = report(TODAY)
+
+/** Today with the counter read but neither S5 nor a wake source: no time on battery, apps or wakes. */
+private fun unread(): DrainReport =
+    today().copy(
+        drains = today().drains.copy(modeledMah = 0.0, apps = emptyList(), otherMah = 0.0, deviceMah = 0.0),
+        onBatteryMs = 0,
+        screenOffOnBatteryMs = 0,
+        wakes = emptyList(),
+        alarms = emptyList(),
+        components = emptyList(),
+        wakeCoverage = WakeCoverage(Coverage.NONE, Coverage.NONE, Coverage.NONE),
+    )
 
 /**
  * Yesterday: 14 h on battery, 10 of them with the screen off, at a lower drain. Wayline ran less and
