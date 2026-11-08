@@ -137,6 +137,7 @@ class DesignTokensTest {
                 "label" to CoulombTypography::label,
                 "label-button" to CoulombTypography::labelButton,
                 "caption" to CoulombTypography::caption,
+                "caption-emphasis" to CoulombTypography::captionEmphasis,
                 "caption-nav" to CoulombTypography::captionNav,
                 "mono" to CoulombTypography::mono,
             )

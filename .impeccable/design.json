@@ -804,6 +804,10 @@
         "displayName": "Caption",
         "purpose": "Units beside small figures, row details, share percentages, chart text and captions, footnotes."
       },
+      "caption-emphasis": {
+        "displayName": "Caption emphasis",
+        "purpose": "The emphasised figure in chart text and chart keys."
+      },
       "caption-nav": {
         "displayName": "Caption nav",
         "purpose": "Navigation bar labels."

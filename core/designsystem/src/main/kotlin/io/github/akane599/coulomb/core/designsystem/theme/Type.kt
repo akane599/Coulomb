@@ -95,6 +95,8 @@ public data class CoulombTypography(
     val labelButton: TextStyle = role(13, 18, 600, tracking = 0.01),
     /** Units, provenance, footnotes, secondary notes. */
     val caption: TextStyle = role(12, 16, 400, lineBreak = LineBreak.Paragraph),
+    /** The emphasised figure in chart text and chart keys. */
+    val captionEmphasis: TextStyle = role(12, 16, 600),
     /** Navigation bar labels. */
     val captionNav: TextStyle = role(12, 16, 500),
     /** Wakelock tags, kernel names, commands. */

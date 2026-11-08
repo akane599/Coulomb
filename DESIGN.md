@@ -116,6 +116,11 @@ typography:
     fontSize: "12px"
     fontWeight: 400
     lineHeight: "16px"
+  caption-emphasis:
+    fontFamily: "Hanken Grotesk"
+    fontSize: "12px"
+    fontWeight: 600
+    lineHeight: "16px"
   caption-nav:
     fontFamily: "Hanken Grotesk"
     fontSize: "12px"
@@ -449,7 +454,8 @@ Turkish (SPEC 11.3).
   list-group headings, the stepper label. Selected chips, choices and tabs stay at 500. **Label button**
   (600) for buttons and text buttons.
 - **Caption** (400, 12/16): units beside small figures, row details, share percentages, chart captions,
-  footnotes, the window note. **Caption nav** (500) for navigation bar labels, the current one included.
+  footnotes, the window note. **Caption emphasis** (600) for the emphasised figure in chart text and
+  chart keys. **Caption nav** (500) for navigation bar labels, the current one included.
 - **Mono** (400, 13/18): wakelock tags, package names, kernel names, commands.
 
 ### Named Rules
