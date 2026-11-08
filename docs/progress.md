@@ -7,9 +7,15 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the phone night (ADR-0019).
 
 - Working rules from 2026-11-08 (ADR-0027):
-  - work the spec calls optional is listed in `BACKLOG.md` (four items) and not built;
+  - work the spec calls optional is listed in `BACKLOG.md` and not built;
   - second opinions are only for hard or costly-to-reverse decisions; other choices get a one-line ADR
     reason.
+- Shell and root Shizuku (owner decision 2026-11-08, ADR-0028):
+  - both modes are full; root adds four kernel sources (S9, S25 to S27);
+  - mode switches need no restart, and data is tagged with its mode;
+  - tests use the thedjchi fork, not official Shizuku.
+  - The schema and connection design waits for its second opinion (ADR-0029). The mode-switch test on
+    the API 37 emulator joins the P4 gate.
 
 ## P3 Design lab (gate passed 2026-11-07)
 

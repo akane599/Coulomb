@@ -1,6 +1,6 @@
 # ADR-0027: Optional work waits; second opinions only for big decisions
 
-- Status: accepted (edits SPEC 0.6)
+- Status: accepted (edits SPEC 0.6); §1's T3 reading superseded by ADR-0028
 - Date: 2026-11-08
 - Phase: P4
 
@@ -21,6 +21,8 @@ On 2026-11-08 the owner set two working rules, effective immediately.
 - "T3 is optional" (SPEC 4.1) says the user does not need root. The backlog reads it as deferrable work
   too: root cannot be tested on the owner's phone, and no core screen may require it. Tier detection
   and capability states stay, because SPEC 1.2 requires them.
+- Superseded the same day by ADR-0028: the owner put four root kernel sources in scope. Only the libsu
+  layer, CPU frequency residency and thermal zones stay in the backlog.
 
 ### 2. Second opinions only for big decisions
 

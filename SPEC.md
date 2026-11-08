@@ -225,7 +225,7 @@ Source: [Android 17 release notes](https://developer.android.google.cn/about/ver
 
 ### 3.5 Known ecosystem issue: Shizuku on Android 17
 
-Official Shizuku 13.6.0 fails to authorize new apps on Android 17, and `bindUserService` can hang without a callback; apps authorized on Android 16 keep working. Community forks such as Shizuku+, thedjchi/Shizuku, Shevery and Nightzuku work ([issue #2180](https://github.com/RikkaApps/Shizuku/issues/2180)). Coulomb MUST work with any manager that implements the Shizuku API, detect the hang with a timeout and explain the fix in onboarding (section 4.5).
+Official Shizuku 13.6.0 fails to authorize new apps on Android 17, and `bindUserService` can hang without a callback; apps authorized on Android 16 keep working. Community forks such as Shizuku+, thedjchi/Shizuku, Shevery and Nightzuku work ([issue #2180](https://github.com/RikkaApps/Shizuku/issues/2180)). Coulomb MUST work with any manager that implements the Shizuku API, detect the hang with a timeout and explain the fix in onboarding (section 4.5). Coulomb is tested with forks (thedjchi/Shizuku on the emulator) and Sui, never against official Shizuku on Android 17; onboarding and the Privileges screen say once, in a quiet line, that Android 17 needs a fork or Sui (ADR-0028).
 
 ### 3.6 Hidden APIs
 
@@ -246,13 +246,13 @@ Shell- and root-level sources reach Coulomb only through the worker; if the work
 | T0 Unprivileged | Normal and runtime permissions; Usage access toggled by the user | `ACTION_BATTERY_CHANGED`, `BatteryManager` counters, `UsageStatsManager`, `NetworkStatsManager`, `PowerManager` states, thermal status, own-UID `HealthStats`, power monitors where exposed | Yes | Yes |
 | T1 Durable grants | `pm grant` / `appops set` run once through Shizuku, or by the user over ADB | `BATTERY_STATS`: health, cycle, manufacture and first-use properties, all-UID `HealthStats`. `DUMP`: service dumps. `PACKAGE_USAGE_STATS` permission and `GET_USAGE_STATS` appop: batterystats dumps. `INTERACT_ACROSS_USERS`: batterystats `--proto` and `-c` in Coulomb's own process (ADR-0010). `WRITE_SECURE_SETTINGS` only when the Action Center is enabled | Yes (re-verified at every start) | Yes |
 | T2 Privileged worker | Shizuku or Sui UserService running as shell (uid 2000) or root | `dumpsys` with structured flags, `IBatteryStats` binder calls, kernel wakelock dumps, alarm, Doze, power and job dumps, shell-readable sysfs, reversible `cmd`/`appops`/`settings` writes | No: needs Shizuku running | No |
-| T3 Root | Shizuku started as root, Sui, or another root manager | Full `/sys/class/power_supply`, wakeup sources, CPU frequency residency, thermal zones (charge control is out of v1 scope, ADR-0007) | No | Depends on root manager |
+| T3 Root | Shizuku started as root, or Sui (ADR-0028) | Kernel data only: suspend statistics (S25), last wakeup reason (S26), raw wakeup source counters (S9), kernel log wakeup records (S27), and `/sys/class/power_supply` where shell cannot read it (S23). Charge control is out of v1 scope (ADR-0007) | No | No |
 
 Rules:
 
 - Every feature declares its minimum tier. The UI reads the Capability Matrix (4.6) to show, degrade or hide it.
 - T1 grants are re-verified at each app start and after every OS update (fingerprint change). A missing grant opens a one-tap repair through Shizuku.
-- T3 is optional. No core screen may require root.
+- Two modes, one product (ADR-0028). Shizuku started over ADB (uid 2000) is the full product: every screen and feature works completely there. Root (uid 0) only adds kernel data, shown as extra detail inside existing screens; no screen or feature may need it.
 
 ### 4.2 Shizuku client
 
@@ -260,6 +260,7 @@ Rules:
 - Call `Sui.init(packageName)` first so Sui-based root setups work without the Shizuku app (verify the current Sui API artifact).
 - Listen to `addBinderReceivedListenerSticky`, `addBinderDeadListener` and `addRequestPermissionResultListener`. All Shizuku state flows into one `PrivilegeState` `StateFlow`.
 - Detect the server: `Shizuku.getVersion()`, `getUid()` (0 = root, 2000 = shell) and the manager package. Store them for diagnostics; never branch on a fork's name.
+- Re-read the uid on every binder received and every worker bind; that uid is the mode. A dead binder, a restart or a switch between shell and root needs no app restart, and root-only sources open and close with the mode (ADR-0028).
 
 ### 4.3 Privileged worker (UserService)
 
@@ -298,6 +299,8 @@ when Coulomb dumps in its own process.
 | Permission denied | Request result denied | Inline explanation | Retry button; ADB fallback |
 | Request or bind hangs (Android 17, official 13.6.0) | No callback within 5 s | "Your Shizuku version can't authorize apps on Android 17" | Suggest a compatible fork or Sui; T1 grants via ADB keep Coulomb working |
 | Binder died mid-dump | `DeadObjectException`, truncated stream | Nothing; snapshot marked partial | Retry once on next trigger |
+| Shizuku not ready after boot | No binder yet, inside the boot grace (ADR-0029) | Nothing | Re-check at growing intervals; the "stopped" row only after the grace |
+| Mode changed (root and shell) | New binder with a different uid | Root-only detail shows "not collected" from the switch on, never zero | Re-probe the kernel capabilities; nothing for the user to do (ADR-0028) |
 | SELinux denial on sysfs | `EACCES` in worker | Feature shows "needs root" | None at T2 |
 | Grants revoked after OS update | Fingerprint changed, `checkSelfPermission` fails | "Re-enable deep stats" card | One-tap repair |
 
@@ -319,7 +322,7 @@ Every number in Coulomb comes from one of the sources below; the agent MUST NOT 
 | S6 | `dumpsys batterystats --checkin` | T2 | Fallback when proto is missing | Same fields as S5, CSV form |
 | S7 | `dumpsys batterystats -c --history-start <cursor>` (checkin form, ADR-0014) | T2 | After each heavy snapshot, incremental from the last `NEXT:` cursor | Event timeline: screen, plug, top app, wakelock, job, sync, alarm, GPS, radios, Doze, wakeup reasons |
 | S8 | Kernel wakelock dump (`dumpsys suspend_control_internal`, probe) | T2 | Heavy snapshots | Kernel wakelocks and suspend stats without root |
-| S9 | `/sys/class/wakeup/*`, wakeup sources | T3 | Heavy snapshots | Kernel wakelock fallback with full detail |
+| S9 | `/sys/class/wakeup/wakeupN/*`, wakeup sources | T3 | Heavy snapshots | Raw counters per kernel wakeup source: active, event, wakeup and expire counts; active, total, max and prevent-suspend times (ADR-0028) |
 | S10 | `dumpsys alarm` | T2 | Heavy snapshots | Per-app wakeup alarm counts, pending alarms, top alarms |
 | S11 | `dumpsys deviceidle` | T2 | Screen off/on and Doze screen | Doze state, whitelist, active `device_idle_constants` |
 | S12 | `dumpsys power` | T2 | On demand (live wakelocks view) | Wakelocks held now, battery saver state |
@@ -335,6 +338,9 @@ Every number in Coulomb comes from one of the sources below; the agent MUST NOT 
 | S22 | Samsung settings keys (battery protection and related) | T2 | Snapshots | Protection mode; keys discovered by probe, never hardcoded |
 | S23 | `/sys/class/power_supply/battery/*` | T2 if readable, else T3 | Daily and Health screen | Cycle count, full-charge and design capacity, OEM health fields where present |
 | S24 | `DisplayManager` refresh rate, brightness setting | T0 | Screen-on samples | Context for screen drain explanations |
+| S25 | `/sys/power/suspend_stats/*` | T3 | Heavy snapshots | Real deep-sleep count, failed suspend attempts by step, the last failure's device, errno and step (ADR-0028) |
+| S26 | `/sys/kernel/wakeup_reasons/last_resume_reason`, `last_suspend_time` | T3 | Heavy snapshots | The IRQs or abort reason of the latest resume and its sleep time (ADR-0028) |
+| S27 | `/dev/kmsg`, filtered in the worker to suspend and resume lines | T3 | Heavy snapshots | Each resume's cause and each failed suspend, in order, with kernel sequence numbers (ADR-0028) |
 
 ### 5.1 Parsing rules
 
@@ -448,7 +454,7 @@ Do not use the `dataSync` service type: Android 15+ caps it at 6 hours per 24 ho
 | OS fingerprint change | None | Recalibration and capability probe |
 
 - **Light snapshot:** S1, S2 and screen/Doze/thermal state. Cost under 5 ms.
-- **Heavy snapshot:** light data plus S4–S13, S15, S16, S17, S19, S21 and S22 as capabilities allow, then the incremental history read (S7). Target under 1.5 s wall time and under 300 ms CPU on the S25 Ultra.
+- **Heavy snapshot:** light data plus S4–S13, S15, S16, S17, S19, S21 and S22 as capabilities allow, then the incremental history read (S7). S9 and S25–S27 only while the connection is root (ADR-0028). Target under 1.5 s wall time and under 300 ms CPU on the S25 Ultra.
 
 ### 7.3 Samplers
 
@@ -984,7 +990,7 @@ Onboarding takes at most four screens and ends on a real result, never on a tour
 
 1. **Welcome.** One sentence of value and two choices: "Connect Shizuku" (recommended) or "Start in basic mode".
 2. **Notifications and usage access.** `POST_NOTIFICATIONS` for the monitor and alerts; Usage access (settings intent) for per-app foreground time. Both skippable.
-3. **Shizuku.** Detect: not installed, stopped, running (shell or root), Sui. Request permission. On a 5 s hang or a failure on Android 17, show the compatible-manager explanation (4.5) and the ADB commands as a copy-ready block.
+3. **Shizuku.** Detect: not installed, stopped, running (shell or root), Sui. Request permission. On a 5 s hang or a failure on Android 17, show the compatible-manager explanation (4.5) and the ADB commands as a copy-ready block. One quiet line says Android 17 needs a Shizuku fork or Sui (ADR-0028).
 4. **Bootstrap result.** The capability summary in plain words first: "Coulomb can see per-app drain, wakelocks and kernel wakeups. Power rails: not exposed on this device." Then:
    - "Keep the monitor running" (14.2), when the OEM needs it;
    - the checklist of grants (4.4), saying which ones stay after Shizuku stops or the phone restarts;
@@ -1066,7 +1072,7 @@ Coulomb is a multi-module Kotlin and Jetpack Compose app with a strict one-way f
 
 ### 15.3 Libraries
 
-Resolve every version at build time (rule 0.3.2). Expected set: Compose BOM, Material 3 and Material 3 Adaptive (navigation suite, list-detail), Navigation 3 if stable (else type-safe Navigation Compose), Lifecycle, Hilt with KSP, Room, Proto DataStore, kotlinx-coroutines, kotlinx-serialization, kotlinx-collections-immutable, Wire (protobuf), Glance, WorkManager (Lite mode only), Shizuku API and provider, Sui API, HiddenApiBypass (feature-flagged), libsu (root tier), LeakCanary (debug only). Tests: JUnit, Truth, Turbine, Robolectric where useful, Roborazzi or Compose Preview Screenshot Testing, Macrobenchmark, UI Automator.
+Resolve every version at build time (rule 0.3.2). Expected set: Compose BOM, Material 3 and Material 3 Adaptive (navigation suite, list-detail), Navigation 3 if stable (else type-safe Navigation Compose), Lifecycle, Hilt with KSP, Room, Proto DataStore, kotlinx-coroutines, kotlinx-serialization, kotlinx-collections-immutable, Wire (protobuf), Glance, WorkManager (Lite mode only), Shizuku API and provider, Sui API, HiddenApiBypass (feature-flagged), libsu (only for the backlogged root-manager layer, ADR-0028), LeakCanary (debug only). Tests: JUnit, Truth, Turbine, Robolectric where useful, Roborazzi or Compose Preview Screenshot Testing, Macrobenchmark, UI Automator.
 
 No library may pull in `INTERNET` or analytics. A Gradle task fails the build if the merged manifest contains `android.permission.INTERNET`.
 
@@ -1124,6 +1130,7 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 
 - UserService contract tests (instrumented, need Shizuku on the device; skipped with a reason on CI).
 - Failure drills: kill Shizuku mid-dump, revoke each grant, simulate a fingerprint change, return a truncated stream. Expected: no crash, correct degraded state, correct copy.
+- Mode switch (ADR-0028), on the API 37 emulator with a Shizuku fork: start Shizuku as root, kill it while Coulomb collects, restart it in shell mode; then the reverse. An automated check proves no fake zeros, no double counting and no crash.
 - Collector: simulated trigger sequences (screen off for 8 h, plug at 20%, reboot mid-session).
 - Time-compressed stress test (ADR-0019): a 30-day trigger sequence on a simulated event clock with synthetic data, covering daily screen cycles, nightly charging, 8 h screen-off nights, reboots mid-session, and retention and compaction runs. It runs on the API 37 emulator in under 10 minutes; the sequence runs a 31st day so that every 30-day cut has run. Pass: no crash and no ANR; heap after GC at the last day within 10% of heap after GC at day 1; database size within the 7.7 projection: the day-31 file, plus the day-16-to-31 growth of every row that 7.7, ADR-0015 and ADR-0021 do not cap extended to day 365, with one-minute aggregates turning hourly after 180 days, stays under 150 MB (10^6 bytes; ADR-0020, ADR-0021).
 
@@ -1181,7 +1188,7 @@ The design-lab gate at P3 is the only planned human checkpoint; every other gate
 4. **P3 Design lab.** HTML prototypes of the seven key screens, `/impeccable` loops, tokens locked in `DESIGN.md`.
    - Gate: `npx impeccable detect` returns zero; critique and audit show no major findings; one human review of the direction (the only scheduled human checkpoint). While waiting, continue P4 work that has no UI: analytics wiring, ViewModels, navigation skeleton.
 5. **P4 Core screens.** Now, Drain (all lenses), App detail, Health, Charging, onboarding, Privileges; analytics for capacity and attribution.
-   - Gate: per-screen `/impeccable` gates (11.12); protocols B, C and D pass; Macrobenchmark targets met.
+   - Gate: per-screen `/impeccable` gates (11.12); protocols B, C and D pass; Macrobenchmark targets met; the mode-switch test (16.3) passes on the API 37 emulator (ADR-0028).
 6. **P5 Depth.** Timeline, Night Report, insight engine with all 20 rules, Drain Story, Action Center, notifications and Live Updates, widgets, tile.
    - Gate: whole-app `/impeccable` gate (two clean consecutive runs); protocols E and G pass; drift detection demonstrated with an external Doze change.
 7. **P6 Finish.** Export and import, true black, DeX and expanded polish, automation API, Wear tile (optional), release signing, Obtainium-ready releases.
@@ -1194,7 +1201,8 @@ The app is done when every box below is ticked with evidence linked in `docs/pro
 **Platform and privileges**
 
 - [ ] Runs on Android 16 (API 36) and Android 17 (API 37); targets 37; adaptive at every width, including DeX.
-- [ ] Works with official Shizuku where it can, with Shizuku forks, with Sui, and in basic mode without any of them.
+- [ ] Works with Shizuku forks, with Sui, and in basic mode without any of them; official Shizuku on Android 17 is untested (ADR-0028).
+- [ ] Switches between shell and root Shizuku both ways without a restart; root-only data shows "not collected", never zero (16.3 mode-switch test).
 - [ ] 5 s bind timeout and fallback proven on the device; every failure mode in 4.5 shows its specified copy.
 - [ ] Durable grants survive a Shizuku stop and a reboot; repaired in one tap after revocation.
 - [ ] Capability report exported for the S25 Ultra build in use.
@@ -1245,7 +1253,7 @@ The complete set of shell operations the UserService may run. Anything else requ
 
 | Group | Operations |
 | --- | --- |
-| Read | `dumpsys batterystats` (`-h`, `--proto`, `-c`, `--history`, `-c --history-start`; ADR-0005, ADR-0014), `dumpsys alarm`, `deviceidle`, `power`, `jobscheduler`, `battery`, `thermalservice`, kernel wakelock dump (probe), `am get-standby-bucket`, `appops get`, `settings get` (allowlisted keys), `cmd deviceidle whitelist`, sysfs reads under `/sys/class/power_supply` and `/sys/class/wakeup` |
+| Read | `dumpsys batterystats` (`-h`, `--proto`, `-c`, `--history`, `-c --history-start`; ADR-0005, ADR-0014), `dumpsys alarm`, `deviceidle`, `power`, `jobscheduler`, `battery`, `thermalservice`, kernel wakelock dump (probe), `am get-standby-bucket`, `appops get`, `settings get` (allowlisted keys), `cmd deviceidle whitelist`, sysfs reads under `/sys/class/power_supply`, `/sys/class/wakeup`, `/sys/power/suspend_stats` and `/sys/kernel/wakeup_reasons`, the kernel log (`/dev/kmsg`) filtered to suspend and resume lines (ADR-0028) |
 | Bootstrap | `pm grant` for the permissions in 4.4 only (BATTERY\_STATS, DUMP, PACKAGE\_USAGE\_STATS, INTERACT\_ACROSS\_USERS, and WRITE\_SECURE\_SETTINGS with the Action Center; ADR-0010), Coulomb's package only, `appops set` for Coulomb's `GET_USAGE_STATS` |
 | Actions | The operations in 13.2, each with its inverse |
 | Advanced | `dumpsys batterystats --reset` (two confirmations). Charge-control writes are out of v1 scope (ADR-0007) |
