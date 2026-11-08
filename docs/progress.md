@@ -26,6 +26,15 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
   - Seen once on the emulator: during an update install, Android 17 restarted the app and killed
     one process start as invalid. `MY_PACKAGE_REPLACED` was logged as delivered, but the collector
     did not start until the app was opened. Not reproduced; watch for it on the phone.
+- `material3` 1.5.0-rc01 for the Expressive components, fenced to `:core:designsystem` by a detekt
+  rule (ADR-0030).
+- App shell (ADR-0031):
+  - top app bar, bottom bar and rail in `:core:designsystem`, with Material Symbols converted from the
+    lab by `tools/design/icons.py`;
+  - Navigation 3 with one back stack per destination, laid out by `NavigationSuiteScaffoldLayout`;
+  - screenshot tests on the build server (Roborazzi on Robolectric): compact light and dark, 200%
+    text, medium width with the rail, and an inner screen.
+  - Screens not built yet show a placeholder.
 
 ## P3 Design lab (gate passed 2026-11-07)
 

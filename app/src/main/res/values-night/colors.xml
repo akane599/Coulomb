@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- `bg` dark from DESIGN.md (ColorTokens.kt DarkColors). -->
+    <color name="window_background">#0C1015</color>
+</resources>

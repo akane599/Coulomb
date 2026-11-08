@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.coulomb.android.application)
     alias(libs.plugins.coulomb.android.compose)
     alias(libs.plugins.coulomb.android.hilt)
+    alias(libs.plugins.coulomb.android.screenshot)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -37,9 +39,15 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.material3.navigationSuite)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.profileinstaller)
 
     debugImplementation(libs.leakcanary.android)
+
+    testImplementation(libs.truth)
 
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

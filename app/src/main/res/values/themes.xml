@@ -2,6 +2,9 @@
 <!-- SPDX-FileCopyrightText: The Coulomb contributors -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
-    <!-- Window theme only; Compose draws everything (tokens arrive in P3, SPEC 11). -->
-    <style name="Theme.Coulomb" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Window theme only; Compose draws everything. The window background is `bg`, so launch shows
+         no flash of another colour; values-night holds the dark twin. -->
+    <style name="Theme.Coulomb" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

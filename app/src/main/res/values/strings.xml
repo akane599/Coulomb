@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- The four destinations of the navigation bar (SPEC 10). -->
+    <string name="destination_now">Now</string>
+    <string name="destination_drain">Drain</string>
+    <string name="destination_timeline">Timeline</string>
+    <string name="destination_health">Health</string>
+    <!-- Screens opened from the top app bar; also their buttons' TalkBack labels. -->
+    <string name="screen_action_center">Action Center</string>
+    <string name="screen_privileges">Privileges</string>
+    <string name="screen_settings">Settings</string>
+    <!-- Shown on a screen whose phase has not shipped yet (SPEC 17). -->
+    <string name="screen_not_built">Not built yet.</string>
+</resources>
