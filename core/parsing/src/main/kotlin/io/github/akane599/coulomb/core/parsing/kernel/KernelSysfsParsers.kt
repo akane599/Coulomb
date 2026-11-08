@@ -156,7 +156,9 @@ internal fun secondsToNs(text: String): Long? {
  * S9: the attribute files of one `/sys/class/wakeup/wakeupN` directory, by file name, into
  * [WakeupSourceStats]. Never throws. Every attribute in `wakeup_source_attrs`
  * (drivers/base/power/wakeup_stats.c, android16-6.12) must be present and readable: a source with
- * a missing counter is dropped whole, never filled with zero.
+ * a missing counter is dropped whole, never filled with zero. The name may be empty: `name_show`
+ * prints `"%s\n"` of whatever name the driver registered (wakeup_stats.c L91-96), so `"\n"` is an
+ * unnamed source, read whole, and only a missing `name` file drops it.
  */
 public object WakeupSourceParser {
     public const val SOURCE: String = "sysfs.wakeup"
@@ -164,7 +166,7 @@ public object WakeupSourceParser {
     public fun parse(attributes: Map<String, String>): Parsed<WakeupSourceStats?> {
         val ctx = ParseContext(SOURCE)
         attributes.keys.filterNot { it in ATTRIBUTES }.forEach { ctx.unknown(it) }
-        val name = attributes[NAME]?.trimEnd('\n')?.takeIf { it.isNotEmpty() }
+        val name = attributes[NAME]?.trimEnd('\n')
         if (name == null) ctx.issue(0, NAME, "missing")
         val values =
             COUNTERS.associateWith { key ->

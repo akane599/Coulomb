@@ -141,7 +141,7 @@ class KernelParsersTest {
         )
 
     @Test
-    fun aWakeupSourceNeedsEveryCounter() {
+    fun aWakeupSourceNeedsEveryCounterAndANameFileThatMayBeEmpty() {
         val (value, report) = WakeupSourceParser.parse(source)
         checkNotNull(value)
         assertThat(report.complete).isTrue()
@@ -150,7 +150,11 @@ class KernelParsersTest {
         assertThat(value.totalTimeMs).isEqualTo(51234)
         assertThat(value.preventSuspendTimeMs).isEqualTo(40000)
         assertThat(WakeupSourceParser.parse(source - "wakeup_count").value).isNull()
-        assertThat(WakeupSourceParser.parse(source + ("name" to "\n")).value).isNull()
+        assertThat(WakeupSourceParser.parse(source - "name").value).isNull()
+        // A driver may register an empty name (the API 37 emulator has one): still a whole source.
+        val unnamed = WakeupSourceParser.parse(source + ("name" to "\n"))
+        assertThat(unnamed.value?.name).isEmpty()
+        assertThat(unnamed.report.complete).isTrue()
     }
 
     private fun kmsg(vararg lines: String): InputStream = ByteArrayInputStream(lines.joinToString("") { "$it\n" }.encodeToByteArray())

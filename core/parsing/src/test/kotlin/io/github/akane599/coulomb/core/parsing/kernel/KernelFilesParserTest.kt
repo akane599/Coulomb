@@ -107,6 +107,14 @@ class KernelFilesParserTest {
     }
 
     @Test
+    fun anUnnamedSourceIsReadWholeAndKeepsS9Whole() {
+        val (files, _) = KernelFilesParser.parse(stream(*source(1, "kept", 2).toTypedArray(), *source(54, "", 0).toTypedArray(), "#end\n"))
+        val sources = WakeupSourcesParser.parse(files)
+        assertThat(sources.value.map { it.instance to it.stats.name }).containsExactly(1 to "kept", 54 to "")
+        assertThat(sources.report.complete).isTrue()
+    }
+
+    @Test
     fun aSourceThatVanishedMidReadIsLeftOutAndTheReadIsPartial() {
         val gone = source(5, "gone", 1).drop(3) + "!$wakeup/wakeup5/name 2\n"
         val (files, _) = KernelFilesParser.parse(stream(*source(1, "kept", 2).toTypedArray(), *gone.toTypedArray(), "#end\n"))

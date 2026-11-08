@@ -130,6 +130,12 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
   - An instance present only at the end was created inside the window, so its value is its delta.
   - An instance that vanished makes the window partial.
   - Sums by name happen only here, when the window is built (R).
+  - An empty name is a name. `name_show` prints `"%s\n"` of whatever name the driver registered
+    (drivers/base/power/wakeup_stats.c L91-96, android16-6.12), and the API 37 emulator has such a
+    source. It is read whole, and all unnamed sources sum into one row under the empty name. The
+    screens show that row as a group of unnamed kernel sources (P4), and no matcher may test a name
+    with `contains` or `startsWith`, which every string passes for "". Only a missing `name` file
+    drops a source (R).
   - A session or day window steps through the heavy snapshots with counters inside it and adds up
     the steps. Two ends hours apart would hide a source that a driver re-registered: the kernel
     gives a recreated source the lowest free number, often its old one. A snapshot inside without
@@ -272,6 +278,11 @@ and boot rules, and the engine's order, budget and cursor.
   - the uid, connection and boot discards;
   - gap arithmetic;
   - which events the 7-day prune keeps.
+
+The emulator mode-switch run (ADR-0028 §5) found S9 `partial` in every root snapshot. One source
+had an empty name, and the parser took an empty name for a missing one and dropped the source, so
+no S9 row was ever stored on that kernel. An empty name now parses (§4), with regression tests. An
+independent review traced the empty name through storage, windows and tags and found no defect.
 
 ## Size
 
