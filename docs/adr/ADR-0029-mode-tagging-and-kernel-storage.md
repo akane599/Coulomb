@@ -194,6 +194,29 @@ It also suggested three changes, all made:
 The allowlist prefixes it could not check (`Resume caused by …`, `Abort: …`) match
 `print_wakeup_sources` on android16-6.12 and android15-6.6. That file defines no `pr_fmt`.
 
+A second independent review covered schema v3 for data safety: the migration, the delete paths
+and the DAOs.
+- **One latent defect, fixed:** a retried read covers records whose rows an earlier read owns.
+  If the S27 cut fell between the two reads, the events went with the earlier read but the retry's
+  span stayed, so a window built later would count the range as whole with zero events. The ring
+  now clears the old spans first and deletes only events no kept span covers. No collector code
+  wrote kernel rows yet, so nothing was affected.
+- **Test gaps, now filled:** the order of the two rings in retention, a row with only S25 or only
+  S26, a read exactly at the cut, which read owns a record read twice, and the cascade when an
+  unneeded snapshot is deleted.
+- **Nits, fixed:**
+  - The S27 ring now frees its tags even before the database is old enough for a history cut.
+  - `kernelLog` takes a null cursor instead of 0.
+- **Found safe:**
+  - The migration matches Room's exported schema exactly and rewrites no row.
+  - The stored codes are pinned by tests.
+  - Both `NOT IN` tag lists exclude nulls.
+  - Every child row gets the snapshot id inside the one transaction.
+- **Its open question:** a kernel boot more than 7 days without an S27 read loses all its spans,
+  so the next read starts at the ring's oldest record and may store pruned records again. They
+  are never counted twice. A window counts only the range after its start's own kept span, and no
+  snapshot in those 7 days has one.
+
 ## Size
 
 `SizeBudgetTest` measures the root rows at upper-bound rates: 3,000 S27 events a day, 300 S9

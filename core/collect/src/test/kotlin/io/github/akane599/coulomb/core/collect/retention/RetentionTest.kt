@@ -95,10 +95,16 @@ class RetentionTest {
     private fun kmsg(
         after: Long?,
         seq: Long,
+        reason: String = WLAN,
     ) = KernelRows(
         KernelReadEntity.of(0, BOOT_KEY, kmsg = KmsgSpan(after, seq, seq, emptyList())),
-        events = listOf(KernelLogRecord(seq, seq * 1_000, KernelLogEvent.Abort("Pending Wakeup Sources: wlan"))),
+        events = listOf(KernelLogRecord(seq, seq * 1_000, KernelLogEvent.Abort(reason))),
     )
+
+    private fun tags(): List<String> =
+        db.openHelper.readableDatabase.query("SELECT tag FROM history_tag ORDER BY tag").use {
+            buildList { while (it.moveToNext()) add(it.getString(0)) }
+        }
 
     private suspend fun window(
         from: Long,
@@ -177,7 +183,7 @@ class RetentionTest {
             val event =
                 NewHistoryEvent(1, eightDays * hourNs / 1_000_000, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, false, null, null, 50)
             val historyMark = db.historyDao().insertRead(listOf(event), emptyList())
-            val old = heavy(eightDays, kind = SnapshotKind.LIGHT, historyEventId = historyMark, kernel = kmsg(after = null, seq = 10))
+            val old = heavy(eightDays, kind = SnapshotKind.LIGHT, historyEventId = historyMark, kernel = kmsg(null, 10, MODEM))
             val recent = heavy(DAYS_31_H - 6 * 24, kind = SnapshotKind.LIGHT, kernel = kmsg(after = 10, seq = 20))
 
             Retention(db, Blobs()).run(boot, DAYS_31_H * hourNs)
@@ -187,6 +193,22 @@ class RetentionTest {
             assertThat(db.snapshotDao().kernelRead(old)).isNull()
             assertThat(db.snapshotDao().kmsgReadsBetween(0, 0, 1, Long.MAX_VALUE).map { it.snapshotId }).containsExactly(recent)
             assertThat(db.historyDao().events(1, 0, 1, Long.MAX_VALUE)).hasSize(1)
+            // The history ring's tag prune ran after the S27 ring and freed the old event's tag.
+            assertThat(tags()).containsExactly(WLAN)
+        }
+
+    /** Before the database is 30 days old there is no history cut; the S27 ring still frees its tags. */
+    @Test
+    fun theKernelRingFreesItsTagsBeforeTheHistoryRingStarts() =
+        runTest {
+            val boot = db.deviceDao().enterBoot(1, "fp", wall0, 0)
+            heavy(1, kind = SnapshotKind.LIGHT, kernel = kmsg(null, 10, MODEM))
+            heavy(9 * 24, kind = SnapshotKind.LIGHT, kernel = kmsg(10, 20))
+
+            Retention(db, Blobs()).run(boot, 10 * 24 * hourNs)
+
+            assertThat(db.snapshotDao().kernelLog(BOOT_KEY, null, Long.MAX_VALUE).map { it.seq }).containsExactly(20L)
+            assertThat(tags()).containsExactly(WLAN)
         }
 
     @Test
@@ -252,6 +274,8 @@ class RetentionTest {
     private companion object {
         const val DAYS_31_H = 31 * 24
         const val BOOT_KEY = 0x0fed_cba9_8765_4321L
+        const val WLAN = "Pending Wakeup Sources: wlan"
+        const val MODEM = "Pending Wakeup Sources: modem"
     }
 
     private class Blobs(

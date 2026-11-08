@@ -169,12 +169,16 @@ public abstract class HistoryDao {
         elapsedNs: Long,
     )
 
-    /** `tagId` has no index; `NOT IN` reads the events once rather than once per tag. */
+    /**
+     * Deletes the tags no history or kernel log event uses. [deleteBefore] runs it; retention also
+     * runs it after the S27 ring alone, before the database is old enough for a history cut.
+     * `tagId` has no index; `NOT IN` reads the events once rather than once per tag.
+     */
     @Query(
         "DELETE FROM history_tag WHERE id NOT IN (SELECT tagId FROM history_event WHERE tagId IS NOT NULL) " +
             "AND id NOT IN (SELECT tagId FROM kernel_log_event WHERE tagId IS NOT NULL)",
     )
-    protected abstract suspend fun deleteUnusedTags()
+    public abstract suspend fun deleteUnusedTags()
 
     private companion object {
         const val MAX_IDS = 500

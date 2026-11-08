@@ -42,9 +42,13 @@ internal class Retention(
         val compacted = cut(SAMPLES_MS)?.let { samples.compactSamples(it.bootSeq, it.elapsedNs, MINUTE_S) } ?: 0
         cut(AGGREGATES_MS)?.let { samples.compactAggregates(it.bootSeq, it.elapsedNs, MINUTE_S, HOUR_S) }
         // The kernel log ring before the history ring, so the history tag prune sees its events gone.
-        cut(KERNEL_LOG_MS)?.let { db.snapshotDao().pruneKernelLog(it.bootSeq, it.elapsedNs) }
+        val kernelCut = cut(KERNEL_LOG_MS)
+        kernelCut?.let { db.snapshotDao().pruneKernelLog(it.bootSeq, it.elapsedNs) }
         val ring = cut(HISTORY_MS)
-        ring?.let { db.historyDao().deleteBefore(it.bootSeq, it.elapsedNs) }
+        when {
+            ring != null -> db.historyDao().deleteBefore(ring.bootSeq, ring.elapsedNs)
+            kernelCut != null -> db.historyDao().deleteUnusedTags()
+        }
         val windowsDeleted = cut(DETAIL_MS)?.let { pruneWindows(it) } ?: 0
         val blobsDeleted = pruneBlobs(cut(BLOBS_MS))
         // Last, with the history ring's own cut: it keeps the snapshot that cut was made at.

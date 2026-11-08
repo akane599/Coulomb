@@ -9,6 +9,7 @@ import io.github.akane599.coulomb.core.database.dao.KernelRows
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.KmsgSpan
 import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
+import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.kernel.KernelLogEvent
 import io.github.akane599.coulomb.core.model.kernel.KernelLogRecord
 import io.github.akane599.coulomb.core.model.kernel.LastWakeup
@@ -146,6 +147,59 @@ class KernelDaoTest : DatabaseTest() {
             // Once its counters go too, the old read's row has nothing left and goes.
             dao.pruneCounters(1, 20 * NS_PER_S)
             assertThat(dao.kernelRead(old)).isNull()
+        }
+
+    /** A retried read covers records an earlier read stored; the ring keeps them while its span stays. */
+    @Test
+    fun aRetriedReadKeepsTheEventsItCoversUntilItsOwnSpanGoes() =
+        runTest {
+            val first = dao.insert(snapshot(elapsedS = 10), kernel = rows(BOOT_A, after = 100, last = 111, events = EVENTS))
+            val retry = dao.insert(snapshot(elapsedS = 20), kernel = rows(BOOT_A, after = 100, last = 111, events = EVENTS))
+            // The first read owns the rows; the retry's inserts were ignored.
+            assertThat(long("SELECT COUNT(*) FROM kernel_log_event WHERE readSnapshotId = $first")).isEqualTo(3)
+
+            dao.pruneKernelLog(1, 15 * NS_PER_S)
+            assertThat(dao.kernelRead(first)?.kmsgGaps).isNull()
+            assertThat(dao.kmsgReadsBetween(0, 0, 1, Long.MAX_VALUE).map { it.snapshotId }).containsExactly(retry)
+            assertThat(dao.kernelLog(BOOT_A, 100, 111).map { it.seq }).containsExactly(102L, 105L, 107L).inOrder()
+
+            dao.pruneKernelLog(1, 25 * NS_PER_S)
+            assertThat(dao.kmsgReadsBetween(0, 0, 1, Long.MAX_VALUE)).isEmpty()
+            assertThat(dao.kernelLog(BOOT_A, null, Long.MAX_VALUE)).isEmpty()
+        }
+
+    /** S25 and S26 each keep the row on their own; a read exactly at the cut is kept. */
+    @Test
+    fun theLogRingLeavesSuspendStatsWakeupReasonsAndReadsAtTheCut() =
+        runTest {
+            val suspendOnly = dao.insert(snapshot(elapsedS = 10), kernel = KernelRows(KernelReadEntity.of(0, BOOT_A, suspendStats = STATS)))
+            val wakeupOnly = dao.insert(snapshot(elapsedS = 11), kernel = KernelRows(KernelReadEntity.of(0, BOOT_A, lastWakeup = WAKEUP)))
+            val atCut = dao.insert(snapshot(elapsedS = 20), kernel = rows(BOOT_A, after = 100, last = 110, events = EVENTS))
+
+            dao.pruneKernelLog(1, 20 * NS_PER_S)
+
+            assertThat(dao.kernelRead(suspendOnly)?.suspendStats).isEqualTo(STATS)
+            assertThat(dao.kernelRead(wakeupOnly)?.lastWakeup).isEqualTo(WAKEUP)
+            assertThat(dao.kernelRead(atCut)?.kmsgLastSeq).isEqualTo(110)
+            assertThat(dao.kernelLog(BOOT_A, null, Long.MAX_VALUE)).hasSize(3)
+        }
+
+    @Test
+    fun deletingAnUnneededSnapshotTakesItsKernelRows() =
+        runTest {
+            val old =
+                dao.insert(
+                    snapshot(elapsedS = 10, kind = SnapshotKind.LIGHT, blobPath = null),
+                    kernel = rows(BOOT_A, after = 100, last = 110, events = EVENTS),
+                )
+            dao.insert(snapshot(elapsedS = 30, kind = SnapshotKind.LIGHT, blobPath = null))
+
+            assertThat(dao.deleteUnneeded(1, 20 * NS_PER_S)).isEqualTo(1)
+
+            assertThat(dao.snapshot(old)).isNull()
+            assertThat(long("SELECT COUNT(*) FROM kernel_read")).isEqualTo(0)
+            assertThat(long("SELECT COUNT(*) FROM wakeup_source_stat")).isEqualTo(0)
+            assertThat(long("SELECT COUNT(*) FROM kernel_log_event")).isEqualTo(0)
         }
 
     private fun rows(

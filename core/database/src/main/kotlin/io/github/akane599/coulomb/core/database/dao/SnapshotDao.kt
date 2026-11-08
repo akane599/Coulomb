@@ -146,13 +146,16 @@ public abstract class SnapshotDao {
         toElapsedNs: Long,
     ): List<KernelReadEntity>
 
-    /** The stored S27 records of [kernelBoot] with `afterSeq < seq <= lastSeq`, in order. */
+    /**
+     * The stored S27 records of [kernelBoot] with `afterSeq < seq <= lastSeq`, in order; a null
+     * [afterSeq] starts at the first record.
+     */
     public suspend fun kernelLog(
         kernelBoot: Long,
-        afterSeq: Long,
+        afterSeq: Long?,
         lastSeq: Long,
     ): List<KernelLogRecord> =
-        kernelEvents(kernelBoot, afterSeq, lastSeq).map {
+        kernelEvents(kernelBoot, afterSeq ?: -1, lastSeq).map {
             KernelLogRecord(it.seq, it.monotonicUs, KernelCodes.decodeEvent(KernelCodes.StoredEvent(it.kind, it.irq, it.tag, it.errno)))
         }
 
@@ -273,18 +276,19 @@ public abstract class SnapshotDao {
     }
 
     /**
-     * Retention (ADR-0029 §3): the S27 ring. Deletes the kernel log events that reads before
-     * `(cutBootSeq, cutElapsedNs)` stored and clears those reads' spans, so no window built later
-     * can count the range as covered without its events. Run it before [HistoryDao.deleteBefore],
-     * whose tag prune then sees the events gone.
+     * Retention (ADR-0029 §3): the S27 ring. Clears the spans of the reads before
+     * `(cutBootSeq, cutElapsedNs)` and deletes the events those reads stored, except events a kept
+     * span still covers: a retried read covers records whose rows an earlier read owns. So no
+     * window built later can count a range as covered without its events. Run it before
+     * [HistoryDao.deleteBefore], whose tag prune then sees the events gone.
      */
     @Transaction
     public open suspend fun pruneKernelLog(
         cutBootSeq: Int,
         cutElapsedNs: Long,
     ) {
-        deleteKernelEventsBefore(cutBootSeq, cutElapsedNs)
         clearKmsgReadsBefore(cutBootSeq, cutElapsedNs)
+        deleteUncoveredKernelEventsBefore(cutBootSeq, cutElapsedNs)
         deleteEmptyKernelReadsBefore(cutBootSeq, cutElapsedNs)
     }
 
@@ -479,8 +483,13 @@ public abstract class SnapshotDao {
     @Query("DELETE FROM kernel_read WHERE snapshotId IN (:ids) AND $KERNEL_READ_EMPTY")
     protected abstract suspend fun deleteEmptyKernelReads(ids: List<Long>)
 
-    @Query("DELETE FROM kernel_log_event WHERE readSnapshotId IN (SELECT id FROM snapshot WHERE $BEFORE_CUT)")
-    protected abstract suspend fun deleteKernelEventsBefore(
+    @Query(
+        "DELETE FROM kernel_log_event WHERE readSnapshotId IN (SELECT id FROM snapshot WHERE $BEFORE_CUT) " +
+            "AND NOT EXISTS (SELECT 1 FROM kernel_read k WHERE k.kmsgGaps IS NOT NULL " +
+            "AND k.kernelBoot = kernel_log_event.kernelBoot AND kernel_log_event.seq <= k.kmsgLastSeq " +
+            "AND IFNULL(k.kmsgAfterSeq, k.kmsgFirstSeq - 1) < kernel_log_event.seq)",
+    )
+    protected abstract suspend fun deleteUncoveredKernelEventsBefore(
         cutBootSeq: Int,
         cutElapsedNs: Long,
     )
