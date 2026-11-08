@@ -108,6 +108,9 @@ internal class DrainReader
                 endLevel = to.levelPct,
                 durationMs = exact?.let { it.screenOnMs + it.screenOffMs } ?: (totals.screenOnMs + totals.screenOffMs),
                 screenOffMs = exact?.screenOffMs ?: totals.screenOffMs,
+                onBatteryMs = onBattery(exact, totals)?.let { it.screenOnMs + it.screenOffMs } ?: totals.dischargeMs,
+                screenOffOnBatteryMs = onBattery(exact, totals)?.screenOffMs ?: totals.dischargeScreenOffMs,
+                measuredMs = measured?.ms ?: 0,
                 lowerBound = detail == null,
                 chargedInSpan = totals.pluggedWindows > 0,
                 wakes = wakes(rows, chain, names),
@@ -116,6 +119,15 @@ internal class DrainReader
                 components = components(uids),
             )
         }
+
+        /**
+         * The stored window when the reader trusts it to be all on battery, as [measured] does; else
+         * null, and the span's time on battery is its chain's windows that started unplugged (ADR-0036 §34).
+         */
+        private fun onBattery(
+            exact: WindowResultEntity?,
+            totals: ChainTotals,
+        ): WindowResultEntity? = exact?.takeIf { totals.windows == 0 || (totals.pluggedWindows == 0 && totals.unknownWindows == 0) }
 
         /** The device rows, which hold each component's total with the apps' share in it (CounterMapper). */
         private fun components(rows: List<WindowUidEntity>): List<ComponentDrain> =
@@ -215,6 +227,8 @@ internal class DrainReader
         private class Measured(
             val mah: Double,
             val provenance: Provenance,
+            /** The time of the windows [mah] sums. */
+            val ms: Long,
             val estimate: LevelEstimate? = null,
         )
 
@@ -238,10 +252,11 @@ internal class DrainReader
             val onBatteryOnly = totals.pluggedWindows == 0 && totals.unknownWindows == 0
             val stored = exact?.takeIf { totals.windows == 0 || onBatteryOnly } ?: return chainMeasured(totals, chain)
             val mah = stored.measuredMah ?: return null
+            val ms = stored.screenOnMs + stored.screenOffMs
             return when {
-                stored.chargeSource == ChargeSource.CHARGE_COUNTER -> Measured(mah, Provenance.MEASURED)
+                stored.chargeSource == ChargeSource.CHARGE_COUNTER -> Measured(mah, Provenance.MEASURED, ms)
                 coveredByChain(stored, totals) -> chainMeasured(totals, chain)
-                else -> Measured(mah, Provenance.ESTIMATED, LevelEstimate.ofWindow(mah, from.levelPct, to.levelPct))
+                else -> Measured(mah, Provenance.ESTIMATED, ms, LevelEstimate.ofWindow(mah, from.levelPct, to.levelPct))
             }
         }
 
@@ -253,9 +268,9 @@ internal class DrainReader
             val mah = totals.dischargeMah ?: return null
             val measuredWindows = totals.dischargeWindows - totals.unmeasuredWindows
             return if (totals.counterWindows == measuredWindows) {
-                Measured(mah, Provenance.MEASURED)
+                Measured(mah, Provenance.MEASURED, totals.measuredMs)
             } else {
-                Measured(mah, Provenance.ESTIMATED, LevelEstimate.ofChain(chain.steps()))
+                Measured(mah, Provenance.ESTIMATED, totals.measuredMs, LevelEstimate.ofChain(chain.steps()))
             }
         }
 
@@ -290,7 +305,11 @@ internal class DrainReader
                         tag = total.key.tag,
                         totalMs = total.totalMs,
                         count = total.count,
-                        screenOffShare = split[total.key]?.takeIf { known > 0 }?.let { it.screenOffMs.toDouble() / known },
+                        // Counted only with the screen off, a record's share is whole by construction.
+                        screenOffShare =
+                            split[total.key]
+                                ?.takeIf { known > 0 && total.key.kind.basis != WakeBasis.SCREEN_OFF_ON_BATTERY }
+                                ?.let { it.screenOffMs.toDouble() / known },
                         wakeups = total.wakeups,
                     )
                 }.sortedByDescending { it.totalMs }

@@ -115,7 +115,10 @@
     <string name="drain_component_custom">Cihaza özgü</string>
     <string name="drain_component_other">Diğer</string>
 
-    <string name="drain_wakeups_caption">Tutulma süresine, süre yoksa sayıya göre sıralı. Çubuklar tutulma süresinin pencereye oranını, süre yoksa grubun sayısındaki payı gösterir. Kısa uyandırmalar güç modelinin saydığından fazlasına mal olur.</string>
+    <string name="drain_wakeups_caption">Tutulma süresine, süre yoksa sayıya göre sıralı. Çubuklar tutulma süresinin grubun sayıldığı süreye oranını, süre yoksa grubun sayısındaki payı gösterir. Kısa uyandırmalar güç modelinin saydığından fazlasına mal olur.</string>
+    <string name="drain_basis_screen_off">Yalnızca pildeyken ve ekran kapalıyken sayıldı: %1$s</string>
+    <string name="drain_basis_on_battery">Pildeyken sayıldı: %1$s</string>
+    <string name="drain_basis_whole">Pencerenin tamamında sayıldı: %1$s</string>
     <string name="drain_wake_partial">Kısmi uyanık tutmalar</string>
     <string name="drain_wake_kernel">Çekirdek uyanık tutmaları</string>
     <string name="drain_wake_reasons">Uyandırma nedenleri</string>

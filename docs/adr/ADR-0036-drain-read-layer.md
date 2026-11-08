@@ -205,3 +205,18 @@ found figures that claimed more than the data holds. These decisions answer them
 33. **Component chips on app rows and top apps per component arrive with S4** (ADR-0035), the
     source that splits an app's power by component. Until then app rows do not expand.
     - R: S5 gives each app one total. Chips built from it would split nothing.
+34. **Each wake group is read against the time its counter ran** (`WakeBasis`), which the group
+    states under its heading ("Counted only on battery with the screen off: 3 h 20 min").
+    - Batterystats counts partial wakelocks, kernel wakelocks and wakeup alarms only on battery
+      with the screen off (`mOnBatteryScreenOffTimeBase`), and wakeup reasons whenever on battery
+      (`mOnBatteryTimeBase`). The citations are in `WakeKind.basis`. S9 and S27 are the kernel's
+      own counters and run all the time.
+    - A timed row's bar is its time held as a share of that time: the screen-off time on battery,
+      the time on battery, or the whole window. It replaces §31's "share of the window".
+    - Records counted only with the screen off have no screen-off share. It would always be whole,
+      and printing "100% held with the screen off" would suggest the counter could have said less.
+    - The report gains the span's time on battery and its screen-off part, summed over the windows
+      that started unplugged (ADR-0038 §3).
+    - R: found while choosing Compare's per-hour base (ADR-0038). A window that spent hours on the
+      charger or with the screen on made every S5 wake bar look short. SPEC 0.2 puts measurement
+      honesty above layout.

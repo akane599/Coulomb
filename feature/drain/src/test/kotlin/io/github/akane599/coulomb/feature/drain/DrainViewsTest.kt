@@ -9,8 +9,11 @@ import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.LevelEstimate
 import io.github.akane599.coulomb.core.data.PowerComponent
+import io.github.akane599.coulomb.core.data.WakeBasis
 import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.data.WakeEntry
+import io.github.akane599.coulomb.core.data.basis
+import io.github.akane599.coulomb.core.data.basisMs
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
@@ -171,18 +174,22 @@ class DrainViewsTest {
     }
 
     @Test
-    fun wakeBarsAreTimeOverTheWindowOrAShareOfTheGroupsCount() {
-        val groups = wakeGroups(report()).associateBy { it.group }
+    fun wakeBarsAreTimeOverTheTimeCountedOrAShareOfTheGroupsCount() {
+        val report = report()
+        val groups = wakeGroups(report).associateBy { it.group }
         val partial = groups.getValue(WakeGroup.PARTIAL)
-        val held = partial.share(durationMs = 2 * HOUR)
-        // 52 minutes of a two-hour window; a row with no time held in a timed group gets an empty bar.
+        // Batterystats counts partial wakelocks only on battery with the screen off.
+        assertEquals(WakeBasis.SCREEN_OFF_ON_BATTERY, partial.kind.basis)
+        assertEquals(report.screenOffOnBatteryMs, report.basisMs(partial.kind.basis))
+        val held = partial.share(basisMs = 2 * HOUR)
+        // 52 minutes of two hours counted; a row with no time held in a timed group gets an empty bar.
         assertEquals(52.0 / 120, held(partial.entries.first { it.tag.contains("SyncJob") })!!, 1e-9)
         assertEquals(0.0, held(partial.entries.first().copy(totalMs = 0))!!, 1e-9)
-        // Time held beyond the window's length fills the bar and no more.
-        assertEquals(1.0, partial.share(durationMs = MINUTE)(partial.entries.first())!!, 1e-9)
-        assertNull(partial.share(durationMs = 0)(partial.entries.first()))
+        // Time held beyond the time counted fills the bar and no more.
+        assertEquals(1.0, partial.share(basisMs = MINUTE)(partial.entries.first())!!, 1e-9)
+        assertNull(partial.share(basisMs = 0)(partial.entries.first()))
         // Resume causes keep no time: each is its share of the group's count.
-        val reasons = WakeGroupView(WakeGroup.REASONS, listOf(cause("a", 300), cause("b", 100)), Coverage.WHOLE)
+        val reasons = WakeGroupView(WakeGroup.REASONS, listOf(cause("a", 300), cause("b", 100)), Coverage.WHOLE, WakeKind.RESUME_CAUSE)
         assertEquals(listOf(0.75, 0.25), reasons.entries.map { reasons.share(2 * HOUR)(it)!! })
     }
 
@@ -195,6 +202,7 @@ class DrainViewsTest {
                 WakeGroup.KERNEL,
                 records.mapIndexed { rank, tag -> WakeEntry(WakeKind.KERNEL, null, null, null, tag, (100 - rank) * MINUTE, 1, null, null) },
                 Coverage.WHOLE,
+                WakeKind.KERNEL,
             )
 
         fun outline(open: Boolean) = kernel.sections(open).map { s -> s.subsystem to s.entries.map { it.tag } }

@@ -105,13 +105,36 @@ class DrainReaderTest {
             assertThat(report.chargedInSpan).isFalse()
             assertThat(report.durationMs).isEqualTo(2_000_000)
             assertThat(report.screenOffMs).isEqualTo(1_400_000)
+            // All on battery and all measured: the stored window's own time.
+            assertThat(report.onBatteryMs).isEqualTo(2_000_000)
+            assertThat(report.screenOffOnBatteryMs).isEqualTo(1_400_000)
+            assertThat(report.measuredMs).isEqualTo(2_000_000)
             val wake = report.wakes.single()
             assertThat(wake.totalMs).isEqualTo(4_000)
             assertThat(wake.count).isEqualTo(4)
             assertThat(wake.label).isEqualTo("Halcyon")
-            assertThat(wake.screenOffShare).isEqualTo(1.0)
+            // Batterystats counts a partial wakelock only with the screen off: no share to show.
+            assertThat(wake.screenOffShare).isNull()
             // The stored window read S5 at both ends and no root source.
             assertThat(report.wakeCoverage).isEqualTo(WakeCoverage(Coverage.WHOLE, Coverage.NONE, Coverage.NONE))
+        }
+
+    @Test
+    fun aScreenOffShareIsKeptOnlyForRecordsCountedWithTheScreenOn() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+            val reason = { ms: Long, count: Int -> WindowWake(null, "425 ipa", WakeKind.WAKEUP_REASON, ms, count, null) }
+            store(window(a, b).copy(screenOnMs = 0, screenOffMs = 1_000_000), WindowRows(wakes = listOf(wake(3_000, 3), reason(3_000, 3))))
+            store(window(b, c).copy(screenOnMs = 1_000_000, screenOffMs = 0), WindowRows(wakes = listOf(reason(1_000, 1))))
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.wakes.single { it.kind == WakeKind.PARTIAL }.screenOffShare).isNull()
+            assertThat(report.wakes.single { it.kind == WakeKind.WAKEUP_REASON }.screenOffShare).isEqualTo(0.75)
+            assertThat(report.onBatteryMs).isEqualTo(2_000_000)
+            assertThat(report.screenOffOnBatteryMs).isEqualTo(1_000_000)
         }
 
     @Test
@@ -184,6 +207,11 @@ class DrainReaderTest {
             // One of the two discharge windows came from the level.
             assertThat(report.drains.measuredProvenance).isEqualTo(Provenance.ESTIMATED)
             assertThat(report.chargedInSpan).isTrue()
+            // Three hours, one of them on the charger.
+            assertThat(report.durationMs).isEqualTo(3 * 3_600_000L)
+            assertThat(report.onBatteryMs).isEqualTo(2 * 3_600_000L)
+            assertThat(report.screenOffOnBatteryMs).isEqualTo(2 * 3_600_000L)
+            assertThat(report.measuredMs).isEqualTo(2 * 3_600_000L)
             assertThat(report.lowerBound).isTrue()
             assertThat(report.drains.apps.map { it.uid to it.mah }).containsExactly(APP to 40.0)
             assertThat(report.alarms.map { it.uid to it.wakeups }).containsExactly(APP to 5L)

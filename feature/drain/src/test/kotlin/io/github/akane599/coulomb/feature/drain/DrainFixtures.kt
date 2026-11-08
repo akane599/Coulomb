@@ -77,18 +77,19 @@ internal fun fullComponents(): List<ComponentDrain> =
         ComponentDrain(PowerComponent.SENSORS, 13.0),
     )
 
+/** Batterystats counts partial and kernel wakelocks only with the screen off: they have no share (ADR-0036 §34). */
 internal fun wakes(): List<WakeEntry> =
     listOf(
-        WakeEntry(WakeKind.PARTIAL, 10_123, "Halcyon", null, "*job*/app.halcyon/.sync.SyncJob", 52 * MINUTE, 38, 0.8, null),
-        WakeEntry(WakeKind.PARTIAL, 1_000, null, null, "*alarm*", 31 * MINUTE, 412, 0.95, null),
-        WakeEntry(WakeKind.PARTIAL, 10_402, "Driftly", null, "AudioMix", 65 * MINUTE, 3, 1.0, null),
-        WakeEntry(WakeKind.PARTIAL, 10_515, "Northwind Mail", null, "*job*/mail.northwind/.Fetch", 4 * MINUTE, 38, 0.7, null),
-        WakeEntry(WakeKind.PARTIAL, 10_241, "Wayline", null, "LocationUpdates", 24 * MINUTE, 6, 0.0, null),
+        WakeEntry(WakeKind.PARTIAL, 10_123, "Halcyon", null, "*job*/app.halcyon/.sync.SyncJob", 52 * MINUTE, 38, null, null),
+        WakeEntry(WakeKind.PARTIAL, 1_000, null, null, "*alarm*", 31 * MINUTE, 412, null, null),
+        WakeEntry(WakeKind.PARTIAL, 10_402, "Driftly", null, "AudioMix", 65 * MINUTE, 3, null, null),
+        WakeEntry(WakeKind.PARTIAL, 10_515, "Northwind Mail", null, "*job*/mail.northwind/.Fetch", 4 * MINUTE, 38, null, null),
+        WakeEntry(WakeKind.PARTIAL, 10_241, "Wayline", null, "LocationUpdates", 24 * MINUTE, 6, null, null),
         WakeEntry(WakeKind.PARTIAL, 10_310, "Tally", null, "WorkManager", 40_000, 9, null, null),
-        WakeEntry(WakeKind.KERNEL, null, null, null, "qcom_rx_wakelock", 41 * MINUTE, 2_210, 0.9, null),
-        WakeEntry(WakeKind.KERNEL, null, null, null, "PowerManagerService.WakeLocks", 2 * HOUR, 905, 0.6, null),
+        WakeEntry(WakeKind.KERNEL, null, null, null, "qcom_rx_wakelock", 41 * MINUTE, 2_210, null, null),
+        WakeEntry(WakeKind.KERNEL, null, null, null, "PowerManagerService.WakeLocks", 2 * HOUR, 905, null, null),
         WakeEntry(WakeKind.WAKEUP_SOURCE, null, null, null, "qcom_rx_wakelock", 41 * MINUTE, 2_210, null, 812),
-        WakeEntry(WakeKind.WAKEUP_REASON, null, null, null, "Abort: Pending Wakeup Sources: ipa_ws", 3 * MINUTE, 140, null, null),
+        WakeEntry(WakeKind.WAKEUP_REASON, null, null, null, "Abort: Pending Wakeup Sources: ipa_ws", 3 * MINUTE, 140, 0.85, null),
         WakeEntry(WakeKind.RESUME_CAUSE, null, null, null, "200 qcom,glink-smem-native-xprt-modem", 0, 1_120, null, null),
     )
 
@@ -114,6 +115,9 @@ internal fun report(
     endLevel = 74,
     durationMs = NOW - UNPLUG,
     screenOffMs = 3 * HOUR + 20 * MINUTE,
+    onBatteryMs = NOW - UNPLUG,
+    screenOffOnBatteryMs = 3 * HOUR + 20 * MINUTE,
+    measuredMs = NOW - UNPLUG,
     lowerBound = false,
     chargedInSpan = false,
     wakes = wakes(),

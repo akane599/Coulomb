@@ -119,7 +119,11 @@
     <string name="drain_component_custom">Device-specific</string>
     <string name="drain_component_other">Other</string>
 
-    <string name="drain_wakeups_caption">Ranked by time held, or by count where no time is kept. Bars show the time held as a share of the window, or a share of the group’s count. Short wakeups cost more than the power model counts.</string>
+    <string name="drain_wakeups_caption">Ranked by time held, or by count where no time is kept. Bars show the time held as a share of the time a group was counted, or a share of the group’s count. Short wakeups cost more than the power model counts.</string>
+    <!-- When a wake group's counter ran, and how long that was in the window (ADR-0036 §34). -->
+    <string name="drain_basis_screen_off">Counted only on battery with the screen off: %1$s</string>
+    <string name="drain_basis_on_battery">Counted on battery: %1$s</string>
+    <string name="drain_basis_whole">Counted over the whole window: %1$s</string>
     <string name="drain_wake_partial">Partial wakelocks</string>
     <string name="drain_wake_kernel">Kernel wakelocks</string>
     <string name="drain_wake_reasons">Wakeup reasons</string>

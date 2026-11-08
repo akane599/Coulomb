@@ -49,6 +49,15 @@ public data class DrainReport(
     val durationMs: Long,
     val screenOffMs: Long,
     /**
+     * Of [durationMs], the time on battery: the windows that started unplugged. Batterystats counts
+     * power and wake time only then (ADR-0036 §34).
+     */
+    val onBatteryMs: Long,
+    /** Of [onBatteryMs], the time with the screen off. */
+    val screenOffOnBatteryMs: Long,
+    /** The time of the windows the measured total sums; 0 without one. */
+    val measuredMs: Long,
+    /**
      * The apps were summed from consecutive windows, each of which folds its small UIDs into the
      * remainder, so an app's total is a lower bound (ADR-0032 §4).
      */
@@ -127,6 +136,50 @@ public enum class PowerComponent {
     }
 }
 
+/**
+ * The time a wake record's counter runs (ADR-0036 §34), so the time a record's figures are out of.
+ * Batterystats counts partial wakelocks, kernel wakelocks and wakeup alarms only on battery with the
+ * screen off, and wakeup reasons whenever on battery. The kernel's own counters (S9, S27) run all
+ * the time.
+ */
+public enum class WakeBasis {
+    SCREEN_OFF_ON_BATTERY,
+    ON_BATTERY,
+    WHOLE_SPAN,
+    ;
+
+    public companion object {
+        /**
+         * S5's wakeup alarms: `Uid.Pkg.noteWakeupAlarmLocked` counts on `mOnBatteryScreenOffTimeBase`
+         * (BatteryStatsImpl.java android-16.0.0_r4 L10126, android-17.0.0_r1 L9690).
+         */
+        public val ALARMS: WakeBasis = SCREEN_OFF_ON_BATTERY
+    }
+}
+
+/**
+ * When this kind's counter runs. BatteryStatsImpl.java: a partial wakelock's timer and each kernel
+ * wakelock's run on `mOnBatteryScreenOffTimeBase` (android-16.0.0_r4 L10643-10645, L4499-4504;
+ * android-17.0.0_r1 L10207-10209, L4050-4055), a wakeup reason's on `mOnBatteryTimeBase` (16:
+ * L4486-4491; 17: L4037-4042). `updateTimeBasesLocked` runs the first only while unplugged and
+ * `!Display.isOnState` (17: L4093-4131), the same test that runs the screen-on timer (17: L5247-5249).
+ */
+public val WakeKind.basis: WakeBasis
+    get() =
+        when (this) {
+            WakeKind.PARTIAL, WakeKind.KERNEL -> WakeBasis.SCREEN_OFF_ON_BATTERY
+            WakeKind.WAKEUP_REASON -> WakeBasis.ON_BATTERY
+            WakeKind.WAKEUP_SOURCE, WakeKind.RESUME_CAUSE, WakeKind.SUSPEND_ABORT -> WakeBasis.WHOLE_SPAN
+        }
+
+/** The time of [basis] in this span. */
+public fun DrainReport.basisMs(basis: WakeBasis): Long =
+    when (basis) {
+        WakeBasis.SCREEN_OFF_ON_BATTERY -> screenOffOnBatteryMs
+        WakeBasis.ON_BATTERY -> onBatteryMs
+        WakeBasis.WHOLE_SPAN -> durationMs
+    }
+
 /** One wakelock, kernel wakelock, wakeup reason or root kernel record in a span (SPEC 10.3, Wakeups lens). */
 public data class WakeEntry(
     val kind: WakeKind,
@@ -141,7 +194,8 @@ public data class WakeEntry(
     val count: Long,
     /**
      * The share of its time with the screen off, 0 to 1, over the windows that were wholly screen-on
-     * or wholly screen-off; null when none was. Derived.
+     * or wholly screen-off; null when none was, and for kinds counted only with the screen off
+     * ([WakeBasis.SCREEN_OFF_ON_BATTERY]), whose share is always whole. Derived.
      */
     val screenOffShare: Double?,
     /** S9 sources only: how many times it woke the phone. */

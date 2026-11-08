@@ -35,7 +35,10 @@ import io.github.akane599.coulomb.core.analytics.WakeDictionary
 import io.github.akane599.coulomb.core.analytics.WakeSubsystem
 import io.github.akane599.coulomb.core.data.AlarmEntry
 import io.github.akane599.coulomb.core.data.DrainReport
+import io.github.akane599.coulomb.core.data.WakeBasis
 import io.github.akane599.coulomb.core.data.WakeEntry
+import io.github.akane599.coulomb.core.data.basis
+import io.github.akane599.coulomb.core.data.basisMs
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTerm
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
@@ -58,12 +61,16 @@ internal enum class WakeGroup(
     REASONS(R.string.drain_wake_reasons, R.string.drain_wake_reasons_definition),
 }
 
-/** One group of the Wakeups lens: its records, and how much of the window their source covered. */
+/**
+ * One group of the Wakeups lens: its records, the [kind] of record it shows, and how much of the
+ * window their source covered.
+ */
 @Immutable
 internal data class WakeGroupView(
     val group: WakeGroup,
     val entries: List<WakeEntry>,
     val coverage: Coverage,
+    val kind: WakeKind,
 )
 
 /**
@@ -90,7 +97,7 @@ internal fun wakeGroups(report: DrainReport): List<WakeGroupView> {
             byKind[kind]
                 .orEmpty()
                 .sortedWith(compareByDescending<WakeEntry> { it.totalMs }.thenByDescending { it.count })
-        return WakeGroupView(group, entries, coverage)
+        return WakeGroupView(group, entries, coverage, kind)
     }
     return listOf(
         of(WakeGroup.PARTIAL, WakeKind.PARTIAL to cover.batteryStats),
@@ -139,11 +146,14 @@ internal fun LazyListScope.wakeupItems(
         )
     }
     groups.forEach { view ->
-        val share = view.share(report.durationMs)
+        val basis = view.kind.basis
+        val share = view.share(report.basisMs(basis))
         val open = lists.openGroups and (1 shl view.group.ordinal) != 0
         group(
             key = view.group.name,
-            head = { GroupHead(stringResource(view.group.title), stringResource(view.group.definition)) },
+            head = {
+                GroupHead(stringResource(view.group.title), stringResource(view.group.definition), basisLine(basis, report, formats))
+            },
             count = view.entries.size,
             sections = view.sections(open).map { Section(it.subsystem?.name, it.subsystem?.label, it.entries) },
             coverage = view.coverage,
@@ -153,11 +163,21 @@ internal fun LazyListScope.wakeupItems(
             rowKey = { "wake-${it.kind}-${it.uid}-${it.tag}" },
         ) { entry, first -> WakeRow(entry, share(entry), first, formats) }
     }
+    alarmItems(report, alarmsCoverage, formats, lists)
+}
+
+/** The Alarms group: S5's wakeup alarms per app, each a share of the group's count. */
+private fun LazyListScope.alarmItems(
+    report: DrainReport,
+    alarmsCoverage: Coverage,
+    formats: Formats,
+    lists: ListState,
+) {
     val alarmsOpen = lists.openGroups and (1 shl ALARMS_BIT) != 0
     val alarmWakeups = report.alarms.sumOf { it.wakeups }.toDouble()
     group(
         key = "ALARMS",
-        head = { GroupHead(stringResource(R.string.drain_wake_alarms), definition = null) },
+        head = { GroupHead(stringResource(R.string.drain_wake_alarms), definition = null, basisLine(WakeBasis.ALARMS, report, formats)) },
         count = report.alarms.size,
         sections = listOf(Section(null, null, if (alarmsOpen) report.alarms else report.alarms.take(SHOWN))),
         coverage = alarmsCoverage,
@@ -188,13 +208,13 @@ internal fun WakeGroupView.sections(open: Boolean): List<WakeSection> {
 }
 
 /**
- * Each row's share bar (SPEC 10.1), on one base per group: the time held as a share of the window
- * where the group keeps time, otherwise a share of the group's count. Null, so no bar, when that
- * base is unknown: a window of no length, or a group with no count.
+ * Each row's share bar (SPEC 10.1), on one base per group: where the group keeps time, the time held
+ * as a share of [basisMs], the time its counter ran in the window (ADR-0036 §34); otherwise a share
+ * of the group's count. Null, so no bar, when that base is unknown: no time counted, or no count.
  */
-internal fun WakeGroupView.share(durationMs: Long): (WakeEntry) -> Double? {
+internal fun WakeGroupView.share(basisMs: Long): (WakeEntry) -> Double? {
     if (entries.any { it.totalMs > 0 }) {
-        return { entry -> durationMs.takeIf { it > 0 }?.let { (entry.totalMs.toDouble() / it).coerceIn(0.0, 1.0) } }
+        return { entry -> basisMs.takeIf { it > 0 }?.let { (entry.totalMs.toDouble() / it).coerceIn(0.0, 1.0) } }
     }
     val counted = entries.sumOf { it.count }
     return { entry -> counted.takeIf { it > 0 }?.let { entry.count.toDouble() / it } }
@@ -260,9 +280,25 @@ private fun <T> LazyListScope.group(
     }
 }
 
+/** When a group's counter ran, and for how long in this window (ADR-0036 §34). */
+@Composable
+private fun basisLine(
+    basis: WakeBasis,
+    report: DrainReport,
+    formats: Formats,
+): String {
+    val text =
+        when (basis) {
+            WakeBasis.SCREEN_OFF_ON_BATTERY -> R.string.drain_basis_screen_off
+            WakeBasis.ON_BATTERY -> R.string.drain_basis_on_battery
+            WakeBasis.WHOLE_SPAN -> R.string.drain_basis_whole
+        }
+    return stringResource(text, formats.held(report.basisMs(basis)))
+}
+
 /**
- * A group's top: its heading, then, when it is empty, whether its source covered the window, or,
- * when it was partly covered, that its counts may be low.
+ * A group's top: its heading, then, when it is empty, whether its source covered the window; else
+ * when its counter ran, and, when it was partly covered, that its counts may be low.
  */
 @Composable
 private fun LazyItemScope.GroupTop(
@@ -287,13 +323,21 @@ private fun LazyItemScope.GroupTop(
                 color = colors.textSecondary,
                 style = type.body,
             )
-        } else if (coverage == Coverage.PARTIAL) {
+        } else {
             Text(
-                stringResource(R.string.drain_wake_group_partial),
+                head.basis,
                 Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space4),
                 color = colors.textSecondary,
                 style = type.caption,
             )
+            if (coverage == Coverage.PARTIAL) {
+                Text(
+                    stringResource(R.string.drain_wake_group_partial),
+                    Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space4),
+                    color = colors.textSecondary,
+                    style = type.caption,
+                )
+            }
         }
     }
 }
@@ -305,10 +349,14 @@ private class Section<T>(
     val rows: List<T>,
 )
 
-/** A group's heading: its name, and the glossary line that explains it where SPEC 19.3 has one. */
+/**
+ * A group's heading: its name, the glossary line that explains it where SPEC 19.3 has one, and when
+ * its counter ran ([basisLine]).
+ */
 private class GroupHead(
     val title: String,
     val definition: String?,
+    val basis: String,
 )
 
 /**
