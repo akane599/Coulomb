@@ -4,6 +4,10 @@
 package io.github.akane599.coulomb.core.analytics
 
 import io.github.akane599.coulomb.core.model.Provenance
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
 /**
  * One context's drain over a stretch of time: the current session's time in that context, or one
@@ -34,11 +38,16 @@ public data class TimeLeft(
  * same context.
  *
  * - The history gives a band, its weighted lower and upper quartile; each window weighs its hours
- *   times its quality.
+ *   times its quality. Few windows say little about the next hours, so the band is at least
+ *   [UNTRUSTED_SPREAD] / √n around the median for `n` effective windows: one past day is as wide
+ *   as an untrusted session.
  * - The session gives its rate with a spread that narrows as trust in it grows. Trust is its
  *   quality times `h / (h + 1)` for `h` hours, so one hour of perfect data earns half the weight.
- * - The band is the trust-weighted blend of the two. It never gets narrower than ±10% around the
- *   blended rate, so the range never collapses to one number.
+ * - The band is the trust-weighted blend of the two, widened on each side by
+ *   `trust × (1 − trust) × |session − history|`, so a session that disagrees with the history
+ *   widens the range instead of landing between the two. It stays within the two bands' outer
+ *   edges and never gets narrower than ±10% around the blended rate, so the range never collapses
+ *   to one number.
  * - Time left is the level over the band's upper and lower rate.
  */
 public object TimeRemaining {
@@ -54,6 +63,7 @@ public object TimeRemaining {
     private const val LOWER_QUARTILE = 0.25
     private const val MEDIAN = 0.5
     private const val UPPER_QUARTILE = 0.75
+    private const val BOUNDARY_TOLERANCE = 1e-9
 
     /**
      * Time to empty from [levelPct], or null when there is nothing to estimate from: no usable rate,
@@ -94,10 +104,12 @@ public object TimeRemaining {
 
     private fun historyBand(history: List<ContextRate>): Band {
         val weighted = history.map { it.pctPerHour to it.hours * it.quality.coerceIn(0.0, 1.0) }
+        val mid = weightedQuantile(weighted, MEDIAN)
+        val spread = UNTRUSTED_SPREAD / sqrt(effectiveCount(weighted.map { it.second }))
         return Band(
-            low = weightedQuantile(weighted, LOWER_QUARTILE),
-            mid = weightedQuantile(weighted, MEDIAN),
-            high = weightedQuantile(weighted, UPPER_QUARTILE),
+            low = min(weightedQuantile(weighted, LOWER_QUARTILE), mid * (1 - spread)),
+            mid = mid,
+            high = max(weightedQuantile(weighted, UPPER_QUARTILE), mid * (1 + spread)),
         )
     }
 
@@ -105,16 +117,25 @@ public object TimeRemaining {
         session: Band,
         history: Band,
         trust: Double,
-    ): Band =
-        Band(
-            low = trust * session.low + (1 - trust) * history.low,
+    ): Band {
+        val disagreement = trust * (1 - trust) * abs(session.mid - history.mid)
+        return Band(
+            low = max(trust * session.low + (1 - trust) * history.low - disagreement, min(session.low, history.low)),
             mid = trust * session.mid + (1 - trust) * history.mid,
-            high = trust * session.high + (1 - trust) * history.high,
+            high = min(trust * session.high + (1 - trust) * history.high + disagreement, max(session.high, history.high)),
         )
+    }
+
+    /** Kish's effective sample size: `n` for `n` equal weights, near 1 when one weight dominates. */
+    internal fun effectiveCount(weights: List<Double>): Double {
+        val squares = weights.sumOf { it * it }
+        return if (squares > 0) weights.sum().let { it * it } / squares else weights.size.toDouble()
+    }
 
     /**
      * The value at [q] of the weighted distribution: the smallest value whose cumulative weight
-     * reaches [q] of the total. Values with no weight still count when every weight is zero.
+     * reaches [q] of the total, or the midpoint of two values when [q] falls exactly between them,
+     * as the median of an even count. Values with no weight count by rank when every weight is zero.
      */
     internal fun weightedQuantile(
         values: List<Pair<Double, Double>>,
@@ -123,10 +144,15 @@ public object TimeRemaining {
         val sorted = values.sortedBy { it.first }
         val total = sorted.sumOf { it.second }
         if (total <= 0) return sorted[((sorted.size - 1) * q).toInt()].first
+        val target = q * total
+        val tolerance = total * BOUNDARY_TOLERANCE
         var cumulative = 0.0
-        for ((value, weight) in sorted) {
-            cumulative += weight
-            if (cumulative >= q * total) return value
+        for ((index, entry) in sorted.withIndex()) {
+            cumulative += entry.second
+            if (cumulative >= target - tolerance) {
+                val next = sorted.getOrNull(index + 1)
+                return if (next != null && abs(cumulative - target) <= tolerance) (entry.first + next.first) / 2 else entry.first
+            }
         }
         return sorted.last().first
     }
