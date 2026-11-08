@@ -337,20 +337,30 @@ internal class SnapshotWriter(
     }
 
     /**
-     * The heavy snapshots with counters inside a window, for the S9 steps; none for a consecutive
-     * window. One without an `ok` S9 read needs no rows to break the chain.
+     * Every heavy snapshot inside a window, for the S9 steps; none for a consecutive window. One
+     * without usable S9 rows, its counters pruned or its read not `ok`, needs no rows to break the
+     * chain.
      */
     private suspend fun sourcePath(
         from: SnapshotEntity,
         to: SnapshotEntity,
     ): List<KernelEnd> =
-        snapshots.heavyWithCountersBetween(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs).map {
-            if (s9Ok(it)) KernelEnd(it, snapshots.kernelRead(it.id), snapshots.wakeupSources(it.id)) else KernelEnd(it, null, emptyList())
+        snapshots.heavyBetween(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs).map {
+            if (s9Usable(
+                    it,
+                )
+            ) {
+                KernelEnd(it, snapshots.kernelRead(it.id), snapshots.wakeupSources(it.id))
+            } else {
+                KernelEnd(it, null, emptyList())
+            }
         }
 
-    private suspend fun sourcesIfOk(snapshot: SnapshotEntity) = if (s9Ok(snapshot)) snapshots.wakeupSources(snapshot.id) else emptyList()
+    private suspend fun sourcesIfOk(snapshot: SnapshotEntity) =
+        if (s9Usable(snapshot)) snapshots.wakeupSources(snapshot.id) else emptyList()
 
-    private fun s9Ok(snapshot: SnapshotEntity) = sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
+    private fun s9Usable(snapshot: SnapshotEntity) =
+        !snapshot.countersPruned && sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
 
     private fun localDate(
         wallMs: Long,

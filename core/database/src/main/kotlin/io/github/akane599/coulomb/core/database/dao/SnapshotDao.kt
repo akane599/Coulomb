@@ -196,6 +196,23 @@ public abstract class SnapshotDao {
         toElapsedNs: Long,
     ): List<SnapshotEntity>
 
+    /**
+     * Every heavy snapshot strictly between the two points, counters pruned or not, in time order:
+     * the S9 steps of a long window, which must see where its rows are gone (ADR-0029 §4).
+     */
+    @Query(
+        "SELECT * FROM snapshot WHERE kind = 'HEAVY' " +
+            "AND (bootSeq > :fromBootSeq OR (bootSeq = :fromBootSeq AND elapsedNs > :fromElapsedNs)) " +
+            "AND (bootSeq < :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs < :toElapsedNs)) " +
+            "ORDER BY bootSeq, elapsedNs",
+    )
+    public abstract suspend fun heavyBetween(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<SnapshotEntity>
+
     /** The latest snapshot of [bootSeq]: where a session closed by a reboot ends. */
     @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq ORDER BY elapsedNs DESC LIMIT 1")
     public abstract suspend fun latestInBoot(bootSeq: Int): SnapshotEntity?

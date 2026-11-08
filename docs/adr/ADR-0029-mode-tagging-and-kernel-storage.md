@@ -133,7 +133,10 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
   - A session or day window steps through the heavy snapshots with counters inside it and adds up
     the steps. Two ends hours apart would hide a source that a driver re-registered: the kernel
     gives a recreated source the lowest free number, often its old one. A snapshot inside without
-    an `ok` S9 read under the window's boot, such as a stretch of shell mode, makes S9 partial (R).
+    usable S9 rows makes S9 partial (R). That covers a read that was not `ok` or not under the
+    window's boot, such as a stretch of shell mode, and rows pruned with the snapshot's counters
+    after 2 hours. So a session or day window longer than that gives S9 as "at least". A day's
+    exact S9 changes are the sum of its consecutive windows.
 - **S27:**
   - A window (A, B) is whole only when every read in (A, B] ran under one kernel boot key, and
     together, minus their gaps, they cover the sequence range (A's last, B's last].
@@ -260,6 +263,8 @@ and boot rules, and the engine's order, budget and cursor.
     radio can re-register its driver's sources. Such windows now step through the snapshots inside
     them (§4). Inside one consecutive step, minutes long, the case remains, as for any sampled
     counter.
+  - A re-check of the fix found that the step walk skipped snapshots whose counters, and with them
+    their S9 rows, were pruned after 2 hours. Those snapshots now make S9 partial.
 - **Found sound:**
   - missing data at either end gives NONE, never zeros;
   - counter falls and reboots;

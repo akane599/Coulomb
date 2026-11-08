@@ -22,10 +22,12 @@ internal data class KernelEnd(
     val snapshot: SnapshotEntity,
     /** The end's kernel read; null when it read no kernel source. */
     val read: KernelReadEntity?,
-    /** Its S9 sources; empty unless its S9 status is `ok`. */
+    /** Its S9 sources; empty unless [sourcesOk]. */
     val sources: List<WakeupSourceStatEntity>,
 ) {
-    val sourcesOk: Boolean get() = sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
+    /** Its S9 was read `ok` and the rows are still stored: they are pruned with its counters. */
+    val sourcesOk: Boolean
+        get() = !snapshot.countersPruned && sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
 
     /** Its S27 read reached the ring's end, so its last record is where the log stood at this end. */
     val logOk: Boolean get() = sourceStatus(snapshot.sourceStatusJson, KernelReader.S27) == SourceStatus.OK
@@ -113,8 +115,9 @@ internal object KernelWindow {
      * counter fell, or that another source took over, was reset and gives none; one present only at
      * the later snapshot was created in the step and gives its whole value. A reset or a vanished
      * instance makes the window PARTIAL. So does a snapshot in between without an `ok` S9 read under
-     * the window's boot, since a source reset in its stretch would go unseen: the kernel gives a
-     * recreated source the lowest free number, often its old one. Only sources whose wakeup count
+     * the window's boot, or whose rows were pruned with its counters, since a source reset in its
+     * stretch would go unseen: the kernel gives a recreated source the lowest free number, often
+     * its old one. Only sources whose wakeup count
      * rose get a row; wakelock time on its own is S5's.
      */
     fun wakeupSources(

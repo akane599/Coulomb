@@ -123,6 +123,11 @@ class KernelWindowTest {
         val shell = end(2, null, s9 = SourceStatus.FAILED)
         assertThat(KernelWindow.wakeupSources(from, to, listOf(shell)).first).isEqualTo(Coverage.PARTIAL)
         assertThat(KernelWindow.wakeupSources(from, to, listOf(end(2, read(BOOT + 1)))).first).isEqualTo(Coverage.PARTIAL)
+
+        // A snapshot inside whose rows went with its counters, after two hours.
+        val pruned = end(2, read(BOOT)).let { it.copy(snapshot = it.snapshot.copy(countersPruned = true)) }
+        assertThat(pruned.sourcesOk).isFalse()
+        assertThat(KernelWindow.wakeupSources(from, to, listOf(pruned, quiet)).first).isEqualTo(Coverage.PARTIAL)
     }
 
     @Test

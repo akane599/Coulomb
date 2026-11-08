@@ -158,6 +158,19 @@ class SnapshotDaoTest : DatabaseTest() {
         }
 
     @Test
+    fun heavyBetweenListsPrunedSnapshotsWhereTheCounterChainSkipsThem() =
+        runTest {
+            dao.insert(snapshot(10, 1))
+            val pruned = dao.insert(snapshot(20, 1).copy(countersPruned = true))
+            val kept = dao.insert(snapshot(30, 1))
+            dao.insert(snapshot(40, 1, SnapshotKind.LIGHT))
+            dao.insert(snapshot(50, 1))
+
+            assertThat(dao.heavyBetween(1, 10 * NS_PER_S, 1, 50 * NS_PER_S).map { it.id }).containsExactly(pruned, kept).inOrder()
+            assertThat(dao.heavyWithCountersBetween(1, 10 * NS_PER_S, 1, 50 * NS_PER_S).map { it.id }).containsExactly(kept)
+        }
+
+    @Test
     fun aSnapshotSomethingDependsOnCannotBeDeleted() =
         runTest {
             val referenced = dao.insert(snapshot(elapsedS = 10))
