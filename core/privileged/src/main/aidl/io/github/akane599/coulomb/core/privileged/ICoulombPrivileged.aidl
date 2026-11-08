@@ -61,6 +61,7 @@ interface ICoulombPrivileged {
     // S27: the allowlisted suspend and resume records of /dev/kmsg, at most
     // WorkerLimits.MAX_KMSG_KEPT per call. `afterSeq` (-1 for none) applies only when `bootKey`
     // matches the running kernel's boot; otherwise the read starts at the ring's oldest record.
+    // A read stopped by a cap before the ring's end has no `#end` trailer.
     // ACCESS_DENIED when the kernel log cannot be opened (shell, or a closed path).
     int readKernelLog(long bootKey, long afterSeq, in ParcelFileDescriptor pipe) = 18;
 

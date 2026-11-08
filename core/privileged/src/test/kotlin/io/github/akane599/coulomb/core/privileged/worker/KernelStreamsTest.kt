@@ -20,11 +20,15 @@ class KernelStreamsTest {
     ): List<String> {
         val out = ByteArrayOutputStream()
         val copier = KernelLogCopier(boot, afterSeq, maxKept, testMarkers, out)
+        var stopped = false
         for (r in records) {
             val bytes = r.toByteArray()
-            if (!copier.record(bytes, bytes.size)) break
+            if (!copier.record(bytes, bytes.size)) {
+                stopped = true
+                break
+            }
         }
-        copier.finish()
+        copier.finish(reachedEnd = !stopped)
         return out.toString(Charsets.US_ASCII).lines().dropLast(1)
     }
 
@@ -69,11 +73,12 @@ class KernelStreamsTest {
     }
 
     @Test
-    fun stopsAtTheCapWithTheLastKeptRecordAsLast() {
+    fun stopsAtTheCapWithoutTheTrailerSoTheReadIsCutShort() {
         val lines =
             copy(null, "6,1,1,-;PM: suspend exit\n", "6,2,2,-;x\n", "6,3,3,-;PM: suspend exit\n", "6,4,4,-;PM: suspend exit\n", maxKept = 2)
-        assertThat(lines.last()).isEqualTo("#end last=3 lost=0")
-        assertThat(lines).hasSize(4)
+        assertThat(lines)
+            .containsExactly("#begin boot=$boot after=- first=1", "6,1,1,-;PM: suspend exit", "6,3,3,-;PM: suspend exit")
+            .inOrder()
     }
 
     @Test

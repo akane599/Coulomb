@@ -130,9 +130,17 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
   - An instance present only at the end was created inside the window, so its value is its delta.
   - An instance that vanished makes the window partial.
   - Sums by name happen only here, when the window is built (R).
+  - A session or day window steps through the heavy snapshots with counters inside it and adds up
+    the steps. Two ends hours apart would hide a source that a driver re-registered: the kernel
+    gives a recreated source the lowest free number, often its old one. A snapshot inside without
+    an `ok` S9 read under the window's boot, such as a stretch of shell mode, makes S9 partial (R).
 - **S27:**
   - A window (A, B) is whole only when every read in (A, B] ran under one kernel boot key, and
     together, minus their gaps, they cover the sequence range (A's last, B's last].
+  - A window counts S27 only when A's read reached the ring's end (status `ok`). A read cut short,
+    by time or by a cap, does not mark where A stood in the log. Records past its last may be older
+    than A, and an earlier window may already have counted them. A window ending at such a read is
+    at most partial (R).
   - Its events are exactly the records with `seq` in that range, so each record lands in one
     consecutive window.
   - Records recovered later, after an ADB-mode span, are kept with their own times. A window
@@ -155,8 +163,12 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
 - A kernel file source cut short stores nothing for that source: its status is `partial`.
 - A kernel log read cut short stores its exact prefix, and its last sequence is the last record
   kept.
-- The next read's `afterSeq` comes from the database: the latest stored read with the same kernel
-  boot key, never from memory, and never across boots (R).
+- The next read's `afterSeq` comes from the database: the furthest record a stored read with the
+  same kernel boot key covered, never from memory, and never across boots (R). When the kernel
+  files gave no boot, the boot comes from the latest stored log read. The worker applies the
+  cursor only if the kernel has not rebooted since.
+- A log read stopped by the worker's kept-record or read cap ends without the trailer, so it is
+  `partial` like one cut by time, and the next read continues after its last kept record.
 - Counters are cumulative, so a retried read is just another reading. Events are unique per
   `(kernelBoot, seq)`.
 - Kernel file reads get the same sleep check as S5. A read during which the CPU slept is not stored,
@@ -164,8 +176,8 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
   sequence number and time stamp.
 - The kernel files are read only when the snapshot's S5 counters are usable, since their counters
   end windows beside S5's. The S27 read does not depend on them.
-- Without a kernel boot from the files, the S27 read has no stored cursor to use and starts at the
-  ring's oldest record. Records already stored are ignored on insert, so nothing is counted twice.
+- With no stored log read for the running boot, the S27 read starts at the ring's oldest record.
+  Records already stored are ignored on insert, so nothing is stored twice.
 - Order inside a heavy snapshot: S5, then S25, S26 and S9, then S7, then S27, all inside the 4 s cap
   (R).
 
@@ -229,6 +241,32 @@ and the DAOs.
   so the next read starts at the ring's oldest record and may store pruned records again. They
   are never counted twice. A window counts only the range after its start's own kept span, and no
   snapshot in those 7 days has one.
+
+A third independent review covered the collector: the window deltas and coverage, the connection
+and boot rules, and the engine's order, budget and cursor.
+- **One defect, fixed with regression tests:** a log read that started at the ring's oldest
+  record could stop at the kept-record cap below a record an earlier read had reached. A window
+  starting there counted the records in between a second time. The worker's capped reads looked
+  whole, because they still ended with the trailer. The fix:
+  - a capped read now ends without the trailer;
+  - a window counts S27 only from a read that reached the ring's end (§4);
+  - a log read without a boot from the files takes the latest stored boot's cursor (§5).
+- **Its open questions, both settled:**
+  - A read whose trailer arrived after the parser had flagged a problem is `partial`. It therefore
+    ends a window at most partially and starts none.
+  - A wakeup source destroyed and recreated with the same number and name between a session or
+    day window's two ends, and ending above its start value, was undercounted while marked whole.
+    The kernel gives a recreated source the lowest free number, often its old one, and toggling a
+    radio can re-register its driver's sources. Such windows now step through the snapshots inside
+    them (§4). Inside one consecutive step, minutes long, the case remains, as for any sampled
+    counter.
+- **Found sound:**
+  - missing data at either end gives NONE, never zeros;
+  - counter falls and reboots;
+  - the S9 rules;
+  - the uid, connection and boot discards;
+  - gap arithmetic;
+  - which events the 7-day prune keeps.
 
 ## Size
 

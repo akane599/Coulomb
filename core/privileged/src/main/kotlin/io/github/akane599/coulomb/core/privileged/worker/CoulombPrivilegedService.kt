@@ -302,12 +302,16 @@ public class CoulombPrivilegedService(
     ) {
         val buf = ByteArray(WorkerLimits.KMSG_RECORD_BYTES)
         var reads = 0
-        var going = true
-        while (going && reads++ < WorkerLimits.MAX_KMSG_READS) {
+        var reachedEnd = false
+        while (!reachedEnd && reads++ < WorkerLimits.MAX_KMSG_READS) {
             val n = readRecord(fd, buf)
-            going = if (n == SKIPPED) true else n > 0 && copier.record(buf, n)
+            if (n == 0) {
+                reachedEnd = true
+            } else if (n != SKIPPED && !copier.record(buf, n)) {
+                break
+            }
         }
-        copier.finish()
+        copier.finish(reachedEnd)
     }
 
     /**

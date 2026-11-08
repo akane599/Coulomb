@@ -68,6 +68,7 @@ class KernelDaoTest : DatabaseTest() {
     fun theCursorIsTheFurthestStoredReadOfTheSameBoot() =
         runTest {
             assertThat(dao.kmsgCursor(BOOT_A)).isNull()
+            assertThat(dao.latestKmsgBoot()).isNull()
             dao.insert(snapshot(elapsedS = 10), kernel = rows(BOOT_A, after = null, last = 110))
             dao.insert(snapshot(elapsedS = 20), kernel = rows(BOOT_A, after = 110, last = 140))
             // Nothing past the cursor: the read covered up to it.
@@ -78,6 +79,10 @@ class KernelDaoTest : DatabaseTest() {
             assertThat(dao.kernelRead(quiet)?.kmsgLastSeq).isEqualTo(140)
             assertThat(dao.kmsgCursor(BOOT_A)).isEqualTo(140)
             assertThat(dao.kmsgCursor(BOOT_B)).isEqualTo(7)
+            // The latest log read, not the latest kernel read: the one at 40 s read no log.
+            assertThat(dao.latestKmsgBoot()).isEqualTo(BOOT_B)
+            dao.insert(snapshot(elapsedS = 50, bootSeq = 2), kernel = KernelRows(KernelReadEntity.of(0, BOOT_A, suspendStats = STATS)))
+            assertThat(dao.latestKmsgBoot()).isEqualTo(BOOT_B)
         }
 
     @Test

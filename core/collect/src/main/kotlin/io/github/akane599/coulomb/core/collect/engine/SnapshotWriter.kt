@@ -333,17 +333,24 @@ internal class SnapshotWriter(
         val reads = snapshots.kmsgReadsBetween(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
         val range = KernelWindow.logRange(start, reads, end)
         val events = range?.let { snapshots.kernelLog(it.kernelBoot, it.afterSeq, it.lastSeq) }.orEmpty()
-        return KernelWindow.build(start, end, range, events)
+        return KernelWindow.build(start, end, range, events, sourcePath(from, to))
     }
 
-    private suspend fun sourcesIfOk(snapshot: SnapshotEntity) =
-        if (sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) ==
-            SourceStatus.OK
-        ) {
-            snapshots.wakeupSources(snapshot.id)
-        } else {
-            emptyList()
+    /**
+     * The heavy snapshots with counters inside a window, for the S9 steps; none for a consecutive
+     * window. One without an `ok` S9 read needs no rows to break the chain.
+     */
+    private suspend fun sourcePath(
+        from: SnapshotEntity,
+        to: SnapshotEntity,
+    ): List<KernelEnd> =
+        snapshots.heavyWithCountersBetween(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs).map {
+            if (s9Ok(it)) KernelEnd(it, snapshots.kernelRead(it.id), snapshots.wakeupSources(it.id)) else KernelEnd(it, null, emptyList())
         }
+
+    private suspend fun sourcesIfOk(snapshot: SnapshotEntity) = if (s9Ok(snapshot)) snapshots.wakeupSources(snapshot.id) else emptyList()
+
+    private fun s9Ok(snapshot: SnapshotEntity) = sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
 
     private fun localDate(
         wallMs: Long,

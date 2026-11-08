@@ -8,7 +8,10 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.collect.snapshot.KernelReader
 import io.github.akane599.coulomb.core.collect.snapshot.KernelWindow
+import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
+import io.github.akane599.coulomb.core.collect.snapshot.sourceStatus
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
@@ -232,6 +235,53 @@ class KernelCollectionTest {
         }
 
     @Test
+    fun aLogReadCutShortEndsItsWindowInPartAndStartsNone() =
+        runTest {
+            stats.mode = PrivilegeMode.ROOT
+            val engine = engine()
+            engine.heavy()
+            kernel.suspend(3)
+            engine.heavy()
+            kernel.suspend(2)
+            kernel.capAt = 1
+            val cut = engine.heavy()
+            kernel.capAt = null
+            kernel.suspend(1)
+            engine.heavy()
+
+            assertThat(sourceStatus(cut.sourceStatusJson, KernelReader.S27)).isEqualTo(SourceStatus.PARTIAL)
+            val (whole, toCut, fromCut) = windows()
+            assertThat(rows(whole).kernelWakes(WakeKind.RESUME_CAUSE)).containsExactly(MODEM, 3L)
+            // At least the one record the cut read kept; the other belongs here too but is not counted.
+            assertThat(toCut.kernelCoverage).isEqualTo(KernelCoverage(Coverage.WHOLE, Coverage.WHOLE, Coverage.PARTIAL))
+            assertThat(rows(toCut).kernelWakes(WakeKind.RESUME_CAUSE)).containsExactly(MODEM, 1L)
+            // The cut read does not say where the log stood at its snapshot, so nothing starts there.
+            assertThat(fromCut.kernelCoverage).isEqualTo(KernelCoverage(Coverage.WHOLE, Coverage.WHOLE, Coverage.NONE))
+            assertThat(rows(fromCut).kernelWakes(WakeKind.RESUME_CAUSE)).isEmpty()
+            assertThat(count("SELECT COUNT(*) FROM kernel_log_event")).isEqualTo(6)
+        }
+
+    @Test
+    fun aFailedFilesReadStillContinuesTheLogFromItsStoredCursor() =
+        runTest {
+            stats.mode = PrivilegeMode.ROOT
+            val engine = engine()
+            engine.heavy()
+            kernel.suspend(2)
+            kernel.filesFail = true
+            val noFiles = engine.heavy()
+
+            assertThat(
+                noFiles.sourceStatusJson,
+            ).isEqualTo("""{"S25":"failed","S26":"failed","S27":"ok","S5":"ok","S7":"failed","S9":"failed"}""")
+            // The latest log read's boot gives the cursor, so the read does not start at the ring's oldest record.
+            assertThat(stats.logCursors).containsExactly(-1L, 100L).inOrder()
+            val window = windows().single()
+            assertThat(window.kernelCoverage).isEqualTo(KernelCoverage(Coverage.NONE, Coverage.NONE, Coverage.WHOLE))
+            assertThat(rows(window).kernelWakes(WakeKind.RESUME_CAUSE)).containsExactly(MODEM, 2L)
+        }
+
+    @Test
     fun withShizukuStoppedSnapshotsHaveNoModeAndNoKernelStatuses() =
         runTest {
             stats.mode = null
@@ -244,6 +294,7 @@ class KernelCollectionTest {
 
     private companion object {
         val WHOLE = KernelCoverage(Coverage.WHOLE, Coverage.WHOLE, Coverage.WHOLE)
+        const val MODEM = "qcom,smp2p-modem"
         val KERNEL_KINDS = setOf(WakeKind.WAKEUP_SOURCE, WakeKind.RESUME_CAUSE, WakeKind.SUSPEND_ABORT)
     }
 }

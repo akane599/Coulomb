@@ -310,9 +310,10 @@ internal class CollectorEngine(
     }
 
     /**
-     * S27, last. Its cursor is the stored one for the files' kernel boot, never one kept in memory
-     * (ADR-0029 §5). Without that boot the read starts at the ring's oldest record; records already
-     * stored are ignored on insert. Null when not [due].
+     * S27, last. Its cursor is the stored one for the files' kernel boot, or for the latest log
+     * read's boot when the files gave none; never one kept in memory (ADR-0029 §5). The worker
+     * applies it only within the running boot, else reads from the ring's oldest record; records
+     * already stored are ignored on insert. Null when not [due].
      */
     private suspend fun kernelLog(
         due: Boolean,
@@ -323,7 +324,7 @@ internal class CollectorEngine(
         if (!heavy.kernelReadable()) return KernelLogResult.of(SourceStatus.FAILED)
         val leftMs = leftMs(startNs)
         if (leftMs <= 0) return KernelLogResult.of(SourceStatus.SKIPPED)
-        val bootKey = files?.bootKey
+        val bootKey = files?.bootKey ?: db.snapshotDao().latestKmsgBoot()
         val cursor = bootKey?.let { db.snapshotDao().kmsgCursor(it) }
         return heavy.kernelLog(bootKey ?: NO_BOOT, cursor ?: NO_CURSOR, minOf(SOURCE_TIMEOUT_MS, leftMs))
     }

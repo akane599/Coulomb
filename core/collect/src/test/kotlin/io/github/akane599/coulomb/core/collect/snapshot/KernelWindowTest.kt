@@ -103,6 +103,29 @@ class KernelWindowTest {
     }
 
     @Test
+    fun aLongWindowStepsThroughTheSnapshotsInsideItSoAResetIsNotHidden() {
+        val from = end(1, read(BOOT), source(1, "wlan", wakeups = 10, total = 100))
+        // The driver re-registered its source under the same number and name, then it woke 12 times.
+        val reset = end(2, read(BOOT), source(1, "wlan", wakeups = 2, total = 20))
+        val to = end(3, read(BOOT), source(1, "wlan", wakeups = 14, total = 140))
+
+        // Its two ends alone would read 4 wakeups, whole.
+        assertThat(KernelWindow.wakeupSources(from, to).first).isEqualTo(Coverage.WHOLE)
+        val (coverage, rows) = KernelWindow.wakeupSources(from, to, listOf(reset))
+        assertThat(coverage).isEqualTo(Coverage.PARTIAL)
+        assertThat(rows.single().wakeups).isEqualTo(12)
+
+        // Steps without a reset add up to the two ends' change.
+        val quiet = end(2, read(BOOT), source(1, "wlan", wakeups = 12, total = 120))
+        assertThat(KernelWindow.wakeupSources(from, to, listOf(quiet))).isEqualTo(KernelWindow.wakeupSources(from, to))
+
+        // A snapshot inside read no S9, as in a stretch of shell mode: a reset there would go unseen.
+        val shell = end(2, null, s9 = SourceStatus.FAILED)
+        assertThat(KernelWindow.wakeupSources(from, to, listOf(shell)).first).isEqualTo(Coverage.PARTIAL)
+        assertThat(KernelWindow.wakeupSources(from, to, listOf(end(2, read(BOOT + 1)))).first).isEqualTo(Coverage.PARTIAL)
+    }
+
+    @Test
     fun theLogRangeIsWholeOnlyWhenOneBootsReadsCoverIt() {
         val from = end(1, read(BOOT, kmsg = span(after = 90, last = 100)))
         val middle = read(BOOT, kmsg = span(after = 100, last = 130))
@@ -139,6 +162,21 @@ class KernelWindowTest {
         // Nothing new, and the end read the log to say so: a whole range of no records.
         val quiet = read(BOOT, kmsg = span(after = 100, last = null))
         assertThat(KernelWindow.logRange(from, listOf(quiet), end(2, quiet))).isEqualTo(LogRange(BOOT, 100, 100, Coverage.WHOLE))
+    }
+
+    @Test
+    fun aLogReadCutShortCannotStartARangeAndEndsOneOnlyInPart() {
+        val from = end(1, read(BOOT, kmsg = span(after = 90, last = 100)))
+        val cut = read(BOOT, kmsg = span(after = 100, last = 120))
+        // The records after the end's last kept one happened inside this window too.
+        assertThat(KernelWindow.logRange(from, listOf(cut), end(2, cut, s27 = SourceStatus.PARTIAL)))
+            .isEqualTo(LogRange(BOOT, 100, 120, Coverage.PARTIAL))
+
+        // A start read from the ring's oldest record and capped at 300, after an earlier read had
+        // reached 500: the next window must not count 301..500 again.
+        val capped = end(2, read(BOOT, kmsg = span(after = null, last = 300, first = 50)), s27 = SourceStatus.PARTIAL)
+        val next = read(BOOT, kmsg = span(after = 500, last = 600))
+        assertThat(KernelWindow.logRange(capped, listOf(next), end(3, next))).isNull()
     }
 
     @Test
@@ -192,7 +230,12 @@ class KernelWindowTest {
         read: KernelReadEntity?,
         vararg sources: WakeupSourceStatEntity,
         s9: SourceStatus = SourceStatus.OK,
-    ) = KernelEnd(snapshot(id, sourceStatusJson(mapOf("S5" to SourceStatus.OK, KernelReader.S9 to s9))), read, sources.toList())
+        s27: SourceStatus = SourceStatus.OK,
+    ) = KernelEnd(
+        snapshot(id, sourceStatusJson(mapOf("S5" to SourceStatus.OK, KernelReader.S9 to s9, KernelReader.S27 to s27))),
+        read,
+        sources.toList(),
+    )
 
     private fun read(
         boot: Long,

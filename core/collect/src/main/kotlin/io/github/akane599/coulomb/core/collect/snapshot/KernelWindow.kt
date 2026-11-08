@@ -26,6 +26,9 @@ internal data class KernelEnd(
     val sources: List<WakeupSourceStatEntity>,
 ) {
     val sourcesOk: Boolean get() = sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
+
+    /** Its S27 read reached the ring's end, so its last record is where the log stood at this end. */
+    val logOk: Boolean get() = sourceStatus(snapshot.sourceStatusJson, KernelReader.S27) == SourceStatus.OK
 }
 
 /**
@@ -59,14 +62,16 @@ internal object KernelWindow {
     const val S25_SUCCESS: String = "s25.success"
     const val S25_FAIL: String = "s25.fail"
 
+    /** [between]: the heavy snapshots with counters inside the window, oldest first; none for a consecutive one. */
     fun build(
         from: KernelEnd,
         to: KernelEnd,
         range: LogRange?,
         events: List<KernelLogRecord>,
+        between: List<KernelEnd> = emptyList(),
     ): KernelWindowRows {
         val (s25, stats) = suspendStats(from, to)
-        val (s9, sourceWakes) = wakeupSources(from, to)
+        val (s9, sourceWakes) = wakeupSources(from, to, between)
         val (s27, logWakes) = range?.let { logRows(it, events) } ?: (Coverage.NONE to emptyList())
         val coverage = KernelCoverage(s25, s9, s27).takeUnless { s25 == Coverage.NONE && s9 == Coverage.NONE && s27 == Coverage.NONE }
         return KernelWindowRows(coverage, sourceWakes + logWakes, stats)
@@ -103,30 +108,31 @@ internal object KernelWindow {
     }
 
     /**
-     * S9 per instance, summed by name only here. An instance at both ends gives its change; one
-     * whose cumulative counter fell, or that another source took over, was reset and gives none;
-     * one present only at the end was created inside the window and gives its whole value. A reset
-     * or a vanished instance makes the window PARTIAL. Only sources whose wakeup count rose get a
-     * row; wakelock time on its own is S5's.
+     * S9 per instance, step by step from [from] through [between] to [to], summed by name only
+     * here. In each step an instance at both snapshots gives its change; one whose cumulative
+     * counter fell, or that another source took over, was reset and gives none; one present only at
+     * the later snapshot was created in the step and gives its whole value. A reset or a vanished
+     * instance makes the window PARTIAL. So does a snapshot in between without an `ok` S9 read under
+     * the window's boot, since a source reset in its stretch would go unseen: the kernel gives a
+     * recreated source the lowest free number, often its old one. Only sources whose wakeup count
+     * rose get a row; wakelock time on its own is S5's.
      */
     fun wakeupSources(
         from: KernelEnd,
         to: KernelEnd,
+        between: List<KernelEnd> = emptyList(),
     ): Pair<Coverage, List<WindowWake>> {
         if (!sameBoot(from, to) || !(from.sourcesOk && to.sourcesOk)) return Coverage.NONE to emptyList()
-        val start = from.sources.associateBy { it.instance }
-        val end = to.sources.associateBy { it.instance }
-        var partial = start.values.any { s -> end[s.instance]?.name != s.name }
         val byName = LinkedHashMap<String, SourceChange>()
-        for (e in end.values) {
-            val s = start[e.instance]
-            val change =
-                when {
-                    s == null || s.name != e.name -> SourceChange(e.totalTimeMs, e.activeCount, e.wakeupCount)
-                    fell(s, e) -> null
-                    else -> SourceChange(e.totalTimeMs - s.totalTimeMs, e.activeCount - s.activeCount, e.wakeupCount - s.wakeupCount)
-                }
-            if (change == null) partial = true else byName.merge(e.name, change, SourceChange::plus)
+        var partial = false
+        var previous = from
+        for (next in between + to) {
+            if (next.sourcesOk && sameBoot(from, next)) {
+                partial = step(previous.sources, next.sources, byName) || partial
+                previous = next
+            } else {
+                partial = true
+            }
         }
         val woke = byName.entries.filter { it.value.wakeups > 0 }.sortedByDescending { it.value.wakeups }
         if (woke.size > MAX_ROWS_PER_KIND) partial = true
@@ -139,20 +145,22 @@ internal object KernelWindow {
 
     /**
      * The S27 range (A's last, B's last] of a window (A, B), from A's read, the reads in (A, B] and
-     * B's read. WHOLE only when every one of those reads ran under A's kernel boot, B read the log,
-     * and together, minus their gaps, they cover the range. Null when nothing of it is covered.
+     * B's read. WHOLE only when every one of those reads ran under A's kernel boot, B read the log
+     * to the ring's end, and together, minus their gaps, they cover the range. Null when nothing of
+     * it is covered, or when A's read stopped short of the ring's end: records past its last may
+     * then be older than A, and an earlier window may have counted them.
      */
     fun logRange(
         from: KernelEnd,
         reads: List<KernelReadEntity>,
         to: KernelEnd,
     ): LogRange? {
-        val a = from.read?.takeIf { it.kmsgGaps != null } ?: return null
+        val a = from.read?.takeIf { it.kmsgGaps != null && from.logOk } ?: return null
         val start = a.kmsgLastSeq ?: return null
         val sameBoot = reads.filter { it.kernelBoot == a.kernelBoot }
         val end = to.read?.takeIf { it.kmsgGaps != null && it.kernelBoot == a.kernelBoot }?.kmsgLastSeq
         val last = end ?: sameBoot.mapNotNull { it.kmsgLastSeq }.maxOrNull() ?: return null
-        val whole = end != null && sameBoot.size == reads.size
+        val whole = end != null && to.logOk && sameBoot.size == reads.size
         return coverage(start, last, sameBoot, whole)?.let { LogRange(a.kernelBoot, start, last, it) }
     }
 
@@ -206,6 +214,28 @@ internal object KernelWindow {
                     .map { (tag, n) -> WindowWake(null, tag, kind, 0, n, null) }
             }
         return coverage to rows
+    }
+
+    /** Adds one step's changes to [byName]; true when the step lost track of a source. */
+    private fun step(
+        from: List<WakeupSourceStatEntity>,
+        to: List<WakeupSourceStatEntity>,
+        byName: MutableMap<String, SourceChange>,
+    ): Boolean {
+        val start = from.associateBy { it.instance }
+        val end = to.associateBy { it.instance }
+        var partial = start.values.any { s -> end[s.instance]?.name != s.name }
+        for (e in end.values) {
+            val s = start[e.instance]
+            val change =
+                when {
+                    s == null || s.name != e.name -> SourceChange(e.totalTimeMs, e.activeCount, e.wakeupCount)
+                    fell(s, e) -> null
+                    else -> SourceChange(e.totalTimeMs - s.totalTimeMs, e.activeCount - s.activeCount, e.wakeupCount - s.wakeupCount)
+                }
+            if (change == null) partial = true else byName.merge(e.name, change, SourceChange::plus)
+        }
+        return partial
     }
 
     private fun sameBoot(

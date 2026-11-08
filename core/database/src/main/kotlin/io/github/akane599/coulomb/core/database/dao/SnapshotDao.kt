@@ -130,6 +130,16 @@ public abstract class SnapshotDao {
     public abstract suspend fun kmsgCursor(kernelBoot: Long): Long?
 
     /**
+     * The kernel boot of the latest stored S27 read, for a log read whose kernel files gave no boot.
+     * The worker applies the cursor only when the kernel has not rebooted since (ADR-0029 §5).
+     */
+    @Query(
+        "SELECT k.kernelBoot FROM kernel_read k JOIN snapshot s ON s.id = k.snapshotId WHERE k.kmsgGaps IS NOT NULL " +
+            "ORDER BY s.bootSeq DESC, s.elapsedNs DESC LIMIT 1",
+    )
+    public abstract suspend fun latestKmsgBoot(): Long?
+
+    /**
      * The S27 reads of the snapshots after `(fromBootSeq, fromElapsedNs)` up to and including
      * `(toBootSeq, toElapsedNs)`, oldest first, for a window's coverage (ADR-0029 §4).
      */

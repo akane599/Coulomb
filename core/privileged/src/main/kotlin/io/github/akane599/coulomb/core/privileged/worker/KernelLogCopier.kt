@@ -16,6 +16,10 @@ import java.io.OutputStream
  * user space writes (kernel/printk/printk.c, android16-6.12 L767-827), so user space cannot pass a
  * line off as a kernel one. A debuggable build also lets through user records carrying
  * [TEST_MARKER], which the emulator mode-switch test writes (ADR-0028 §5).
+ *
+ * The trailer is written only when the copy reached the ring's end. A copy stopped by a cap ends
+ * without it, like one cut by time: its last kept record is not where the ring stood, so the
+ * parser reads it as cut short and the next read continues after it (ADR-0029 §5).
  */
 internal class KernelLogCopier(
     private val bootId: String,
@@ -85,9 +89,10 @@ internal class KernelLogCopier(
         return true
     }
 
-    fun finish() {
+    /** Ends the stream; [reachedEnd] is false when the copy stopped before the ring had no more. */
+    fun finish(reachedEnd: Boolean) {
         if (!headerWritten) writeHeader()
-        sink.write("#end last=${last ?: NONE} lost=$lost\n".toByteArray(Charsets.US_ASCII))
+        if (reachedEnd) sink.write("#end last=${last ?: NONE} lost=$lost\n".toByteArray(Charsets.US_ASCII))
         sink.flush()
     }
 

@@ -198,6 +198,12 @@ internal class FakeKernel {
     private val sources = linkedMapOf(1 to source("wlan_rx_wake"), 2 to source("alarmtimer"))
     private var cause: WakeupCause = WakeupCause.None
 
+    /** Set to fail the kernel files read before the worker answers, as an unavailable call does. */
+    var filesFail = false
+
+    /** Kept records per log read, as the worker's cap; a capped read is cut short. */
+    var capAt: Int? = null
+
     /** [n] suspends, each woken by [irq]; the matching source's wakeups rise with them. */
     fun suspend(
         n: Int,
@@ -232,6 +238,13 @@ internal class FakeKernel {
     }
 
     fun files(origin: WorkerOrigin): KernelFilesRead =
+        if (filesFail) {
+            KernelFilesRead.all(SourceStatus.FAILED)
+        } else {
+            readFiles(origin)
+        }
+
+    private fun readFiles(origin: WorkerOrigin): KernelFilesRead =
         KernelFilesRead(
             bootKey = bootKey,
             suspendStats = SuspendStats(success, fail, mapOf(SuspendStep.SUSPEND to fail), null, null, null),
@@ -249,7 +262,14 @@ internal class FakeKernel {
     ): KernelLogResult {
         val after = afterSeq.takeIf { bootKey == this.bootKey && it >= 0 }
         val from = after ?: -1
-        val kept = records.filter { it.seq > from }
+        val past = records.filter { it.seq > from }
+        val cap = capAt
+        if (cap != null && past.size > cap) {
+            val kept = past.take(cap)
+            val cut = KernelLogRead(this.bootKey, after, kept, firstSeq = from + 1, lastSeq = kept.last().seq, gaps = emptyList())
+            return KernelLogResult(cut, SourceStatus.PARTIAL, origin)
+        }
+        val kept = past
         val read =
             KernelLogRead(
                 this.bootKey,
