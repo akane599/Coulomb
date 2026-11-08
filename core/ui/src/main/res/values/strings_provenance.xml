@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPEC 6.7 provenance names and their one-line meaning (SPEC 10.1, ADR-0023). -->
+<resources>
+    <string name="provenance_measured">Measured</string>
+    <string name="provenance_modeled">Modeled</string>
+    <string name="provenance_estimated">Estimated</string>
+    <string name="provenance_derived">Derived</string>
+
+    <string name="provenance_measured_explained">Measured: read straight from a hardware or system counter.</string>
+    <string name="provenance_modeled_explained">Modeled: computed by a model Coulomb doesn’t own, such as Android’s power model or the battery’s fuel gauge.</string>
+    <string name="provenance_estimated_explained">Estimated: Coulomb’s statistical estimate, shown as a range.</string>
+    <string name="provenance_derived_explained">Derived: arithmetic on measured or modeled values.</string>
+
+    <string name="provenance_explain_action">Explain provenance</string>
+    <!-- SPEC 6.7: a metric with quality below 0.5. -->
+    <string name="low_confidence">Low\u00A0confidence</string>
+</resources>

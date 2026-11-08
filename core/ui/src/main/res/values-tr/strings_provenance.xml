@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="provenance_measured">Ölçülen</string>
+    <string name="provenance_modeled">Modellenen</string>
+    <string name="provenance_estimated">Tahmini</string>
+    <string name="provenance_derived">Türetilen</string>
+
+    <string name="provenance_measured_explained">Ölçülen: doğrudan bir donanım ya da sistem sayacından okundu.</string>
+    <string name="provenance_modeled_explained">Modellenen: Coulomb’a ait olmayan bir model hesapladı; örneğin Android’in güç modeli ya da pilin yakıt göstergesi.</string>
+    <string name="provenance_estimated_explained">Tahmini: Coulomb’un istatistiksel tahmini, aralık olarak gösterilir.</string>
+    <string name="provenance_derived_explained">Türetilen: ölçülen ya da modellenen değerler üzerinde aritmetik.</string>
+
+    <string name="provenance_explain_action">Kaynağı açıkla</string>
+    <string name="low_confidence">Düşük\u00A0güvenilirlik</string>
+</resources>

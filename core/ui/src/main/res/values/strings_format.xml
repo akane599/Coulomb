@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPEC 6.7 units. A no-break space keeps each figure with its unit. -->
+<resources>
+    <!-- The language of this file's translation, as a BCP 47 tag: figures are formatted in it, so a
+         sentence never mixes its words with another script's digits. -->
+    <string name="format_language">en</string>
+    <string name="format_hours_minutes">%1$s h %2$s min</string>
+    <string name="format_hours">%1$s h</string>
+    <string name="format_minutes">%1$s min</string>
+    <string name="format_range">%1$s – %2$s</string>
+    <string name="format_less_than">&lt;%1$s</string>
+    <string name="unit_mah" translatable="false">mAh</string>
+    <string name="unit_ma" translatable="false">mA</string>
+    <string name="unit_a" translatable="false">A</string>
+    <string name="unit_pct_per_hour">%/h</string>
+
+    <!-- A UID with no package name yet (SPEC 6.5). -->
+    <string name="uid_kernel">Kernel</string>
+    <string name="uid_android_system">Android System</string>
+    <string name="uid_unknown">UID %1$d</string>
+</resources>
