@@ -51,6 +51,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.format.Figure
+import io.github.akane599.coulomb.core.ui.format.Formats
 
 private val IconSize = 40.dp
 private val IconCorner = 12.dp
@@ -97,7 +98,7 @@ public fun AppDrainRow(
             .padding(vertical = CoulombSpacing.Space12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AppIcon(icon, standIn ?: IconStandIn.Initial(name.firstOrNull { it.isLetterOrDigit() }?.uppercase().orEmpty()))
+        AppIconTile(icon, standIn ?: IconStandIn.initialOf(name))
         Spacer(Modifier.width(CoulombSpacing.Space16))
         Column(Modifier.weight(1f)) {
             NameBesideValue(
@@ -136,12 +137,13 @@ public fun AppDrainRow(
  * word breaks mid-word (DESIGN.md: text reflows).
  */
 @Composable
-private fun NameBesideValue(
+public fun NameBesideValue(
     name: @Composable () -> Unit,
     value: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val nameSize = CoulombTheme.typography.bodyName.fontSize
-    Layout(contents = listOf(name, value)) { (nameColumn, valueColumn), constraints ->
+    Layout(contents = listOf(name, value), modifier = modifier) { (nameColumn, valueColumn), constraints ->
         val width = constraints.maxWidth
         val gap = CoulombSpacing.Space16.roundToPx()
         val figure = valueColumn.single().measure(Constraints(maxWidth = width))
@@ -214,16 +216,22 @@ public sealed interface IconStandIn {
     public data object Gap : IconStandIn {
         override val text: String = ""
     }
+
+    public companion object {
+        /** The default stand-in: [name]'s first letter or digit on a quiet tile. */
+        public fun initialOf(name: String): IconStandIn = Initial(name.firstOrNull { it.isLetterOrDigit() }?.uppercase().orEmpty())
+    }
 }
 
-/** The app's icon as the system draws it (DESIGN.md: no radius token applies), or [standIn]. */
+/** The app's icon as the system draws it (DESIGN.md: no radius token applies), or [standIn], at 40 dp. */
 @Composable
-private fun AppIcon(
+public fun AppIconTile(
     icon: ImageBitmap?,
     standIn: IconStandIn,
+    modifier: Modifier = Modifier,
 ) {
     if (icon != null) {
-        Image(bitmap = icon, contentDescription = null, modifier = Modifier.size(IconSize))
+        Image(bitmap = icon, contentDescription = null, modifier = modifier.size(IconSize))
         return
     }
     val colors = CoulombTheme.colors
@@ -238,7 +246,7 @@ private fun AppIcon(
     // At least 40 dp, and wider when a count outgrows it (DESIGN.md: text fits its container). The
     // stand-in is decoration: the row's name already says what it stands for.
     Box(
-        Modifier
+        modifier
             .heightIn(min = IconSize)
             .widthIn(min = IconSize)
             .then(tile)
@@ -258,7 +266,8 @@ private fun AppIcon(
             Icon(painterResource(glyph), contentDescription = null, Modifier.size(GlyphSize), tint = colors.textSecondary)
         } else {
             Text(
-                text = standIn.text,
+                // "+3" keeps its sign before the count in a right-to-left layout.
+                text = Formats.isolated(standIn.text),
                 modifier = Modifier.padding(horizontal = CoulombSpacing.Space4),
                 color = colors.textSecondary,
                 style = CoulombTheme.typography.labelButton,

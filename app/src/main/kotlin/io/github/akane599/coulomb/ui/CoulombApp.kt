@@ -55,12 +55,14 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.feature.drain.CompareScreen
 import io.github.akane599.coulomb.feature.drain.DrainScreen
 import io.github.akane599.coulomb.feature.now.NowScreen
 import io.github.akane599.coulomb.navigation.AppNavigator
 import io.github.akane599.coulomb.navigation.Destination
 import io.github.akane599.coulomb.navigation.Route
 import io.github.akane599.coulomb.navigation.rememberAppNavigator
+import io.github.akane599.coulomb.feature.drain.R as DrainR
 
 /**
  * The shell of SPEC 10.1: the bottom bar on compact widths and the rail from medium up, laid out by
@@ -159,6 +161,7 @@ private fun Navigation(
 class AppScreens(
     val now: @Composable (AppNavigator) -> Unit,
     val drain: @Composable (AppNavigator) -> Unit,
+    val compare: @Composable (AppNavigator) -> Unit,
 ) {
     companion object {
         val Default: AppScreens =
@@ -170,7 +173,14 @@ class AppScreens(
                     )
                 },
                 // App detail arrives later in P4; until then the rows open nothing.
-                drain = { navigator -> DrainScreen(onOpenApp = null, onOpenPrivileges = { navigator.open(Route.Privileges) }) },
+                drain = { navigator ->
+                    DrainScreen(
+                        onOpenApp = null,
+                        onOpenPrivileges = { navigator.open(Route.Privileges) },
+                        onOpenCompare = { navigator.open(Route.DrainCompare) },
+                    )
+                },
+                compare = { CompareScreen(onOpenApp = null) },
             )
     }
 }
@@ -182,6 +192,7 @@ private fun appEntries(
     entryProvider {
         entry<Route.Now> { DestinationScreen(Destination.Now, navigator::open) { screens.now(navigator) } }
         entry<Route.Drain> { DestinationScreen(Destination.Drain, navigator::open) { screens.drain(navigator) } }
+        entry<Route.DrainCompare> { InnerScreen(DrainR.string.drain_compare_title, navigator::back) { screens.compare(navigator) } }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { NotBuilt() } }
         entry<Route.Health> { DestinationScreen(Destination.Health, navigator::open) { NotBuilt() } }
         entry<Route.ActionCenter> { InnerScreen(R.string.screen_action_center, navigator::back) { NotBuilt() } }

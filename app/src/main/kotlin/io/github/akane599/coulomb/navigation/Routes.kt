@@ -22,6 +22,10 @@ sealed interface Route : NavKey {
     @Serializable
     data object Drain : Route
 
+    /** Compare two periods, below Drain (ADR-0038 §7). */
+    @Serializable
+    data object DrainCompare : Route
+
     @Serializable
     data object Timeline : Route
 

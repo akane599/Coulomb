@@ -53,9 +53,9 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
- * The More sheet of the window selector (SPEC 10.3, ADR-0023 §4): Last night, and a custom range of
- * whole days within the 30 days consecutive windows are kept. Choosing the range opens the date
- * picker in place of the sheet.
+ * The More sheet of the window selector (SPEC 10.3, ADR-0023 §4): Last night, a custom range of
+ * whole days within the 30 days consecutive windows are kept, and Compare two periods (ADR-0038).
+ * Choosing the range opens the date picker in place of the sheet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +63,7 @@ internal fun MoreSheet(
     chosen: DrainSpan,
     today: LocalDate,
     onChoose: (DrainSpan) -> Unit,
+    onCompare: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
@@ -70,6 +71,7 @@ internal fun MoreSheet(
         RangeDialog(
             initial = chosen as? DrainSpan.Days,
             today = today,
+            title = stringResource(R.string.drain_range_title),
             onChoose = {
                 onChoose(it)
                 onDismiss()
@@ -119,6 +121,18 @@ internal fun MoreSheet(
                 chosen = chosen is DrainSpan.Days,
                 onClick = { close { picking = true } },
             )
+            // Opens its own screen, so it is never the chosen window.
+            SheetChoice(
+                name = stringResource(R.string.drain_compare_title),
+                detail = stringResource(R.string.drain_compare_detail),
+                chosen = false,
+                onClick = {
+                    close {
+                        onDismiss()
+                        onCompare()
+                    }
+                },
+            )
         }
     }
 }
@@ -161,10 +175,11 @@ private fun SheetChoice(
 /** Material's range picker, limited to the days a range may cover; a single day is a range of one. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RangeDialog(
+internal fun RangeDialog(
     initial: DrainSpan.Days?,
     today: LocalDate,
-    onChoose: (DrainSpan) -> Unit,
+    title: String,
+    onChoose: (DrainSpan.Days) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val earliest = today.minusDays(DrainSpan.CUSTOM_DAYS - 1)
@@ -207,7 +222,7 @@ private fun RangeDialog(
             modifier = Modifier.weight(1f),
             title = {
                 Text(
-                    stringResource(R.string.drain_range_title),
+                    title,
                     Modifier.padding(start = CoulombSpacing.Space24, end = CoulombSpacing.Space12, top = CoulombSpacing.Space16),
                     style = CoulombTheme.typography.label,
                 )

@@ -335,6 +335,7 @@ private val NoActions =
         retry = {},
         openApp = {},
         openPrivileges = {},
+        openCompare = {},
         icon = { _, _ -> null },
     )
 

@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,18 +68,20 @@ import java.time.ZoneId
  *
  * @param onOpenApp opens App detail for a UID; null while there is none to open.
  * @param onOpenPrivileges opens Privileges, where a privilege issue is fixed.
+ * @param onOpenCompare opens Compare two periods (ADR-0038).
  */
 @Composable
 public fun DrainScreen(
     onOpenApp: ((uid: Int) -> Unit)?,
     onOpenPrivileges: () -> Unit,
+    onOpenCompare: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DrainViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val actions =
-        remember(viewModel, onOpenApp, onOpenPrivileges) {
+        remember(viewModel, onOpenApp, onOpenPrivileges, onOpenCompare) {
             DrainActions(
                 choose = viewModel::choose,
                 refresh = viewModel::refresh,
@@ -87,6 +90,7 @@ public fun DrainScreen(
                 retry = viewModel::retry,
                 openApp = onOpenApp,
                 openPrivileges = onOpenPrivileges,
+                openCompare = onOpenCompare,
                 icon = viewModel::icon,
             )
         }
@@ -103,6 +107,7 @@ internal class DrainActions(
     val retry: () -> Unit,
     val openApp: ((Int) -> Unit)?,
     val openPrivileges: () -> Unit,
+    val openCompare: () -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
 )
 
@@ -116,9 +121,16 @@ private const val GUTTERS = 3
 private val MinColumnWidth = 280.dp
 
 /** The two columns side by side on very wide windows: the summary column, then the lens column. */
-private val MaxTwoColumnWidth = 1200.dp
-private const val SUMMARY_WEIGHT = 0.42f
-private const val LENS_WEIGHT = 0.58f
+internal val MaxTwoColumnWidth = 1200.dp
+internal const val SUMMARY_WEIGHT = 0.42f
+internal const val LENS_WEIGHT = 0.58f
+
+/** The window fits two columns of [MinColumnWidth] (SPEC 10.10 medium and up; ADR-0036 §23). */
+@Composable
+internal fun fitsTwoColumns(
+    maxWidth: Dp,
+    gutter: Dp,
+): Boolean = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= MinColumnWidth * 2
 
 /** What the lens lists keep open, saved per window: the remainder, and the groups showing all rows. */
 internal class ListState(
@@ -167,6 +179,7 @@ internal fun DrainContent(
             chosen = ready.chosen,
             today = today,
             onChoose = actions.choose,
+            onCompare = actions.openCompare,
             onDismiss = { sheet = false },
         )
     }
@@ -202,7 +215,7 @@ private fun ReadyContent(
     val viewTable: (DrainTable) -> Unit = { table = it }
     val bottom = CoulombSpacing.Space48
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= MinColumnWidth * 2
+        val twoColumns = fitsTwoColumns(maxWidth, gutter)
         if (!twoColumns) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = gutter, end = gutter, bottom = bottom)) {
                 item(key = "summary", contentType = "summary") {
@@ -339,7 +352,7 @@ internal class LensViews(
 )
 
 @Composable
-private fun LensTabs(
+internal fun LensTabs(
     lens: Lens,
     choose: (Lens) -> Unit,
     besideSummary: Boolean,
@@ -404,7 +417,7 @@ private fun Skeleton() {
 
 /** The note, total and reconcile bar's skeleton: while a newly chosen window loads, and in [Skeleton]. */
 @Composable
-private fun SummarySkeleton() {
+internal fun SummarySkeleton() {
     val loading = stringResource(R.string.drain_loading)
     Column(Modifier.fillMaxWidth().semantics { contentDescription = loading }) {
         SkeletonBlock(16.dp, Modifier.padding(top = CoulombSpacing.Space8).width(180.dp))
@@ -415,7 +428,7 @@ private fun SummarySkeleton() {
 
 /** The tabs and rows' skeleton, which TalkBack skips: [SummarySkeleton] already says it is loading. */
 @Composable
-private fun LensSkeleton(besideSummary: Boolean) {
+internal fun LensSkeleton(besideSummary: Boolean) {
     Column(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
         SkeletonBlock(40.dp, Modifier.padding(top = if (besideSummary) CoulombSpacing.Space8 else currentSectionGap()).fillMaxWidth())
         Column(Modifier.padding(top = CoulombSpacing.Space16)) {
@@ -439,7 +452,7 @@ private const val SKELETON_ROWS = 4
 
 /** SPEC 10.11 error: what happened and what to do. */
 @Composable
-private fun ErrorState(retry: () -> Unit) {
+internal fun ErrorState(retry: () -> Unit) {
     Column(Modifier.padding(top = CoulombSpacing.Space24)) {
         Text(
             stringResource(R.string.drain_error_title),

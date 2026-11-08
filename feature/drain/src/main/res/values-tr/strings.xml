@@ -184,4 +184,40 @@
     <string name="drain_meaning_sleep_interrupted">Telefon uyumaya çalışırken bir uyandırma olayı geldi ve vazgeçti. Adı geçen kaynak en son etkin olandı.</string>
     <string name="drain_meaning_sleep_aborted">Telefon uyumaya çalıştı ama vazgeçti; çekirdek nedenini bu adla bildiriyor.</string>
     <string name="drain_meaning_interrupt">Telefonu derin uykudan bir donanım kesmesi uyandırdı; ad, kesmeye sürücüsünün verdiği addır.</string>
+
+    <!-- İki dönemi karşılaştır (ADR-0038). -->
+    <string name="drain_compare_title">İki dönemi karşılaştır</string>
+    <string name="drain_compare_detail">İki gün aralığı yan yana, kullanım saati başına</string>
+    <string name="drain_compare_first">Birinci dönem</string>
+    <string name="drain_compare_second">İkinci dönem</string>
+    <string name="drain_compare_choose_first">Birinci dönemi seçin</string>
+    <string name="drain_compare_choose_second">İkinci dönemi seçin</string>
+    <string name="drain_compare_period_button">%1$s: %2$s</string>
+    <string name="drain_compare_change">Değişim</string>
+    <string name="drain_compare_rate_mah">%1$s\u00A0mAh/sa</string>
+    <string name="drain_compare_rate_minutes">%1$s\u00A0dk/sa</string>
+    <string name="drain_compare_rate_count">%1$s/sa</string>
+    <string name="drain_compare_on_battery">Pilde %1$s, ekran açık %2$s</string>
+    <string name="drain_compare_no_records">Kayıt yok</string>
+    <string name="drain_compare_too_short">Çok kısa</string>
+    <string name="drain_compare_under">Pilde %1$s altında</string>
+    <string name="drain_compare_not_measured">Ölçülmedi</string>
+    <string name="drain_compare_not_measured_caption">Pil sayacı okunamadı</string>
+    <string name="drain_compare_caption_model">Pilde geçen saat başına, Android’in güç modelinden. En büyük değişim önce.</string>
+    <string name="drain_compare_caption_wakes">Her grubun sayıldığı sürenin saati başına. En büyük değişim önce.</string>
+    <string name="drain_compare_row_spoken">%1$s: birinci dönemde %2$s, ikincide %3$s, %4$s.</string>
+    <string name="drain_compare_up">%1$s artış</string>
+    <string name="drain_compare_down">%1$s azalış</string>
+    <string name="drain_compare_same">değişim yok</string>
+    <string name="drain_compare_note_no_records">%1$s: henüz kayıt yok, karşılaştırılacak bir şey yok.</string>
+    <string name="drain_compare_note_short_battery">%1$s: pilde %2$s altında, oranlar için çok az.</string>
+    <string name="drain_compare_note_not_collected">%1$s: toplanmadı.</string>
+    <string name="drain_compare_note_short_count">%1$s: %2$s altında sayıldı, oran için çok az.</string>
+    <string name="drain_compare_note_part_root">%1$s: dönemin yalnızca bir kısmında toplandı, bu yüzden karşılaştırılmadı.</string>
+    <string name="drain_compare_wake_lower">Her pencere en uzun kayıtlarını saklar, bu yüzden bir değer biraz düşük olabilir.</string>
+    <string name="drain_compare_sources_differ">İki dönemde farklı kaynaklardan okundu, bu yüzden karşılaştırılmadı.</string>
+    <string name="drain_compare_none">İki dönemde de yok.</string>
+    <string name="drain_compare_basis_screen_off">Yalnızca pildeyken ve ekran kapalıyken sayıldı: %1$s, sonra %2$s</string>
+    <string name="drain_compare_basis_on_battery">Pildeyken sayıldı: %1$s, sonra %2$s</string>
+    <string name="drain_compare_basis_whole">Dönemin tamamında sayıldı: %1$s, sonra %2$s</string>
 </resources>

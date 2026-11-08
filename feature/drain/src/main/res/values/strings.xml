@@ -193,4 +193,48 @@
     <string name="drain_meaning_sleep_interrupted">A wakeup event arrived as the phone tried to sleep, so it stopped. The source named was the last one active.</string>
     <string name="drain_meaning_sleep_aborted">The phone tried to sleep and stopped, for the reason the kernel gives.</string>
     <string name="drain_meaning_interrupt">A hardware interrupt woke the phone from deep sleep; the name is the one its driver gave it.</string>
+
+    <!-- Compare two periods (ADR-0038). -->
+    <string name="drain_compare_title">Compare two periods</string>
+    <string name="drain_compare_detail">Two ranges of days side by side, per hour of use</string>
+    <string name="drain_compare_first">First period</string>
+    <string name="drain_compare_second">Second period</string>
+    <string name="drain_compare_choose_first">Choose the first period</string>
+    <string name="drain_compare_choose_second">Choose the second period</string>
+    <!-- TalkBack: the period chooser's action. %1$s: the period's name; %2$s: its days. -->
+    <string name="drain_compare_period_button">%1$s: %2$s</string>
+    <string name="drain_compare_change">Change</string>
+    <!-- Rates per hour. %1$s: the figure. -->
+    <string name="drain_compare_rate_mah">%1$s\u00A0mAh/h</string>
+    <string name="drain_compare_rate_minutes">%1$s\u00A0min/h</string>
+    <string name="drain_compare_rate_count">%1$s/h</string>
+    <!-- %1$s: time on battery; %2$s: the screen-on part of it. -->
+    <string name="drain_compare_on_battery">%1$s on battery, screen on %2$s</string>
+    <string name="drain_compare_no_records">No records</string>
+    <string name="drain_compare_too_short">Too short</string>
+    <!-- %1$s: the shortest time a rate needs (SPEC 6.2). -->
+    <string name="drain_compare_under">Under %1$s on battery</string>
+    <string name="drain_compare_not_measured">Not measured</string>
+    <string name="drain_compare_not_measured_caption">No battery counter reading</string>
+    <string name="drain_compare_caption_model">Per hour on battery, from Android’s power model. Largest change first.</string>
+    <string name="drain_compare_caption_wakes">Per hour of the time each group was counted. Largest change first.</string>
+    <!-- TalkBack reads a row as one sentence. %1$s: its name; %2$s, %3$s: the two rates; %4$s: the change. -->
+    <string name="drain_compare_row_spoken">%1$s: %2$s in the first period, %3$s in the second, %4$s.</string>
+    <string name="drain_compare_up">up %1$s</string>
+    <string name="drain_compare_down">down %1$s</string>
+    <string name="drain_compare_same">no change</string>
+    <!-- Notes about one period. %1$s: First period or Second period. -->
+    <string name="drain_compare_note_no_records">%1$s: no records yet, so there is nothing to compare.</string>
+    <!-- %2$s: the shortest time a rate needs. -->
+    <string name="drain_compare_note_short_battery">%1$s: under %2$s on battery, too little for rates.</string>
+    <string name="drain_compare_note_not_collected">%1$s: not collected.</string>
+    <string name="drain_compare_note_short_count">%1$s: counted under %2$s, too little for a rate.</string>
+    <string name="drain_compare_note_part_root">%1$s: collected for only part of the period, so not compared.</string>
+    <string name="drain_compare_wake_lower">Each window keeps its longest records, so a figure may be a little low.</string>
+    <string name="drain_compare_sources_differ">Read from different sources in the two periods, so not compared.</string>
+    <string name="drain_compare_none">None in either period.</string>
+    <!-- When a group was counted in each period. %1$s, %2$s: the first and second period's time. -->
+    <string name="drain_compare_basis_screen_off">Counted only on battery with the screen off: %1$s, then %2$s</string>
+    <string name="drain_compare_basis_on_battery">Counted on battery: %1$s, then %2$s</string>
+    <string name="drain_compare_basis_whole">Counted over the whole period: %1$s, then %2$s</string>
 </resources>

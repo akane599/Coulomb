@@ -109,6 +109,29 @@ public class Formats(
             unit = resources.getString(R.string.unit_mah),
         )
 
+    /** An amount without its unit, such as a rate: whole, or one decimal under 10 ("36", "4.5"). */
+    public fun amount(value: Double): String = if (abs(value) < SMALL_MAH) oneDecimal.format(value) else integer.format(value.roundToLong())
+
+    /** [amount] of a change, with a true sign: "+24", "−3.5". A change that rounds to zero takes none. */
+    public fun signedAmount(value: Double): String {
+        val size = amount(abs(value))
+        return when {
+            size == amount(0.0) -> size
+            value > 0 -> isolated("+$size")
+            else -> isolated("$MINUS$size")
+        }
+    }
+
+    /** A change as a signed whole percentage: "+39%", "−12%"; Turkish "+%39". Zero takes no sign. */
+    public fun signedShare(fraction: Double): String {
+        val points = (abs(fraction) * PERCENT).roundToLong().toInt()
+        return when {
+            points == 0 -> percent(0)
+            fraction > 0 -> isolated("+${percent(points)}")
+            else -> isolated("$MINUS${percent(points)}")
+        }
+    }
+
     /** A current's size (SPEC 6.7): "410 mA" below 1 A, "1.24 A" above. The state names its direction. */
     public fun current(ma: Double): Figure {
         val rounded = abs(Rounding.currentMa(ma))

@@ -38,7 +38,7 @@ stack and choices wrap.
 | Major | An Estimated total shows as one exact number | **Fixed.** An Estimated total is a range with the bracket mark; the caption says how it was mixed. With no known error the gap is not printed (§17, §30). Goldens `drain-estimated`, `drain-harden-*`. |
 | Major | The old window's figures sit under the new chip | **Fixed.** The body is the skeleton until the new report arrives (§19). Golden `drain-stale`. |
 | Major | Components shares have an unstated base | **Fixed.** The caption names the modeled total as the base, and each row has a share bar (§20). |
-| Major | SPEC 10.3 content missing | Kernel subsystems and the dictionary: **fixed** (§32). Screen-off share: the read layer gives it to kernel records as to the others; the sample had none, and the goldens now show it. Component chips and top apps per component: **with S4** (ADR-0035, §33). Compare two periods: **open**, built next. |
+| Major | SPEC 10.3 content missing | Kernel subsystems and the dictionary: **fixed** (§32). Screen-off share: the read layer gives it to kernel records as to the others; the sample had none, and the goldens now show it. Component chips and top apps per component: **with S4** (ADR-0035, §33). Compare two periods: **fixed** (ADR-0038), 2026-11-09. Goldens `compare-*`. |
 | Major | System apps shown by default, against SPEC 14.4 | **Fixed.** Off by default and kept in the settings store (§18). |
 | Major | Medium width is one column | **Fixed.** Two columns once both fit (§23). Golden `drain-apps-expanded`, `-components-expanded`, `-wakeups-expanded`. |
 | Major | Wakeups terms have no glossary tooltip | **Fixed.** The group heads are glossary terms. |
@@ -64,3 +64,9 @@ neutral components at the bar's end (§14), the window kept in memory (§7).
 
 All findings fixed except two. The chips wait for S4 (ADR-0035). Compare two periods is open and
 blocks this gate until it lands.
+
+**Update 2026-11-09:** Compare two periods landed (ADR-0038), with its independent review's findings
+fixed (ADR-0036 §35, ADR-0038 Consequences). Goldens `compare-*`: Apps light, dark, Turkish, 200%,
+right to left and landscape; Components; Wakeups, in Turkish at 200% and with a group read from two
+sources; a period with no records, one too short; loading. The chips still wait for S4, so this gate
+passes with that one item carried (ADR-0035).

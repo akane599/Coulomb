@@ -63,6 +63,19 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     uptime over elapsed time between the snapshot it opened at and its last one in that boot
     (ADR-0029 §3's clocks; null across a reboot, without uptime or under a minute). `AwakeRatioTest`
     covers the ratio and its nulls; `CollectorEngineTest`'s night checks 0.8 h awake of 8 h.
+- Drain (SPEC 10.3, ADR-0036), in progress:
+  - all three lenses, the window selector with Last night, Custom range and Compare two periods
+    (ADR-0038), wake records read against their counters' own clocks (ADR-0036 §34, §35), the wake
+    record dictionary;
+  - gate runs so far: critique and audit (`docs/design-gates/2026-11-08-*-drain.md`); Compare was the
+    critique's open item and has landed, reviewed independently (ADR-0038 Consequences).
+  - Open before the Drain gates close:
+    - S5 may time a tag's partial wakelocks as pooled time beside an actual time (raised by the
+      Compare review). Check `BatteryStatsImpl` and the checkin and proto dumps for both releases;
+      relabel or re-read, update the goldens, and get the parser change reviewed.
+    - harden, clarify, animate, adapt, optimize and polish;
+    - on the API 37 emulator: the rail's insets with 3-button navigation in landscape, and TalkBack
+      on the opened lists.
 
 ## P3 Design lab (gate passed 2026-11-07)
 

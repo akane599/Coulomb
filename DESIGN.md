@@ -319,6 +319,14 @@ components:
     textColor: "{colors.text-secondary-dark}"
     rounded: "2px"
     height: "4px"
+  paired-bar-light:
+    textColor: "{colors.text-secondary-light}"
+    rounded: "3px"
+    height: "6px"
+  paired-bar-dark:
+    textColor: "{colors.text-secondary-dark}"
+    rounded: "3px"
+    height: "6px"
 ---
 
 # Design System: Coulomb
@@ -533,7 +541,8 @@ moves as a unit, such as an insight or a session, and cards never nest.
   are fully round; the chosen window morphs to fully round. The view tabs have fully round outer ends and
   square inner joins.
 - **App icons** are drawn as the system provides them. No radius token applies.
-- **Bars:** share bars and stepper segments are 4 dp high with 2 dp ends.
+- **Bars:** share bars and stepper segments are 4 dp high with 2 dp ends. Paired bars are 6 dp high and
+  fully round.
 - **Provenance marks** are drawn shapes in a 12 dp box with a 1.5 dp round-capped stroke (see Components).
   Their four shapes are reserved for provenance.
 
@@ -574,6 +583,13 @@ key, one line each. Long-press explains a mark; TalkBack gets an "Explain proven
   below them. Shares are neutral; hue appears only in a component breakdown.
 - **Breakdown:** an expanded row lists components as a 10 dp data-hue swatch, the name in Label and the
   mAh in `text-secondary`, with no container and no tap target.
+- **Paired bars (Compare, ADR-0038 §8):** a row comparing two periods has two 6 dp bars on one scale, the
+  list's largest rate filling the width, with no track. The first period's bar is hollow (a 1 dp
+  `text-secondary` outline), the second's filled `text-secondary`; a bar above zero is never shorter than
+  it is high. Each bar's amount sits in Caption at its end, in one column shared by both labels. The
+  value column holds the signed change in Data. A key under the list caption shows a 16 dp swatch of
+  each bar beside its period. The bars and labels are decoration: TalkBack reads the row as one
+  sentence with both rates and the direction of the change.
 - **Remainder and gap:** a truncated list ends with a remainder row ("22 more apps") whose icon slot is a
   hairline-outlined tile. Unattributed energy has its own group with a dashed tile. The list caption names
   the denominator ("Shares are of the 1,204 mAh measured"). The remainder count fits its tile at every
