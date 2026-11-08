@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import java.time.ZoneId
 
 /**
  * SPEC 15.5: database and package reads on a limited-parallelism IO dispatcher, computation on
@@ -32,4 +33,9 @@ public class AppScope(
     scope: CoroutineScope,
 ) : CoroutineScope by scope {
     public constructor(dispatchers: AppDispatchers) : this(CoroutineScope(SupervisorJob() + dispatchers.default))
+}
+
+/** The zone a local day and an hour of day are counted in; the system's, read when asked. */
+public fun interface ZoneSource {
+    public fun zone(): ZoneId
 }

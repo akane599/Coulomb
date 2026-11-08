@@ -29,6 +29,16 @@ public interface SessionDao {
     @Query("SELECT * FROM session WHERE closeReason IS NULL ORDER BY bootSeq, startElapsedNs")
     public suspend fun open(): List<SessionEntity>
 
+    /** Sessions of [kinds] still open or ending after [fromWall], in time order (ADR-0032 read models). */
+    @Query(
+        "SELECT * FROM session WHERE kind IN (:kinds) AND (endWall IS NULL OR endWall > :fromWall) " +
+            "ORDER BY bootSeq, startElapsedNs",
+    )
+    public suspend fun overlapping(
+        kinds: List<SessionKind>,
+        fromWall: Long,
+    ): List<SessionEntity>
+
     @Query("SELECT * FROM session WHERE kind = :kind ORDER BY bootSeq DESC, startElapsedNs DESC LIMIT :limit")
     public fun observeRecent(
         kind: SessionKind,
