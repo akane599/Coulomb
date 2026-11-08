@@ -326,3 +326,16 @@ internal const val START_WALL_MS = 1_793_491_200_000L
 internal fun hoursMs(hours: Double): Long = (hours * 3_600_000).toLong()
 
 internal fun hoursNs(hours: Double): Long = hoursMs(hours) * NS_PER_MS
+
+/** Names from a map; a UID missing from it has nothing installed. */
+internal class FakeLabels(
+    val installed: MutableMap<Int, AppLabel> = mutableMapOf(),
+) : AppLabels {
+    var lookups = 0
+        private set
+
+    override fun label(uid: Int): AppLabel? {
+        lookups++
+        return installed[uid]
+    }
+}

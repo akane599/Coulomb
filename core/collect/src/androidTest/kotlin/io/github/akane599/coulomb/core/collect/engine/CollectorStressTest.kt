@@ -302,7 +302,7 @@ class CollectorStressTest {
             totals.count(action)
         }
 
-        private fun newEngine() = CollectorEngine(db, world.light, world.heavy, world.identity, world.clock, blobs)
+        private fun newEngine() = CollectorEngine(db, world.light, world.heavy, world.identity, world.clock, blobs, NoLabels)
 
         private fun add(
             wallMs: Long,
@@ -656,4 +656,9 @@ class CollectorStressTest {
         const val MIN_HEAVY_PER_DAY = 150
         const val MIN_HISTORY_ROWS = (0.8 * DAYS * HISTORY_PER_DAY).toLong()
     }
+}
+
+/** The stress test checks timing and storage, not names. */
+private object NoLabels : AppLabels {
+    override fun label(uid: Int): AppLabel? = null
 }

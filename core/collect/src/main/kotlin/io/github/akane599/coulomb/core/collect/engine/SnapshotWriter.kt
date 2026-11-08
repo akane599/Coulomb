@@ -50,6 +50,8 @@ internal data class WriteContext(
     val zone: ZoneId,
     /** Coulomb's own UID (SPEC 6.9). */
     val ownUid: Int,
+    /** A screen asked for this snapshot: build the REFERENCE windows to it (ADR-0032 §3). */
+    val references: Boolean = false,
 )
 
 /**
@@ -85,6 +87,30 @@ internal class SnapshotWriter(
             )
         }
         day(stored, rows, context)
+        if (context.references) references(stored, rows, context)
+    }
+
+    /**
+     * ADR-0032 §3: the REFERENCE windows a screen shows, from `SINCE_UNPLUGGED` while unplugged and
+     * from `TODAY`, each to [end]. They replace the stored ones, so one per reference is kept.
+     * Nothing is rebuilt when the stored ones already end at [end]: references move only at a
+     * snapshot, so they are current. Runs inside the caller's transaction.
+     */
+    suspend fun references(
+        end: SnapshotEntity,
+        endRows: SnapshotRows?,
+        context: WriteContext,
+    ) {
+        if (!hasCounters(end)) return
+        val stored = windows.ofKind(WindowKind.REFERENCE)
+        if (stored.isNotEmpty() && stored.all { it.toSnapshotId == end.id }) return
+        windows.deleteWindows(stored.map { it.id })
+        val kinds = if (context.reading.plugged) listOf(AutoReference.TODAY) else listOf(AutoReference.SINCE_UNPLUGGED, AutoReference.TODAY)
+        val starts = kinds.mapNotNull { snapshots.autoReference(it)?.snapshotId }.distinct().filter { it != end.id }
+        for (startId in starts) {
+            val start = snapshots.snapshot(startId) ?: continue
+            chain(start, end, endRows)?.let { insertWindow(WindowKind.REFERENCE, null, it, context, true) }
+        }
     }
 
     /** Applies [SessionRules] to the open sessions; returns the kinds opened and the sessions closed. */

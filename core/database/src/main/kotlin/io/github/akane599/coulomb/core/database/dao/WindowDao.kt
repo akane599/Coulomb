@@ -91,6 +91,10 @@ public abstract class WindowDao {
     @Transaction
     public open suspend fun rows(windowId: Long): WindowRows = WindowRows(uids(windowId), wakes(windowId), stats(windowId))
 
+    /** Every window of [kind], oldest first; for REFERENCE windows, at most one per reference (ADR-0032). */
+    @Query("SELECT * FROM window_result WHERE kind = :kind ORDER BY id")
+    public abstract suspend fun ofKind(kind: WindowKind): List<WindowResultEntity>
+
     @Query("SELECT * FROM window_result WHERE sessionId = :sessionId ORDER BY id DESC LIMIT 1")
     public abstract suspend fun forSession(sessionId: Long): WindowResultEntity?
 

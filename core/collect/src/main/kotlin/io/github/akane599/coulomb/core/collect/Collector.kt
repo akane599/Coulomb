@@ -7,6 +7,7 @@ import android.content.Context
 import android.os.Build
 import android.os.PowerManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.akane599.coulomb.core.collect.android.AndroidAppLabels
 import io.github.akane599.coulomb.core.collect.android.AndroidDeviceIdentity
 import io.github.akane599.coulomb.core.collect.android.AndroidLightSource
 import io.github.akane599.coulomb.core.collect.android.FileBlobStore
@@ -58,6 +59,7 @@ public class Collector
                 identity = AndroidDeviceIdentity(context),
                 clock = SystemCollectorClock,
                 blobs = FileBlobStore(context.filesDir),
+                labels = AndroidAppLabels(context),
             )
         private val actor = CollectorActor(engine, scope)
         private val device = MutableStateFlow(DeviceFlags(plugged = false, screenOn = false))

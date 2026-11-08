@@ -52,7 +52,7 @@ class KernelCollectionTest {
     @After
     fun close() = db.close()
 
-    private fun engine() = CollectorEngine(db, device, stats, FakeIdentity(), clock, MemoryBlobs())
+    private fun engine() = CollectorEngine(db, device, stats, FakeIdentity(), clock, MemoryBlobs(), FakeLabels())
 
     /** A heavy snapshot an hour after the last, with the screen toggled so the trigger asks for one. */
     private suspend fun CollectorEngine.heavy(): SnapshotEntity {

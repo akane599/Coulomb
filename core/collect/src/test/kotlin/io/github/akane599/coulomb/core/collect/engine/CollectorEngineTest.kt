@@ -53,6 +53,7 @@ class CollectorEngineTest {
     private val device = FakeDevice(clock)
     private val stats = FakeStats(clock)
     private val identity = FakeIdentity()
+    private val labels = FakeLabels(mutableMapOf(10_100 to AppLabel("Video", isSystem = false, iconPackage = "com.example.video")))
 
     @Before
     fun open() {
@@ -63,7 +64,7 @@ class CollectorEngineTest {
     @After
     fun close() = db.close()
 
-    private fun engine() = CollectorEngine(db, device, stats, identity, clock, MemoryBlobs())
+    private fun engine() = CollectorEngine(db, device, stats, identity, clock, MemoryBlobs(), labels)
 
     private suspend fun reliableCounter() =
         db.deviceDao().upsertProfile(
@@ -218,6 +219,82 @@ class CollectorEngineTest {
             assertThat(engine.handle(SnapshotTrigger.APP_OPENED)).isEqualTo(Action.NONE)
             device.set(hours = 1.0 + 90.0 / 3600, level = 50, chargeMah = 2_498.0, screenOn = true)
             assertThat(engine.handle(SnapshotTrigger.PULL_TO_REFRESH)).isEqualTo(Action.HEAVY)
+        }
+
+    @Test
+    fun aScreenThatAsksGetsReferenceWindowsAndOnlyTheNewestAreKept() =
+        runTest {
+            reliableCounter()
+            val engine = engine()
+            device.set(hours = 8.0, level = 70, chargeMah = 3_500.0, screenOn = true, plugged = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            device.set(hours = 9.0, level = 90, chargeMah = 4_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.POWER_DISCONNECTED)
+            val unplug = checkNotNull(db.snapshotDao().latestHeavy())
+            device.set(hours = 10.0, level = 85, chargeMah = 4_250.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+            // Background snapshots build none.
+            assertThat(db.windowDao().ofKind(WindowKind.REFERENCE)).isEmpty()
+
+            device.set(hours = 11.0, level = 80, chargeMah = 4_000.0, screenOn = true)
+            assertThat(engine.handle(SnapshotTrigger.APP_OPENED)).isEqualTo(Action.HEAVY)
+            val opened = checkNotNull(db.snapshotDao().latestHeavy())
+            val first = db.windowDao().ofKind(WindowKind.REFERENCE)
+            val today = checkNotNull(db.snapshotDao().autoReference(AutoReference.TODAY)).snapshotId
+            assertThat(first.map { it.fromSnapshotId }).containsExactly(unplug.id, today)
+            assertThat(first.map { it.toSnapshotId }.toSet()).containsExactly(opened.id)
+            val sinceUnplug = first.single { it.fromSnapshotId == unplug.id }
+            assertThat(sinceUnplug.measuredMah).isWithin(1e-6).of(500.0)
+            assertThat(sinceUnplug.detailPruned).isFalse()
+
+            // Debounced: no new snapshot, and the windows already end at the latest one.
+            device.set(hours = 11.0 + 20.0 / 3600, level = 80, chargeMah = 3_995.0, screenOn = true)
+            assertThat(engine.handle(SnapshotTrigger.APP_OPENED)).isEqualTo(Action.NONE)
+            assertThat(db.windowDao().ofKind(WindowKind.REFERENCE).map { it.id }).isEqualTo(first.map { it.id })
+
+            // A background snapshot moves the latest heavy snapshot on; a debounced refresh catches up to it.
+            device.set(hours = 11.0 + 40.0 / 3600, level = 79, chargeMah = 3_950.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+            val screenOff = checkNotNull(db.snapshotDao().latestHeavy())
+            device.set(hours = 11.0 + 50.0 / 3600, level = 79, chargeMah = 3_945.0, screenOn = true)
+            assertThat(engine.handle(SnapshotTrigger.USER_PRESENT)).isEqualTo(Action.NONE)
+            assertThat(engine.handle(SnapshotTrigger.PULL_TO_REFRESH)).isEqualTo(Action.NONE)
+            val second = db.windowDao().ofKind(WindowKind.REFERENCE)
+            assertThat(second).hasSize(2)
+            assertThat(second.map { it.toSnapshotId }.toSet()).containsExactly(screenOff.id)
+            assertThat(second.single { it.fromSnapshotId == unplug.id }.measuredMah).isWithin(1e-6).of(550.0)
+
+            // Plugged in, "since unplugged" is the closed discharge session's window; only today remains.
+            device.set(hours = 12.0, level = 78, chargeMah = 3_900.0, screenOn = true, plugged = true)
+            engine.handle(SnapshotTrigger.POWER_CONNECTED)
+            device.set(hours = 12.1, level = 79, chargeMah = 3_950.0, screenOn = true, plugged = true)
+            engine.handle(SnapshotTrigger.PULL_TO_REFRESH)
+            assertThat(db.windowDao().ofKind(WindowKind.REFERENCE).map { it.fromSnapshotId }).containsExactly(today)
+        }
+
+    @Test
+    fun appNamesAreWrittenWhenPackagesChangeAndKeptAfterAnUninstall() =
+        runTest {
+            val engine = engine()
+            device.set(hours = 1.0, level = 50, chargeMah = 2_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            val meta = checkNotNull(db.deviceDao().uidMeta(10_100))
+            assertThat(meta.label).isEqualTo("Video")
+            assertThat(meta.isSystem).isFalse()
+            assertThat(meta.iconCacheKey).isEqualTo("com.example.video")
+            assertThat(meta.packagesJson).isEqualTo("""["com.example.video"]""")
+
+            // Same day, same packages: no lookups.
+            device.set(hours = 1.5, level = 49, chargeMah = 2_450.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+            assertThat(labels.lookups).isEqualTo(1)
+
+            // The next day writes every UID again; one with nothing installed keeps its name.
+            labels.installed.clear()
+            device.set(hours = 25.0, level = 40, chargeMah = 2_000.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SCREEN_ON)
+            assertThat(labels.lookups).isEqualTo(2)
+            assertThat(db.deviceDao().uidMeta(10_100)?.label).isEqualTo("Video")
         }
 
     @Test

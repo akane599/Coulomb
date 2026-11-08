@@ -32,6 +32,7 @@ import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
 import io.github.akane599.coulomb.core.database.entity.BootEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.SessionKind
@@ -45,8 +46,9 @@ import kotlin.math.abs
 /**
  * The collector's single consumer (SPEC 7.5, ADR-0018). Each call handles one trigger or sample
  * to the end before the next starts, so its state needs no locking. Not thread-safe: only the
- * actor calls it.
+ * actor calls it. Each constructor parameter is a seam that tests fake, so the list is long by design.
  */
+@Suppress("LongParameterList")
 internal class CollectorEngine(
     private val db: CoulombDatabase,
     private val light: LightSource,
@@ -54,6 +56,7 @@ internal class CollectorEngine(
     private val identity: DeviceIdentity,
     private val clock: CollectorClock,
     private val blobs: BlobStore,
+    private val labels: AppLabels,
 ) {
     private val writer = SnapshotWriter(db)
     private val retention = Retention(db, blobs)
@@ -96,13 +99,37 @@ internal class CollectorEngine(
             action = if (heavy.available()) Action.HEAVY else Action.LIGHT
         }
         when (action) {
-            Action.NONE -> return action
+            Action.NONE -> Unit
             Action.SAMPLE -> storeSample(reading, boot)
             Action.LIGHT, Action.HEAVY -> snapshot(trigger, Read(reading, uptimeAtReadMs), boot, action == Action.HEAVY)
         }
-        firstOfProcess = false
+        // A screen asked, but no heavy snapshot ran: the screen gets windows to the latest one (ADR-0032 §3).
+        if (trigger in REFERENCE_TRIGGERS && action != Action.HEAVY) referencesToLatest(reading)
+        if (action != Action.NONE) firstOfProcess = false
         return action
     }
+
+    private suspend fun referencesToLatest(reading: LightReading) {
+        val latest = db.snapshotDao().latestHeavy() ?: return
+        val context = writeContext(reading, previousHeavy = null, unseen = emptySet()).copy(references = true)
+        db.withTransaction { writer.references(latest, null, context) }
+    }
+
+    private fun writeContext(
+        reading: LightReading,
+        previousHeavy: SnapshotEntity?,
+        unseen: Set<SessionKind>,
+    ) = WriteContext(
+        reading = reading,
+        previousHeavy = previousHeavy,
+        watched = !firstOfProcess,
+        changedUnseen = unseen,
+        counterReliable = profile?.chargeCounterReliable == true,
+        capacityMah = capacityMah,
+        currentUa = calibration?.let { c -> c::currentUa },
+        zone = identity.zone(),
+        ownUid = identity.appUid,
+    )
 
     /** Takes the heavy snapshot owed since dumps were unavailable, once they work (SPEC 7.2). */
     suspend fun privilegesChanged() {
@@ -234,26 +261,16 @@ internal class CollectorEngine(
                 uptimeMs = read.uptimeMs,
                 privilegeMode = kernel.mode,
             )
-        val context =
-            WriteContext(
-                reading = reading,
-                previousHeavy = previousHeavy,
-                watched = !firstOfProcess,
-                changedUnseen = unseen,
-                counterReliable = profile?.chargeCounterReliable == true,
-                capacityMah = capacityMah,
-                currentUa = calibration?.let { c -> c::currentUa },
-                zone = identity.zone(),
-                ownUid = identity.appUid,
-            )
-        db.withTransaction {
-            // A read that set no cursor stored nothing: the events before this snapshot are not all in.
-            val eventId = ingest?.takeIf { it.nextCursorMs != null }?.let { db.historyDao().insertRead(it.events, it.gaps) }
-            val id = db.snapshotDao().insert(entity.copy(historyEventId = eventId), rows, kernel.rows)
-            ingest?.newOffsetMs?.let { db.deviceDao().setHistoryOffset(boot.bootSeq, it) }
-            writer.afterSnapshot(entity.copy(id = id, historyEventId = eventId), rows, context)
-            if (dump != null) recordPackages(dump, reading)
-        }
+        val context = writeContext(reading, previousHeavy, unseen).copy(references = trigger in REFERENCE_TRIGGERS)
+        db
+            .withTransaction {
+                // A read that set no cursor stored nothing: the events before this snapshot are not all in.
+                val eventId = ingest?.takeIf { it.nextCursorMs != null }?.let { db.historyDao().insertRead(it.events, it.gaps) }
+                val id = db.snapshotDao().insert(entity.copy(historyEventId = eventId), rows, kernel.rows)
+                ingest?.newOffsetMs?.let { db.deviceDao().setHistoryOffset(boot.bootSeq, it) }
+                writer.afterSnapshot(entity.copy(id = id, historyEventId = eventId), rows, context)
+                if (dump != null) recordPackages(dump, reading) else emptyMap()
+            }.let { changed -> recordLabels(changed, reading) }
         afterCommit(history, ingest, boot, reading)
     }
 
@@ -527,11 +544,11 @@ internal class CollectorEngine(
             .toLocalDate()
             .toEpochDay()
 
-    /** UID to package names, written in full once a day and when they change. */
+    /** UID to package names, written in full once a day and when they change; returns those written. */
     private suspend fun recordPackages(
         dump: BatteryStatsDump,
         reading: LightReading,
-    ) {
+    ): Map<Int, List<String>> {
         val packages = CounterMapper.packages(dump)
         val day = localDay(reading.wallMs)
         val changed = if (packagesDay == day) packages.filter { (uid, names) -> knownPackages[uid] != names } else packages
@@ -539,6 +556,32 @@ internal class CollectorEngine(
         changed.forEach { (uid, names) -> devices.recordUidPackages(uid, names, reading.wallMs) }
         knownPackages = packages
         packagesDay = day
+        return changed
+    }
+
+    /**
+     * ADR-0032 §5: names for the UIDs [recordPackages] wrote, after the commit so no package
+     * lookup holds the database. A UID with nothing installed keeps the name it had.
+     */
+    private suspend fun recordLabels(
+        changed: Map<Int, List<String>>,
+        reading: LightReading,
+    ) {
+        if (changed.isEmpty()) return
+        val meta =
+            changed.mapNotNull { (uid, names) ->
+                labels.label(uid)?.let { label ->
+                    UidMetaEntity(
+                        uid = uid,
+                        packagesJson = names.joinToString(",", "[", "]") { "\"$it\"" },
+                        label = label.label,
+                        isSystem = label.isSystem,
+                        iconCacheKey = label.iconPackage.orEmpty(),
+                        updatedWall = reading.wallMs,
+                    )
+                }
+            }
+        if (meta.isNotEmpty()) db.deviceDao().upsertUidMeta(meta)
     }
 
     /** Work after any snapshot, light or heavy: a light one still brings samples to calibrate with. */
@@ -608,6 +651,9 @@ internal class CollectorEngine(
         private const val NO_BOOT = 0L
         private const val NO_CURSOR = -1L
         private const val NS_PER_MS = 1_000_000L
+
+        /** A screen asked for these: they build the REFERENCE windows (ADR-0032 §3). */
+        private val REFERENCE_TRIGGERS = setOf(SnapshotTrigger.APP_OPENED, SnapshotTrigger.PULL_TO_REFRESH)
 
         private val BLOB_TRIGGERS =
             setOf(
