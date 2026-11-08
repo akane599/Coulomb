@@ -5,7 +5,11 @@ package io.github.akane599.coulomb.core.designsystem.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.LocalRippleThemeConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
+import androidx.compose.material3.RippleDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -21,7 +25,11 @@ private val LocalCoulombTypography = staticCompositionLocalOf { CoulombTypograph
 
 /**
  * Coulomb's theme: its colour and type roles, also mapped onto Material 3 for the Material
- * components Coulomb restyles (SPEC 11.7). Springs are in [CoulombMotion].
+ * components Coulomb restyles (SPEC 11.7). Springs are in [CoulombMotion], which Material's
+ * components also follow through [CoulombMotionScheme].
+ *
+ * Keyboard focus draws Material's inset ring in `accent` over a `bg` band, the copper focus ring of
+ * DESIGN.md, so it reads on any fill.
  *
  * @param trueBlack the opt-in OLED theme; only applies when [darkTheme] is true (SPEC 11.4).
  */
@@ -41,10 +49,17 @@ public fun CoulombTheme(
     CompositionLocalProvider(LocalCoulombColors provides colors, LocalCoulombTypography provides typography) {
         MaterialTheme(
             colorScheme = colors.toMaterial(darkTheme),
+            motionScheme = CoulombMotionScheme,
             shapes = CoulombShapes,
             typography = typography.toMaterial(),
-            content = content,
-        )
+        ) {
+            CompositionLocalProvider(
+                LocalRippleThemeConfiguration provides RippleDefaults.InsetFocusRingThemeConfiguration,
+                LocalRippleConfiguration provides
+                    RippleConfiguration(focus = RippleConfiguration.Focus.InsetRing(colors.accent, colors.bg)),
+                content = content,
+            )
+        }
     }
 }
 

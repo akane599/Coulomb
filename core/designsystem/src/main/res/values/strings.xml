@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- The top app bar's back button, read by TalkBack. -->
+    <string name="designsystem_back">Back</string>
+</resources>
