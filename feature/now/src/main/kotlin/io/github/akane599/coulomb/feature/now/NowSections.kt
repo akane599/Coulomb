@@ -468,7 +468,8 @@ internal fun TopDrains(
             }
         captions.forEachIndexed { index, caption ->
             val gap = if (index == 0 && state.issue != null) CoulombSpacing.Space12 else CoulombSpacing.Space4
-            Text(caption, Modifier.padding(top = gap), color = colors.textSecondary, style = type.caption)
+            // Full width, as the paragraphs around it: a caption aligns by its own text's direction.
+            Text(caption, Modifier.fillMaxWidth().padding(top = gap), color = colors.textSecondary, style = type.caption)
         }
         DrainList(state, formats, actions)
     }
@@ -604,7 +605,7 @@ internal fun LiveCurrent(
         )
         Text(
             stringResource(R.string.now_live_caption),
-            Modifier.padding(top = CoulombSpacing.Space8),
+            Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
             color = colors.textSecondary,
             style = type.caption,
         )
