@@ -10,11 +10,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.collect.engine.BlobStore
 import io.github.akane599.coulomb.core.database.CoulombDatabase
+import io.github.akane599.coulomb.core.database.dao.KernelRows
 import io.github.akane599.coulomb.core.database.dao.NewHistoryEvent
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
+import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
+import io.github.akane599.coulomb.core.database.entity.KmsgSpan
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.model.AutoReference
@@ -25,6 +28,8 @@ import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.WindowKind
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
+import io.github.akane599.coulomb.core.model.kernel.KernelLogEvent
+import io.github.akane599.coulomb.core.model.kernel.KernelLogRecord
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -51,6 +56,7 @@ class RetentionTest {
         bootSeq: Int = 1,
         kind: SnapshotKind = SnapshotKind.HEAVY,
         historyEventId: Long? = null,
+        kernel: KernelRows? = null,
     ): Long =
         db.snapshotDao().insert(
             SnapshotEntity(
@@ -83,7 +89,16 @@ class RetentionTest {
             } else {
                 SnapshotRows()
             },
+            kernel,
         )
+
+    private fun kmsg(
+        after: Long?,
+        seq: Long,
+    ) = KernelRows(
+        KernelReadEntity.of(0, BOOT_KEY, kmsg = KmsgSpan(after, seq, seq, emptyList())),
+        events = listOf(KernelLogRecord(seq, seq * 1_000, KernelLogEvent.Abort("Pending Wakeup Sources: wlan"))),
+    )
 
     private suspend fun window(
         from: Long,
@@ -153,6 +168,27 @@ class RetentionTest {
             assertThat(left()).containsExactly(marks[2], marks[3])
         }
 
+    /** The S27 ring is 7 days (ADR-0029 §3); the history ring beside it keeps its 30. */
+    @Test
+    fun kernelLogEventsGoAfterSevenDaysAndHistoryAfterThirty() =
+        runTest {
+            val boot = db.deviceDao().enterBoot(1, "fp", wall0, 0)
+            val eightDays = DAYS_31_H - 8 * 24
+            val event =
+                NewHistoryEvent(1, eightDays * hourNs / 1_000_000, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, false, null, null, 50)
+            val historyMark = db.historyDao().insertRead(listOf(event), emptyList())
+            val old = heavy(eightDays, kind = SnapshotKind.LIGHT, historyEventId = historyMark, kernel = kmsg(after = null, seq = 10))
+            val recent = heavy(DAYS_31_H - 6 * 24, kind = SnapshotKind.LIGHT, kernel = kmsg(after = 10, seq = 20))
+
+            Retention(db, Blobs()).run(boot, DAYS_31_H * hourNs)
+
+            assertThat(db.snapshotDao().kernelLog(BOOT_KEY, 0, Long.MAX_VALUE).map { it.seq }).containsExactly(20L)
+            // The old read's span goes with its events, so no window counts the range as covered.
+            assertThat(db.snapshotDao().kernelRead(old)).isNull()
+            assertThat(db.snapshotDao().kmsgReadsBetween(0, 0, 1, Long.MAX_VALUE).map { it.snapshotId }).containsExactly(recent)
+            assertThat(db.historyDao().events(1, 0, 1, Long.MAX_VALUE)).hasSize(1)
+        }
+
     @Test
     fun countersGoTwoHoursBackButThePinnedSnapshotsKeepThem() =
         runTest {
@@ -215,6 +251,7 @@ class RetentionTest {
 
     private companion object {
         const val DAYS_31_H = 31 * 24
+        const val BOOT_KEY = 0x0fed_cba9_8765_4321L
     }
 
     private class Blobs(

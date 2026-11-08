@@ -5,18 +5,28 @@ package io.github.akane599.coulomb.core.database
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.database.dao.KernelRows
 import io.github.akane599.coulomb.core.database.dao.NewHistoryEvent
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
+import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
+import io.github.akane599.coulomb.core.database.entity.KmsgSpan
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
+import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
+import io.github.akane599.coulomb.core.model.kernel.KernelLogEvent
+import io.github.akane599.coulomb.core.model.kernel.KernelLogRecord
+import io.github.akane599.coulomb.core.model.kernel.SeqGap
+import io.github.akane599.coulomb.core.model.kernel.WakeupIrq
+import io.github.akane599.coulomb.core.model.kernel.WakeupSourceInstance
+import io.github.akane599.coulomb.core.model.kernel.WakeupSourceStats
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -181,6 +191,72 @@ class SizeBudgetTest : DatabaseTest() {
             assertThat(projectedMb).isLessThan(BUDGET_MB)
         }
 
+    /**
+     * Root mode's extra rows (ADR-0029 §3) at upper-bound rates: the S27 ring, the S9 counters and
+     * the kernel window rows. Shell mode stores none of them, so this is the most root adds.
+     */
+    @Test
+    fun rootKernelDataStaysSmall() =
+        runTest {
+            val events = bytesPer(KERNEL_READS * EVENTS_PER_READ) { insertKernelLogReads() }
+            val sources = bytesPer(SNAPSHOTS * SOURCES) { insertWakeupSources() }
+            val kernelDetail = bytesPer(WINDOWS * KERNEL_WINDOW_ROWS) { insertKernelWindowRows() }
+            val rootMb =
+                (events * KERNEL_EVENTS_KEPT + sources * SOURCE_ROWS_KEPT + kernelDetail * KERNEL_DETAIL_ROWS_KEPT) / MB
+            println("root bytes per row: event %.1f, source %.1f, window row %.1f".format(events, sources, kernelDetail))
+            println("root adds after a year: %.1f MB".format(rootMb))
+
+            assertThat(events).isLessThan(72.0)
+            assertThat(rootMb).isLessThan(ROOT_BUDGET_MB)
+        }
+
+    /** S27 reads of mostly resume interrupts, one in ten an abort, each span with one gap. */
+    private suspend fun insertKernelLogReads() {
+        var seq = 0L
+        repeat(KERNEL_READS) { r ->
+            val records =
+                List(EVENTS_PER_READ) {
+                    seq += 1 + random.nextInt(40)
+                    val irq = random.nextInt(IRQ_NAMES.size)
+                    val event =
+                        if (random.nextInt(10) == 0) {
+                            KernelLogEvent.Abort("Pending Wakeup Sources: ${IRQ_NAMES[irq]}")
+                        } else {
+                            KernelLogEvent.ResumeIrq(WakeupIrq(100 + irq, IRQ_NAMES[irq]))
+                        }
+                    KernelLogRecord(seq, seq * 1_000_000, event)
+                }
+            val span = KmsgSpan(seq - 1_000, seq - 999, seq, listOf(SeqGap(seq - 500, seq - 400)))
+            val read = KernelReadEntity.of(0, BOOT, kmsg = span)
+            db.snapshotDao().insert(snapshot(elapsedS = 200_000L + r), kernel = KernelRows(read, events = records))
+        }
+    }
+
+    private suspend fun insertWakeupSources() {
+        repeat(SNAPSHOTS) { r ->
+            val rows =
+                List(SOURCES) { i ->
+                    val stats = WakeupSourceStats("source.$i", 4_000L + i, 4_100, 30, 0, 0, 900_000, 9_000, 50_000_000, 0)
+                    WakeupSourceStatEntity.of(0, WakeupSourceInstance(i, stats))
+                }
+            db.snapshotDao().insert(snapshot(elapsedS = 300_000L + r), kernel = KernelRows(KernelReadEntity.of(0, BOOT), rows))
+        }
+    }
+
+    private suspend fun insertKernelWindowRows() {
+        repeat(WINDOWS) {
+            val wakes =
+                List(KERNEL_WINDOW_ROWS) { i ->
+                    when (i % 3) {
+                        0 -> WindowWake(null, "source.$i", WakeKind.WAKEUP_SOURCE, 9_000L + i, 40, null, wakeups = 3)
+                        1 -> WindowWake(null, IRQ_NAMES[i % IRQ_NAMES.size], WakeKind.RESUME_CAUSE, 0, 12, null)
+                        else -> WindowWake(null, "Pending Wakeup Sources: x$i", WakeKind.SUSPEND_ABORT, 0, 2, null)
+                    }
+                }
+            db.windowDao().insert(window(1, 2), WindowRows(wakes = wakes))
+        }
+    }
+
     private companion object {
         const val TAGS = 2_000
         const val BATCH = 1_000
@@ -212,6 +288,22 @@ class SizeBudgetTest : DatabaseTest() {
         const val DETAIL_ROWS_KEPT = 365 * (220 + 1.5 * 220) + 30 * 102 * 60.0
         const val OTHER_TABLES_MB = 5.0
         const val MB = 1_000_000.0 // SPEC 7.7 writes MB (ADR-0021)
+
+        // Root mode (ADR-0029). Upper bounds: 3,000 stored kernel log events a day (resume causes
+        // and aborts; the entry and exit lines are not stored), 300 wakeup sources, and 20 kernel
+        // rows on each window that keeps detail.
+        const val BOOT = 0x5eed_0000_0000_0001L
+        const val KERNEL_READS = 50
+        const val EVENTS_PER_READ = 200
+        const val SOURCES = 300
+        const val KERNEL_WINDOW_ROWS = 20
+        val IRQ_NAMES = List(40) { "qcom,irq-source-$it" }
+        const val KERNEL_EVENTS_KEPT = 7 * 3_000.0
+        const val SOURCE_ROWS_KEPT = 20 * 300.0
+        const val KERNEL_DETAIL_ROWS_KEPT = 365 * 2.5 * 20 + 30 * 102 * 20.0
+
+        /** What root may add on top of shell mode's projection; see ADR-0029's size section. */
+        const val ROOT_BUDGET_MB = 6.0
         const val BUDGET_MB = 150.0
     }
 }

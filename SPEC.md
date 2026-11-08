@@ -492,6 +492,7 @@ A reference is a named snapshot. Automatic references: since boot, since unplugg
 | Sessions, daily summaries, capacity estimates | Forever | — |
 | Snapshot blobs (compressed) | 30 days | Then only the derived per-window records |
 | History events | 30 days | Ring buffer |
+| Root kernel log events (S27) | 7 days | Ring buffer (ADR-0029) |
 | Action log | Forever | — |
 
 Target database size under 150 MB after one year. Compaction and `VACUUM` run only while charging and idle.

@@ -72,6 +72,8 @@ The migration from v2 adds:
   - nullable throughout, so a source not read `ok` is null, never zero.
 
   S25 and S26 are stored only on heavy snapshots; the S27 columns may sit on any snapshot.
+  S25 and S26 are cleared with the snapshot's counters; the S27 columns stay for the 7-day S27 ring.
+  The row goes once nothing is left in it (R).
 - `wakeup_source_stat`: one row per source instance (`snapshotId`, the N of `wakeupN`, the name as
   text, the nine counters). Primary key `(snapshotId, instance)`; foreign key to the snapshot only.
   - The name is text, with no foreign key to `wake_tag`, whose prune
@@ -83,8 +85,16 @@ The migration from v2 adds:
   (a `history_tag` id, whose prune is extended to these rows), `errno?`, and `readSnapshotId`
   (foreign key, cascade).
   - It is unique on `(kernelBoot, seq)` and inserted with INSERT OR IGNORE, so a re-read is idempotent.
-  - Rows leave with the snapshot whose read first stored them, which gives a 30-day ring like
-    `history_event`.
+  - Rows leave at the 7-day cut of the S27 ring together with the span of the read that stored
+    them, so a window built later never counts a range as covered without its events. They also
+    leave with that snapshot. A snapshot that ends a kept window stays for good, so the cascade
+    alone would not give a ring (R).
+  - The ring is 7 days, not the history ring's 30, to fit the size budget (see Size). Windows are
+    built within hours, so their S27 counts are made long before the cut. The ring only limits
+    how far back a missed window can be rebuilt, and such a window then shows S27 as partial.
+    The S7 history ring keeps 30 days of wakeup reasons in both modes.
+  - The suspend entry and exit lines are not stored. Suspends are counted from S25, so they would
+    add two rows per suspend that nothing reads (R).
 - `window_wake.wakeups` (nullable): the wakeup-count change of an S9 source. `WakeKind` gains
   `WAKEUP_SOURCE` (S9), `RESUME_CAUSE` and `SUSPEND_ABORT` (S27).
 - `window_result.kernelCoverage` (nullable int): two bits per source, for S25, S9 and S27 in that
@@ -104,8 +114,11 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
   key and no counter fell. Otherwise the S25 coverage is 0 and no row is written.
 - **S9:**
   - An instance present at both endpoints with no field fallen gives its delta.
-  - A fall in any field, `maxTimeMs` included, is a reset: that instance has no delta, and the
-    window is partial.
+  - A fall in any cumulative field, `maxTimeMs` included, is a reset: that instance has no delta,
+    and the window is partial. `activeTimeMs` (the current active stretch) and `lastChangeMs` (a
+    time stamp) are not cumulative and are left out of the rule (R).
+  - Only a source whose wakeup count rose gets a row, with its time alongside. Wakelock time on its
+    own is in S5's kernel wakelock rows (R).
   - An instance present only at the end was created inside the window, so its value is its delta.
   - An instance that vanished makes the window partial.
   - Sums by name happen only here, when the window is built (R).
@@ -116,6 +129,11 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
     consecutive window.
   - Records recovered later, after an ADB-mode span, are kept with their own times. A window
     already built keeps the coverage it had when it was built (R).
+  - `SUSPEND_ABORT` counts the `Abort:` lines. `print_wakeup_sources` prints one per aborted
+    attempt (kernel/power/wakeup_reason.c, android16-6.12 L274-325). Device and freeze failure
+    lines print alongside it, so they are detail and never add to the count (R).
+  - `RESUME_CAUSE` counts one per leaf interrupt line. A resume with two interrupts counts for
+    both, so the counts can add up to more than the number of resumes.
 - **No double counting across sources:** S27 overlaps S7's wakeup reasons, and S9 overlaps S5's
   kernel wakelocks. A screen shows one or the other, never their sum. Suspends are counted from
   S25, never from S27 (R).
@@ -155,10 +173,46 @@ Measured). S9 deltas become `window_wake` rows of kind `WAKEUP_SOURCE`. S27 coun
 - On every new connection the kernel capabilities are probed again. At uid 2000 they become
   UNAVAILABLE (fix NEEDS_ROOT) without touching the files.
 
+## Review
+
+An independent review of the kernel parsers and the worker's stream writers found two defects;
+both are fixed with regression tests:
+
+- **A read with nothing new since its cursor was marked incomplete.** The trailer check took any
+  cursor as "something was read". Every quiet interval would have lost its S27 coverage.
+- **A cut kernel-file stream could report S9 complete.** A cut just before a `wakeupN` directory
+  left nothing for that directory's parser to miss. `KernelSources.split` now marks the source
+  being read at the cut as incomplete.
+
+It also suggested three changes, all made:
+
+- A listing past the 4096-entry cap now reads as not listable instead of a complete read missing
+  sources.
+- The file stream has a 16 MiB total cap.
+- The S9 reset rule leaves out `activeTimeMs` (§4).
+
+The allowlist prefixes it could not check (`Resume caused by …`, `Abort: …`) match
+`print_wakeup_sources` on android16-6.12 and android15-6.6. That file defines no `pr_fmt`.
+
+## Size
+
+`SizeBudgetTest` measures the root rows at upper-bound rates: 3,000 S27 events a day, 300 S9
+sources per heavy snapshot, and 20 kernel rows per kept window.
+- Bytes per row: an S27 event takes 69.2, an S9 row 58.7 and a kernel window row 47.1.
+- Root adds 5.5 MB after a year. A 30-day S27 ring would add 10.3 MB, most of it events.
+- The test fails above 6 MB, or when an event row grows past 72 bytes.
+
+With shell data, the year projects to 115.7 MB at ADR-0015's rates plus 5.5 MB from root. At the
+stress test's history rate (145.5 MB, ADR-0021) plus root's upper bound, the total is about 151 MB,
+just over 150. That history rate is itself an upper bound, so this case adds two upper bounds. The
+phone night's clean history rate replaces it. If the total is still over 150, ADR-0021's margin
+step 1 comes first: lookup ids for `window_uid`, which is lossless.
+
 ## Consequences
 
 - Room schema v3, with a migration and a migration test. The size projection gains the S27 ring and
-  the S9 rows, capped by pruning.
+  the S9 rows, capped by pruning (see Size).
+- **SPEC 7.7** gains a row: root kernel log events are kept for 7 days in a ring.
 - Root costs a worker bind on each heavy snapshot (474 ms wall on the phone, ADR-0018). The
   capability report records the bind and kernel read cost. That cost is measured on the phone when
   the owner next allows a session; the emulator gives a first number.

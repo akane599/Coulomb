@@ -30,6 +30,7 @@ public data class WindowWake(
     val totalMs: Long,
     val count: Int,
     val screenOffMs: Long?,
+    val wakeups: Long? = null,
 )
 
 /** A [WindowStatEntity] with its key as text. */
@@ -69,7 +70,7 @@ public abstract class WindowDao {
             tags.chunked(MAX_IDS).forEach { chunk -> wakeTags(chunk).forEach { tagIds[it.tag] = it.id } }
             insertWakes(
                 rows.wakes.map {
-                    WindowWakeEntity(0, id, it.uid, tagIds.getValue(it.tag), it.kind, it.totalMs, it.count, it.screenOffMs)
+                    WindowWakeEntity(0, id, it.uid, tagIds.getValue(it.tag), it.kind, it.totalMs, it.count, it.screenOffMs, it.wakeups)
                 },
             )
         }
@@ -213,7 +214,7 @@ public abstract class WindowDao {
     protected abstract suspend fun uids(windowId: Long): List<WindowUidEntity>
 
     @Query(
-        "SELECT w.uid, t.tag, w.kind, w.totalMs, w.count, w.screenOffMs FROM window_wake w " +
+        "SELECT w.uid, t.tag, w.kind, w.totalMs, w.count, w.screenOffMs, w.wakeups FROM window_wake w " +
             "JOIN wake_tag t ON t.id = w.tagId WHERE w.windowId = :windowId ORDER BY w.id",
     )
     protected abstract suspend fun wakes(windowId: Long): List<WindowWake>

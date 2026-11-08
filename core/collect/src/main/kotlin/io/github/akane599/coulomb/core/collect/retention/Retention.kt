@@ -41,6 +41,8 @@ internal class Retention(
         val samples = db.sampleDao()
         val compacted = cut(SAMPLES_MS)?.let { samples.compactSamples(it.bootSeq, it.elapsedNs, MINUTE_S) } ?: 0
         cut(AGGREGATES_MS)?.let { samples.compactAggregates(it.bootSeq, it.elapsedNs, MINUTE_S, HOUR_S) }
+        // The kernel log ring before the history ring, so the history tag prune sees its events gone.
+        cut(KERNEL_LOG_MS)?.let { db.snapshotDao().pruneKernelLog(it.bootSeq, it.elapsedNs) }
         val ring = cut(HISTORY_MS)
         ring?.let { db.historyDao().deleteBefore(it.bootSeq, it.elapsedNs) }
         val windowsDeleted = cut(DETAIL_MS)?.let { pruneWindows(it) } ?: 0
@@ -138,6 +140,9 @@ internal class Retention(
         const val SAMPLES_MS: Long = 14 * DAY_MS
         const val AGGREGATES_MS: Long = 180 * DAY_MS
         const val HISTORY_MS: Long = 30 * DAY_MS
+
+        /** The S27 ring: root kernel log events and the read spans that vouch for them (ADR-0029 §3). */
+        const val KERNEL_LOG_MS: Long = 7 * DAY_MS
         const val DETAIL_MS: Long = 30 * DAY_MS
         const val COUNTERS_MS: Long = 2 * HOUR_MS
         const val BLOBS_MS: Long = 30 * DAY_MS

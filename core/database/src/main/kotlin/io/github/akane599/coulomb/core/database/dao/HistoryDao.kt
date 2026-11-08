@@ -170,7 +170,10 @@ public abstract class HistoryDao {
     )
 
     /** `tagId` has no index; `NOT IN` reads the events once rather than once per tag. */
-    @Query("DELETE FROM history_tag WHERE id NOT IN (SELECT tagId FROM history_event WHERE tagId IS NOT NULL)")
+    @Query(
+        "DELETE FROM history_tag WHERE id NOT IN (SELECT tagId FROM history_event WHERE tagId IS NOT NULL) " +
+            "AND id NOT IN (SELECT tagId FROM kernel_log_event WHERE tagId IS NOT NULL)",
+    )
     protected abstract suspend fun deleteUnusedTags()
 
     private companion object {

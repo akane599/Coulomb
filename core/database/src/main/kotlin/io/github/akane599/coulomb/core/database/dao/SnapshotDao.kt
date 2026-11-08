@@ -5,11 +5,16 @@ package io.github.akane599.coulomb.core.database.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import io.github.akane599.coulomb.core.database.entity.AlarmStatEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
+import io.github.akane599.coulomb.core.database.entity.HistoryTagEntity
 import io.github.akane599.coulomb.core.database.entity.JobStatEntity
+import io.github.akane599.coulomb.core.database.entity.KernelCodes
+import io.github.akane599.coulomb.core.database.entity.KernelLogEventEntity
+import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.NetStatEntity
 import io.github.akane599.coulomb.core.database.entity.RailEnergyEntity
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
@@ -17,8 +22,10 @@ import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
+import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ReferenceOrigin
+import io.github.akane599.coulomb.core.model.kernel.KernelLogRecord
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -36,14 +43,36 @@ public data class SnapshotRows(
     val deviceStats: List<DeviceStatEntity> = emptyList(),
 )
 
+/**
+ * What one snapshot read from the root kernel sources (ADR-0029 §3). [events] are the S27 records of
+ * the read, all under [read]'s kernel boot; the suspend entry and exit lines are not stored
+ * ([KernelCodes.encodeEvent]). Their ids, like the rows' `snapshotId`, are set on insert.
+ */
+public data class KernelRows(
+    val read: KernelReadEntity,
+    val wakeupSources: List<WakeupSourceStatEntity> = emptyList(),
+    val events: List<KernelLogRecord> = emptyList(),
+)
+
+/** A stored S27 event with its tag as text, before decoding. */
+public data class StoredKernelEvent(
+    val seq: Long,
+    val monotonicUs: Long,
+    val kind: Int,
+    val irq: Int?,
+    val tag: String?,
+    val errno: Int?,
+)
+
 /** Snapshots, their counters and the references that pin them (SPEC 7.2, 7.6, 7.7). */
 @Dao
 public abstract class SnapshotDao {
-    /** Stores [snapshot] and its [rows] in one transaction and returns the snapshot's id. */
+    /** Stores [snapshot], its [rows] and its [kernel] reads in one transaction and returns the snapshot's id. */
     @Transaction
     public open suspend fun insert(
         snapshot: SnapshotEntity,
         rows: SnapshotRows = SnapshotRows(),
+        kernel: KernelRows? = null,
     ): Long {
         val id = insertSnapshot(snapshot)
         insertUidPower(rows.uidPower.map { it.copy(snapshotId = id) })
@@ -54,8 +83,78 @@ public abstract class SnapshotDao {
         insertRailEnergy(rows.railEnergy.map { it.copy(snapshotId = id) })
         insertUidStats(rows.uidStats.map { it.copy(snapshotId = id) })
         insertDeviceStats(rows.deviceStats.map { it.copy(snapshotId = id) })
+        kernel?.let { insertKernel(id, it) }
         return id
     }
+
+    private suspend fun insertKernel(
+        snapshotId: Long,
+        kernel: KernelRows,
+    ) {
+        insertKernelRead(kernel.read.copy(snapshotId = snapshotId))
+        insertWakeupSources(kernel.wakeupSources.map { it.copy(snapshotId = snapshotId) })
+        val stored = kernel.events.mapNotNull { record -> KernelCodes.encodeEvent(record.event)?.let { record to it } }
+        if (stored.isEmpty()) return
+        val tags = stored.mapNotNullTo(LinkedHashSet()) { it.second.tag }.toList()
+        insertTags(tags.map { HistoryTagEntity(tag = it) })
+        val tagIds = HashMap<String, Long>(tags.size)
+        tags.chunked(MAX_IDS).forEach { chunk -> tagIds(chunk).forEach { tagIds[it.tag] = it.id } }
+        insertKernelEvents(
+            stored.map { (record, event) ->
+                KernelLogEventEntity(
+                    kernelBoot = kernel.read.kernelBoot,
+                    seq = record.seq,
+                    monotonicUs = record.monotonicUs,
+                    kind = event.kind,
+                    irq = event.irq,
+                    tagId = event.tag?.let(tagIds::getValue),
+                    errno = event.errno,
+                    readSnapshotId = snapshotId,
+                )
+            },
+        )
+    }
+
+    @Query("SELECT * FROM kernel_read WHERE snapshotId = :snapshotId")
+    public abstract suspend fun kernelRead(snapshotId: Long): KernelReadEntity?
+
+    /** The snapshot's S9 sources; empty when S9 was not read or the counters were pruned. */
+    @Query("SELECT * FROM wakeup_source_stat WHERE snapshotId = :snapshotId ORDER BY instance")
+    public abstract suspend fun wakeupSources(snapshotId: Long): List<WakeupSourceStatEntity>
+
+    /**
+     * The next S27 read's cursor (ADR-0029 §5): the furthest record a stored read covered under
+     * [kernelBoot]. Never taken from memory and never across boots.
+     */
+    @Query("SELECT MAX(kmsgLastSeq) FROM kernel_read WHERE kernelBoot = :kernelBoot")
+    public abstract suspend fun kmsgCursor(kernelBoot: Long): Long?
+
+    /**
+     * The S27 reads of the snapshots after `(fromBootSeq, fromElapsedNs)` up to and including
+     * `(toBootSeq, toElapsedNs)`, oldest first, for a window's coverage (ADR-0029 §4).
+     */
+    @Query(
+        "SELECT k.* FROM kernel_read k JOIN snapshot s ON s.id = k.snapshotId WHERE k.kmsgGaps IS NOT NULL " +
+            "AND (s.bootSeq > :fromBootSeq OR (s.bootSeq = :fromBootSeq AND s.elapsedNs > :fromElapsedNs)) " +
+            "AND (s.bootSeq < :toBootSeq OR (s.bootSeq = :toBootSeq AND s.elapsedNs <= :toElapsedNs)) " +
+            "ORDER BY s.bootSeq, s.elapsedNs",
+    )
+    public abstract suspend fun kmsgReadsBetween(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<KernelReadEntity>
+
+    /** The stored S27 records of [kernelBoot] with `afterSeq < seq <= lastSeq`, in order. */
+    public suspend fun kernelLog(
+        kernelBoot: Long,
+        afterSeq: Long,
+        lastSeq: Long,
+    ): List<KernelLogRecord> =
+        kernelEvents(kernelBoot, afterSeq, lastSeq).map {
+            KernelLogRecord(it.seq, it.monotonicUs, KernelCodes.decodeEvent(KernelCodes.StoredEvent(it.kind, it.irq, it.tag, it.errno)))
+        }
 
     @Query("SELECT * FROM snapshot WHERE id = :id")
     public abstract suspend fun snapshot(id: Long): SnapshotEntity?
@@ -165,9 +264,28 @@ public abstract class SnapshotDao {
             deleteRailEnergy(chunk)
             deleteUidStats(chunk)
             deleteDeviceStats(chunk)
+            deleteWakeupSources(chunk)
+            clearSuspendReads(chunk)
+            deleteEmptyKernelReads(chunk)
             markCountersPruned(chunk)
         }
         return ids.size
+    }
+
+    /**
+     * Retention (ADR-0029 §3): the S27 ring. Deletes the kernel log events that reads before
+     * `(cutBootSeq, cutElapsedNs)` stored and clears those reads' spans, so no window built later
+     * can count the range as covered without its events. Run it before [HistoryDao.deleteBefore],
+     * whose tag prune then sees the events gone.
+     */
+    @Transaction
+    public open suspend fun pruneKernelLog(
+        cutBootSeq: Int,
+        cutElapsedNs: Long,
+    ) {
+        deleteKernelEventsBefore(cutBootSeq, cutElapsedNs)
+        clearKmsgReadsBefore(cutBootSeq, cutElapsedNs)
+        deleteEmptyKernelReadsBefore(cutBootSeq, cutElapsedNs)
     }
 
     /**
@@ -227,6 +345,33 @@ public abstract class SnapshotDao {
 
     @Insert
     protected abstract suspend fun insertReference(reference: ReferenceEntity): Long
+
+    @Insert
+    protected abstract suspend fun insertKernelRead(read: KernelReadEntity)
+
+    @Insert
+    protected abstract suspend fun insertWakeupSources(rows: List<WakeupSourceStatEntity>)
+
+    /** A record read twice keeps its first row (ADR-0029 §5). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract suspend fun insertKernelEvents(rows: List<KernelLogEventEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract suspend fun insertTags(tags: List<HistoryTagEntity>)
+
+    @Query("SELECT * FROM history_tag WHERE tag IN (:tags)")
+    protected abstract suspend fun tagIds(tags: List<String>): List<HistoryTagEntity>
+
+    @Query(
+        "SELECT e.seq, e.monotonicUs, e.kind, e.irq, t.tag, e.errno FROM kernel_log_event e " +
+            "LEFT JOIN history_tag t ON t.id = e.tagId " +
+            "WHERE e.kernelBoot = :kernelBoot AND e.seq > :afterSeq AND e.seq <= :lastSeq ORDER BY e.seq",
+    )
+    protected abstract suspend fun kernelEvents(
+        kernelBoot: Long,
+        afterSeq: Long,
+        lastSeq: Long,
+    ): List<StoredKernelEvent>
 
     @Query("UPDATE reference SET snapshotId = :snapshotId, createdWall = :createdWall WHERE autoKind = :kind")
     protected abstract suspend fun moveReference(
@@ -320,6 +465,41 @@ public abstract class SnapshotDao {
     @Query("DELETE FROM device_stat WHERE snapshotId IN (:ids)")
     protected abstract suspend fun deleteDeviceStats(ids: List<Long>)
 
+    @Query("DELETE FROM wakeup_source_stat WHERE snapshotId IN (:ids)")
+    protected abstract suspend fun deleteWakeupSources(ids: List<Long>)
+
+    @Query(
+        "UPDATE kernel_read SET suspendSuccess = NULL, suspendFail = NULL, failedFreeze = NULL, failedPrepare = NULL, " +
+            "failedSuspend = NULL, failedSuspendLate = NULL, failedSuspendNoirq = NULL, failedResume = NULL, " +
+            "failedResumeEarly = NULL, failedResumeNoirq = NULL, lastFailedDev = NULL, lastFailedErrno = NULL, " +
+            "lastFailedStep = NULL, resumeReason = NULL, suspendResumeNs = NULL, sleepNs = NULL WHERE snapshotId IN (:ids)",
+    )
+    protected abstract suspend fun clearSuspendReads(ids: List<Long>)
+
+    @Query("DELETE FROM kernel_read WHERE snapshotId IN (:ids) AND $KERNEL_READ_EMPTY")
+    protected abstract suspend fun deleteEmptyKernelReads(ids: List<Long>)
+
+    @Query("DELETE FROM kernel_log_event WHERE readSnapshotId IN (SELECT id FROM snapshot WHERE $BEFORE_CUT)")
+    protected abstract suspend fun deleteKernelEventsBefore(
+        cutBootSeq: Int,
+        cutElapsedNs: Long,
+    )
+
+    @Query(
+        "UPDATE kernel_read SET kmsgAfterSeq = NULL, kmsgFirstSeq = NULL, kmsgLastSeq = NULL, kmsgGaps = NULL " +
+            "WHERE snapshotId IN (SELECT id FROM snapshot WHERE $BEFORE_CUT)",
+    )
+    protected abstract suspend fun clearKmsgReadsBefore(
+        cutBootSeq: Int,
+        cutElapsedNs: Long,
+    )
+
+    @Query("DELETE FROM kernel_read WHERE snapshotId IN (SELECT id FROM snapshot WHERE $BEFORE_CUT) AND $KERNEL_READ_EMPTY")
+    protected abstract suspend fun deleteEmptyKernelReadsBefore(
+        cutBootSeq: Int,
+        cutElapsedNs: Long,
+    )
+
     @Query("UPDATE snapshot SET countersPruned = 1 WHERE id IN (:ids)")
     protected abstract suspend fun markCountersPruned(ids: List<Long>)
 
@@ -338,6 +518,9 @@ public abstract class SnapshotDao {
     private companion object {
         /** Rows keyed before `(:cutBootSeq, :cutElapsedNs)`. */
         const val BEFORE_CUT = "(bootSeq < :cutBootSeq OR (bootSeq = :cutBootSeq AND elapsedNs < :cutElapsedNs))"
+
+        /** A kernel read whose sources were all cleared. S25 and S26 are cleared together. */
+        const val KERNEL_READ_EMPTY = "suspendSuccess IS NULL AND resumeReason IS NULL AND kmsgGaps IS NULL"
 
         /** Ids per `IN (...)`, well below SQLite's bound-parameter limit. */
         const val MAX_IDS = 500

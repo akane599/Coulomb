@@ -47,8 +47,51 @@ public enum class SnapshotTrigger {
     SERVICE_STARTED,
 }
 
-/** SPEC 8 `WakeStat.kind`. */
-public enum class WakeKind { PARTIAL, KERNEL, WAKEUP_REASON }
+/** SPEC 8 `WakeStat.kind`; the last three come from root kernel sources (ADR-0029). */
+public enum class WakeKind {
+    PARTIAL,
+    KERNEL,
+    WAKEUP_REASON,
+
+    /**
+     * S9: a `/sys/class/wakeup` source whose wakeup count rose in the window. It overlaps S5's
+     * [KERNEL] rows; a screen shows one or the other, never their sum.
+     */
+    WAKEUP_SOURCE,
+
+    /** S27: what resumed the phone from suspend, counted per IRQ name or reason. Overlaps S7. */
+    RESUME_CAUSE,
+
+    /** S27: why a suspend was abandoned before sleeping, counted per reason. */
+    SUSPEND_ABORT,
+}
+
+/**
+ * The Shizuku mode a snapshot was read in (ADR-0029 §1): the uid of the connection that served its
+ * worker reads, or of the live connection when none ran. Stored as [code]; `null` in the database
+ * means no connection, and on rows from before schema version 3, which have no `uptimeMs` either.
+ */
+public enum class PrivilegeMode(
+    public val code: Int,
+) {
+    SHELL(1),
+    ROOT(2),
+
+    /** A uid other than 0 or 2000, such as a manager running under its own app uid. */
+    OTHER(3),
+    ;
+
+    public companion object {
+        public fun ofUid(uid: Int): PrivilegeMode =
+            when (uid) {
+                ServerInfo.ROOT_UID -> ROOT
+                ServerInfo.SHELL_UID -> SHELL
+                else -> OTHER
+            }
+
+        public fun ofCode(code: Int): PrivilegeMode = entries.firstOrNull { it.code == code } ?: error("Unknown privilege mode code $code")
+    }
+}
 
 /** SPEC 8 `Reference.origin`. */
 public enum class ReferenceOrigin { AUTO, USER }

@@ -10,14 +10,22 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.database.dao.KernelRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.HistoryCodes
+import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
+import io.github.akane599.coulomb.core.database.entity.KmsgSpan
+import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.model.kernel.KernelLogEvent
+import io.github.akane599.coulomb.core.model.kernel.KernelLogRecord
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -102,6 +110,83 @@ class MigrationTest {
                     }
                 assertThat(wakeId).isEqualTo(61)
             }
+        }
+
+    /** Version 3 only adds: stored rows keep every value, and the new columns read as "not collected". */
+    @Test
+    fun twoToThreeAddsKernelStorageAndKeepsEveryRow() =
+        runTest {
+            helper.createDatabase(NAME, 2).use { v2 ->
+                (
+                    snapshotsAndWindow() +
+                        listOf(
+                            "INSERT INTO wake_tag VALUES (3, 'qcom_rx_wakelock')",
+                            "INSERT INTO window_wake VALUES (40, 7, NULL, 3, 'KERNEL', 1200, 3, NULL)",
+                            "INSERT INTO history_tag VALUES (5, '*alarm*')",
+                            "INSERT INTO history_event VALUES (3, 1, 15001, $WAKE_LOCK, $START, 1, 10123, 5, NULL)",
+                        )
+                ).forEach(v2::execSQL)
+            }
+
+            helper.runMigrationsAndValidate(NAME, 3, true, *Migrations.ALL).close()
+
+            migrated { db ->
+                val snapshot = checkNotNull(db.snapshotDao().snapshot(2))
+                assertThat(snapshot.historyEventId).isEqualTo(3)
+                assertThat(snapshot.uptimeMs).isNull()
+                assertThat(snapshot.privilegeMode).isNull()
+                val window = checkNotNull(db.windowDao().window(7))
+                assertThat(window.kernelCoverage).isNull()
+                assertThat(db.windowDao().rows(7).wakes)
+                    .containsExactly(WindowWake(null, "qcom_rx_wakelock", WakeKind.KERNEL, 1200, 3, null, wakeups = null))
+                assertThat(db.historyDao().events(1, 0, 1, 20 * NS_PER_S).map { it.tag }).containsExactly("*alarm*")
+
+                // The new storage works on the migrated file.
+                val id =
+                    db.snapshotDao().insert(
+                        db.snapshotDao().snapshot(2)!!.copy(id = 0, elapsedNs = 30 * NS_PER_S, privilegeMode = PrivilegeMode.ROOT),
+                        kernel =
+                            KernelRows(
+                                KernelReadEntity.of(0, kernelBoot = 42, kmsg = KmsgSpan(null, 1, 9, emptyList())),
+                                events = listOf(KernelLogRecord(9, 77, KernelLogEvent.Abort("*alarm*"))),
+                            ),
+                    )
+                assertThat(db.snapshotDao().snapshot(id)?.privilegeMode).isEqualTo(PrivilegeMode.ROOT)
+                assertThat(db.snapshotDao().kmsgCursor(42)).isEqualTo(9)
+                assertThat(
+                    db
+                        .snapshotDao()
+                        .kernelLog(42, 0, 9)
+                        .single()
+                        .event,
+                ).isEqualTo(KernelLogEvent.Abort("*alarm*"))
+                // The kernel event reuses the history tag already stored.
+                assertThat(long(db, "SELECT COUNT(*) FROM history_tag")).isEqualTo(1)
+                val coverage = KernelCoverage(Coverage.WHOLE, Coverage.NONE, Coverage.PARTIAL)
+                val windowId =
+                    db.windowDao().insert(
+                        window.copy(id = 0, kernelCoverage = coverage),
+                        WindowRows(wakes = listOf(WindowWake(null, "wlan_rx_wake", WakeKind.WAKEUP_SOURCE, 900, 4, null, wakeups = 2))),
+                    )
+                assertThat(db.windowDao().window(windowId)?.kernelCoverage).isEqualTo(coverage)
+                assertThat(
+                    db
+                        .windowDao()
+                        .rows(windowId)
+                        .wakes
+                        .single()
+                        .wakeups,
+                ).isEqualTo(2)
+            }
+        }
+
+    private fun long(
+        db: CoulombDatabase,
+        query: String,
+    ): Long =
+        db.openHelper.readableDatabase.query(query).use {
+            it.moveToFirst()
+            it.getLong(0)
         }
 
     private suspend fun migrated(check: suspend (CoulombDatabase) -> Unit) {

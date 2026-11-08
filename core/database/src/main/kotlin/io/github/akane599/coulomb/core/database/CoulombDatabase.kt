@@ -32,6 +32,8 @@ import io.github.akane599.coulomb.core.database.entity.HistoryGapEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryTagEntity
 import io.github.akane599.coulomb.core.database.entity.InsightEntity
 import io.github.akane599.coulomb.core.database.entity.JobStatEntity
+import io.github.akane599.coulomb.core.database.entity.KernelLogEventEntity
+import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.NetStatEntity
 import io.github.akane599.coulomb.core.database.entity.RailEnergyEntity
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
@@ -45,19 +47,20 @@ import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeTagEntity
+import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 
 /**
- * The SPEC 8 schema (ADR-0015, ADR-0021). Schemas are exported to `core/database/schemas` and
+ * The SPEC 8 schema (ADR-0015, ADR-0021, ADR-0029). Schemas are exported to `core/database/schemas` and
  * committed; a version bump needs a migration and a migration test (SPEC 8). Enums are stored by
  * name, except the position codes of the history and window detail tables ([HistoryCodes],
  * [DetailCodes]).
  */
 @Database(
-    version = 2,
+    version = 3,
     exportSchema = true,
     entities = [
         DeviceProfileEntity::class,
@@ -80,6 +83,9 @@ import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
         RailEnergyEntity::class,
         UidStatEntity::class,
         DeviceStatEntity::class,
+        KernelReadEntity::class,
+        WakeupSourceStatEntity::class,
+        KernelLogEventEntity::class,
         UidPackageEntity::class,
         ReferenceEntity::class,
         WindowResultEntity::class,

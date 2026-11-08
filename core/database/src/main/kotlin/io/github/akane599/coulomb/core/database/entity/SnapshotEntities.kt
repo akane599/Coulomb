@@ -7,7 +7,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
 import io.github.akane599.coulomb.core.model.AutoReference
+import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.ReferenceOrigin
 import io.github.akane599.coulomb.core.model.SnapshotKind
@@ -23,6 +25,7 @@ import io.github.akane599.coulomb.core.model.WakeKind
  * days (SPEC 7.7). Per-snapshot tables reference `snapshot.id` with `ON DELETE CASCADE`.
  */
 @Entity(tableName = "snapshot", indices = [Index("bootSeq", "elapsedNs"), Index("wallMs")])
+@TypeConverters(KernelCodes::class)
 public data class SnapshotEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val bootSeq: Int,
@@ -65,6 +68,14 @@ public data class SnapshotEntity(
     /** The per-UID and device counters were deleted once no window could start here any more. */
     val countersPruned: Boolean,
     val durationMs: Long,
+    /**
+     * CLOCK_MONOTONIC at the light read (ADR-0029 §3). It stops in suspend like the kernel log's
+     * clock, so elapsed minus uptime between two snapshots is the deep sleep between them. Null only
+     * on rows from before schema version 3.
+     */
+    val uptimeMs: Long? = null,
+    /** The Shizuku mode of the snapshot's worker reads (ADR-0029 §1); null without a connection. */
+    val privilegeMode: PrivilegeMode? = null,
 )
 
 /**

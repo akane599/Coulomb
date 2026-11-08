@@ -12,6 +12,7 @@ import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
 
 /**
  * SPEC 8 `WindowResult`: the drain between two snapshots (SPEC 6.2, 6.5). [measuredMah] comes from
@@ -47,6 +48,7 @@ import io.github.akane599.coulomb.core.model.WindowKind
     ],
     indices = [Index("fromSnapshotId"), Index("toSnapshotId"), Index("sessionId"), Index("kind", "toSnapshotId")],
 )
+@TypeConverters(KernelCodes::class)
 public data class WindowResultEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val kind: WindowKind,
@@ -65,6 +67,11 @@ public data class WindowResultEntity(
     /** 0 to 1 (SPEC 6.7). */
     val quality: Double,
     val detailPruned: Boolean,
+    /**
+     * Which root kernel sources the window's rows cover, and how much (ADR-0029 §4). Null when no
+     * kernel source was collected for the window.
+     */
+    val kernelCoverage: KernelCoverage? = null,
 )
 
 /**
@@ -106,9 +113,11 @@ public data class WindowUidEntity(
 }
 
 /**
- * A wakelock, kernel wakelock or wakeup reason's change over a window, so the screen-off causes
- * (SPEC 6.5) outlive the snapshots' counters. Not in the SPEC 8 list; added by ADR-0015. The tag
- * is a [WakeTagEntity] id without a foreign key (ADR-0021); `WindowDao` reads and writes it as text.
+ * A wakelock, kernel wakelock, wakeup reason or root kernel cause's change over a window, so the
+ * screen-off causes (SPEC 6.5) outlive the snapshots' counters. For the root kinds a missing row
+ * means zero only where the window's [WindowResultEntity.kernelCoverage] is whole for its source.
+ * Not in the SPEC 8 list; added by ADR-0015. The tag is a [WakeTagEntity] id without a foreign key
+ * (ADR-0021); `WindowDao` reads and writes it as text.
  */
 @Entity(
     tableName = "window_wake",
@@ -131,6 +140,8 @@ public data class WindowWakeEntity(
     val totalMs: Long,
     val count: Int,
     val screenOffMs: Long?,
+    /** [WakeKind.WAKEUP_SOURCE] rows only: the change of the source's wakeup count (ADR-0029). */
+    val wakeups: Long? = null,
 )
 
 /**

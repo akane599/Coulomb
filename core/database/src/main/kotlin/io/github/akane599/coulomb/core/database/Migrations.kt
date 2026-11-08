@@ -31,7 +31,24 @@ internal object Migrations {
             }
         }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2)
+    /**
+     * Version 3 (ADR-0029) adds the collection mode and the root kernel data:
+     * - `snapshot.uptimeMs` and `snapshot.privilegeMode`, null on the rows already stored, which
+     *   predate both;
+     * - `window_result.kernelCoverage` and `window_wake.wakeups`, null on the rows already stored,
+     *   since no kernel source was collected for them;
+     * - the empty tables `kernel_read`, `wakeup_source_stat` and `kernel_log_event`.
+     *
+     * Only additions: no row is rewritten, so no id or `AUTOINCREMENT` counter moves.
+     */
+    val MIGRATION_2_3: Migration =
+        object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                kernelV3().forEach(db::execSQL)
+            }
+        }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 
     /**
      * The codes of `DetailCodes` at version 2, frozen here. A value outside them fails the NOT NULL
@@ -105,6 +122,34 @@ internal object Migrations {
                 "DROP TABLE `history_event`",
                 "ALTER TABLE `_new_history_event` RENAME TO `history_event`",
             )
+
+    private fun kernelV3() =
+        listOf(
+            "ALTER TABLE `snapshot` ADD COLUMN `uptimeMs` INTEGER",
+            "ALTER TABLE `snapshot` ADD COLUMN `privilegeMode` INTEGER",
+            "ALTER TABLE `window_result` ADD COLUMN `kernelCoverage` INTEGER",
+            "ALTER TABLE `window_wake` ADD COLUMN `wakeups` INTEGER",
+            "CREATE TABLE IF NOT EXISTS `kernel_read` (`snapshotId` INTEGER NOT NULL, `kernelBoot` INTEGER NOT NULL, " +
+                "`suspendSuccess` INTEGER, `suspendFail` INTEGER, `failedFreeze` INTEGER, `failedPrepare` INTEGER, " +
+                "`failedSuspend` INTEGER, `failedSuspendLate` INTEGER, `failedSuspendNoirq` INTEGER, `failedResume` INTEGER, " +
+                "`failedResumeEarly` INTEGER, `failedResumeNoirq` INTEGER, `lastFailedDev` TEXT, `lastFailedErrno` INTEGER, " +
+                "`lastFailedStep` TEXT, `resumeReason` TEXT, `suspendResumeNs` INTEGER, `sleepNs` INTEGER, " +
+                "`kmsgAfterSeq` INTEGER, `kmsgFirstSeq` INTEGER, `kmsgLastSeq` INTEGER, `kmsgGaps` TEXT, " +
+                "PRIMARY KEY(`snapshotId`), FOREIGN KEY(`snapshotId`) REFERENCES `snapshot`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE TABLE IF NOT EXISTS `wakeup_source_stat` (`snapshotId` INTEGER NOT NULL, `instance` INTEGER NOT NULL, " +
+                "`name` TEXT NOT NULL, `activeCount` INTEGER NOT NULL, `eventCount` INTEGER NOT NULL, " +
+                "`wakeupCount` INTEGER NOT NULL, `expireCount` INTEGER NOT NULL, `activeTimeMs` INTEGER NOT NULL, " +
+                "`totalTimeMs` INTEGER NOT NULL, `maxTimeMs` INTEGER NOT NULL, `lastChangeMs` INTEGER NOT NULL, " +
+                "`preventSuspendTimeMs` INTEGER NOT NULL, PRIMARY KEY(`snapshotId`, `instance`), " +
+                "FOREIGN KEY(`snapshotId`) REFERENCES `snapshot`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE TABLE IF NOT EXISTS `kernel_log_event` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`kernelBoot` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `monotonicUs` INTEGER NOT NULL, `kind` INTEGER NOT NULL, " +
+                "`irq` INTEGER, `tagId` INTEGER, `errno` INTEGER, `readSnapshotId` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`readSnapshotId`) REFERENCES `snapshot`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_kernel_log_event_kernelBoot_seq` ON `kernel_log_event` (`kernelBoot`, `seq`)",
+            "CREATE INDEX IF NOT EXISTS `index_kernel_log_event_readSnapshotId` ON `kernel_log_event` (`readSnapshotId`)",
+        )
 
     /**
      * Gives `_new_<table>` the `AUTOINCREMENT` counter of [table] before [table] is dropped; the
