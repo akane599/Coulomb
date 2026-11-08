@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -229,12 +230,15 @@ private fun ShellScreen(
 ) {
     Column(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
         CoulombTopAppBar(title = title, navigationIcon = navigationIcon, actions = actions)
+        // The top bar pads the top; the bar or the rail pads its own edge (navigationInsets). The
+        // content pads what is left: on the rail, the bottom bar and an end-side bar or cutout.
         Box(
             modifier =
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
+                    .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
         ) {
             content()
         }
