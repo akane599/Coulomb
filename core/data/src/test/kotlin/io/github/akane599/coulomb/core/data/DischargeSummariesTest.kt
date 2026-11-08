@@ -50,7 +50,8 @@ class DischargeSummariesTest {
         stressIndex = null,
         cycleEquivalents = null,
         closeReason = if (to == null) null else SessionCloseReason.STATE_CHANGED,
-        quality = 1.0,
+        // As stored: an open session's quality is 0 until it closes (SessionSummary.open).
+        quality = if (to == null) 0.0 else 1.0,
     )
 
     private fun sample(
@@ -117,11 +118,56 @@ class DischargeSummariesTest {
                 session(SessionKind.SCREEN_ON, 12.0, null, 90 to null),
             )
 
-        // Ten minutes in: the session barely counts, so the past days' 10 %/h sets the range.
-        val left = DischargeSummaries.build(sample(12.0 + 1.0 / 6, 89), past + now, zone)!!.timeLeft!!
+        // Ten minutes in, a 1% drop: the session earns nothing, so five past days at 10 %/h set the
+        // range, widened for five days of history (TimeRemaining's 0.5 / √5).
+        val summary = DischargeSummaries.build(sample(12.0 + 1.0 / 6, 89), past + now, zone)!!
+        val left = summary.timeLeft!!
 
-        assertThat(left.shortestHours).isWithin(0.5).of(89 / 11.0)
-        assertThat(left.longestHours).isWithin(0.5).of(89 / 9.0)
+        val spread = 0.5 / Math.sqrt(5.0)
+        assertThat(left.shortestHours).isWithin(1e-6).of(89 / (10 * (1 + spread)))
+        assertThat(left.longestHours).isWithin(1e-6).of(89 / (10 * (1 - spread)))
+        // SPEC 6.2: ten minutes is too soon to show a rate.
+        assertThat(summary.screenOn!!.ready).isFalse()
+    }
+
+    @Test
+    fun theOpenSessionCountsThoughItStoresNoQualityYet() {
+        val now =
+            listOf(
+                session(SessionKind.DISCHARGE, 10.0, null, 90 to null),
+                session(SessionKind.SCREEN_ON, 10.0, null, 90 to null),
+            )
+
+        // Two hours of screen-on use, 20% gone: 10 %/h, with no history at all.
+        val summary = DischargeSummaries.build(sample(12.0, 70), now, zone)!!
+
+        assertThat(summary.screenOn!!.ready).isTrue()
+        assertThat(summary.screenOn.quality).isWithin(1e-9).of(1 - 1.0 / 20)
+        val left = summary.timeLeft!!
+        assertThat(left.shortestHours).isLessThan(7.0)
+        assertThat(left.longestHours).isGreaterThan(7.0)
+    }
+
+    @Test
+    fun aSessionCutShortCountsHalfAndOneWithoutAnEndIsSkipped() {
+        val sessions =
+            listOf(
+                session(SessionKind.DISCHARGE, 8.0, null, 90 to null),
+                session(SessionKind.SCREEN_OFF, 8.0, 10.0, 90 to 80).copy(closeReason = SessionCloseReason.REBOOT),
+                // Closed without an end level: no rate can come from it.
+                session(SessionKind.SCREEN_ON, 10.0, 11.0, 80 to null),
+            )
+
+        val summary = DischargeSummaries.build(sample(11.5, 75), sessions, zone)!!
+
+        assertThat(summary.screenOff!!.quality).isWithin(1e-9).of(0.5 * (1 - 1.0 / 10))
+        assertThat(summary.screenOn).isNull()
+    }
+
+    @Test
+    fun aSampleFromBeforeTheUnplugIsNotRead() {
+        val open = listOf(session(SessionKind.DISCHARGE, 8.0, null, 90 to null))
+        assertThat(DischargeSummaries.build(sample(7.5, 92), open, zone)).isNull()
     }
 
     @Test

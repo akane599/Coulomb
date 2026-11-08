@@ -115,14 +115,20 @@ internal object WindowDrainsBuilder {
                     val name = names[uid]
                     AppDrain(uid, name?.label, name?.isSystem ?: false, name?.iconCacheKey?.takeIf { it.isNotEmpty() }, mah)
                 }.sortedByDescending { it.mah }
+        val uidSum = perUid.values.sum()
+        // The window's modeled total is the model's device total (WindowBuilder.modeled), which also
+        // holds what no app was charged for. Without the device section at both ends it is null,
+        // and the UID rows are all there is.
+        val modeled = window.modeledMah?.takeIf { it >= uidSum } ?: uidSum
         return WindowDrains(
             fromWallMs = fromWallMs,
             toWallMs = toWallMs,
             measuredMah = window.measuredMah,
             measuredProvenance = window.measuredMah?.let { provenance(window.chargeSource) },
-            modeledMah = perUid.values.sum(),
+            modeledMah = modeled,
             apps = apps,
             otherMah = perUid[WindowUidEntity.OTHER_UID] ?: 0.0,
+            deviceMah = modeled - uidSum,
         )
     }
 
