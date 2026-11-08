@@ -1,0 +1,19 @@
+// SPDX-FileCopyrightText: The Coulomb contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+syntax = "proto3";
+
+package coulomb.settings;
+
+option java_package = "io.github.akane599.coulomb.core.datastore.proto";
+
+// The user's settings (SPEC 14.4). A field's zero value is its default, so a new field needs no
+// migration; a removed field's number is reserved, never reused.
+message Settings {
+  // "Show system apps in Drain": Off.
+  bool show_system_apps = 1;
+  // "Scale attribution to measured": Off; scaled figures are Derived.
+  bool scale_to_measured = 2;
+  // "Component breakdown" (ADR-0035 §2): Off until the phone shows what S4 costs.
+  bool component_breakdown = 3;
+}
