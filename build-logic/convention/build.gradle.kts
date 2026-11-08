@@ -18,6 +18,7 @@ dependencies {
     compileOnly(libs.detekt.gradlePlugin)
     compileOnly(libs.spotless.gradlePlugin)
     compileOnly(libs.room.gradlePlugin)
+    compileOnly(libs.roborazzi.gradlePlugin)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
@@ -53,6 +54,10 @@ gradlePlugin {
         register("androidTest") {
             id = "coulomb.android.test"
             implementationClass = "AndroidTestConventionPlugin"
+        }
+        register("androidScreenshot") {
+            id = "coulomb.android.screenshot"
+            implementationClass = "AndroidScreenshotConventionPlugin"
         }
         register("jvmLibrary") {
             id = "coulomb.jvm.library"
