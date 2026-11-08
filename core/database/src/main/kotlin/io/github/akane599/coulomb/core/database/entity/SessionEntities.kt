@@ -65,7 +65,10 @@ public data class SessionEntity(
     val deepIdleReachedMs: Long?,
     val minutesAtOrAbove80: Int?,
     val minutesAt100: Int?,
-    /** SPEC 6.4 wear stress index and cycle equivalents of this session. */
+    /**
+     * SPEC 6.4 wear stress index and cycle equivalents of this session. The stress index is the
+     * level's ordinal: 0 low, 1 moderate, 2 high (ADR-0037 §3).
+     */
     val stressIndex: Double?,
     val cycleEquivalents: Double?,
     val closeReason: SessionCloseReason?,

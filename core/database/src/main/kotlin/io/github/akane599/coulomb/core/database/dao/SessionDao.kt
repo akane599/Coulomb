@@ -86,6 +86,10 @@ public interface SessionDao {
     @Query("SELECT * FROM capacity_estimate ORDER BY id DESC LIMIT :limit")
     public suspend fun latestCapacityEstimates(limit: Int): List<CapacityEstimateEntity>
 
+    /** The running sum of SPEC 6.4's cycle equivalents over the sessions of [kind] (ADR-0037 §4). */
+    @Query("SELECT COALESCE(SUM(cycleEquivalents), 0) FROM session WHERE kind = :kind")
+    public suspend fun cycleEquivalentsSum(kind: SessionKind): Double
+
     @Upsert
     public suspend fun upsertHealthSummary(summary: HealthSummaryEntity)
 

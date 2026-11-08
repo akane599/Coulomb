@@ -27,8 +27,8 @@ internal data class SessionEnd(
 /**
  * The values a session keeps once its samples are compacted (SPEC 6.3, ADR-0015), from the
  * samples between its ends, and its awake ratio from its end snapshots' clocks. Pure. The wear
- * columns (stress index, cycle equivalents) and the capacity estimate come with P4's health
- * analytics; deep Doze with P5's Night Report. They stay null, which means "not known".
+ * columns (stress index, cycle equivalents) and the capacity estimate come from [SessionHealth];
+ * deep Doze with P5's Night Report, and stays null until then, which means "not known".
  */
 internal object SessionSummary {
     private const val NS_PER_MIN = 60_000_000_000L
@@ -177,8 +177,8 @@ internal object SessionSummary {
         step: Double,
     ): Double = if (change <= 0) 0.0 else (1 - step / change).coerceIn(0.0, 1.0)
 
-    /** The mean of a step function that holds each value until the next point. */
-    private fun timeWeightedMean(points: List<Pair<Long, Long>>): Double? {
+    /** The mean of [points] (time, value) as a step function: each holds until the next, for at most two minutes. */
+    fun timeWeightedMean(points: List<Pair<Long, Long>>): Double? {
         if (points.isEmpty()) return null
         if (points.size == 1) return points.single().second.toDouble()
         var weighted = 0.0

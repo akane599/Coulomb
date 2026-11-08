@@ -17,6 +17,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
+import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.SessionCloseReason
@@ -116,34 +117,7 @@ class CollectorEngineTest {
     fun aChargeFromTwentyPercentAndTheResetAtUnplugAreRecorded() =
         runTest {
             reliableCounter()
-            val engine = engine()
-            device.set(hours = 10.0, level = 25, chargeMah = 1_250.0, screenOn = true)
-            engine.handle(SnapshotTrigger.SERVICE_STARTED)
-            device.set(hours = 11.0, level = 20, chargeMah = 1_000.0, screenOn = true, plugged = true)
-            engine.handle(SnapshotTrigger.POWER_CONNECTED)
-            val plugIn = checkNotNull(db.snapshotDao().latestHeavy())
-            for (minute in 1..60) {
-                val level = (20 + minute * 80 / 60).coerceAtMost(100)
-                device.set(
-                    hours = 11.0 + minute / 60.0,
-                    level = level,
-                    chargeMah = 1_000.0 + minute * 66.0,
-                    screenOn = true,
-                    plugged = true,
-                )
-                engine.sample(device.read())
-            }
-            // The platform resets its statistics when unplugged this full (BatteryStatsImpl.shouldResetOnUnplugLocked).
-            stats.resetAt(hours = 12.1)
-            device.set(
-                hours = 12.1,
-                level = 100,
-                chargeMah = 5_000.0,
-                screenOn = true,
-                plugged = false,
-                status = BatteryManager.BATTERY_STATUS_FULL,
-            )
-            engine.handle(SnapshotTrigger.POWER_DISCONNECTED)
+            val plugIn = chargeFromTwentyPercent()
 
             val charge =
                 db
@@ -166,6 +140,73 @@ class CollectorEngineTest {
             assertThat(db.snapshotDao().autoReference(AutoReference.BEFORE_RESET)?.snapshotId).isEqualTo(plugIn.id)
             assertThat(db.sessionDao().open().map { it.kind }).containsExactly(SessionKind.DISCHARGE, SessionKind.SCREEN_ON)
         }
+
+    /** ADR-0037: the charge's capacity window, its estimate, its wear and the day's summary. */
+    @Test
+    fun aQualifyingChargeGivesACapacityEstimateAndWear() =
+        runTest {
+            reliableCounter()
+            chargeFromTwentyPercent()
+            val charge =
+                db
+                    .sessionDao()
+                    .observeRecent(SessionKind.CHARGE, 10)
+                    .first()
+                    .single()
+            // From the step to 21% (minute 1, 1,066 mAh) to the step to 100% (minute 60, 4,960 mAh).
+            val estimate = db.sessionDao().latestCapacityEstimates(10).single()
+            assertThat(estimate.sessionId).isEqualTo(charge.id)
+            assertThat(estimate.deltaSocPct).isEqualTo(79.0)
+            assertThat(estimate.capacityMah).isWithin(1e-6).of(3_894.0 / 0.79)
+            // 4,000 mAh charged against the estimate, rounded to 4,930 mAh.
+            assertThat(charge.cycleEquivalents).isWithin(1e-9).of(4_000.0 / 4_930.0)
+            assertThat(charge.stressIndex).isEqualTo(0.0)
+            val health =
+                db
+                    .sessionDao()
+                    .observeHealthSummaries()
+                    .first()
+                    .single()
+            assertThat(health.estimateMah).isEqualTo(4_930.0)
+            assertThat(health.cycleCount).isEqualTo(100)
+            assertThat(health.cycleEquivalentsSum).isWithin(1e-9).of(4_000.0 / 4_930.0)
+        }
+
+    /**
+     * A charge from 20% to 100% in an hour, a sample a minute, then an unplug that resets the
+     * statistics. Returns the plug-in snapshot.
+     */
+    private suspend fun chargeFromTwentyPercent(): SnapshotEntity {
+        val engine = engine()
+        device.set(hours = 10.0, level = 25, chargeMah = 1_250.0, screenOn = true)
+        engine.handle(SnapshotTrigger.SERVICE_STARTED)
+        device.set(hours = 11.0, level = 20, chargeMah = 1_000.0, screenOn = true, plugged = true)
+        engine.handle(SnapshotTrigger.POWER_CONNECTED)
+        val plugIn = checkNotNull(db.snapshotDao().latestHeavy())
+        for (minute in 1..60) {
+            val level = (20 + minute * 80 / 60).coerceAtMost(100)
+            device.set(
+                hours = 11.0 + minute / 60.0,
+                level = level,
+                chargeMah = 1_000.0 + minute * 66.0,
+                screenOn = true,
+                plugged = true,
+            )
+            engine.sample(device.read())
+        }
+        // The platform resets its statistics when unplugged this full (BatteryStatsImpl.shouldResetOnUnplugLocked).
+        stats.resetAt(hours = 12.1)
+        device.set(
+            hours = 12.1,
+            level = 100,
+            chargeMah = 5_000.0,
+            screenOn = true,
+            plugged = false,
+            status = BatteryManager.BATTERY_STATUS_FULL,
+        )
+        engine.handle(SnapshotTrigger.POWER_DISCONNECTED)
+        return plugIn
+    }
 
     @Test
     fun aRebootClosesTheOpenSessionsWhereTheOldBootWasLastSeen() =

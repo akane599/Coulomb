@@ -5,10 +5,14 @@ package io.github.akane599.coulomb.core.collect.engine
 
 import android.os.BatteryManager
 import io.github.akane599.coulomb.core.analytics.Attribution
+import io.github.akane599.coulomb.core.analytics.Capacity
+import io.github.akane599.coulomb.core.analytics.CapacityEstimate
+import io.github.akane599.coulomb.core.analytics.CapacityReading
 import io.github.akane599.coulomb.core.analytics.DeviceState
 import io.github.akane599.coulomb.core.analytics.OpenSession
 import io.github.akane599.coulomb.core.analytics.SessionChange
 import io.github.akane599.coulomb.core.analytics.SessionRules
+import io.github.akane599.coulomb.core.analytics.StressThresholds
 import io.github.akane599.coulomb.core.collect.snapshot.KernelEnd
 import io.github.akane599.coulomb.core.collect.snapshot.KernelReader
 import io.github.akane599.coulomb.core.collect.snapshot.KernelWindow
@@ -23,6 +27,8 @@ import io.github.akane599.coulomb.core.collect.snapshot.sourceStatus
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
+import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
+import io.github.akane599.coulomb.core.database.entity.HealthSummaryEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.model.AutoReference
@@ -184,10 +190,73 @@ internal class SnapshotWriter(
         // Awake time between the snapshot the session opened at and its last one in that boot.
         val last = if (sameBoot) stored else snapshots.latestInBoot(session.bootSeq)
         val awake = SessionSummary.awakeRatio(snapshots.at(session.bootSeq, session.startElapsedNs), last)
-        val closed = SessionSummary.close(session, end, sessionSamples, context.counterReliable, context.currentUa, awake)
+        val summarised = SessionSummary.close(session, end, sessionSamples, context.counterReliable, context.currentUa, awake)
+        val closed = if (summarised.kind in SessionHealth.KINDS) health(summarised, sessionSamples, context) else summarised
         sessions.update(closed)
+        if (closed.kind in SessionHealth.KINDS) healthSummary(closed.endWall ?: context.reading.wallMs, context)
         sessionWindow(closed, stored, rows, context)
         return closed
+    }
+
+    /**
+     * ADR-0037: a closed charge or discharge session's capacity estimate, when its window
+     * qualifies (SPEC 6.3), and its wear against the estimate that includes it (SPEC 6.4).
+     */
+    private suspend fun health(
+        session: SessionEntity,
+        samples: List<BatterySampleEntity>,
+        context: WriteContext,
+    ): SessionEntity {
+        val endWall = session.endWall ?: context.reading.wallMs
+        val window = SessionHealth.capacityWindow(session.kind, session.startLevel, samples, context.counterReliable)
+        if (window != null && Capacity.rejection(window) == null) {
+            sessions.insertCapacityEstimate(
+                CapacityEstimateEntity(
+                    sessionId = session.id,
+                    capacityMah = Capacity.estimateMah(window),
+                    weight = Capacity.staticWeight(window),
+                    deltaSocPct = window.deltaSocPct,
+                    deltaChargeMah = window.deltaChargeUah / UAH_PER_MAH,
+                    tempMeanDeciC = window.meanTempDeciC,
+                    createdWall = endWall,
+                ),
+            )
+        }
+        return SessionHealth.withWear(session, capacity(endWall)?.estimateMah, thresholds)
+    }
+
+    /**
+     * The day's [HealthSummaryEntity] as of [atWall], rewritten at each charge or discharge close.
+     * The design capacity, the system's state of health and the OEM's value come with their
+     * sources (ADR-0037 §5); until then health % and those columns stay null.
+     */
+    private suspend fun healthSummary(
+        atWall: Long,
+        context: WriteContext,
+    ) {
+        val estimate = capacity(atWall)
+        sessions.upsertHealthSummary(
+            HealthSummaryEntity(
+                epochDay = localDate(atWall, context.zone).toEpochDay().toInt(),
+                estimateMah = estimate?.estimateMah,
+                ciLowMah = estimate?.ciLowMah,
+                ciHighMah = estimate?.ciHighMah,
+                healthPct = estimate?.healthPct,
+                systemSohPct = null,
+                oemHealth = null,
+                cycleCount = context.reading.cycleCount,
+                cycleEquivalentsSum = sessions.cycleEquivalentsSum(SessionKind.CHARGE),
+            ),
+        )
+    }
+
+    /** SPEC 6.3's estimate from the latest stored readings, as of [atWall]. */
+    private suspend fun capacity(atWall: Long): CapacityEstimate? {
+        val readings =
+            sessions.latestCapacityEstimates(Capacity.MAX_WINDOWS).map {
+                CapacityReading(it.capacityMah, it.weight, (atWall - it.createdWall).toDouble() / MS_PER_DAY)
+            }
+        return Capacity.estimate(readings, designMah = null)
     }
 
     /**
@@ -420,7 +489,11 @@ internal class SnapshotWriter(
         ): Boolean = to in opened && (closed.any { it.kind == from } || (to in unseen && closed.any { it.kind == to }))
     }
 
+    private val thresholds by lazy { StressThresholds.bundled() }
+
     private companion object {
+        const val UAH_PER_MAH = 1_000.0
+        const val MS_PER_DAY = 86_400_000.0
         const val FULL_LEVEL = 100
     }
 }
