@@ -12,7 +12,8 @@ run() { echo "> ./gradlew $*"; ./gradlew "$@"; }
 
 step() {
   case "$1" in
-    static)   run spotlessCheck detekt checkModuleBoundaries ;;
+    static)   python3 -I tools/design/icons.py --check
+              run spotlessCheck detekt checkModuleBoundaries ;;
     unit)     run test :build-logic:convention:test ;;
     lint)     run :app:lintDebug ;;
     manifest) run :app:verifyDebugManifestPermissions :app:verifyReleaseManifestPermissions :app:verifyBenchmarkManifestPermissions ;;

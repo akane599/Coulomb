@@ -14,6 +14,7 @@ Hanken Grotesk, Copyright 2021 The Hanken Grotesk Project Authors
 (https://github.com/marcologous/hanken-grotesk), and Spline Sans Mono, Copyright 2022
 The Spline Sans Mono Project Authors (https://github.com/SorkinType/SplineSansMono).
 
-The design lab's icons, in design-lab/icons/ and inlined in each lab page, are Material
+The design lab's icons, in design-lab/icons/ and inlined in each lab page, and the app's
+icons converted from them (core/designsystem/src/main/res/drawable/ic_*.xml) are Material
 Symbols by Google LLC (https://github.com/google/material-design-icons), licensed under
 the Apache License, Version 2.0 (see LICENSES/Apache-2.0.txt).
