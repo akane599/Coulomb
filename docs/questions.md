@@ -29,6 +29,11 @@ start of every phase. Answered questions move to the bottom with the answer and 
   because three rows plus two remainders crowd the screen and Drain is one tap away.
 - 2026-11-08. Right after unplugging, Now hides the scale until time left exists (about 15 minutes).
   Default: hidden (ADR-0034 §16); the verdict and the strip still show.
+- 2026-11-08. S4, the per-component breakdown, makes system_server rebuild the whole statistics session
+  from the battery history at every heavy snapshot, a second time after S5, and that cost grows with the
+  session. Only the phone can measure it. Default: a Component breakdown setting, Off, until a phone run
+  shows at most 150 ms of added system_server CPU per snapshot at p90 (ADR-0035 §2). Until then Drain's
+  chips and App detail's breakdowns show "Not broken down" and name the setting.
 
 ## Answered
 
