@@ -75,6 +75,8 @@ import io.github.akane599.coulomb.feature.health.ChargeSessionsScreen
 import io.github.akane599.coulomb.feature.health.HealthScreen
 import io.github.akane599.coulomb.feature.health.chargeSessionViewModel
 import io.github.akane599.coulomb.feature.now.NowScreen
+import io.github.akane599.coulomb.feature.settings.PrivilegesScreen
+import io.github.akane599.coulomb.feature.settings.SettingsScreen
 import io.github.akane599.coulomb.navigation.AppNavigator
 import io.github.akane599.coulomb.navigation.Destination
 import io.github.akane599.coulomb.navigation.ListDetailStrategy
@@ -206,6 +208,8 @@ class AppScreens(
     val health: @Composable (AppNavigator) -> Unit,
     val chargeSessions: @Composable (AppNavigator) -> Unit,
     val chargeSession: @Composable (AppNavigator, id: Long) -> Unit,
+    val privileges: @Composable () -> Unit,
+    val settings: @Composable () -> Unit,
 ) {
     companion object {
         val Default: AppScreens =
@@ -246,6 +250,8 @@ class AppScreens(
                     )
                 },
                 chargeSession = { _, id -> ChargeSessionScreen(chargeSessionViewModel(id)) },
+                privileges = { PrivilegesScreen() },
+                settings = { SettingsScreen() },
             )
     }
 }
@@ -291,8 +297,8 @@ private fun appEntries(
             }
         }
         entry<Route.ActionCenter> { InnerScreen(stringResource(R.string.screen_action_center), navigator::back) { NotBuilt() } }
-        entry<Route.Privileges> { InnerScreen(stringResource(R.string.screen_privileges), navigator::back) { NotBuilt() } }
-        entry<Route.Settings> { InnerScreen(stringResource(R.string.screen_settings), navigator::back) { NotBuilt() } }
+        entry<Route.Privileges> { InnerScreen(stringResource(R.string.screen_privileges), navigator::back) { screens.privileges() } }
+        entry<Route.Settings> { InnerScreen(stringResource(R.string.screen_settings), navigator::back) { screens.settings() } }
     }
 
 /** A destination's first screen: its name, then Action Center, Privileges and Settings (DESIGN.md, Navigation). */

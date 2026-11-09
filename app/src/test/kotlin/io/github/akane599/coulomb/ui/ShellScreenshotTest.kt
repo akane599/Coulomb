@@ -141,6 +141,8 @@ private val StandIns =
         health = {},
         chargeSessions = {},
         chargeSession = { _, _ -> },
+        privileges = {},
+        settings = {},
     )
 
 private const val COMPACT_SIZE = "w412dp-h915dp"

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="privileges_access">Erişim</string>
+    <string name="privileges_level">Düzey</string>
+    <string name="privileges_manager">Yönetici</string>
+    <string name="privileges_version">Sürüm</string>
+    <string name="privileges_api">Shizuku API</string>
+    <string name="privileges_runs_as">Çalıştığı kimlik</string>
+    <string name="privileges_helper">Yardımcı süreç</string>
+    <string name="privileges_tier_root">Root</string>
+    <string name="privileges_tier_worker">Yardımcı süreç</string>
+    <string name="privileges_tier_grants">Verilen izinler</string>
+    <string name="privileges_tier_basic">Temel</string>
+    <string name="privileges_manager_sui">Sui</string>
+    <string name="privileges_manager_none">Yüklü değil</string>
+    <string name="privileges_manager_stopped">Durdu</string>
+    <string name="privileges_checking">Bakılıyor…</string>
+    <string name="privileges_runs_shell">shell (uid %1$d)</string>
+    <string name="privileges_runs_root">root (uid %1$d)</string>
+    <string name="privileges_runs_other">uid %1$d</string>
+    <string name="privileges_helper_ready">Hazır</string>
+    <string name="privileges_helper_starting">Başlıyor</string>
+    <string name="privileges_helper_unavailable">Kullanılamıyor</string>
+    <string name="privileges_helper_off">Çalışmıyor</string>
+    <string name="privileges_helper_timeout">Kullanılamıyor: Shizuku 5 sn içinde başlatmadı</string>
+    <string name="privileges_helper_too_old">Kullanılamıyor: Shizuku çok eski</string>
+    <string name="privileges_helper_mismatch">Kullanılamıyor: sürüm uyuşmuyor</string>
+    <string name="privileges_helper_died">Kullanılamıyor: art arda durdu</string>
+    <string name="privileges_manager_shizuku">Shizuku</string>
+    <string name="privileges_get_fork">thedjchi’nin Shizuku’sunu edinin</string>
+    <string name="privileges_get_sui">Sui’yi edinin</string>
+    <string name="privileges_android17">Android 17’de asıl Shizuku yeni uygulamalara yetki veremiyor. Bir çatal ya da Sui kullanın.</string>
+    <string name="privileges_allow">Shizuku’da Coulomb’a izin ver</string>
+
+    <string name="privileges_grants">İzinler</string>
+    <string name="privileges_grants_durable">Shizuku durursa ya da telefon yeniden başlarsa da verili kalırlar.</string>
+    <string name="privileges_grants_missing">Eksik olanları Shizuku ile ya da bir kez ADB ile verin. Yeniden başlatmadan sonra da verili kalırlar.</string>
+    <string name="privileges_grant_again">Shizuku ile ver</string>
+    <string name="privileges_granting">Veriliyor…</string>
+    <string name="privileges_usage_settings">Uygulama kullanımına Ayarlar’dan izin ver</string>
+
+    <string name="privileges_matrix">Yetenek Matrisi</string>
+    <string name="privileges_last_probe">Denetlendi: %1$s</string>
+    <string name="privileges_never_probed">Henüz denetlenmedi.</string>
+    <string name="privileges_rerun">Denetimleri yeniden çalıştır</string>
+    <string name="privileges_probing">Bakılıyor…</string>
+    <string name="privileges_probe_failed">Son denetim başarısız oldu; aşağıdaki sonuçlar öncekiler.</string>
+    <string name="privileges_export">Yetenek raporunu dışa aktar</string>
+    <string name="privileges_export_title">yetenek raporu</string>
+    <string name="privileges_export_done">Rapor kaydedildi.</string>
+    <string name="privileges_export_failed">Rapor kaydedilemedi.</string>
+    <string name="privileges_tier_group_t0">Her uygulamanın okuyabildikleri</string>
+    <string name="privileges_tier_group_t1">Verilen izinlerle</string>
+    <string name="privileges_tier_group_t2">Yardımcı süreçle</string>
+    <string name="privileges_tier_group_t3">Root ile</string>
+    <string name="privileges_state_available">Kullanılabilir</string>
+    <string name="privileges_state_degraded">Sınırlı</string>
+    <string name="privileges_state_unavailable">Kullanılamaz</string>
+
+    <string name="fix_connect_shizuku">Shizuku ya da Sui gerekir.</string>
+    <string name="fix_start_shizuku">Shizuku’nun çalışması gerekir.</string>
+    <string name="fix_grant_shizuku">Shizuku’da Coulomb’a izin verilmesi gerekir.</string>
+    <string name="fix_bootstrap">Yukarıdaki izinler gerekir.</string>
+    <string name="fix_usage_access">Uygulama kullanımı erişimi gerekir.</string>
+    <string name="fix_notifications">Bildirimlere izin verilmesi gerekir.</string>
+    <string name="fix_root">Root gerekir.</string>
+    <string name="fix_none">Bu telefon bunu sunmuyor.</string>
+
+    <string name="capability_battery_changed">Pil seviyesi ve sıcaklığı</string>
+    <string name="capability_current_now">Pil akımı</string>
+    <string name="capability_charge_counter">Şarj sayacı</string>
+    <string name="capability_health_properties">Pil sağlığı ve döngü sayısı</string>
+    <string name="capability_batterystats_usage">Uygulama başına tüketim</string>
+    <string name="capability_batterystats_flags">Pil istatistiği seçenekleri</string>
+    <string name="capability_batterystats_proto">Ayrıntılı pil istatistikleri</string>
+    <string name="capability_batterystats_checkin">Pil istatistiği özeti</string>
+    <string name="capability_batterystats_history">Pil geçmişi</string>
+    <string name="capability_kernel_wakelocks">Çekirdek uyanık tutma kilitleri</string>
+    <string name="capability_wakeup_sources">Uyanma kaynakları</string>
+    <string name="capability_alarm">Alarmlar</string>
+    <string name="capability_deviceidle">Doze durumu</string>
+    <string name="capability_power">Şu an tutulan uyanık tutma kilitleri</string>
+    <string name="capability_jobscheduler">Arka plan işleri</string>
+    <string name="capability_usage_stats">Uygulama başına ekran süresi</string>
+    <string name="capability_standby_buckets">Uygulama bekleme grupları</string>
+    <string name="capability_power_monitors">Güç hatları</string>
+    <string name="capability_uid_health_stats">Uygulama başına sağlık istatistikleri</string>
+    <string name="capability_thermal">Isı durumu</string>
+    <string name="capability_battery_dump">Pil hizmeti raporu</string>
+    <string name="capability_protection_settings">Pil koruma ayarları</string>
+    <string name="capability_power_supply">Güç kaynağı dosyaları</string>
+    <string name="capability_suspend_stats">Askıya alma istatistikleri</string>
+    <string name="capability_wakeup_reasons">Uyanma nedenleri</string>
+    <string name="capability_kernel_log">Çekirdek günlüğü</string>
+    <string name="capability_promoted_notifications">Canlı Güncellemeler</string>
+    <string name="capability_worker_bind">Coulomb’un yardımcı süreci</string>
+
+    <string name="settings_drain">Tüketim</string>
+    <string name="settings_show_system">Sistem uygulamalarını göster</string>
+    <string name="settings_scale">Dağılımı ölçülene göre ölçekle</string>
+    <string name="settings_scale_note">Her uygulamanın ölçülen tüketimdeki payı; ölçeklenen değerler Türetilen olarak işaretlenir.</string>
+    <string name="settings_target">Şarj hedefi</string>
+    <string name="settings_target_note">Şarj ekranı bu seviyeye kalan süreyi gösterir. Uyarı, bildirimlerle birlikte gelir.</string>
+    <string name="settings_advanced">Gelişmiş</string>
+    <string name="settings_breakdown">Bileşen dağılımı</string>
+    <string name="settings_breakdown_note">Tüketimi bileşenlere göre ayırır. Her anlık görüntüde bir sistem raporu ekler; bu biraz pil harcar.</string>
+</resources>

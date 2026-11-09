@@ -3,4 +3,14 @@
 
 plugins {
     alias(libs.plugins.coulomb.android.feature)
+    alias(libs.plugins.coulomb.android.screenshot)
+}
+
+dependencies {
+    implementation(projects.core.collect)
+    implementation(projects.core.datastore)
+    implementation(projects.core.privileged)
+    implementation(libs.androidx.activity.compose)
+
+    testImplementation(libs.truth)
 }

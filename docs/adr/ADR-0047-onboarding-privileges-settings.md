@@ -79,6 +79,28 @@ Onboarding as built:
 - **App strings in Turkish:** the shell's own strings (destinations, top-bar screens) had none;
   they are added.
 
+Privileges and Settings as built:
+- **Privileges** shows any SPEC 4.5 issue first, with its fix in place:
+  - the fork and Sui links;
+  - open Shizuku;
+  - try again;
+  - re-enable through the bootstrap;
+  - on a hang, or a manager too old, the ADB commands at once.
+  Then come Access (level, manager, version, Shizuku API, the uid it runs as, the helper
+  process and why it is unavailable), the grants checklist with "Grant through Shizuku", the
+  usage-access Settings route and the ADB commands, and the Capability Matrix.
+- **The matrix** is grouped by the lowest tier each capability works at. Each row shows its plain
+  name, the state in words, what would fix it, and the probe's key and reason in mono. The heading
+  gives the time of the latest probe. "Re-run probes" runs after a bootstrap too.
+- **The manager's name** is its app's label on this phone, or "Shizuku", or "Sui". The exported
+  report still withholds a fork's package (ADR-0008).
+- **The report** is saved through the system's save dialog (`CreateDocument`, `text/markdown`); no
+  storage permission. The screen says whether it was saved.
+- **Two columns** from medium widths when both fit: access and grants beside the matrix.
+- **Settings**: Drain (show system apps; scale to measured, with its Derived note), Charge target
+  (the Charging group), Advanced (component breakdown, with its cost). Nothing shows until the
+  stored values are read, so no switch flips after it appears.
+
 ## Consequences
 
 - One probe run at first start and after each OS update: a few seconds of work, then nothing.

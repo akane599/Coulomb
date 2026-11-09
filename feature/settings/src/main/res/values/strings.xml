@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Privileges (SPEC 14.3) and Settings (SPEC 14.4), ADR-0047 §7-8. -->
+<resources>
+    <!-- Privileges: the manager. -->
+    <string name="privileges_access">Access</string>
+    <string name="privileges_level">Level</string>
+    <string name="privileges_manager">Manager</string>
+    <string name="privileges_version">Version</string>
+    <string name="privileges_api">Shizuku API</string>
+    <string name="privileges_runs_as">Runs as</string>
+    <string name="privileges_helper">Helper process</string>
+    <string name="privileges_tier_root">Root</string>
+    <string name="privileges_tier_worker">Helper process</string>
+    <string name="privileges_tier_grants">Granted permissions</string>
+    <string name="privileges_tier_basic">Basic</string>
+    <string name="privileges_manager_sui">Sui</string>
+    <string name="privileges_manager_none">Not installed</string>
+    <string name="privileges_manager_stopped">Stopped</string>
+    <string name="privileges_checking">Checking…</string>
+    <string name="privileges_runs_shell">shell (uid %1$d)</string>
+    <string name="privileges_runs_root">root (uid %1$d)</string>
+    <string name="privileges_runs_other">uid %1$d</string>
+    <string name="privileges_helper_ready">Ready</string>
+    <string name="privileges_helper_starting">Starting</string>
+    <string name="privileges_helper_unavailable">Not available</string>
+    <string name="privileges_helper_off">Not running</string>
+    <string name="privileges_helper_timeout">Not available: Shizuku didn’t start it in 5 s</string>
+    <string name="privileges_helper_too_old">Not available: Shizuku is too old</string>
+    <string name="privileges_helper_mismatch">Not available: version mismatch</string>
+    <string name="privileges_helper_died">Not available: it stopped repeatedly</string>
+    <string name="privileges_manager_shizuku">Shizuku</string>
+    <string name="privileges_get_fork">Get thedjchi’s Shizuku</string>
+    <string name="privileges_get_sui">Get Sui</string>
+    <string name="privileges_android17">On Android 17 the original Shizuku can’t authorize new apps. Use a fork or Sui.</string>
+    <string name="privileges_allow">Allow Coulomb in Shizuku</string>
+
+    <!-- Privileges: grants. -->
+    <string name="privileges_grants">Grants</string>
+    <string name="privileges_grants_durable">These stay granted if Shizuku stops or the phone restarts.</string>
+    <string name="privileges_grants_missing">Grant the missing ones through Shizuku or once over ADB. They stay granted after a restart.</string>
+    <string name="privileges_grant_again">Grant through Shizuku</string>
+    <string name="privileges_granting">Granting…</string>
+    <string name="privileges_usage_settings">Allow app usage in Settings</string>
+
+    <!-- Privileges: the Capability Matrix (SPEC 4.6). -->
+    <string name="privileges_matrix">Capability Matrix</string>
+    <string name="privileges_last_probe">Checked %1$s</string>
+    <string name="privileges_never_probed">Not checked yet.</string>
+    <string name="privileges_rerun">Re-run probes</string>
+    <string name="privileges_probing">Checking…</string>
+    <string name="privileges_probe_failed">The last check failed; the results below are from before.</string>
+    <string name="privileges_export">Export capability report</string>
+    <string name="privileges_export_title">capability report</string>
+    <string name="privileges_export_done">Report saved.</string>
+    <string name="privileges_export_failed">Couldn’t save the report.</string>
+    <string name="privileges_tier_group_t0">What every app can read</string>
+    <string name="privileges_tier_group_t1">With granted permissions</string>
+    <string name="privileges_tier_group_t2">With the helper process</string>
+    <string name="privileges_tier_group_t3">With root</string>
+    <string name="privileges_state_available">Available</string>
+    <string name="privileges_state_degraded">Limited</string>
+    <string name="privileges_state_unavailable">Not available</string>
+
+    <string name="fix_connect_shizuku">Needs Shizuku or Sui.</string>
+    <string name="fix_start_shizuku">Needs Shizuku running.</string>
+    <string name="fix_grant_shizuku">Needs Coulomb allowed in Shizuku.</string>
+    <string name="fix_bootstrap">Needs the grants above.</string>
+    <string name="fix_usage_access">Needs app usage access.</string>
+    <string name="fix_notifications">Needs notifications allowed.</string>
+    <string name="fix_root">Needs root.</string>
+    <string name="fix_none">This phone doesn’t expose it.</string>
+
+    <string name="capability_battery_changed">Battery level and temperature</string>
+    <string name="capability_current_now">Battery current</string>
+    <string name="capability_charge_counter">Charge counter</string>
+    <string name="capability_health_properties">Battery health and cycle count</string>
+    <string name="capability_batterystats_usage">Per-app drain</string>
+    <string name="capability_batterystats_flags">Battery statistics options</string>
+    <string name="capability_batterystats_proto">Battery statistics in detail</string>
+    <string name="capability_batterystats_checkin">Battery statistics summary</string>
+    <string name="capability_batterystats_history">Battery history</string>
+    <string name="capability_kernel_wakelocks">Kernel wakelocks</string>
+    <string name="capability_wakeup_sources">Wakeup sources</string>
+    <string name="capability_alarm">Alarms</string>
+    <string name="capability_deviceidle">Doze state</string>
+    <string name="capability_power">Wakelocks held now</string>
+    <string name="capability_jobscheduler">Background jobs</string>
+    <string name="capability_usage_stats">Screen time per app</string>
+    <string name="capability_standby_buckets">App standby buckets</string>
+    <string name="capability_power_monitors">Power rails</string>
+    <string name="capability_uid_health_stats">Per-app health statistics</string>
+    <string name="capability_thermal">Thermal state</string>
+    <string name="capability_battery_dump">Battery service report</string>
+    <string name="capability_protection_settings">Battery protection settings</string>
+    <string name="capability_power_supply">Power supply files</string>
+    <string name="capability_suspend_stats">Suspend statistics</string>
+    <string name="capability_wakeup_reasons">Wakeup reasons</string>
+    <string name="capability_kernel_log">Kernel log</string>
+    <string name="capability_promoted_notifications">Live Updates</string>
+    <string name="capability_worker_bind">Coulomb’s helper process</string>
+
+    <!-- Settings (SPEC 14.4): what is built so far. -->
+    <string name="settings_drain">Drain</string>
+    <string name="settings_show_system">Show system apps</string>
+    <string name="settings_scale">Scale attribution to measured</string>
+    <string name="settings_scale_note">Each app’s share of the measured drain; scaled figures are marked Derived.</string>
+    <string name="settings_target">Charge target</string>
+    <string name="settings_target_note">Charging shows the time to this level. The alert comes with notifications.</string>
+    <string name="settings_advanced">Advanced</string>
+    <string name="settings_breakdown">Component breakdown</string>
+    <string name="settings_breakdown_note">Splits drain by component. It adds a system report at each snapshot, which costs a little battery.</string>
+</resources>
