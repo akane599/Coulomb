@@ -300,17 +300,3 @@ private fun DrawScope.levelLine(
     }
     drawPath(path, ink.line, style = Stroke(InkWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
-
-/** A label of [width] centred on [x], moved inside the plot at either end. */
-private fun DrawScope.placeLabel(
-    width: Float,
-    x: Float,
-): ClosedFloatingPointRange<Float> {
-    val start = (x - width / 2).coerceIn(0f, (size.width - width).coerceAtLeast(0f))
-    return start..(start + width)
-}
-
-private fun ClosedFloatingPointRange<Float>.overlaps(
-    other: ClosedFloatingPointRange<Float>,
-    gap: Float,
-): Boolean = start < other.endInclusive + gap && other.start < endInclusive + gap

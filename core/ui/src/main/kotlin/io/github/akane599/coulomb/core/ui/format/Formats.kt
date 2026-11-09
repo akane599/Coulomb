@@ -57,6 +57,9 @@ public class Formats(
     dayClockPattern: String = "EEE $clockPattern",
     weekdayPattern: String = "EEE",
     dayPattern: String = "MMM d",
+    monthPattern: String = "LLL",
+    monthYearPattern: String = "MMM yyyy",
+    fullWeekdayPattern: String = "EEEE",
 ) {
     private val integer = NumberFormat.getIntegerInstance(locale)
     private val oneDecimal =
@@ -77,6 +80,9 @@ public class Formats(
     private val dayClock = DateTimeFormatter.ofPattern(dayClockPattern, locale)
     private val weekday = DateTimeFormatter.ofPattern(weekdayPattern, locale)
     private val day = DateTimeFormatter.ofPattern(dayPattern, locale)
+    private val month = DateTimeFormatter.ofPattern(monthPattern, locale)
+    private val monthYear = DateTimeFormatter.ofPattern(monthYearPattern, locale)
+    private val fullWeekday = DateTimeFormatter.ofPattern(fullWeekdayPattern, locale)
 
     /** A whole number with the locale's grouping ("1,240"; Turkish "1.240"). */
     public fun integer(value: Long): String = integer.format(value)
@@ -124,6 +130,27 @@ public class Formats(
             number = if (abs(value) < SMALL_MAH) oneDecimal.format(value) else integer.format(value.roundToLong()),
             unit = resources.getString(R.string.unit_mah),
         )
+
+    /** A figure to one decimal: cycles, watts, degrees ("61.4"; Turkish "61,4"). */
+    public fun decimal(value: Double): String = oneDecimal.format(value)
+
+    /** A power to 0.1 W (SPEC 6.7). */
+    public fun watts(value: Double): Figure = Figure(oneDecimal.format(value), resources.getString(R.string.unit_w))
+
+    /** A temperature to 0.1 °C from tenths of a degree, as the battery reports it. */
+    public fun celsius(deciC: Double): Figure = Figure(oneDecimal.format(deciC / DECI), resources.getString(R.string.unit_celsius))
+
+    /** A day without the year: "Nov 1"; Turkish "1 Kas". */
+    public fun day(date: LocalDate): String = day.format(date)
+
+    /** A month alone, as on a chart's axis: "Sep". */
+    public fun month(date: LocalDate): String = month.format(date)
+
+    /** A month and year: "Apr 2025". */
+    public fun monthYear(date: LocalDate): String = monthYear.format(date)
+
+    /** A weekday in full: "Wednesday". */
+    public fun weekday(date: LocalDate): String = fullWeekday.format(date)
 
     /**
      * A data amount in decimal units, as Android's settings show them: bytes, then kB, MB and GB,
@@ -305,6 +332,7 @@ public class Formats(
 
     internal companion object {
         private const val PERCENT = 100.0
+        private const val DECI = 10.0
         private const val SMALL_MAH = 10.0
         private const val MA_PER_A = 1_000.0
         private const val MINUTES_PER_HOUR = 60L
@@ -366,6 +394,9 @@ public fun rememberFormats(): Formats {
             dayClockPattern = DateFormat.getBestDateTimePattern(locale, "EEE${hours}m"),
             weekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEE"),
             dayPattern = DateFormat.getBestDateTimePattern(locale, "MMMd"),
+            monthPattern = DateFormat.getBestDateTimePattern(locale, "LLL"),
+            monthYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMyyyy"),
+            fullWeekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEEE"),
         )
     }
 }
