@@ -171,8 +171,7 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
 - Whole-app follow-up from the Charging audit: `BatteryRepository` and `DrainRepository` share a
   `stateIn`/`shareIn` flow in the app scope. A failed read ends that shared flow for every later
   collector, so "Try again" cannot recover without a restart. Charging moved to a cold flow per
-  collector (ADR-0046 gate amendment 8); Now and Drain get the same change in the P4 accessibility
-  and robustness pass.
+  collector (ADR-0046 gate amendment 8); Now, Drain and App detail followed (ADR-0048).
 - S4, the per-component breakdown (ADR-0035), built in order:
   - parser, schema 4, collector (decision 5's checks per consecutive window), read layer and Drain
     UI (component rows with their top apps, an expandable breakdown per app row, a hollow "Not
