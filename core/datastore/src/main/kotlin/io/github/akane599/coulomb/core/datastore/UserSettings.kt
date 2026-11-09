@@ -21,6 +21,8 @@ public data class UserSettings(
     val componentBreakdown: Boolean = false,
     /** The charge target (SPEC 14.4, ADR-0046 §4): 80% suggested, 50–100%. */
     val chargeTargetPct: Int = DEFAULT_CHARGE_TARGET,
+    /** Onboarding finished (ADR-0047 §1). */
+    val onboarded: Boolean = false,
 ) {
     public companion object {
         public const val DEFAULT_CHARGE_TARGET: Int = 80
@@ -48,6 +50,7 @@ public class SettingsStore
                         chargeTargetPct =
                             it.charge_target_pct.takeIf { pct -> pct in UserSettings.CHARGE_TARGETS }
                                 ?: UserSettings.DEFAULT_CHARGE_TARGET,
+                        onboarded = it.onboarded,
                     )
                 }.distinctUntilChanged()
 
@@ -61,6 +64,11 @@ public class SettingsStore
 
         public suspend fun componentBreakdown(on: Boolean) {
             store.updateData { it.copy(component_breakdown = on) }
+        }
+
+        /** Onboarding is done: the app opens on Now from here on (ADR-0047 §1). */
+        public suspend fun onboarded() {
+            store.updateData { it.copy(onboarded = true) }
         }
 
         /** Stores [pct], held to [UserSettings.CHARGE_TARGETS]. */
