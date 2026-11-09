@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -48,6 +49,8 @@ public class CapabilityStore
                 .observeCapabilities()
                 .map { rows -> rows.mapNotNull { it.toModel() }.sortedBy { it.id.ordinal } }
                 .distinctUntilChanged()
+                // Each row's detail is JSON; parse it off the main thread.
+                .flowOn(Dispatchers.Default)
 
         /** True while a probe run is in progress. */
         public val probing: StateFlow<Boolean> = running.asStateFlow()

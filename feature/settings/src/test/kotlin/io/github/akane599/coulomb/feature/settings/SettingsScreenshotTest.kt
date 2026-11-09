@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.test.LayoutDirection
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.then
+import androidx.compose.ui.unit.LayoutDirection
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.akane599.coulomb.core.datastore.UserSettings
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
@@ -52,6 +55,14 @@ class SettingsScreenshotTest {
     fun loading() = shoot("loading", null)
 
     @Test
+    @Config(qualifiers = "ar-w412dp-h915dp-xhdpi")
+    fun arabic() = shoot("ar", CHANGED, rtl = true)
+
+    @Test
+    @Config(qualifiers = "w1280dp-h800dp")
+    fun wide() = shoot("wide", CHANGED)
+
+    @Test
     fun saveFailed() = shoot("save-failed", CHANGED, saveFailed = true)
 
     private fun shoot(
@@ -60,9 +71,14 @@ class SettingsScreenshotTest {
         dark: Boolean = false,
         fontScale: Float = 1f,
         saveFailed: Boolean = false,
+        rtl: Boolean = false,
     ) {
+        // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
+        val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
         compose.setContent {
-            DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale)) {
+            DeviceConfigurationOverride(
+                DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
+            ) {
                 CoulombTheme(darkTheme = dark) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         SettingsContent(settings, NoActions, saveFailed = saveFailed)

@@ -29,18 +29,18 @@ internal data class PrivilegesUiState(
     val export: ExportResult? = null,
 ) {
     /** When the stored matrix was probed: the latest of its rows, or null before the first run. */
-    val probedAtWallMs: Long? get() = capabilities.maxOfOrNull { it.probedAtWallMs }
+    val probedAtWallMs: Long? by lazy(LazyThreadSafetyMode.NONE) { capabilities.maxOfOrNull { it.probedAtWallMs } }
 
     /** The matrix by the lowest tier each capability works at (SPEC 4.1), each group in id order. */
-    val groups: List<Pair<AccessTier, List<Capability>>>
-        get() =
-            AccessTier.entries.mapNotNull { tier ->
-                capabilities
-                    .filter { it.tier == tier }
-                    .sortedBy { it.id.ordinal }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { tier to it }
-            }
+    val groups: List<Pair<AccessTier, List<Capability>>> by lazy(LazyThreadSafetyMode.NONE) {
+        AccessTier.entries.mapNotNull { tier ->
+            capabilities
+                .filter { it.tier == tier }
+                .sortedBy { it.id.ordinal }
+                .takeIf { it.isNotEmpty() }
+                ?.let { tier to it }
+        }
+    }
 
     /** The bootstrap can run: Shizuku answers and has allowed Coulomb (SPEC 4.4). */
     val canBootstrap: Boolean

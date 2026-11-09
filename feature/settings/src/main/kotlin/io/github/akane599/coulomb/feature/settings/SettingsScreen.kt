@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.datastore.UserSettings
 import io.github.akane599.coulomb.core.designsystem.component.CoulombChoiceGroup
 import io.github.akane599.coulomb.core.designsystem.component.CoulombSwitchRow
+import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
@@ -47,7 +48,8 @@ public fun SettingsScreen(
         remember(viewModel) {
             SettingsActions(viewModel::showSystemApps, viewModel::scaleToMeasured, viewModel::componentBreakdown, viewModel::chargeTarget)
         }
-    SettingsContent(settings, actions, modifier, saveFailed)
+    // Nothing until the stored values are read, then one fade-in (SPEC 10.11).
+    if (settings != null) FadeInOnce { SettingsContent(settings, actions, modifier, saveFailed) }
 }
 
 @Composable

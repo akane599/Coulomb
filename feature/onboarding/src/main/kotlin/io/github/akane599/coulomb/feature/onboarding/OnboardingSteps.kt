@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,6 +34,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
+import io.github.akane599.coulomb.core.designsystem.component.CoulombCrossfade
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFilledButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
@@ -112,17 +114,19 @@ internal fun ColumnScope.ShizukuStep(
     actions: OnboardingActions,
 ) {
     StepHead(stringResource(R.string.onboarding_shizuku_title), stringResource(R.string.onboarding_shizuku_lede))
-    // Each stage replaces the last one in place, so TalkBack says what changed.
-    Column(Modifier.padding(top = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite }) {
-        when (state.stage) {
-            ShizukuStage.CHECKING -> StandIn(stringResource(R.string.onboarding_shizuku_checking), top = CoulombSpacing.Space16)
-            ShizukuStage.NOT_INSTALLED -> NotInstalled(state.adbCommands, actions)
-            ShizukuStage.STOPPED -> Stopped(device.managerApp, actions)
-            ShizukuStage.ASK -> Ask(state.privilege.server, actions)
-            ShizukuStage.WAITING -> StandIn(stringResource(R.string.onboarding_shizuku_waiting), top = CoulombSpacing.Space16)
-            ShizukuStage.PROBLEM -> Problem(state, device, actions)
-            ShizukuStage.GRANTING -> StandIn(stringResource(R.string.onboarding_shizuku_granting), top = CoulombSpacing.Space16)
-            ShizukuStage.CONNECTED -> Connected(state.privilege.server)
+    // Each stage replaces the last one in place, crossfading, so TalkBack says what changed.
+    CoulombCrossfade(state.stage, Modifier.padding(top = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite }) { stage ->
+        Column {
+            when (stage) {
+                ShizukuStage.CHECKING -> StandIn(stringResource(R.string.onboarding_shizuku_checking), top = CoulombSpacing.Space16)
+                ShizukuStage.NOT_INSTALLED -> NotInstalled(state.adbCommands, actions)
+                ShizukuStage.STOPPED -> Stopped(device.managerApp, actions)
+                ShizukuStage.ASK -> Ask(state.privilege.server, actions)
+                ShizukuStage.WAITING -> StandIn(stringResource(R.string.onboarding_shizuku_waiting), top = CoulombSpacing.Space16)
+                ShizukuStage.PROBLEM -> Problem(state, device, actions)
+                ShizukuStage.GRANTING -> StandIn(stringResource(R.string.onboarding_shizuku_granting), top = CoulombSpacing.Space16)
+                ShizukuStage.CONNECTED -> Connected(state.privilege.server)
+            }
         }
     }
     // SPEC 3, ADR-0028: once, quietly, where the official build's hang is known.
@@ -233,7 +237,8 @@ internal fun ColumnScope.ResultStep(
     device: OnboardingDevice,
     actions: OnboardingActions,
 ) {
-    ResultHead(state, actions)
+    // Checking, then the result or the failure, crossfading in place.
+    CoulombCrossfade(state.result::class) { Column { ResultHead(state, actions) } }
     if (device.oneUi) KeepRunning(actions)
     Grants(state, actions)
     SectionTitle(stringResource(R.string.onboarding_marks_title), provenance = null)
@@ -265,7 +270,7 @@ private fun ColumnScope.ResultHead(
         }
 
         is ResultState.Ready -> {
-            val summary = capabilitySummary(result.capabilities)
+            val summary = remember(result.capabilities) { capabilitySummary(result.capabilities) }
             val sight = sightSentence(summary.sights).orEmpty()
             StepTitle(stringResource(if (summary.deep) R.string.onboarding_result_deep_title else R.string.onboarding_result_basic_title))
             val lede = Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space12)

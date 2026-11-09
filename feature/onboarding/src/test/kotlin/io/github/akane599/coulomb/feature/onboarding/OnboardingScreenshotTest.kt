@@ -62,6 +62,13 @@ class OnboardingScreenshotTest {
     fun welcomeTurkish() = shoot("welcome-tr", OnboardingUiState())
 
     @Test
+    @Config(qualifiers = "w1280dp-h800dp")
+    fun permissionsWide() = shoot("permissions-wide", OnboardingUiState(step = OnboardingStep.PERMISSIONS))
+
+    @Test
+    fun permissionsBackGesture() = shoot("permissions-back", OnboardingUiState(step = OnboardingStep.PERMISSIONS), backProgress = 0.5f)
+
+    @Test
     fun permissionsShizuku() = shoot("permissions-shizuku", OnboardingUiState(step = OnboardingStep.PERMISSIONS))
 
     @Test
@@ -200,6 +207,7 @@ class OnboardingScreenshotTest {
         fontScale: Float = 1f,
         rtl: Boolean = false,
         capture: Boolean = true,
+        backProgress: Float = 0f,
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
         val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -209,7 +217,7 @@ class OnboardingScreenshotTest {
             ) {
                 CoulombTheme(darkTheme = dark) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
-                        OnboardingContent(state, device, NoActions)
+                        OnboardingContent(state, device, NoActions, backProgress = backProgress)
                     }
                 }
             }

@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -48,6 +49,7 @@ import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFilledButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
 import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
@@ -105,7 +107,7 @@ public fun PrivilegesScreen(
     modifier: Modifier = Modifier,
     viewModel: PrivilegesViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val loaded by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // "Checked" names the day against now, read at each resume rather than at each recomposition.
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -119,14 +121,14 @@ public fun PrivilegesScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(MARKDOWN)) { uri ->
             if (uri != null) viewModel.export(uri)
         }
-    val manager = state.privilege.server?.managerPackage
+    val manager = loaded?.privilege?.server?.managerPackage
     val label =
         remember(manager) {
             manager?.let { pkg ->
                 runCatching { context.packageManager.run { getApplicationLabel(getApplicationInfo(pkg, 0)).toString() } }.getOrNull()
             }
         }
-    val managerApp = remember(manager, state.privilege.manager) { viewModel.managerIntent() != null }
+    val managerApp = remember(manager, loaded?.privilege?.manager) { viewModel.managerIntent() != null }
     val device =
         remember(managerApp, label, nowMs) {
             PrivilegesDevice(Build.VERSION.SDK_INT, managerApp, label, nowMs, ZoneId.systemDefault())
@@ -144,7 +146,10 @@ public fun PrivilegesScreen(
                 open = { context.open(it, viewModel::managerIntent) },
             )
         }
-    PrivilegesContent(state, device, actions, modifier)
+    // Nothing until the stored matrix is read, then one fade-in (SPEC 10.11).
+    Box(modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
+        loaded?.let { state -> FadeInOnce { PrivilegesContent(state, device, actions) } }
+    }
 }
 
 @Composable
@@ -159,11 +164,14 @@ internal fun PrivilegesContent(
         val column = MinColumnWidth * LocalDensity.current.fontScale.coerceAtLeast(1f)
         // The row is capped, so the columns get the capped width, not the window's.
         val twoColumns = currentWindowWidth() != WindowWidth.Compact && min(maxWidth, MaxTwoColumnWidth) - gutter * GUTTERS >= column * 2
+        // Above the branches, so a rotation or a fold that changes the layout keeps the place.
+        val start = rememberScrollState()
+        val end = rememberScrollState()
         if (!twoColumns) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(start)
                     .padding(start = gutter, end = gutter, bottom = Bottom)
                     .wrapContentWidth(Alignment.CenterHorizontally)
                     .widthIn(max = MaxOneColumnWidth),
@@ -184,7 +192,7 @@ internal fun PrivilegesContent(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(start)
                         .padding(bottom = Bottom),
                 ) {
                     AccessAndGrants(state, device, actions)
@@ -193,7 +201,7 @@ internal fun PrivilegesContent(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(end)
                         .padding(bottom = Bottom),
                 ) {
                     Matrix(state, device, actions, besideFirst = true)

@@ -6,7 +6,7 @@ package io.github.akane599.coulomb.feature.onboarding
 import android.Manifest
 import android.content.Context
 import android.os.Build
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -33,12 +33,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -107,7 +109,17 @@ public fun OnboardingScreen(
         viewModel.refresh()
         onPauseOrDispose {}
     }
-    BackHandler(enabled = state.step != OnboardingStep.WELCOME) { viewModel.back() }
+    // Predictive back between steps (SPEC 3, DESIGN.md): the step fades with the gesture and the
+    // previous one crossfades in on commit, as the shell's pop does. At the first step back leaves.
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    PredictiveBackHandler(enabled = state.step != OnboardingStep.WELCOME) { events ->
+        try {
+            events.collect { backProgress = it.progress }
+            viewModel.back()
+        } finally {
+            backProgress = 0f
+        }
+    }
     val managerApp = remember(state.privilege.manager) { viewModel.managerIntent() != null }
     val device =
         OnboardingDevice(
@@ -129,7 +141,7 @@ public fun OnboardingScreen(
                 retryProbe = viewModel::retryProbe,
             )
         }
-    OnboardingContent(state, device, actions, modifier)
+    OnboardingContent(state, device, actions, modifier, backProgress)
 }
 
 /**
@@ -142,14 +154,22 @@ internal fun OnboardingContent(
     device: OnboardingDevice,
     actions: OnboardingActions,
     modifier: Modifier = Modifier,
+    backProgress: Float = 0f,
 ) {
     val colors = CoulombTheme.colors
+    val reduced = CoulombTheme.reducedMotion
     Column(modifier.fillMaxSize().background(colors.bg)) {
         CoulombTopAppBar(
             title = stringResource(R.string.onboarding_set_up),
             navigationIcon = if (state.step == OnboardingStep.WELCOME) null else ({ CoulombBackButton(onClick = actions.back) }),
         )
-        CoulombCrossfade(state.step, Modifier.weight(1f).fillMaxWidth()) { step ->
+        val preview =
+            Modifier.graphicsLayer {
+                alpha = 1f - backProgress * BACK_FADE
+                if (!reduced) scaleX = 1f - backProgress * BACK_SCALE
+                if (!reduced) scaleY = scaleX
+            }
+        CoulombCrossfade(state.step, Modifier.weight(1f).fillMaxWidth().then(preview)) { step ->
             Column(Modifier.fillMaxSize()) {
                 val scroll = key(step) { rememberScrollState() }
                 Column(
@@ -177,11 +197,16 @@ internal fun OnboardingContent(
                         OnboardingStep.RESULT -> ResultStep(state, device, actions)
                     }
                 }
-                Footer(caption = footerCaption(step)) { FooterButtons(step, state, actions) }
             }
         }
+        // Outside the crossfade: the footer stays while the step changes.
+        Footer(caption = footerCaption(state.step)) { FooterButtons(state.step, state, actions) }
     }
 }
+
+/** How far the step fades and shrinks at the end of a back gesture (DESIGN.md: a quiet preview). */
+private const val BACK_FADE = 0.4f
+private const val BACK_SCALE = 0.04f
 
 private fun footerCaption(step: OnboardingStep): Int? = if (step == OnboardingStep.RESULT) R.string.onboarding_first_results else null
 
@@ -200,7 +225,11 @@ private fun Footer(
         Column(
             Modifier
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                .padding(horizontal = currentGutter(), vertical = CoulombSpacing.Space12),
+                .padding(horizontal = currentGutter(), vertical = CoulombSpacing.Space12)
+                // The body's column, so the buttons end where the step does on wide windows.
+                .wrapContentWidth(Alignment.Start)
+                .widthIn(max = MaxContentWidth)
+                .fillMaxWidth(),
         ) {
             caption?.let {
                 Text(

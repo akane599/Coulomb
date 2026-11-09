@@ -73,7 +73,12 @@ public class OnboardingViewModel
                             ProbeRun.Done -> ResultState.Ready(stored)
                         },
                 )
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), OnboardingUiState())
+            }.stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+                // The saved step from the first frame, so a restored process doesn't flash Welcome.
+                OnboardingUiState(step = current(), path = OnboardingPath.valueOf(path.value)),
+            )
 
         init {
             viewModelScope.launch {

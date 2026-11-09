@@ -46,7 +46,8 @@ public class PrivilegesViewModel
         /** The application's resolver: an export outlives the activity that asked for it. */
         private val resolver = context.contentResolver
 
-        internal val state: StateFlow<PrivilegesUiState> =
+        /** Null until the stored matrix is read, so nothing shows a made-up empty state first. */
+        internal val state: StateFlow<PrivilegesUiState?> =
             combine(
                 privileged.state,
                 privileged.lastBootstrap,
@@ -64,7 +65,7 @@ public class PrivilegesViewModel
                     grantFailed = local.grantFailed,
                     export = local.export,
                 )
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PrivilegesUiState())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
         internal fun allowShizuku() = privileged.requestManagerPermission()
 
@@ -112,17 +113,21 @@ public class PrivilegesViewModel
             viewModelScope.launch {
                 val saved =
                     quietly("export") {
-                        val report =
-                            CapabilityReport.markdown(
-                                capabilityStore.capabilities.first(),
-                                privileged.state.value,
-                                privileged.diagnostics.value,
-                                "${Build.MANUFACTURER} ${Build.MODEL}",
-                                Instant.now().toString(),
-                            )
-                        withContext(
-                            Dispatchers.IO,
-                        ) { checkNotNull(resolver.openOutputStream(uri)) { "no stream" }.use { it.write(report.toByteArray()) } }
+                        val capabilities = capabilityStore.capabilities.first()
+                        val privilege = privileged.state.value
+                        val diagnostics = privileged.diagnostics.value
+                        // Built and written off the main thread.
+                        withContext(Dispatchers.IO) {
+                            val report =
+                                CapabilityReport.markdown(
+                                    capabilities,
+                                    privilege,
+                                    diagnostics,
+                                    "${Build.MANUFACTURER} ${Build.MODEL}",
+                                    Instant.now().toString(),
+                                )
+                            checkNotNull(resolver.openOutputStream(uri)) { "no stream" }.use { it.write(report.toByteArray()) }
+                        }
                     }
                 local.update { it.copy(export = if (saved) ExportResult.SAVED else ExportResult.FAILED) }
             }
