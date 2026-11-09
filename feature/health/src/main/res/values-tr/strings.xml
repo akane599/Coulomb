@@ -112,11 +112,6 @@
     <string name="health_stress_high_inline">yüksek stres</string>
     <string name="health_no_sessions">Henüz şarj oturumu yok. Her şarj, fişten çektiğinde burada görünür.</string>
     <string name="health_chargers">Şarj cihazları</string>
-    <string name="health_unnamed_ac">Adsız duvar şarj cihazı</string>
-    <string name="health_unnamed_usb">Adsız USB şarj cihazı</string>
-    <string name="health_unnamed_wireless">Adsız kablosuz şarj cihazı</string>
-    <string name="health_unnamed_dock">Adsız yuva</string>
-    <string name="health_unnamed">Adsız şarj cihazı</string>
     <string name="health_charger_line">Olağan güç · son görülme %1$s</string>
     <string name="health_today">bugün</string>
     <string name="health_yesterday">dün</string>

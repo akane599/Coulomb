@@ -3,13 +3,13 @@
 
 package io.github.akane599.coulomb.feature.health
 
-import android.os.BatteryManager
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.github.akane599.coulomb.core.analytics.StressLevel
 import io.github.akane599.coulomb.core.data.ChargeSessionRow
 import io.github.akane599.coulomb.core.data.Charger
+import io.github.akane599.coulomb.core.ui.chargerName
 import io.github.akane599.coulomb.core.ui.format.Formats
 import java.time.Instant
 import java.time.LocalDate
@@ -22,20 +22,7 @@ private const val WEEK = 6L
 
 /** A charger's name, or one from its plug type while it has none (ADR-0044 §6). */
 @Composable
-internal fun chargerName(charger: Charger): String = charger.name.ifBlank { unnamed(charger.plugType) }
-
-/** `BatteryManager.BATTERY_PLUGGED_*` as an unnamed charger's words. */
-@Composable
-internal fun unnamed(plugType: Int?): String =
-    stringResource(
-        when (plugType) {
-            BatteryManager.BATTERY_PLUGGED_AC -> R.string.health_unnamed_ac
-            BatteryManager.BATTERY_PLUGGED_USB -> R.string.health_unnamed_usb
-            BatteryManager.BATTERY_PLUGGED_WIRELESS -> R.string.health_unnamed_wireless
-            BatteryManager.BATTERY_PLUGGED_DOCK -> R.string.health_unnamed_dock
-            else -> R.string.health_unnamed
-        },
-    )
+internal fun chargerName(charger: Charger): String = chargerName(charger.name, charger.plugType)
 
 /** When a session started: "Today, 00:30", "Yesterday, 12:40", "Wednesday, 23:10", or "Oct 21, 23:10". */
 @Composable

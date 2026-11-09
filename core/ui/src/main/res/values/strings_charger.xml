@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- A charger without a name, by its plug type (ADR-0044 §6); Health and Charging. -->
+<resources>
+    <string name="charger_unnamed_ac">Unnamed wall charger</string>
+    <string name="charger_unnamed_usb">Unnamed USB charger</string>
+    <string name="charger_unnamed_wireless">Unnamed wireless charger</string>
+    <string name="charger_unnamed_dock">Unnamed dock</string>
+    <string name="charger_unnamed">Unnamed charger</string>
+</resources>

@@ -126,11 +126,6 @@
 
     <!-- Chargers (SPEC 10.8 item 7). -->
     <string name="health_chargers">Chargers</string>
-    <string name="health_unnamed_ac">Unnamed wall charger</string>
-    <string name="health_unnamed_usb">Unnamed USB charger</string>
-    <string name="health_unnamed_wireless">Unnamed wireless charger</string>
-    <string name="health_unnamed_dock">Unnamed dock</string>
-    <string name="health_unnamed">Unnamed charger</string>
     <string name="health_charger_line">Usual power · last seen %1$s</string>
     <string name="health_today">today</string>
     <string name="health_yesterday">yesterday</string>
