@@ -57,6 +57,21 @@ class SampleDaoTest : DatabaseTest() {
         }
 
     @Test
+    fun levelStepsKeepEachChangeFromSamplesAndAggregates() =
+        runTest {
+            // Boot 1's first two minutes compacted (their last levels 20 and 22), then raw samples.
+            for ((s, level) in listOf(0L to 20, 30L to 20, 70L to 21, 100L to 22)) dao.insert(sample(1, s * NS_PER_S, levelPct = level))
+            dao.compactSamples(cutBootSeq = 1, cutElapsedNs = 120 * NS_PER_S, resolutionS = 60)
+            for ((s, level) in listOf(130L to 22, 140L to 23, 150L to 23, 160L to 24)) dao.insert(sample(1, s * NS_PER_S, levelPct = level))
+            dao.insert(sample(2, 10 * NS_PER_S, levelPct = 90))
+
+            val steps = dao.levelSteps(bootSeq = 1, fromElapsedNs = 0, toElapsedNs = 1_000 * NS_PER_S)
+            assertThat(steps.map { it.elapsedNs / NS_PER_S to it.levelPct })
+                .containsExactly(0L to 20, 60L to 22, 140L to 23, 160L to 24)
+                .inOrder()
+        }
+
+    @Test
     fun aRepeatedSampleIsIgnoredRatherThanAbortingItsTransaction() =
         runTest {
             assertThat(dao.insert(sample(bootSeq = 1, elapsedNs = 5))).isNotEqualTo(-1L)

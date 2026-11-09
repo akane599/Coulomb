@@ -39,6 +39,19 @@ class SettingsStoreTest {
             assertThat(UserSettings().showSystemApps).isFalse()
             assertThat(UserSettings().scaleToMeasured).isFalse()
             assertThat(UserSettings().componentBreakdown).isFalse()
+            assertThat(UserSettings().chargeTargetPct).isEqualTo(80)
+        }
+
+    @Test
+    fun theChargeTargetStaysInSpec144sRange() =
+        runTest(UnconfinedTestDispatcher()) {
+            val store = store(folder.root.resolve("d.pb"))
+            store.chargeTarget(85)
+            assertThat(store.settings.first().chargeTargetPct).isEqualTo(85)
+            store.chargeTarget(120)
+            assertThat(store.settings.first().chargeTargetPct).isEqualTo(100)
+            store.chargeTarget(10)
+            assertThat(store.settings.first().chargeTargetPct).isEqualTo(50)
         }
 
     @Test

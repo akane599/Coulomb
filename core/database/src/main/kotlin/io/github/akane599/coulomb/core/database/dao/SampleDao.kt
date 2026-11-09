@@ -90,6 +90,27 @@ public abstract class SampleDao {
     ): LevelTime
 
     /**
+     * Where the level changed in `[fromElapsedNs, toElapsedNs)` of [bootSeq], from raw samples and,
+     * once those are compacted, minute aggregates (each at its minute's start with the level it
+     * ended on). For a past charge's level line (ADR-0046 §3): a few hundred rows, not thousands.
+     */
+    @Query(
+        "SELECT elapsedNs, level AS levelPct FROM (" +
+            "SELECT elapsedNs, level, LAG(level) OVER (ORDER BY elapsedNs) AS prev FROM (" +
+            "SELECT elapsedNs, levelPct AS level FROM battery_sample WHERE bootSeq = :bootSeq " +
+            "AND elapsedNs >= :fromElapsedNs AND elapsedNs < :toElapsedNs " +
+            "UNION ALL SELECT startElapsedNs AS elapsedNs, levelLastPct AS level FROM sample_aggregate " +
+            "WHERE resolutionS = $MINUTE_S AND bootSeq = :bootSeq " +
+            "AND startElapsedNs >= :fromElapsedNs AND startElapsedNs < :toElapsedNs)) " +
+            "WHERE prev IS NULL OR level != prev ORDER BY elapsedNs",
+    )
+    public abstract suspend fun levelSteps(
+        bootSeq: Int,
+        fromElapsedNs: Long,
+        toElapsedNs: Long,
+    ): List<LevelStep>
+
+    /**
      * Replaces the raw samples before `(cutBootSeq, cutElapsedNs)` with [resolutionS] aggregates.
      * The cut is moved back to a bucket boundary, so a bucket is built once, from all its samples.
      * Works through at most [chunkRows] samples per transaction. Returns the samples removed.
@@ -226,6 +247,12 @@ public abstract class SampleDao {
         const val MINUTE_S = 60
     }
 }
+
+/** A row of [SampleDao.levelSteps]. */
+public data class LevelStep(
+    val elapsedNs: Long,
+    val levelPct: Int,
+)
 
 /** The result of [SampleDao.timeAtOrAbove]. */
 public data class LevelTime(

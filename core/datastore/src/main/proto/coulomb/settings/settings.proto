@@ -16,4 +16,6 @@ message Settings {
   bool scale_to_measured = 2;
   // "Component breakdown" (ADR-0035 §2): Off until the phone shows what S4 costs.
   bool component_breakdown = 3;
+  // The charge target (SPEC 14.4, ADR-0046 §4): 50-100; 0 is the suggested 80.
+  int32 charge_target_pct = 4;
 }

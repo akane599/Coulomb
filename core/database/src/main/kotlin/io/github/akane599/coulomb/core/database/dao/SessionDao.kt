@@ -149,6 +149,10 @@ public interface SessionDao {
     @Query("SELECT * FROM session WHERE id = :id")
     public fun observeSession(id: Long): Flow<SessionEntity?>
 
+    /** The charge details of [sessionIds], those that have one. */
+    @Query("SELECT * FROM charge_detail WHERE sessionId IN (:sessionIds)")
+    public suspend fun chargeDetails(sessionIds: List<Long>): List<ChargeDetailEntity>
+
     @Query("SELECT * FROM charge_detail WHERE sessionId = :sessionId")
     public fun observeChargeDetail(sessionId: Long): Flow<ChargeDetailEntity?>
 
