@@ -16,6 +16,7 @@ import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -306,6 +307,47 @@ class DrainScreenshotTest {
     @Test
     @Config(qualifiers = "tr-w412dp-h4000dp-xhdpi")
     fun appsTurkishLargeText() = shoot("apps-tr-200", ready(), fontScale = 2f)
+
+    /** S4's chips (ADR-0035 §7; lab `.drain-row.open`): Halcyon opened by its expand button. */
+    @Test
+    @Config(qualifiers = "w412dp-h1400dp-xhdpi")
+    fun appsBrokenDown() = openHalcyon("apps-breakdown")
+
+    @Test
+    @Config(qualifiers = "ar-w412dp-h1400dp-xhdpi")
+    fun appsBrokenDownArabic() = openHalcyon("apps-breakdown-ar", rtl = true)
+
+    @Test
+    @Config(qualifiers = "w412dp-h2000dp-night-xhdpi")
+    fun appsBrokenDownDarkLargeText() = openHalcyon("apps-breakdown-dark-200", dark = true, fontScale = 2f)
+
+    private fun openHalcyon(
+        name: String,
+        dark: Boolean = false,
+        fontScale: Float = 1f,
+        rtl: Boolean = false,
+    ) {
+        shoot(name, ready(brokenDownReport(), includeSystem = true), dark = dark, fontScale = fontScale, rtl = rtl, capture = false)
+        compose.onNodeWithContentDescription("Show Halcyon’s components").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/drain-$name.png")
+    }
+
+    /** The setting was off for the window, so the caption names it (ADR-0035 §2). */
+    @Test
+    fun appsBreakdownOff() = shoot("apps-off", ready(report().copy(breakdownOff = true)))
+
+    /** S4's components with their top apps, closed by the hollow "Not broken down" (ADR-0035 §7). */
+    @Test
+    @Config(qualifiers = "w412dp-h1800dp-xhdpi")
+    fun componentsBrokenDown() = shoot("components-s4", ready(brokenDownReport(breakdownOff = true)), lens = Lens.COMPONENTS)
+
+    @Test
+    @Config(qualifiers = "w412dp-h1800dp-night-xhdpi")
+    fun componentsBrokenDownDark() = shoot("components-s4-dark", ready(brokenDownReport()), lens = Lens.COMPONENTS, dark = true)
+
+    @Test
+    fun componentsBreakdownOff() = shoot("components-off", ready(report().copy(breakdownOff = true)), lens = Lens.COMPONENTS)
 
     @Suppress("LongParameterList") // Test variants.
     private fun shoot(

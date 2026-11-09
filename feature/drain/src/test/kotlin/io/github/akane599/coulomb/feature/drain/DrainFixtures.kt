@@ -5,16 +5,20 @@ package io.github.akane599.coulomb.feature.drain
 
 import io.github.akane599.coulomb.core.data.AlarmEntry
 import io.github.akane599.coulomb.core.data.AppDrain
+import io.github.akane599.coulomb.core.data.ComponentApp
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.PowerComponent
+import io.github.akane599.coulomb.core.data.SpanBreakdown
 import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.data.WakeEntry
 import io.github.akane599.coulomb.core.data.WindowDrains
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.model.stats.ComponentPower
+import io.github.akane599.coulomb.core.model.stats.PowerColumn
 import java.time.Instant
 
 internal const val MINUTE = 60_000L
@@ -76,6 +80,64 @@ internal fun fullComponents(): List<ComponentDrain> =
         ComponentDrain(PowerComponent.CAMERA, 14.0),
         ComponentDrain(PowerComponent.SENSORS, 13.0),
     )
+
+/**
+ * S4 over most of the lab's window (ADR-0035 §7): its components with their top apps, which with
+ * the 48 mAh not broken down add up to the 1,062 mAh modeled.
+ */
+internal fun brokenDownComponents(): List<ComponentDrain> =
+    listOf(
+        ComponentDrain(
+            PowerComponent.SCREEN,
+            340.0,
+            listOf(app(10_123, "Halcyon", 188.0), app(10_241, "Wayline", 50.0), app(10_310, "Tally", 41.0)),
+        ),
+        ComponentDrain(
+            PowerComponent.CPU,
+            246.0,
+            listOf(app(10_123, "Halcyon", 74.0), app(1_000, null, 60.0), app(10_402, "Driftly", 31.0)),
+        ),
+        ComponentDrain(PowerComponent.MOBILE_RADIO, 162.0, listOf(app(10_123, "Halcyon", 121.0), app(10_515, "Northwind Mail", 18.0))),
+        ComponentDrain(PowerComponent.IDLE, 74.0),
+        ComponentDrain(PowerComponent.GNSS, 61.0, listOf(app(10_241, "Wayline", 61.0))),
+        ComponentDrain(PowerComponent.WIFI, 52.0, listOf(app(10_123, "Halcyon", 12.0), app(10_515, "Northwind Mail", 9.0))),
+        ComponentDrain(PowerComponent.WAKELOCK, 31.0, listOf(app(1_000, null, 30.0))),
+        ComponentDrain(PowerComponent.BLUETOOTH, 21.0, listOf(app(10_402, "Driftly", 21.0))),
+        ComponentDrain(PowerComponent.CAMERA, 14.0, listOf(app(10_077, "Camera", 14.0))),
+        ComponentDrain(PowerComponent.SENSORS, 13.0, listOf(app(10_241, "Wayline", 6.0))),
+    )
+
+private fun app(
+    uid: Int,
+    label: String?,
+    mah: Double,
+) = ComponentApp(uid, label, mah)
+
+/** The lab's chips (design-lab/drain.html): Halcyon whole, Wayline and Android System with a remainder. */
+internal fun labBreakdown(): SpanBreakdown =
+    SpanBreakdown(
+        mapOf(
+            10_123 to
+                power(
+                    PowerColumn.SCREEN to 188,
+                    PowerColumn.MOBILE_RADIO to 121,
+                    PowerColumn.CPU to 74,
+                    PowerColumn.WIFI to 12,
+                    PowerColumn.OTHER to 7,
+                ),
+            10_241 to power(PowerColumn.GNSS to 61, PowerColumn.SCREEN to 50, PowerColumn.CPU to 20, PowerColumn.SENSORS to 6),
+            1_000 to power(PowerColumn.CPU to 60, PowerColumn.WAKELOCK to 30),
+        ),
+    )
+
+/** Whole mAh as S4's dC. */
+private fun power(vararg mah: Pair<PowerColumn, Int>): ComponentPower =
+    ComponentPower.of(mah.associate { (column, value) -> column to (value * ComponentPower.DC_PER_MAH).toLong() })
+
+/** The lab's report with S4's breakdown (ADR-0035 §7). */
+internal fun brokenDownReport(breakdownOff: Boolean = false): DrainReport =
+    report(components = brokenDownComponents())
+        .copy(componentsNotBrokenDownMah = 48.0, breakdown = labBreakdown(), breakdownOff = breakdownOff)
 
 /** Batterystats counts partial and kernel wakelocks only with the screen off: they have no share (ADR-0036 §34). */
 internal fun wakes(): List<WakeEntry> =

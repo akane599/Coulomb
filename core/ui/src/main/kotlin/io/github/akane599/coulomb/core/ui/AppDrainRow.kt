@@ -66,7 +66,7 @@ private val GlyphSize = 20.dp
  * and provenance mark, the share in Caption under that, and the 4 dp share bar across the text
  * columns. Hairlines divide rows; the [first] row also draws one above itself. TalkBack reads the
  * row as one item. Without an icon, [standIn] fills the slot: by default the name's initial on a
- * quiet tile.
+ * quiet tile. Without [hairlines] the row draws none, for a caller that draws them around more.
  */
 @Composable
 @Suppress("LongParameterList") // One row's content; the screen builds it from a read model.
@@ -82,6 +82,7 @@ public fun AppDrainRow(
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     standIn: IconStandIn? = null,
+    hairlines: Boolean = true,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -90,6 +91,7 @@ public fun AppDrainRow(
         modifier
             .fillMaxWidth()
             .drawBehind {
+                if (!hairlines) return@drawBehind
                 val stroke = Hairline.toPx()
                 if (first) drawLine(colors.hairline, Offset(0f, stroke / 2), Offset(size.width, stroke / 2), stroke)
                 drawLine(colors.hairline, Offset(0f, size.height - stroke / 2), Offset(size.width, size.height - stroke / 2), stroke)

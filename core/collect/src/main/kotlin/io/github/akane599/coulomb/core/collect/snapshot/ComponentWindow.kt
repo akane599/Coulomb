@@ -33,9 +33,6 @@ internal data class ComponentBreakdown(
  * There is no floor, so the rows add up exactly to S4's change.
  */
 internal object ComponentWindow {
-    /** dC = round(mAh × 36) (`BatteryConsumer.java` L761-764 at android-16.0.0_r4 and android-17.0.0_r1). */
-    const val DC_PER_MAH: Double = 36.0
-
     /** A column may read this much lower at the later end: each entry is rounded by itself. */
     private const val ROUNDING_DC = 1L
 
@@ -169,7 +166,7 @@ internal object ComponentWindow {
         mah: Double,
         marginDc: Double,
     ): Boolean {
-        val expected = mah * DC_PER_MAH
+        val expected = mah * ComponentPower.DC_PER_MAH
         return abs(dc - expected) <= marginDc + MARGIN_SHARE * abs(expected)
     }
 }

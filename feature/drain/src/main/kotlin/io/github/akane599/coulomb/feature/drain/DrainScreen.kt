@@ -150,14 +150,19 @@ internal fun fitsTwoColumns(
     return currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= column * 2
 }
 
-/** What the lens lists keep open, saved per window: the remainder, and the groups showing all rows. */
+/** What the lens lists keep open, saved per window: the remainder, the groups showing all rows, and the apps showing their components. */
 internal class ListState(
     val remainderOpen: Boolean,
     val setRemainderOpen: (Boolean) -> Unit,
     /** Bit [WakeGroup.ordinal] for a group, bit [ALARMS_BIT] for the alarms. */
     val openGroups: Int,
     val toggleGroup: (Int) -> Unit,
-)
+    /** The UIDs whose components are open (ADR-0035 §7). */
+    private val openApps: IntArray = IntArray(0),
+    val toggleApp: (Int) -> Unit = {},
+) {
+    fun appOpen(uid: Int): Boolean = uid in openApps
+}
 
 internal const val ALARMS_BIT = 3
 
@@ -230,7 +235,17 @@ private fun ReadyContent(
     val span = state.report?.span
     var remainderOpen by rememberSaveable(span) { mutableStateOf(false) }
     var openGroups by rememberSaveable(span) { mutableIntStateOf(0) }
-    val lists = ListState(remainderOpen, { remainderOpen = it }, openGroups, { bit -> openGroups = openGroups xor (1 shl bit) })
+    // An IntArray, so the open rows survive a configuration change in the saved state.
+    var openApps by rememberSaveable(span) { mutableStateOf(IntArray(0)) }
+    val lists =
+        ListState(
+            remainderOpen,
+            { remainderOpen = it },
+            openGroups,
+            { bit -> openGroups = openGroups xor (1 shl bit) },
+            openApps,
+            { uid -> openApps = if (uid in openApps) openApps.filter { it != uid }.toIntArray() else openApps + uid },
+        )
     // Built once per report and choice, not on every pass of the list (SPEC 16.4).
     val apps = state.report?.let { remember(it, state.includeSystem, state.scaled) { appsView(it, state.includeSystem, state.scaled) } }
     val wakes = state.report?.let { remember(it) { wakeGroups(it) } }

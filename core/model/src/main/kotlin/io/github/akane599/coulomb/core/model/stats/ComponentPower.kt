@@ -87,7 +87,16 @@ public class ComponentPower private constructor(
         public fun build(): ComponentPower = ComponentPower(values.copyOf())
     }
 
+    /** [column] in mAh. */
+    public fun mah(column: PowerColumn): Double = get(column) / DC_PER_MAH
+
     public companion object {
+        /**
+         * dC = round(mAh × 36) (`frameworks/base/core/java/android/os/BatteryConsumer.java` L761-764 at
+         * android-16.0.0_r4 and android-17.0.0_r1).
+         */
+        public const val DC_PER_MAH: Double = 36.0
+
         private val SIZE = PowerColumn.entries.size
 
         public val ZERO: ComponentPower = ComponentPower(LongArray(SIZE))

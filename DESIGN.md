@@ -582,7 +582,11 @@ key, one line each. Long-press explains a mark; TalkBack gets an "Explain proven
 - **Share bar:** 4 dp, `hairline` track, `text-secondary` fill, spanning the name and value columns 8 dp
   below them. Shares are neutral; hue appears only in a component breakdown.
 - **Breakdown:** an expanded row lists components as a 10 dp data-hue swatch, the name in Label and the
-  mAh in `text-secondary`, with no container and no tap target.
+  mAh in `text-secondary`, with no container and no tap target. Energy with no component ("Not broken
+  down") takes a hollow swatch, a 1 dp `text-secondary` outline, and a hollow segment at a stacked bar's
+  end. A 48 dp expand button in `text-secondary` sits at the row's end and turns over when open; once
+  any row of a list has one, every row keeps that end slot, empty where there is no breakdown, so the
+  figures stay in one column.
 - **Paired bars (Compare, ADR-0038 §8):** a row comparing two periods has two 6 dp bars on one scale, the
   list's largest rate filling the width, with no track. The first period's bar is hollow (a 1 dp
   `text-secondary` outline), the second's filled `text-secondary`; a bar above zero is never shorter than

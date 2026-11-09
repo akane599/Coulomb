@@ -257,4 +257,30 @@ class DrainViewsTest {
         assertEquals(listOf(Color.Blue, Color.Red, Color.Gray), segments.map { it.first })
         assertEquals(listOf(10.0, 6.0, 12.0), segments.map { it.second })
     }
+
+    @Test
+    fun theUnsplitRestIsAHollowSegmentAfterTheNeutralOne() {
+        val parts = listOf(ComponentDrain(PowerComponent.SCREEN, 10.0), ComponentDrain(PowerComponent.IDLE, 4.0))
+        val segments = barSegments(parts, { if (it == PowerComponent.SCREEN) Color.Blue else Color.Gray }, Color.Gray, rest = 3.0)
+        assertEquals(listOf(Color.Blue, Color.Gray, null), segments.map { it.first })
+        assertEquals(listOf(10.0, 4.0, 3.0), segments.map { it.second })
+        // No rest, or none left, adds no segment.
+        assertEquals(listOf<Color?>(Color.Gray), barSegments(parts, { Color.Gray }, Color.Gray, rest = 0.0).map { it.first })
+    }
+
+    @Test
+    fun appsS4BrokeDownGetTheirComponentsAndRemainder() {
+        val view = appsView(brokenDownReport(), includeSystem = true, scaled = false)
+        assertEquals(setOf(10_123, 10_241, 1_000), view.breakdowns.keys)
+        val halcyon = view.breakdowns.getValue(10_123)
+        assertEquals(
+            listOf(PowerComponent.SCREEN, PowerComponent.MOBILE_RADIO, PowerComponent.CPU, PowerComponent.WIFI, PowerComponent.OTHER),
+            halcyon.parts.map { it.component },
+        )
+        // 402 mAh, all of it in chips.
+        assertNull(halcyon.notBrokenDownMah)
+        // Wayline's 168 mAh less its 137 in chips.
+        assertEquals(31.0, checkNotNull(view.breakdowns.getValue(10_241).notBrokenDownMah), 1e-9)
+        assertTrue(appsView(report(), includeSystem = true, scaled = false).breakdowns.isEmpty())
+    }
 }

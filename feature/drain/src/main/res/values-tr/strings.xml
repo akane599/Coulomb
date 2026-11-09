@@ -83,6 +83,15 @@
 
     <string name="drain_components_caption">Cihazın gücü bileşenlere göre, uygulamalar dahil, Android’in modellediği gibi. Paylar modellenen %1$s üzerinden.</string>
     <string name="drain_components_coarse">Android bu aralık için bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
+    <string name="drain_components_off">Bileşen dökümü bu aralığın bir kısmında ya da tamamında kapalıydı, bu yüzden Android bileşenlerin yalnızca bazılarını adlandırıyor. Ayarlar’da bulunur.</string>
+    <string name="drain_component_app">%1$s %2$s</string>
+    <string name="drain_not_broken_down">Bileşenlere ayrılmadı</string>
+    <string name="drain_not_broken_down_detail">Bu aralığın Coulomb’un bileşenlere ayıramadığı kısımları</string>
+    <string name="drain_not_broken_down_off">Bileşen dökümü bu aralığın bir kısmında kapalıydı. Ayarlar’da bulunur.</string>
+    <string name="drain_breakdown_off">Bileşen dökümü bu aralıkta kapalıydı, bu yüzden uygulamalar bileşenlere ayrılmadı. Ayarlar’da bulunur.</string>
+    <string name="drain_breakdown_off_part">Bileşen dökümü bu aralığın bir kısmında kapalıydı; o kısım bileşenlere ayrılmadı.</string>
+    <string name="drain_show_components">%1$s bileşenlerini göster</string>
+    <string name="drain_hide_components">%1$s bileşenlerini gizle</string>
     <string name="drain_compare_components_coarse">Android bu dönemlerden birinde bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
     <string name="drain_components_empty">Bu aralık için bileşen dökümü yok.</string>
     <string name="drain_view_table">Tablo olarak gör</string>

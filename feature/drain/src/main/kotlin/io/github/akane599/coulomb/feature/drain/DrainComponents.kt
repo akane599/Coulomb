@@ -29,7 +29,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -54,7 +56,9 @@ import io.github.akane599.coulomb.core.ui.format.Formats
 /**
  * The Components lens (SPEC 10.3): the device's modeled power by component, as one stacked bar in
  * the data hues and a ranked list with a swatch on each row. Components with no hue of their own
- * share the neutral Other hue and sit together at the bar's end (DESIGN.md, Data palette). The
+ * share the neutral Other hue and sit together at the bar's end (DESIGN.md, Data palette). With
+ * S4's components, each row names its top apps, and the energy of the windows S4 did not break
+ * down closes the bar and the list, hollow, so the parts add up to the whole (ADR-0035 §7). The
  * head holds the caption and the bar; each row is its own keyed item, so a reorder after a new
  * report slides (SPEC 11.6).
  */
@@ -64,26 +68,72 @@ internal fun LazyListScope.componentItems(
     onViewTable: () -> Unit,
 ) {
     val components = report.components
-    val total = components.sumOf { it.mah }
-    item(key = "components-head", contentType = "components-head") { ComponentsHead(components, total, formats, onViewTable) }
+    val rest = report.componentsNotBrokenDownMah?.takeIf { it >= MIN_SHOWN_MAH }
+    val total = components.sumOf { it.mah } + (rest ?: 0.0)
+    item(key = "components-head", contentType = "components-head") { ComponentsHead(report, rest, total, formats, onViewTable) }
     if (components.isEmpty()) return
     item(key = "components-gap", contentType = "gap") { Spacer(Modifier.height(CoulombSpacing.Space16)) }
     itemsIndexed(components, key = { _, part -> "component-${part.component}" }, contentType = { _, _ -> "component" }) { index, part ->
         val colors = CoulombTheme.colors
         Box(rowMotion()) {
-            ComponentRow(part, stringResource(part.component.label), part.mah / total, index == 0, colors.hue(part.component), formats)
+            ComponentRow(
+                name = stringResource(part.component.label),
+                detail = topApps(part, formats),
+                mah = part.mah,
+                share = part.mah / total,
+                first = index == 0,
+                hue = colors.hue(part.component),
+                formats = formats,
+            )
+        }
+    }
+    if (rest != null) {
+        item(key = "component-rest", contentType = "component") {
+            val detail = if (report.breakdownOff) R.string.drain_not_broken_down_off else R.string.drain_not_broken_down_detail
+            Box(rowMotion()) {
+                ComponentRow(
+                    stringResource(R.string.drain_not_broken_down),
+                    stringResource(detail),
+                    rest,
+                    rest / total,
+                    false,
+                    null,
+                    formats,
+                )
+            }
         }
     }
 }
 
-/** The lens's caption, the coarse note where Android names only some components, and the stacked bar. */
+/** A component's top apps with their mAh, "Halcyon 188 mAh · Wayline 40 mAh"; null without S4. */
+@Composable
+private fun topApps(
+    part: ComponentDrain,
+    formats: Formats,
+): String? {
+    val resources = LocalResources.current
+    return part.topApps
+        .map { resources.getString(R.string.drain_component_app, formats.appName(it.label, it.uid), formats.mah(it.mah).joined()) }
+        .reduceOrNull { a, b -> resources.getString(R.string.drain_detail_separator, a, b) }
+}
+
+/** Less than this is rounding, not energy worth a row (as [io.github.akane599.coulomb.core.data.SpanBreakdown]'s remainder). */
+private const val MIN_SHOWN_MAH = 0.05
+
+/**
+ * The lens's caption, the coarse note where Android names only some components (naming the
+ * setting when it was off, ADR-0035 §2), and the stacked bar, which ends in [rest] when S4's
+ * components leave some of the window unsplit.
+ */
 @Composable
 private fun ComponentsHead(
-    components: List<ComponentDrain>,
+    report: DrainReport,
+    rest: Double?,
     total: Double,
     formats: Formats,
     onViewTable: () -> Unit,
 ) {
+    val components = report.components
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     Column(Modifier.padding(top = CoulombSpacing.Space16)) {
@@ -98,21 +148,26 @@ private fun ComponentsHead(
             color = colors.textSecondary,
             style = type.caption,
         )
-        if (components.any { it.component == PowerComponent.OTHER }) {
-            Text(
-                stringResource(R.string.drain_components_coarse),
-                Modifier.fillMaxWidth(),
-                color = colors.textSecondary,
-                style = type.caption,
-            )
+        // S5's coarse rows: with S4's, the hollow row says what is not split.
+        val coarse = report.componentsNotBrokenDownMah == null
+        val note =
+            when {
+                coarse && report.breakdownOff -> R.string.drain_components_off
+                components.any { it.component == PowerComponent.OTHER } -> R.string.drain_components_coarse
+                else -> null
+            }
+        if (note != null) {
+            Text(stringResource(note), Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.caption)
         }
-        val names = components.map { stringResource(it.component.label) }
+        val parts =
+            components.map { stringResource(it.component.label) to it.mah } +
+                listOfNotNull(rest?.let { stringResource(R.string.drain_not_broken_down) to it })
         val description =
             stringResource(
                 R.string.drain_components_chart,
-                components.indices.joinToString(", ") { "${names[it]} ${formats.share(components[it].mah / total)}" },
+                parts.joinToString(", ") { (name, mah) -> "$name ${formats.share(mah / total)}" },
             )
-        val segments = remember(components, colors) { barSegments(components, { colors.hue(it) }, colors.dataOther) }
+        val segments = remember(components, rest, colors) { barSegments(components, { colors.hue(it) }, colors.dataOther, rest) }
         StackedBar(
             segments,
             total,
@@ -125,53 +180,77 @@ private fun ComponentsHead(
     }
 }
 
-/** The bar's segments: each hued component in rank order, then every neutral one as one segment. */
+/**
+ * The bar's segments: each hued component in rank order, then every neutral one as one segment,
+ * then [rest], the energy with no component, as a hollow one (a null colour).
+ */
 internal fun barSegments(
     components: List<ComponentDrain>,
     hue: (PowerComponent) -> Color,
     neutral: Color,
-): List<Pair<Color, Double>> {
+    rest: Double? = null,
+): List<Pair<Color?, Double>> {
     // Only segments with energy: the bar draws each one, with a gap between.
-    val (hued, rest) = components.filter { it.mah > 0 }.partition { hue(it.component) != neutral }
+    val (hued, unhued) = components.filter { it.mah > 0 }.partition { hue(it.component) != neutral }
     return hued.map { hue(it.component) to it.mah } +
-        listOfNotNull(rest.sumOf { it.mah }.takeIf { it > 0 }?.let { neutral to it })
+        listOfNotNull(unhued.sumOf { it.mah }.takeIf { it > 0 }?.let { neutral to it }) +
+        listOfNotNull(rest?.takeIf { it > 0 }?.let { null to it })
 }
 
-/** A 14 dp bar of [segments] (each above zero) from the start edge, 2 dp apart with 2 dp ends, mirrored in RTL. */
+/**
+ * A 14 dp bar of [segments] (each above zero) from the start edge, 2 dp apart with 2 dp ends,
+ * mirrored in RTL. A segment with no colour is a 1 dp `text-secondary` outline, as its swatch.
+ */
 @Composable
 private fun StackedBar(
-    segments: List<Pair<Color, Double>>,
+    segments: List<Pair<Color?, Double>>,
     total: Double,
     modifier: Modifier = Modifier,
 ) {
+    val outline = CoulombTheme.colors.textSecondary
     Canvas(modifier) {
         val height = BarHeight.toPx()
         val top = (size.height - height) / 2
         val gap = SegmentGap.toPx()
         val corner = CornerRadius(BarEnd.toPx())
         val room = size.width - gap * (segments.size - 1).coerceAtLeast(0)
+        val stroke = Hairline.toPx()
         var start = 0f
         segments.forEach { (color, mah) ->
             val width = (room * (mah / total)).toFloat()
             val x = if (layoutDirection == LayoutDirection.Rtl) size.width - start - width else start
-            drawRoundRect(color, Offset(x, top), Size(width, height), corner)
+            if (color != null) {
+                drawRoundRect(color, Offset(x, top), Size(width, height), corner)
+            } else {
+                // Inside its box, so it is no wider than a filled segment of the same energy.
+                val inset = stroke / 2
+                drawRoundRect(
+                    outline,
+                    Offset(x + inset, top + inset),
+                    Size((width - stroke).coerceAtLeast(0f), height - stroke),
+                    corner,
+                    style = Stroke(stroke),
+                )
+            }
             start += width + gap
         }
     }
 }
 
 /**
- * One component: a 10 dp swatch in its hue, the name, the mAh with the Modeled mark and its share
- * under it, and a neutral share bar (DESIGN.md, Breakdown and Rows). Hairlines divide rows; TalkBack
- * reads one item.
+ * One component: a 10 dp swatch in its hue (hollow without one), the name with [detail] in Caption
+ * under it, the mAh with the Modeled mark and its share under it, and a neutral share bar
+ * (DESIGN.md, Breakdown and Rows). Hairlines divide rows; TalkBack reads one item.
  */
 @Composable
+@Suppress("LongParameterList") // One row's content.
 private fun ComponentRow(
-    part: ComponentDrain,
     name: String,
+    detail: String?,
+    mah: Double,
     share: Double,
     first: Boolean,
-    hue: Color,
+    hue: Color?,
     formats: Formats,
 ) {
     val colors = CoulombTheme.colors
@@ -179,31 +258,28 @@ private fun ComponentRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .drawBehind {
-                val stroke = Hairline.toPx()
-                if (first) drawLine(colors.hairline, Offset(0f, stroke / 2), Offset(size.width, stroke / 2), stroke)
-                drawLine(colors.hairline, Offset(0f, size.height - stroke / 2), Offset(size.width, size.height - stroke / 2), stroke)
-            }.semantics(mergeDescendants = true) {}
+            .hairlines(colors.hairline, top = first, bottom = true)
+            .semantics(mergeDescendants = true) {}
             .heightIn(min = RowHeight)
             .padding(vertical = CoulombSpacing.Space12),
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space12),
     ) {
         // The swatch centres on the name's first line; the value shares that line, as on Apps rows.
         val nameLine = with(LocalDensity.current) { type.bodyName.lineHeight.toDp() }
-        Box(
-            Modifier
-                .padding(top = (nameLine - Swatch) / 2)
-                .size(Swatch)
-                .background(hue, RoundedCornerShape(SwatchCorner)),
-        )
+        Swatch(hue, Modifier.padding(top = (nameLine - SwatchSize) / 2))
         Column(Modifier.weight(1f)) {
             NameBesideValue(
-                name = { Text(name, color = colors.textPrimary, style = type.bodyName) },
+                name = {
+                    Column {
+                        Text(name, color = colors.textPrimary, style = type.bodyName)
+                        if (detail != null) Text(detail, color = colors.textSecondary, style = type.caption)
+                    }
+                },
                 value = {
                     Column(horizontalAlignment = Alignment.End) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             FigureText(
-                                formats.mah(part.mah).affixed(),
+                                formats.mah(mah).affixed(),
                                 numberStyle = type.data,
                                 unitStyle = type.data.copy(fontWeight = type.body.fontWeight),
                             )
@@ -257,7 +333,6 @@ internal val PowerComponent.label: Int
             PowerComponent.OTHER -> R.string.drain_component_other
         }
 
-private val Swatch = 10.dp
-private val SwatchCorner = 2.dp
+private val SwatchSize = 10.dp
 private val Hairline = 1.dp
 private val RowHeight = 56.dp

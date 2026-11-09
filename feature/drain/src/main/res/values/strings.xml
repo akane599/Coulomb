@@ -87,6 +87,15 @@
 
     <string name="drain_components_caption">The device’s power by component, apps included, as Android models it. Shares are of the %1$s modeled.</string>
     <string name="drain_components_coarse">Android names only some components for this window; the rest is under Other.</string>
+    <string name="drain_components_off">Component breakdown was off for some or all of this window, so Android names only some components. It’s in Settings.</string>
+    <string name="drain_component_app">%1$s %2$s</string>
+    <string name="drain_not_broken_down">Not broken down</string>
+    <string name="drain_not_broken_down_detail">Parts of this window Coulomb couldn’t split by component</string>
+    <string name="drain_not_broken_down_off">Component breakdown was off for part of this window. It’s in Settings.</string>
+    <string name="drain_breakdown_off">Component breakdown was off for this window, so apps aren’t split by component. It’s in Settings.</string>
+    <string name="drain_breakdown_off_part">Component breakdown was off for part of this window; that part isn’t split by component.</string>
+    <string name="drain_show_components">Show %1$s’s components</string>
+    <string name="drain_hide_components">Hide %1$s’s components</string>
     <string name="drain_compare_components_coarse">Android names only some components in one of these periods; the rest is under Other.</string>
     <string name="drain_components_empty">No component breakdown for this window.</string>
     <string name="drain_view_table">View as table</string>

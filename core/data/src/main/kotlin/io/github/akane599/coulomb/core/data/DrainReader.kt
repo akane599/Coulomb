@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.common.ZoneSource
+import io.github.akane599.coulomb.core.database.dao.ChainComponent
 import io.github.akane599.coulomb.core.database.dao.ChainStep
 import io.github.akane599.coulomb.core.database.dao.ChainTotals
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
@@ -25,7 +26,9 @@ import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
+import io.github.akane599.coulomb.core.model.stats.PowerColumn
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -114,6 +117,7 @@ internal class DrainReader
                 )
             val names = inputs.meta.associateBy { it.uid }
             val bases = bases(rows, chain)
+            val s4 = S4.of(chain.components(), totals, modeled)
             return DrainReport(
                 span = span,
                 drains = drains,
@@ -129,9 +133,69 @@ internal class DrainReader
                 wakes = wakes(rows, chain, names),
                 wakeCoverage = if (detail != null) WakeCoverage.ofWindow(detail) else WakeCoverage.ofChain(chain.steps()),
                 alarms = alarms(rows, chain, names),
-                components = components(uids),
+                components = s4.device?.let { deviceComponents(it, s4.apps, names) } ?: components(uids),
+                componentsNotBrokenDownMah = s4.notBrokenDownMah,
+                breakdown = s4.apps.takeIf { it.isNotEmpty() }?.let(::SpanBreakdown),
+                breakdownOff = totals.offWindows > 0,
             )
         }
+
+        /**
+         * What S4 gives a span (ADR-0035 §7): the covered windows' device row, used for the
+         * Components lens only when those windows hold at least half of the span's modeled total,
+         * and each app's row over them.
+         */
+        private class S4(
+            val device: ComponentPower?,
+            val notBrokenDownMah: Double?,
+            val apps: Map<Int, ComponentPower>,
+        ) {
+            companion object {
+                fun of(
+                    rows: List<ChainComponent>,
+                    totals: ChainTotals,
+                    spanModeledMah: Double?,
+                ): S4 {
+                    val power = rows.associate { it.uid to it.power.toPower() }
+                    val covered = totals.coveredModeledMah
+                    val device =
+                        power[UidPowerEntity.DEVICE_UID]?.takeIf {
+                            covered != null && spanModeledMah != null && spanModeledMah > 0 && covered >= spanModeledMah * MIN_COVERED
+                        }
+                    val rest =
+                        if (device != null && spanModeledMah != null &&
+                            covered != null
+                        ) {
+                            (spanModeledMah - covered).coerceAtLeast(0.0)
+                        } else {
+                            null
+                        }
+                    return S4(device, rest, power - UidPowerEntity.DEVICE_UID)
+                }
+            }
+        }
+
+        /**
+         * S4's device row by component, custom left out: S5's modeled total covers ids 0-18 only, and
+         * S5's app totals carry custom energy, so it shows in app chips instead. Each lists the apps
+         * that used the most of it.
+         */
+        private fun deviceComponents(
+            device: ComponentPower,
+            apps: Map<Int, ComponentPower>,
+            names: Map<Int, UidMetaEntity>,
+        ): List<ComponentDrain> =
+            PowerColumn.components
+                .filter { it != PowerColumn.CUSTOM && device[it] > 0 }
+                .map { column ->
+                    val top =
+                        apps.entries
+                            .filter { (uid, power) -> uid >= 0 && power[column] > 0 }
+                            .sortedByDescending { it.value[column] }
+                            .take(TOP_APPS)
+                            .map { (uid, power) -> ComponentApp(uid, names[uid]?.label, power.mah(column)) }
+                    ComponentDrain(PowerComponent.of(column), device.mah(column), top)
+                }.sortedByDescending { it.mah }
 
         private class Bases(
             val onBatteryMs: Long,
@@ -391,6 +455,8 @@ internal class DrainReader
 
             suspend fun uids() = windows.chainUids(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
 
+            suspend fun components() = windows.chainComponents(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
+
             suspend fun wakes() = windows.chainWakes(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
 
             suspend fun stat(key: String) = windows.chainStat(key, from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
@@ -404,6 +470,12 @@ internal class DrainReader
 
             /** SPEC 10.7 lists screen-off sessions of an hour or more. */
             const val NIGHT_MIN_NS: Long = 3_600_000_000_000L
+
+            /** ADR-0035 §7: below this share of the span's modeled total, the lens keeps S5's device rows. */
+            const val MIN_COVERED = 0.5
+
+            /** SPEC 10.3: each component lists its top apps. */
+            const val TOP_APPS = 3
 
             /** A chain covers a stored window when their times differ by at most a minute. */
             const val COVER_SLACK_MS: Long = 60_000L

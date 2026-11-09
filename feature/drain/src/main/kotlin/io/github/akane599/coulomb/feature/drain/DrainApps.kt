@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +25,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import io.github.akane599.coulomb.core.data.AppBreakdown
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.WindowDrains
@@ -75,6 +75,8 @@ internal data class AppsView(
     val factor: Double,
     /** What every share divides by. */
     val denominator: Double,
+    /** S4's components for each app it broke down, by UID (ADR-0035 §7). */
+    val breakdowns: Map<Int, AppBreakdown> = emptyMap(),
 ) {
     val scaled: Boolean get() = factor != 1.0
 
@@ -113,8 +115,23 @@ internal fun appsView(
         }.sortedByDescending { it.mah }
     val gap = drains.unattributedMah
     val unattributed = gap.takeIf { !scaling && measured != null && it > measured * UNATTRIBUTED_ROW }
-    return AppsView(rows, visible.drop(shown.size), hidden, drains.otherMah, unattributed, factor, denominator)
+    return AppsView(rows, visible.drop(shown.size), hidden, drains.otherMah, unattributed, factor, denominator, breakdowns(report))
 }
+
+/** S4's components for each app of [report] it broke down (ADR-0035 §7). */
+private fun breakdowns(report: DrainReport): Map<Int, AppBreakdown> {
+    val breakdown = report.breakdown ?: return emptyMap()
+    return report.drains.apps
+        .mapNotNull { app -> breakdown.of(app.uid, app.mah)?.let { app.uid to it } }
+        .toMap()
+}
+
+/** An app row's expand button: whose components it shows, whether they are open, and the toggle. */
+internal class RowExpand(
+    val name: String,
+    val open: Boolean,
+    val toggle: () -> Unit,
+)
 
 /** The share at which an app gets its own row (lab: "Each under 3%"). */
 internal const val ROW_SHARE = 0.03
@@ -167,10 +184,19 @@ internal fun LazyListScope.appsItems(
         }
     }
     if (!view.empty) {
-        itemsIndexed(view.rows, key = { _, entry -> entry.key }, contentType = { _, _ -> "row" }) { index, entry ->
+        view.rows.forEachIndexed { index, entry ->
             when (entry) {
-                is AppsEntry.App -> AppRow(entry.app, view, index == 0, provenance, formats, actions, rowMotion())
-                is AppsEntry.Device -> DeviceRow(entry.mah, view, index == 0, provenance, formats, rowMotion())
+                is AppsEntry.App -> {
+                    appItems(entry.app, view, index == 0, provenance, formats, actions, lists)
+                }
+
+                is AppsEntry.Device -> {
+                    item(key = DEVICE_KEY, contentType = "row") {
+                        Slotted(view, index == 0, rowMotion()) { modifier ->
+                            DeviceRow(entry.mah, view, index == 0, provenance, formats, modifier)
+                        }
+                    }
+                }
             }
         }
         if (view.remainderMah > 0) remainderItems(view, provenance, formats, actions, lists)
@@ -191,46 +217,30 @@ private fun LazyListScope.remainderItems(
 ) {
     val open = lists.remainderOpen
     item(key = "remainder", contentType = "row") {
-        Remainder(view, provenance, formats, view.rows.isEmpty(), open, toggle = { lists.setRemainderOpen(!open) }, rowMotion())
+        val first = view.rows.isEmpty()
+        Slotted(view, first, rowMotion()) { modifier ->
+            Remainder(view, provenance, formats, first, open, toggle = { lists.setRemainderOpen(!open) }, modifier)
+        }
     }
     if (!open) return
-    itemsIndexed(view.rest, key = { _, app -> appKey(app.uid) }, contentType = { _, _ -> "row" }) { _, app ->
-        AppRow(app, view, false, provenance, formats, actions, rowMotion())
-    }
+    view.rest.forEach { app -> appItems(app, view, false, provenance, formats, actions, lists) }
     if (view.hidden.isNotEmpty()) {
         item(key = "hidden", contentType = "row") {
-            val hiddenMah = view.hidden.sumOf { it.mah }
-            val share = view.share(hiddenMah)
-            AppDrainRow(
-                icon = null,
-                name = pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, formats.integer(view.hidden.size.toLong())),
-                detail = null,
-                value = formats.mah(hiddenMah * view.factor),
-                provenance = provenance,
-                share = share,
-                shareText = formats.share(share),
-                first = false,
-                onClick = null,
-                modifier = rowMotion(),
-                standIn = IconStandIn.Group("+${formats.integer(view.hidden.size.toLong())}"),
-            )
+            val count = formats.integer(view.hidden.size.toLong())
+            val name = pluralStringResource(R.plurals.drain_hidden_system, view.hidden.size, count)
+            GroupRow(name, view.hidden.sumOf { it.mah }, IconStandIn.Group("+$count"), view, provenance, formats, rowMotion())
         }
     }
     if (view.otherMah > 0) {
         item(key = "small", contentType = "row") {
-            val share = view.share(view.otherMah)
-            AppDrainRow(
-                icon = null,
-                name = stringResource(R.string.drain_small_apps),
-                detail = null,
-                value = formats.mah(view.otherMah * view.factor),
-                provenance = provenance,
-                share = share,
-                shareText = formats.share(share),
-                first = false,
-                onClick = null,
-                modifier = rowMotion(),
-                standIn = IconStandIn.Group("+"),
+            GroupRow(
+                stringResource(R.string.drain_small_apps),
+                view.otherMah,
+                IconStandIn.Group("+"),
+                view,
+                provenance,
+                formats,
+                rowMotion(),
             )
         }
     }
@@ -244,15 +254,50 @@ private fun LazyListScope.remainderItems(
     }
 }
 
-/** An app's key in the list, the same whether its row is ranked or opened from the remainder. */
-private fun appKey(uid: Int) = "app-$uid"
-
-private val AppsEntry.key: String
-    get() =
-        when (this) {
-            is AppsEntry.App -> appKey(app.uid)
-            is AppsEntry.Device -> DEVICE_KEY
+/**
+ * An app's row, keyed by its UID so that it is the same item whether ranked or opened from the
+ * remainder; with S4's breakdown, an expand button, and the breakdown under it while open.
+ */
+@Suppress("LongParameterList") // One row's inputs.
+private fun LazyListScope.appItems(
+    app: AppDrain,
+    view: AppsView,
+    first: Boolean,
+    provenance: Provenance,
+    formats: Formats,
+    actions: DrainActions,
+    lists: ListState,
+) {
+    val breakdown = view.breakdowns[app.uid]
+    val open = breakdown != null && lists.appOpen(app.uid)
+    item(key = "app-${app.uid}", contentType = "row") {
+        val expand = breakdown?.let { RowExpand(formats.appName(app.label, app.uid), open) { lists.toggleApp(app.uid) } }
+        Slotted(view, first, rowMotion(), expand) { modifier ->
+            AppRow(app, view, first, provenance, formats, actions, modifier)
         }
+    }
+    if (open) {
+        item(key = "breakdown-${app.uid}", contentType = "breakdown") {
+            AppBreakdownList(checkNotNull(breakdown), view.factor, formats, rowMotion())
+        }
+    }
+}
+
+/**
+ * [row] in a [SlotRow], which draws the hairlines, so [row] draws none. Once any row of the list
+ * opens to its components, every row keeps the end slot, so each figure lines up with those beside
+ * an expand button.
+ */
+@Composable
+private fun Slotted(
+    view: AppsView,
+    first: Boolean,
+    modifier: Modifier = Modifier,
+    expand: RowExpand? = null,
+    row: @Composable (Modifier) -> Unit,
+) {
+    SlotRow(first, modifier, expand, slot = view.breakdowns.isNotEmpty(), row = row)
+}
 
 /** The list caption names every share's denominator (DESIGN.md); a lower bound says so. */
 @Composable
@@ -269,7 +314,14 @@ private fun Captions(
             drains.sharesOfMeasured -> stringResource(R.string.drain_shares_of_measured, total)
             else -> stringResource(R.string.drain_shares_of_modeled, total)
         }
-    val captions = listOfNotNull(shares, if (report.lowerBound) stringResource(R.string.drain_lower_bound) else null)
+    // ADR-0035 §2: where a breakdown is missing because the setting was off, name the setting.
+    val off =
+        when {
+            !report.breakdownOff -> null
+            view.breakdowns.isEmpty() -> stringResource(R.string.drain_breakdown_off)
+            else -> stringResource(R.string.drain_breakdown_off_part)
+        }
+    val captions = listOfNotNull(shares, if (report.lowerBound) stringResource(R.string.drain_lower_bound) else null, off)
     Column(Modifier.padding(top = CoulombSpacing.Space8)) {
         captions.forEach {
             Text(
@@ -307,7 +359,39 @@ private fun AppRow(
         first = first,
         onClick = open?.let { { it(app.uid) } },
         modifier = modifier,
+        hairlines = false,
     )
+}
+
+/** A row for apps the open remainder lists together: the hidden system apps, or the small ones. */
+@Composable
+@Suppress("LongParameterList") // One row's content.
+private fun GroupRow(
+    name: String,
+    mah: Double,
+    standIn: IconStandIn,
+    view: AppsView,
+    provenance: Provenance,
+    formats: Formats,
+    modifier: Modifier = Modifier,
+) {
+    val share = view.share(mah)
+    Slotted(view, false, modifier) { row ->
+        AppDrainRow(
+            icon = null,
+            name = name,
+            detail = null,
+            value = formats.mah(mah * view.factor),
+            provenance = provenance,
+            share = share,
+            shareText = formats.share(share),
+            first = false,
+            onClick = null,
+            modifier = row,
+            standIn = standIn,
+            hairlines = false,
+        )
+    }
 }
 
 /** SPEC 6.5's friendly system row: what the model charged to no app. */
@@ -333,6 +417,7 @@ private fun DeviceRow(
         onClick = null,
         modifier = modifier,
         standIn = IconStandIn.Device,
+        hairlines = false,
     )
 }
 
@@ -397,6 +482,7 @@ private fun Remainder(
                 }
             },
         standIn = IconStandIn.Remainder(if (count > 0) "+${formats.integer(count.toLong())}" else "+"),
+        hairlines = false,
     )
 }
 
@@ -416,18 +502,22 @@ private fun Unattributed(
             color = CoulombTheme.colors.textSecondary,
             style = CoulombTheme.typography.label,
         )
-        AppDrainRow(
-            icon = null,
-            name = stringResource(R.string.drain_unattributed_name),
-            detail = stringResource(R.string.drain_unattributed_detail),
-            value = formats.mah(mah),
-            provenance = Provenance.DERIVED,
-            share = share,
-            shareText = formats.share(share),
-            first = true,
-            onClick = null,
-            standIn = IconStandIn.Gap,
-        )
+        Slotted(view, true, Modifier) { modifier ->
+            AppDrainRow(
+                icon = null,
+                name = stringResource(R.string.drain_unattributed_name),
+                detail = stringResource(R.string.drain_unattributed_detail),
+                value = formats.mah(mah),
+                provenance = Provenance.DERIVED,
+                share = share,
+                shareText = formats.share(share),
+                first = true,
+                onClick = null,
+                modifier = modifier,
+                standIn = IconStandIn.Gap,
+                hairlines = false,
+            )
+        }
     }
 }
 

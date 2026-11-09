@@ -11,6 +11,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.google.common.truth.Truth.assertThat
@@ -33,11 +34,14 @@ class DrainFocusTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun show(lens: Lens) {
+    private fun show(
+        lens: Lens,
+        state: DrainUiState = ready(),
+    ) {
         compose.setContent {
             CoulombTheme {
                 Box(Modifier.fillMaxSize()) {
-                    DrainContent(state = ready(), actions = NoActions, zone = ZoneOffset.UTC, initialLens = lens)
+                    DrainContent(state = state, actions = NoActions, zone = ZoneOffset.UTC, initialLens = lens)
                 }
             }
         }
@@ -64,6 +68,20 @@ class DrainFocusTest {
         compose.waitForIdle()
         val after = compose.onNode(sameNode(id)).fetchSemanticsNode()
         assertThat(after.config[SemanticsProperties.StateDescription]).isEqualTo("Expanded")
+    }
+
+    /** The expand button turns into the collapse button in place, and the chips follow it. */
+    @Test
+    fun theExpandButtonStaysTheFocusedNode() {
+        show(Lens.APPS, ready(brokenDownReport(), includeSystem = true))
+        val button = compose.onNodeWithContentDescription("Show Halcyon’s components")
+        val id = button.fetchSemanticsNode().id
+        button.performClick()
+        compose.waitForIdle()
+        val after = compose.onNode(sameNode(id)).fetchSemanticsNode()
+        assertThat(after.config[SemanticsProperties.ContentDescription]).containsExactly("Hide Halcyon’s components")
+        assertThat(after.config[SemanticsProperties.StateDescription]).isEqualTo("Expanded")
+        compose.onNodeWithText("Mobile network", substring = true).assertExists()
     }
 }
 

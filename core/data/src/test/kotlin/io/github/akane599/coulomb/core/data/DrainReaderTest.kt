@@ -13,15 +13,18 @@ import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
+import io.github.akane599.coulomb.core.database.entity.PowerColumns
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
+import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.AutoReference
+import io.github.akane599.coulomb.core.model.Breakdown
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.SessionCloseReason
@@ -459,6 +462,82 @@ class DrainReaderTest {
             assertThat(reader.read(DrainSpan.Last24Hours, empty())).isNull()
             assertThat(reader.read(DrainSpan.Today, empty(listOf(reference(AutoReference.TODAY, a))))).isNull()
             assertThat(reader.read(DrainSpan.SinceUnplugged, empty())).isNull()
+        }
+
+    /**
+     * ADR-0035 §7: S4's covered windows give the device's components, with what they leave out as
+     * "Not broken down", and each app's chips; custom energy shows in app chips only.
+     */
+    @Test
+    fun coveredWindowsBreakDownTheComponentsAndTheApps() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+            store(
+                window(a, b).copy(modeledMah = 10.0, breakdown = Breakdown.BROKEN_DOWN),
+                WindowRows(
+                    uids = listOf(uid(APP, 6.0), uid(WindowUidEntity.OTHER_UID, 4.0)),
+                    components =
+                        listOf(
+                            WindowComponentEntity(0, APP, PowerColumns(cpu = 180, custom = 36, foreground = 216)),
+                            WindowComponentEntity(0, WindowUidEntity.OTHER_UID, PowerColumns(wifi = 144)),
+                            WindowComponentEntity(0, UidPowerEntity.DEVICE_UID, PowerColumns(cpu = 300, screen = 60, custom = 50)),
+                        ),
+                ),
+            )
+            store(window(b, c).copy(modeledMah = 6.0, breakdown = Breakdown.S4_OFF), WindowRows(uids = listOf(uid(APP, 2.0))))
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.components.map { it.component to it.mah })
+                .containsExactly(PowerComponent.CPU to 300 / 36.0, PowerComponent.SCREEN to 60 / 36.0)
+                .inOrder()
+            assertThat(report.components.first().topApps).containsExactly(ComponentApp(APP, "Halcyon", 5.0))
+            assertThat(report.componentsNotBrokenDownMah).isEqualTo(6.0)
+            assertThat(report.breakdownOff).isTrue()
+            val chips = checkNotNull(checkNotNull(report.breakdown).of(APP, totalMah = 8.0))
+            assertThat(chips.parts.map { it.component to it.mah })
+                .containsExactly(PowerComponent.CPU to 5.0, PowerComponent.CUSTOM to 1.0)
+                .inOrder()
+            assertThat(chips.notBrokenDownMah).isWithin(1e-9).of(2.0)
+            assertThat(report.breakdown.of(OTHER_APP, 1.0)).isNull()
+        }
+
+    /** Under half the span covered, the lens keeps S5's coarse device rows; the app chips stay. */
+    @Test
+    fun aMostlyUncoveredSpanKeepsS5sDeviceRows() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+            store(
+                window(a, b).copy(modeledMah = 4.0, breakdown = Breakdown.BROKEN_DOWN),
+                WindowRows(
+                    uids = listOf(uid(APP, 4.0), uid(UidPowerEntity.DEVICE_UID, 4.0, "SCREEN")),
+                    components =
+                        listOf(
+                            WindowComponentEntity(0, APP, PowerColumns(cpu = 144)),
+                            WindowComponentEntity(0, UidPowerEntity.DEVICE_UID, PowerColumns(cpu = 144)),
+                        ),
+                ),
+            )
+            store(
+                window(b, c).copy(modeledMah = 10.0, breakdown = Breakdown.NOT_ON_BATTERY),
+                WindowRows(uids = listOf(uid(UidPowerEntity.DEVICE_UID, 10.0, "SCREEN"))),
+            )
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.components.map { it.component to it.mah }).containsExactly(PowerComponent.SCREEN to 14.0)
+            assertThat(report.componentsNotBrokenDownMah).isNull()
+            assertThat(report.breakdownOff).isFalse()
+            assertThat(
+                report.breakdown
+                    ?.of(APP, 4.0)
+                    ?.parts
+                    ?.map { it.component },
+            ).containsExactly(PowerComponent.CPU)
         }
 
     private fun empty(references: List<ReferenceEntity> = emptyList()) = DrainInputs(emptyList(), references, null, meta)

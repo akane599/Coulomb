@@ -5,6 +5,8 @@ package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.stats.ComponentPower
+import io.github.akane599.coulomb.core.model.stats.PowerColumn
 import java.time.LocalDate
 
 /** A window Drain can show (SPEC 10.3, ADR-0023 §4). Every span ends at the latest heavy snapshot, or at its own end. */
@@ -72,14 +74,73 @@ public data class DrainReport(
     val wakeCoverage: WakeCoverage,
     /** Wakeup alarms per app, most first (S5 reports wakeup alarms only). */
     val alarms: List<AlarmEntry>,
-    /** The device's power by component, apps included, largest first. Modeled. */
+    /**
+     * The device's power by component, apps included, largest first. Modeled. From S4 when its
+     * windows hold at least half the span's modeled total ([componentsNotBrokenDownMah] is then set),
+     * else S5's coarse device rows (ADR-0035 §7).
+     */
     val components: List<ComponentDrain> = emptyList(),
+    /** With S4's [components]: the modeled energy of the windows S4 did not break down. */
+    val componentsNotBrokenDownMah: Double? = null,
+    /** S4's per-app breakdown; null when no window of the span was broken down. */
+    val breakdown: SpanBreakdown? = null,
+    /** Some windows of the span were not broken down because Component breakdown was off (ADR-0035 §2). */
+    val breakdownOff: Boolean = false,
 )
 
 /** One power component's share of a span: the device's total for it, apps included. Modeled. */
 public data class ComponentDrain(
     val component: PowerComponent,
     val mah: Double,
+    /** With S4: the apps that used the most of it, most first (SPEC 10.3). */
+    val topApps: List<ComponentApp> = emptyList(),
+)
+
+/** One app's use of a component. A null [label] has no name yet. */
+public data class ComponentApp(
+    val uid: Int,
+    val label: String?,
+    val mah: Double,
+)
+
+/**
+ * S4's breakdown of a span (ADR-0035 §7): each app's components summed over the span's
+ * broken-down windows. Modeled.
+ */
+public data class SpanBreakdown(
+    /** By UID, with [WindowUidEntity.OTHER_UID] for the windows' small apps; S4's columns in dC. */
+    val apps: Map<Int, ComponentPower>,
+) {
+    /**
+     * [uid]'s components, largest first, custom included as S5's app totals include it, and what
+     * is left of its [totalMah] over the span; null when S4 broke down none of its use.
+     */
+    public fun of(
+        uid: Int,
+        totalMah: Double,
+    ): AppBreakdown? {
+        val power = apps[uid] ?: return null
+        val parts =
+            PowerColumn.components
+                .filter { power[it] > 0 }
+                .map { ComponentDrain(PowerComponent.of(it), power.mah(it)) }
+                .sortedByDescending { it.mah }
+        if (parts.isEmpty()) return null
+        // Decision 5 keeps the remainder from going below zero by more than its margin; below zero shows as none.
+        val rest = totalMah - parts.sumOf { it.mah }
+        return AppBreakdown(parts, rest.takeIf { it >= MIN_REST_MAH })
+    }
+
+    private companion object {
+        /** A remainder under this is rounding, not a part of the app's use. */
+        const val MIN_REST_MAH = 0.05
+    }
+}
+
+/** One app's components in a span, and the use S4 did not break down (ADR-0035 §7). */
+public data class AppBreakdown(
+    val parts: List<ComponentDrain>,
+    val notBrokenDownMah: Double?,
 )
 
 /**
@@ -109,6 +170,13 @@ public enum class PowerComponent {
     ;
 
     public companion object {
+        /** S4's column as Drain names it; the process-state columns are not components. */
+        public fun of(column: PowerColumn): PowerComponent {
+            require(!column.isProcessState) { "$column is a process state" }
+            // Every component column has the component's name.
+            return valueOf(column.name)
+        }
+
         /**
          * The component a stored row names: S5's sipper kinds (`SipperKind`, upper case) or the
          * platform's component names (`BatteryConsumer.sPowerComponentNames`, lower case).

@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.database.dao
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -11,6 +12,7 @@ import androidx.room.Transaction
 import androidx.room.TypeConverters
 import io.github.akane599.coulomb.core.database.entity.DetailCodes
 import io.github.akane599.coulomb.core.database.entity.KernelCodes
+import io.github.akane599.coulomb.core.database.entity.PowerColumns
 import io.github.akane599.coulomb.core.database.entity.StatKeyEntity
 import io.github.akane599.coulomb.core.database.entity.WakeTagEntity
 import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
@@ -71,6 +73,18 @@ public data class ChainTotals(
     val screenOffMs: Long,
     /** The time of the windows that started on battery with a measured value: the hours [dischargeMah] covers. */
     val measuredMs: Long,
+    /** Windows S4 broke down (ADR-0035 §5): each has a `window_component` device row. */
+    val coveredWindows: Int = 0,
+    /** The covered windows' modeled total from S5; null when none is covered. */
+    val coveredModeledMah: Double? = null,
+    /** Windows not broken down because Component breakdown was off (ADR-0035 §2). */
+    val offWindows: Int = 0,
+)
+
+/** One `window_component` UID's columns summed over a chain's covered windows (ADR-0035 §7), in dC. */
+public data class ChainComponent(
+    val uid: Int,
+    @Embedded val power: PowerColumns,
 )
 
 /** One UID's modeled mAh for one component, summed over a chain. */
@@ -248,7 +262,10 @@ public abstract class WindowDao {
             "COALESCE(SUM(w.modeledMah IS NULL), 0) AS unmodeledWindows, " +
             "COALESCE(SUM(w.screenOnMs), 0) AS screenOnMs, COALESCE(SUM(w.screenOffMs), 0) AS screenOffMs, " +
             "COALESCE(SUM(CASE WHEN f.plugType = 0 AND w.measuredMah IS NOT NULL THEN w.screenOnMs + w.screenOffMs END), 0) " +
-            "AS measuredMs " +
+            "AS measuredMs, " +
+            "COALESCE(SUM(w.breakdown = $BROKEN_DOWN), 0) AS coveredWindows, " +
+            "SUM(CASE WHEN w.breakdown = $BROKEN_DOWN THEN w.modeledMah END) AS coveredModeledMah, " +
+            "COALESCE(SUM(w.breakdown = $S4_OFF), 0) AS offWindows " +
             "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
             "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN",
     )
@@ -285,6 +302,21 @@ public abstract class WindowDao {
         toBootSeq: Int,
         toElapsedNs: Long,
     ): List<ChainUid>
+
+    /**
+     * As [chainTotals], each UID's S4 columns summed over the broken-down windows (ADR-0035 §7). Only
+     * those windows have `window_component` rows, and each has a device row.
+     */
+    @Query(
+        "SELECT c.uid, $SUM_POWER_COLUMNS FROM window_component c JOIN window_result w ON w.id = c.windowId " +
+            "JOIN snapshot s ON s.id = w.toSnapshotId WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY c.uid",
+    )
+    public abstract suspend fun chainComponents(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<ChainComponent>
 
     /** As [chainTotals], each wakelock, kernel source and wakeup reason, with its screen-off time. */
     @Query(
@@ -458,6 +490,19 @@ public abstract class WindowDao {
                 "AND (s.bootSeq < :toBootSeq OR (s.bootSeq = :toBootSeq AND s.elapsedNs <= :toElapsedNs))"
 
         const val MAX_IDS = 500
+
+        /** `Breakdown.BROKEN_DOWN.code` and `Breakdown.S4_OFF.code`, frozen (schema v4). */
+        const val BROKEN_DOWN = "0"
+        const val S4_OFF = "1"
+
+        /** [PowerColumns]' columns summed, each under its own name. */
+        const val SUM_POWER_COLUMNS =
+            "SUM(c.screen) AS screen, SUM(c.cpu) AS cpu, SUM(c.bluetooth) AS bluetooth, SUM(c.camera) AS camera, " +
+                "SUM(c.audio) AS audio, SUM(c.video) AS video, SUM(c.flashlight) AS flashlight, " +
+                "SUM(c.mobileRadio) AS mobileRadio, SUM(c.sensors) AS sensors, SUM(c.gnss) AS gnss, SUM(c.wifi) AS wifi, " +
+                "SUM(c.wakelock) AS wakelock, SUM(c.phone) AS phone, SUM(c.ambientDisplay) AS ambientDisplay, " +
+                "SUM(c.custom) AS custom, SUM(c.other) AS other, SUM(c.foreground) AS foreground, " +
+                "SUM(c.background) AS background, SUM(c.foregroundService) AS foregroundService, SUM(c.cached) AS cached"
 
         /** `window_uid` rows with their names as text ([WindowUid]). */
         const val UID_ROWS =
