@@ -113,8 +113,12 @@ public data class ChargeDetailEntity(
     val chargerProfileId: Long?,
     /** Null before calibration, when the current's scale is not known. */
     val peakW: Double?,
+    /**
+     * The median power at full speed, before the current tapers ([ccToCvLevel]); over the whole
+     * session when it never tapered (ADR-0043 §1). A charger's baseline is over this figure.
+     */
     val avgW: Double?,
-    /** Level where constant current gave way to constant voltage. */
+    /** Level from which the current stayed below 70% of full speed (ADR-0043 §1). */
     val ccToCvLevel: Int?,
     val minutesAbove80: Int,
     val minutesAbove38C: Int,

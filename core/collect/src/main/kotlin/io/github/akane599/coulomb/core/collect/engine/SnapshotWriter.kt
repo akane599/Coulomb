@@ -9,6 +9,9 @@ import io.github.akane599.coulomb.core.analytics.Attribution
 import io.github.akane599.coulomb.core.analytics.Capacity
 import io.github.akane599.coulomb.core.analytics.CapacityEstimate
 import io.github.akane599.coulomb.core.analytics.CapacityReading
+import io.github.akane599.coulomb.core.analytics.ChargeSample
+import io.github.akane599.coulomb.core.analytics.ChargerBaseline
+import io.github.akane599.coulomb.core.analytics.Charging
 import io.github.akane599.coulomb.core.analytics.DeviceState
 import io.github.akane599.coulomb.core.analytics.OpenSession
 import io.github.akane599.coulomb.core.analytics.SessionChange
@@ -29,6 +32,8 @@ import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
 import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
+import io.github.akane599.coulomb.core.database.entity.ChargeDetailEntity
+import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
 import io.github.akane599.coulomb.core.database.entity.HealthSummaryEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
@@ -200,6 +205,7 @@ internal class SnapshotWriter(
         val summarised = SessionSummary.close(session, end, sessionSamples, context.counterReliable, context.currentUa, awake)
         val closed = if (summarised.kind in SessionHealth.KINDS) health(summarised, sessionSamples, context) else summarised
         sessions.update(closed)
+        if (closed.kind == SessionKind.CHARGE) chargeDetail(closed, sessionSamples, context)
         if (closed.kind in SessionHealth.KINDS) healthSummary(closed.endWall ?: context.reading.wallMs, context)
         sessionWindow(closed, stored, rows, context)
         return closed
@@ -230,6 +236,64 @@ internal class SnapshotWriter(
             )
         }
         return SessionHealth.withWear(session, capacity(endWall, context.designMah)?.estimateMah, thresholds)
+    }
+
+    /**
+     * ADR-0043: a closed charge's power figures and its charger, matched to a profile by plug type
+     * and full-speed power or kept as a new, unnamed one; the profile's baseline and last-seen
+     * time follow.
+     */
+    private suspend fun chargeDetail(
+        session: SessionEntity,
+        samples: List<BatterySampleEntity>,
+        context: WriteContext,
+    ) {
+        val points =
+            samples.map { s ->
+                val ua = s.currentUa ?: s.currentRaw?.let { raw -> context.currentUa?.invoke(raw) }
+                ChargeSample(s.elapsedNs, s.levelPct, ua, s.voltageMv, s.tempDeciC, s.plugType)
+            }
+        val figures = Charging.figures(points)
+        val fullSpeed = figures.fullSpeedW
+        val endWall = session.endWall ?: context.reading.wallMs
+        val profileId =
+            if (fullSpeed == null || figures.plugType == 0) {
+                null
+            } else {
+                val profiles = sessions.chargerProfiles()
+                Charging.match(figures.plugType, fullSpeed, profiles.map { ChargerBaseline(it.id, it.plugType, it.baselineW) })
+                    ?: sessions.insertChargerProfile(
+                        ChargerProfileEntity(
+                            name = "",
+                            plugType = figures.plugType,
+                            baselineW = fullSpeed,
+                            firstSeenWall = session.startWall,
+                            lastSeenWall = endWall,
+                            notes = null,
+                        ),
+                    )
+            }
+        sessions.upsertChargeDetail(
+            ChargeDetailEntity(
+                sessionId = session.id,
+                plugType = figures.plugType,
+                chargerProfileId = profileId,
+                peakW = figures.peakW,
+                avgW = fullSpeed,
+                ccToCvLevel = figures.ccToCvLevel,
+                minutesAbove80 = session.minutesAtOrAbove80 ?: 0,
+                minutesAbove38C = figures.minutesAbove38C,
+                targetLevel = null,
+                protectionMode = null,
+            ),
+        )
+        val profile = profileId?.let { sessions.chargerProfile(it) } ?: return
+        sessions.updateChargerProfile(
+            profile.copy(
+                baselineW = Charging.baseline(sessions.latestFullSpeedW(profile.id, Charging.BASELINE_SESSIONS)),
+                lastSeenWall = maxOf(profile.lastSeenWall, endWall),
+            ),
+        )
     }
 
     /**

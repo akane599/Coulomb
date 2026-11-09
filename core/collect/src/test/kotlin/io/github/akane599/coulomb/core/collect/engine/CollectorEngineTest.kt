@@ -201,6 +201,33 @@ class CollectorEngineTest {
             assertThat(health.oemHealth).isEqualTo("mSavedBatteryAsoc=100")
         }
 
+    /** ADR-0043: a closed charge gets its power figures and a new, unnamed charger profile. */
+    @Test
+    fun aChargeGetsItsDetailAndANewChargerProfile() =
+        runTest {
+            reliableCounter()
+            chargeFromTwentyPercent()
+            val charge =
+                db
+                    .sessionDao()
+                    .observeRecent(SessionKind.CHARGE, 10)
+                    .first()
+                    .single()
+            val detail = checkNotNull(db.sessionDao().chargeDetail(charge.id))
+            val profile = db.sessionDao().chargerProfiles().single()
+            assertThat(detail.chargerProfileId).isEqualTo(profile.id)
+            assertThat(detail.plugType).isEqualTo(profile.plugType)
+            assertThat(detail.avgW).isNotNull()
+            assertThat(detail.peakW).isAtLeast(detail.avgW!!)
+            assertThat(detail.minutesAbove80).isEqualTo(charge.minutesAtOrAbove80)
+            // The fake charger holds one current to the end, so nothing tapers.
+            assertThat(detail.ccToCvLevel).isNull()
+            assertThat(profile.name).isEmpty()
+            assertThat(profile.baselineW).isEqualTo(detail.avgW)
+            assertThat(profile.firstSeenWall).isEqualTo(charge.startWall)
+            assertThat(profile.lastSeenWall).isEqualTo(charge.endWall)
+        }
+
     /** A stored design capacity, as the owner's entry, is never read over (ADR-0042 §1). */
     @Test
     fun aStoredDesignCapacityIsNeverReadOver() =

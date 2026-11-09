@@ -79,6 +79,22 @@ public interface SessionDao {
     @Query("SELECT * FROM charger_profile ORDER BY lastSeenWall DESC")
     public fun observeChargerProfiles(): Flow<List<ChargerProfileEntity>>
 
+    @Query("SELECT * FROM charger_profile")
+    public suspend fun chargerProfiles(): List<ChargerProfileEntity>
+
+    @Query("SELECT * FROM charger_profile WHERE id = :id")
+    public suspend fun chargerProfile(id: Long): ChargerProfileEntity?
+
+    /** A profile's latest full-speed powers (`avgW`, ADR-0043 §1), newest first. */
+    @Query(
+        "SELECT avgW FROM charge_detail WHERE chargerProfileId = :profileId AND avgW IS NOT NULL " +
+            "ORDER BY sessionId DESC LIMIT :limit",
+    )
+    public suspend fun latestFullSpeedW(
+        profileId: Long,
+        limit: Int,
+    ): List<Double>
+
     @Insert
     public suspend fun insertCapacityEstimate(estimate: CapacityEstimateEntity): Long
 
