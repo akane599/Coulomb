@@ -78,9 +78,18 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     the list-detail decision (`docs/questions.md`).
   - Polish passed with its major fixed (`2026-11-09-polish-drain.md`), so all eight SPEC 11.12
     gates have run on Drain with no critical or major finding open.
-  - Open before the Drain gates close:
-    - on the API 37 emulator: the rail's insets with 3-button navigation in landscape, and TalkBack
-      on the opened lists.
+  - Emulator check, 2026-11-09, on the API 37 AVD booted read-only (nothing persisted):
+    - The rail's insets with 3-button navigation pass in both landscape rotations. At 90° the
+      content stops before the nav bar on the end edge; at 270° the rail starts after it on the
+      start edge.
+    - In the narrower landscape column the window choices take three lines ("Last 24 h" and "More"
+      on their own). The radio group is nested so "More" stays outside it for TalkBack (ADR-0023
+      §4), and a wrapped group fills its line. Accepted.
+    - The TalkBack walk on the opened lists could not run: the `google_apis` image has no TalkBack,
+      and the AVD's data has no group long enough to open. `DrainFocusTest` stands in: "Show all"
+      and the remainder row stay the same semantics node when they open, so TalkBack focus has
+      nowhere to fall. The walk itself is pending a device with TalkBack.
+  - Drain's gates are closed except that TalkBack walk.
 
 ## P3 Design lab (gate passed 2026-11-07)
 
