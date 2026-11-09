@@ -55,6 +55,7 @@ import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.rowMotion
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -116,7 +117,14 @@ internal fun HealthContent(
         }
 
         HealthUiState.Error -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(actions.retry) }
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) {
+                ErrorState(
+                    stringResource(R.string.health_error_title),
+                    stringResource(R.string.health_error_body),
+                    stringResource(R.string.health_error_action),
+                    actions.retry,
+                )
+            }
         }
 
         is HealthUiState.Ready -> {
@@ -352,7 +360,6 @@ private val MinColumnWidth = 280.dp
 private val MaxTwoColumnWidth = 1200.dp
 private val MaxOneColumnWidth = 840.dp
 private val Bottom: Dp = CoulombSpacing.Space48
-private val ReadingWidth = 560.dp
 
 /** SPEC 10.11 loading: a still skeleton in the hero's and first section's shape. */
 @Composable
@@ -364,29 +371,5 @@ private fun Skeleton() {
         SkeletonBlock(48.dp, Modifier.padding(top = CoulombSpacing.Space24).fillMaxWidth())
         SkeletonBlock(26.dp, Modifier.padding(top = currentSectionGap()).width(160.dp))
         SkeletonBlock(14.dp, Modifier.padding(top = CoulombSpacing.Space16).fillMaxWidth())
-    }
-}
-
-/** SPEC 10.11 error: what happened and what to do; also the session screens'. */
-@Composable
-internal fun ErrorState(retry: () -> Unit) {
-    Column(Modifier.widthIn(max = ReadingWidth).padding(top = CoulombSpacing.Space24)) {
-        Text(
-            stringResource(R.string.health_error_title),
-            Modifier.fillMaxWidth().semantics { heading() },
-            color = CoulombTheme.colors.textPrimary,
-            style = CoulombTheme.typography.title,
-        )
-        Text(
-            stringResource(R.string.health_error_body),
-            Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
-            color = CoulombTheme.colors.textSecondary,
-            style = CoulombTheme.typography.body,
-        )
-        CoulombOutlinedButton(
-            text = stringResource(R.string.health_error_action),
-            onClick = retry,
-            modifier = Modifier.padding(top = CoulombSpacing.Space16),
-        )
     }
 }

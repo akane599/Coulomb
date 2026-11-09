@@ -46,6 +46,7 @@ import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.ErrorState
 import java.time.ZoneId
 
 /**
@@ -129,7 +130,12 @@ internal fun NowContent(
                 }
 
                 NowUiState.Error -> {
-                    ErrorState(actions.retry)
+                    ErrorState(
+                        stringResource(R.string.now_error_title),
+                        stringResource(R.string.now_error_body),
+                        stringResource(R.string.now_error_action),
+                        actions.retry,
+                    )
                 }
 
                 is NowUiState.Ready -> {
@@ -223,29 +229,5 @@ private fun Skeleton() {
                 }
             }
         }
-    }
-}
-
-/** SPEC 10.11 error: what happened and what to do. */
-@Composable
-private fun ErrorState(retry: () -> Unit) {
-    Column(Modifier.padding(top = CoulombSpacing.Space24)) {
-        Text(
-            stringResource(R.string.now_error_title),
-            Modifier.semantics { heading() },
-            color = CoulombTheme.colors.textPrimary,
-            style = CoulombTheme.typography.title,
-        )
-        Text(
-            stringResource(R.string.now_error_body),
-            modifier = Modifier.padding(top = CoulombSpacing.Space8),
-            color = CoulombTheme.colors.textSecondary,
-            style = CoulombTheme.typography.body,
-        )
-        CoulombOutlinedButton(
-            text = stringResource(R.string.now_error_action),
-            onClick = retry,
-            modifier = Modifier.padding(top = CoulombSpacing.Space16),
-        )
     }
 }

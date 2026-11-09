@@ -44,6 +44,7 @@ import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.format.Affixed
+import io.github.akane599.coulomb.core.ui.format.DASH
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import io.github.akane599.coulomb.core.ui.page.StandIn
@@ -130,8 +131,6 @@ private fun Figure(figure: Affixed) {
     FigureText(figure, numberStyle = type.title, unitStyle = type.label)
     ProvenanceMark(Provenance.DERIVED)
 }
-
-internal const val DASH = "–"
 
 /** The level the habits count time at or above (ADR-0044 §2). */
 internal const val HIGH_LEVEL = 80

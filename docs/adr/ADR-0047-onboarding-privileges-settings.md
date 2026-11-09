@@ -113,6 +113,9 @@ Privileges and Settings as built:
    results may predate this run's grants.
 4. **Grants removed** offers the step the bootstrap is waiting for (Open Shizuku, or Allow Coulomb in
    Shizuku) when it cannot run.
+5. **Buttons get 8 dp above and below the label**, inside their 40 and 48 dp minimums, so nothing
+   moves at 100% text and at 200% the label no longer touches the border (polish row 9, all
+   screens). The error state the screens repeated moved to `:core:ui` with the en dash.
 
 ## Consequences
 

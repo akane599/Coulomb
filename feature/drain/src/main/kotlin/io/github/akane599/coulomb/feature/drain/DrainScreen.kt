@@ -57,6 +57,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -192,7 +193,14 @@ internal fun DrainContent(
         }
 
         DrainUiState.Error -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(actions.retry) }
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) {
+                ErrorState(
+                    stringResource(R.string.drain_error_title),
+                    stringResource(R.string.drain_error_body),
+                    stringResource(R.string.drain_error_action),
+                    actions.retry,
+                )
+            }
         }
 
         is DrainUiState.Ready -> {
@@ -472,30 +480,3 @@ internal fun LensSkeleton(besideSummary: Boolean) {
 }
 
 private const val SKELETON_ROWS = 4
-
-private val ErrorMaxWidth = 560.dp
-
-/** SPEC 10.11 error: what happened and what to do. */
-@Composable
-internal fun ErrorState(retry: () -> Unit) {
-    // A reading measure, so the message does not run across a tablet.
-    Column(Modifier.widthIn(max = ErrorMaxWidth).padding(top = CoulombSpacing.Space24)) {
-        Text(
-            stringResource(R.string.drain_error_title),
-            Modifier.fillMaxWidth().semantics { heading() },
-            color = CoulombTheme.colors.textPrimary,
-            style = CoulombTheme.typography.title,
-        )
-        Text(
-            stringResource(R.string.drain_error_body),
-            modifier = Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
-            color = CoulombTheme.colors.textSecondary,
-            style = CoulombTheme.typography.body,
-        )
-        CoulombOutlinedButton(
-            text = stringResource(R.string.drain_error_action),
-            onClick = retry,
-            modifier = Modifier.padding(top = CoulombSpacing.Space16),
-        )
-    }
-}

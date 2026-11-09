@@ -49,6 +49,12 @@ private val ShareEnd = 2.dp
 private val HeadActionHang = 11.dp
 private val OutlinedHeight = 40.dp
 private val OutlinedPadding = 20.dp
+
+/**
+ * Above and below the label. Inside the 40 and 48 dp minimums at 100% text, so the buttons keep
+ * their height; at large text the label wraps or grows without touching the border.
+ */
+private val ButtonVertical = 8.dp
 private val OutlinedBorder = 1.dp
 private val HoverLift = 1.dp
 
@@ -117,7 +123,7 @@ public fun CoulombTextButton(
                     start = if (edge == ButtonEdge.Start) ButtonPadding else 0.dp,
                     end = if (edge == ButtonEdge.End) ButtonPadding else 0.dp,
                 ).heightIn(min = CoulombSpacing.TouchTarget),
-        contentPadding = PaddingValues(horizontal = ButtonPadding),
+        contentPadding = PaddingValues(horizontal = ButtonPadding, vertical = ButtonVertical),
         colors =
             ButtonDefaults.textButtonColors(
                 contentColor = colors.textPrimary,
@@ -149,7 +155,7 @@ public fun CoulombOutlinedButton(
         modifier = modifier.heightIn(min = OutlinedHeight),
         shape = RoundedCornerShape(percent = 50),
         border = BorderStroke(OutlinedBorder, colors.hairline),
-        contentPadding = PaddingValues(horizontal = OutlinedPadding),
+        contentPadding = PaddingValues(horizontal = OutlinedPadding, vertical = ButtonVertical),
         colors =
             ButtonDefaults.outlinedButtonColors(
                 contentColor = colors.textPrimary,
@@ -179,7 +185,7 @@ public fun CoulombFilledButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = OutlinedHeight),
         shape = RoundedCornerShape(percent = 50),
-        contentPadding = PaddingValues(horizontal = OutlinedPadding),
+        contentPadding = PaddingValues(horizontal = OutlinedPadding, vertical = ButtonVertical),
         colors =
             ButtonDefaults.buttonColors(
                 containerColor = colors.accentFill,

@@ -32,12 +32,12 @@
 | 6 | Minor | Privileges | In RTL, wrapped evidence moved to the left edge while one-line evidence sat right. | **Fixed.** Full width, aligned to the layout's start. |
 | 7 | Nit | Onboarding | A serial comma in the basic-mode body. | **Fixed.** |
 | 8 | Nit | Shared | "Tekrar dene" where every other screen says "Yeniden dene". | **Fixed.** |
-| 9 | Nit | All three | The buttons have no vertical padding, so at 200% the label nearly touches the border. | **Accepted for now.** It changes every screen's buttons; it goes with the whole-app pass at the P4 gate, with its own goldens. |
+| 9 | Nit | All three | The buttons have no vertical padding, so at 200% the label nearly touches the border. | **Fixed in the whole-app pass** that followed: 8 dp above and below, inside the minimum heights, so only the 200% goldens changed (16, every screen; ADR-0047 amendment 5). |
 | 10 | Nit | Privileges | No golden showed the Re-run and Export buttons or "Report saved." under a full matrix. | **Fixed.** `exported` is captured at 3100 dp. |
 
 ## Result
 
-The major finding and every minor are fixed; one nit waits for the whole-app pass with its reason.
+The major finding, every minor and every nit are fixed; the button nit in the whole-app pass after it.
 23 goldens re-recorded; `tools/ci/check.sh all` passes.
 
 ## The eight gates for these screens

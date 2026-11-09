@@ -24,6 +24,9 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
+/** In place of a value that is missing, in a table cell or a figure's place (en dash). */
+public const val DASH: String = "\u2013"
+
 /** A formatted number split around its digits, so the parts can be set in different styles. */
 @Immutable
 public data class Affixed(

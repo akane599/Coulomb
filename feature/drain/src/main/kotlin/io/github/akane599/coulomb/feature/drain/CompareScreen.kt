@@ -56,6 +56,7 @@ import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.ErrorState
 
 /**
  * Compare two periods (ADR-0038): two ranges of days side by side, each figure per hour of the time
@@ -194,9 +195,22 @@ private fun CompareSummary(
     }
     val comparison = state.comparison
     when {
-        state.failed -> ErrorState(actions.retry)
-        comparison == null -> SummarySkeleton()
-        else -> FadeInPerPeriods("${state.first}/${state.second}") { Totals(comparison, formats) }
+        state.failed -> {
+            ErrorState(
+                stringResource(R.string.drain_error_title),
+                stringResource(R.string.drain_error_body),
+                stringResource(R.string.drain_error_action),
+                actions.retry,
+            )
+        }
+
+        comparison == null -> {
+            SummarySkeleton()
+        }
+
+        else -> {
+            FadeInPerPeriods("${state.first}/${state.second}") { Totals(comparison, formats) }
+        }
     }
 }
 

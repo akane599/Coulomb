@@ -182,8 +182,10 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     - critique 28/27/27; audit 16/20; harden 3 majors fixed; adapt and optimize 1 major each,
       fixed; clarify and animate minors fixed; polish 1 major (the Turkish register), fixed;
     - all eight gates have run with no critical or major open (summary at the end of the polish
-      doc); decisions in ADR-0047, "Gate amendments". One nit waits for the whole-app pass: button
-      padding at 200% text.
+      doc); decisions in ADR-0047, "Gate amendments".
+    - Whole-app pass after it: buttons keep their height at 100% text and get room around the
+      label at 200% (16 goldens, every screen); the error state and the en dash the screens
+      repeated live in `:core:ui`.
     - A failed read used to end the app's shared flows; Now, Drain and App detail read through cold
       flows now (ADR-0048).
   - Goldens: every step and issue state, light and dark, 200% text, Turkish, Arabic, wide windows,

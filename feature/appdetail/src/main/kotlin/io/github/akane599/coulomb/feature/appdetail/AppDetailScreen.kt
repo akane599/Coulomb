@@ -53,6 +53,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
 import java.time.ZoneId
 
@@ -132,7 +133,14 @@ internal fun AppDetailContent(
         }
 
         AppDetailUiState.Error -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(actions.retry) }
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) {
+                ErrorState(
+                    stringResource(R.string.appdetail_error_title),
+                    stringResource(R.string.appdetail_error_body),
+                    stringResource(R.string.appdetail_error_action),
+                    actions.retry,
+                )
+            }
         }
 
         is AppDetailUiState.Ready -> {
@@ -262,27 +270,3 @@ private fun Empty(span: DrainSpan) {
 }
 
 private val ReadingWidth = 560.dp
-
-/** SPEC 10.11 error: what happened and what to do. */
-@Composable
-private fun ErrorState(retry: () -> Unit) {
-    Column(Modifier.widthIn(max = ReadingWidth).padding(top = CoulombSpacing.Space24)) {
-        Text(
-            stringResource(R.string.appdetail_error_title),
-            Modifier.fillMaxWidth().semantics { heading() },
-            color = CoulombTheme.colors.textPrimary,
-            style = CoulombTheme.typography.title,
-        )
-        Text(
-            stringResource(R.string.appdetail_error_body),
-            Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
-            color = CoulombTheme.colors.textSecondary,
-            style = CoulombTheme.typography.body,
-        )
-        CoulombOutlinedButton(
-            text = stringResource(R.string.appdetail_error_action),
-            onClick = retry,
-            modifier = Modifier.padding(top = CoulombSpacing.Space16),
-        )
-    }
-}

@@ -42,8 +42,10 @@ import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
+import io.github.akane599.coulomb.core.ui.format.DASH
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.page.StandIn
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -108,7 +110,12 @@ internal fun ChargingContent(
             }
 
             ChargingUiState.Error -> {
-                ErrorState(actions.retry)
+                ErrorState(
+                    stringResource(R.string.charging_error_title),
+                    stringResource(R.string.charging_error_body),
+                    stringResource(R.string.charging_error_action),
+                    actions.retry,
+                )
             }
 
             ChargingUiState.Unplugged -> {
@@ -248,29 +255,3 @@ private fun Skeleton() {
         SkeletonBlock(80.dp, Modifier.padding(top = currentSectionGap()).fillMaxWidth())
     }
 }
-
-/** SPEC 10.11 error: what happened and what to do. */
-@Composable
-private fun ErrorState(retry: () -> Unit) {
-    Column(Modifier.widthIn(max = 560.dp).padding(top = CoulombSpacing.Space24)) {
-        Text(
-            stringResource(R.string.charging_error_title),
-            Modifier.fillMaxWidth().semantics { heading() },
-            color = CoulombTheme.colors.textPrimary,
-            style = CoulombTheme.typography.title,
-        )
-        Text(
-            stringResource(R.string.charging_error_body),
-            Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
-            color = CoulombTheme.colors.textSecondary,
-            style = CoulombTheme.typography.body,
-        )
-        CoulombOutlinedButton(
-            text = stringResource(R.string.charging_error_action),
-            onClick = retry,
-            modifier = Modifier.padding(top = CoulombSpacing.Space16),
-        )
-    }
-}
-
-internal const val DASH = "–"

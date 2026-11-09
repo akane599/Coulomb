@@ -54,8 +54,10 @@ import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.format.Affixed
+import io.github.akane599.coulomb.core.ui.format.DASH
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import io.github.akane599.coulomb.core.ui.page.StandIn
@@ -104,7 +106,14 @@ internal fun ChargeSessionsContent(
         }
 
         Read.Error -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(retry) }
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) {
+                ErrorState(
+                    stringResource(R.string.health_error_title),
+                    stringResource(R.string.health_error_body),
+                    stringResource(R.string.health_error_action),
+                    retry,
+                )
+            }
         }
 
         is Read.Ready -> {
@@ -165,7 +174,14 @@ internal fun ChargeSessionContent(
         }
 
         Read.Error -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(retry) }
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) {
+                ErrorState(
+                    stringResource(R.string.health_error_title),
+                    stringResource(R.string.health_error_body),
+                    stringResource(R.string.health_error_action),
+                    retry,
+                )
+            }
         }
 
         is Read.Ready -> {
