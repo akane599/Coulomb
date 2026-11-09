@@ -412,7 +412,7 @@ private fun Unattributed(
         Text(
             stringResource(R.string.drain_gap_heading),
             // Full width, as the captions around it, so it aligns to the same edge in RTL.
-            Modifier.fillMaxWidth().padding(bottom = CoulombSpacing.Space4).semantics { heading() },
+            Modifier.fillMaxWidth().padding(bottom = CoulombSpacing.Space12).semantics { heading() },
             color = CoulombTheme.colors.textSecondary,
             style = CoulombTheme.typography.label,
         )

@@ -83,6 +83,7 @@
 
     <string name="drain_components_caption">Cihazın gücü bileşenlere göre, uygulamalar dahil, Android’in modellediği gibi. Paylar modellenen %1$s üzerinden.</string>
     <string name="drain_components_coarse">Android bu aralık için bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
+    <string name="drain_compare_components_coarse">Android bu dönemlerden birinde bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
     <string name="drain_components_empty">Bu aralık için bileşen dökümü yok.</string>
     <string name="drain_view_table">Tablo olarak gör</string>
     <string name="drain_table_reconcile">Ölçülen ve modellenen</string>

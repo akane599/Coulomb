@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DateRangePickerDefaults
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -215,28 +217,43 @@ internal fun RangeDialog(
     val start = state.selectedStartDateMillis
     DatePickerDialog(
         onDismissRequest = onDismiss,
+        // Always shown, so the dialog's way forward is visible before a date is chosen (polish gate).
         confirmButton = {
-            if (start != null) {
-                CoulombTextButton(
-                    text = stringResource(R.string.drain_range_confirm),
-                    onClick = {
+            CoulombTextButton(
+                text = stringResource(R.string.drain_range_confirm),
+                enabled = start != null,
+                onClick = {
+                    if (start != null) {
                         val first = start.utcDate()
                         val last = state.selectedEndDateMillis?.utcDate() ?: first
                         onChoose(DrainSpan.Days(first, last))
-                    },
-                )
-            }
+                    }
+                },
+            )
         },
         dismissButton = { CoulombTextButton(text = stringResource(R.string.drain_range_cancel), onClick = onDismiss) },
     ) {
+        val formatter = remember { DatePickerDefaults.dateFormatter() }
         DateRangePicker(
             state = state,
             modifier = Modifier.weight(1f),
+            dateFormatter = formatter,
             title = {
                 Text(
                     title,
                     Modifier.padding(start = CoulombSpacing.Space24, end = CoulombSpacing.Space12, top = CoulombSpacing.Space16),
                     style = CoulombTheme.typography.label,
+                )
+            },
+            // Material's headline, on the title's start edge, so the dialog has one.
+            headline = {
+                DateRangePickerDefaults.DateRangePickerHeadline(
+                    selectedStartDateMillis = state.selectedStartDateMillis,
+                    selectedEndDateMillis = state.selectedEndDateMillis,
+                    displayMode = state.displayMode,
+                    dateFormatter = formatter,
+                    modifier =
+                        Modifier.padding(start = CoulombSpacing.Space24, end = CoulombSpacing.Space12, bottom = CoulombSpacing.Space12),
                 )
             },
         )

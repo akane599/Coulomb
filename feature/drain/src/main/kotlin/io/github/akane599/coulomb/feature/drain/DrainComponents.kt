@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -45,6 +46,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.FigureText
+import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -184,25 +186,33 @@ private fun ComponentRow(
             }.semantics(mergeDescendants = true) {}
             .heightIn(min = RowHeight)
             .padding(vertical = CoulombSpacing.Space12),
-        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space12),
     ) {
-        Box(Modifier.size(Swatch).background(hue, RoundedCornerShape(SwatchCorner)))
+        // The swatch centres on the name's first line; the value shares that line, as on Apps rows.
+        val nameLine = with(LocalDensity.current) { type.bodyName.lineHeight.toDp() }
+        Box(
+            Modifier
+                .padding(top = (nameLine - Swatch) / 2)
+                .size(Swatch)
+                .background(hue, RoundedCornerShape(SwatchCorner)),
+        )
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16)) {
-                Text(name, Modifier.weight(1f), color = colors.textPrimary, style = type.bodyName)
-                Column(horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FigureText(
-                            formats.mah(part.mah).affixed(),
-                            numberStyle = type.data,
-                            unitStyle = type.data.copy(fontWeight = type.body.fontWeight),
-                        )
-                        ProvenanceMark(Provenance.MODELED)
+            NameBesideValue(
+                name = { Text(name, color = colors.textPrimary, style = type.bodyName) },
+                value = {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            FigureText(
+                                formats.mah(part.mah).affixed(),
+                                numberStyle = type.data,
+                                unitStyle = type.data.copy(fontWeight = type.body.fontWeight),
+                            )
+                            ProvenanceMark(Provenance.MODELED)
+                        }
+                        Text(formats.share(share), color = colors.textSecondary, style = type.caption, textAlign = TextAlign.End)
                     }
-                    Text(formats.share(share), color = colors.textSecondary, style = type.caption, textAlign = TextAlign.End)
-                }
-            }
+                },
+            )
             ShareBar(share.toFloat(), Modifier.padding(top = CoulombSpacing.Space8))
         }
     }

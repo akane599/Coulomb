@@ -92,18 +92,22 @@ public enum class ButtonEdge {
  * The text button of DESIGN.md: Label button in `text-primary`, at least 48 dp tall, 12 dp side
  * padding and a fully round state layer. [edge] lets the padding hang into the gutter, so the
  * label lines up with the text beside it while the touch target stays 48 dp (lab `.text-btn`).
+ * A button that is not [enabled] yet stays in place in `text-primary` at Material's 38%, so a
+ * dialog's main action shows before it can be taken.
  */
 @Composable
 public fun CoulombTextButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     @DrawableRes trailingIcon: Int? = null,
     edge: ButtonEdge = ButtonEdge.None,
 ) {
     val colors = CoulombTheme.colors
     TextButton(
         onClick = onClick,
+        enabled = enabled,
         modifier =
             modifier
                 .hang(
@@ -111,7 +115,11 @@ public fun CoulombTextButton(
                     end = if (edge == ButtonEdge.End) ButtonPadding else 0.dp,
                 ).heightIn(min = CoulombSpacing.TouchTarget),
         contentPadding = PaddingValues(horizontal = ButtonPadding),
-        colors = ButtonDefaults.textButtonColors(contentColor = colors.textPrimary),
+        colors =
+            ButtonDefaults.textButtonColors(
+                contentColor = colors.textPrimary,
+                disabledContentColor = colors.textPrimary.copy(alpha = DISABLED_ALPHA),
+            ),
     ) {
         Text(text = text, style = CoulombTheme.typography.labelButton)
         if (trailingIcon != null) {
@@ -192,3 +200,6 @@ public fun ShareBar(
         }
     }
 }
+
+/** Material's disabled content opacity. */
+private const val DISABLED_ALPHA = 0.38f

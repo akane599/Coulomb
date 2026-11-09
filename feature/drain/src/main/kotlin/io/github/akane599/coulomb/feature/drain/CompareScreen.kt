@@ -276,7 +276,7 @@ private fun Totals(
     listOf(Slot.FIRST to comparison.first, Slot.SECOND to comparison.second)
         .filter { (_, period) -> period.report == null }
         .forEach { (slot, _) -> Note(stringResource(R.string.drain_compare_note_no_records, stringResource(slot.label))) }
-    if (comparison.changeEstimated) Note(stringResource(R.string.drain_compare_note_estimated))
+    if (comparison.changeEstimated) Qualifier(stringResource(R.string.drain_compare_note_estimated))
 }
 
 /**
@@ -356,6 +356,20 @@ private fun StripFigure(figure: Affixed) {
 @Composable
 private fun Missing(text: String) {
     Text(text, color = CoulombTheme.colors.textSecondary, style = CoulombTheme.typography.body)
+}
+
+/**
+ * A line qualifying figures still on screen, in Caption, as Drain sets such lines; [Note] is for
+ * lines that stand in for content.
+ */
+@Composable
+internal fun Qualifier(text: String) {
+    Text(
+        text,
+        Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
+        color = CoulombTheme.colors.textSecondary,
+        style = CoulombTheme.typography.caption,
+    )
 }
 
 /** A line under a section saying what it lacks and why, in Body. */

@@ -48,6 +48,7 @@ import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.ui.AppIconTile
 import io.github.akane599.coulomb.core.ui.FigureText
 import io.github.akane599.coulomb.core.ui.IconStandIn
+import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -97,8 +98,9 @@ private fun LazyListScope.appItems(
     item(key = "apps-head", contentType = "list-head") {
         Column(Modifier.padding(top = CoulombSpacing.Space8)) {
             CoulombSwitchRow(stringResource(R.string.drain_include_system), state.includeSystem, actions.includeSystem)
-            ListCaption(R.string.drain_compare_caption_model, comparison, formats)
-            if (comparison.lowerBound) Caption(stringResource(R.string.drain_lower_bound))
+            ListCaption(R.string.drain_compare_caption_model, comparison, formats) {
+                if (comparison.lowerBound) Caption(stringResource(R.string.drain_lower_bound))
+            }
         }
     }
     rowItems("apps", comparison.apps, RateUnit.MAH, Lens.APPS.ordinal, formats, lists) { row, first ->
@@ -117,13 +119,14 @@ private fun LazyListScope.componentItems(
     }
     item(key = "components-head", contentType = "list-head") {
         Column(Modifier.padding(top = CoulombSpacing.Space16)) {
-            ListCaption(R.string.drain_compare_caption_model, comparison, formats)
             // As on Drain: a device that reports some power only as "Other" says so.
             val coarse =
                 listOf(comparison.first, comparison.second).any { period ->
                     period.report?.components?.any { it.component == PowerComponent.OTHER } == true
                 }
-            if (coarse) Caption(stringResource(R.string.drain_components_coarse))
+            ListCaption(R.string.drain_compare_caption_model, comparison, formats) {
+                if (coarse) Caption(stringResource(R.string.drain_compare_components_coarse))
+            }
         }
     }
     val scale = comparison.componentsScale
@@ -214,23 +217,24 @@ private fun LazyListScope.rowItems(
 
 /**
  * What a list's figures are and where they come from, with the Derived mark that covers its rows
- * (DESIGN.md: one source, one mark), then the key to the bars.
+ * (DESIGN.md: one source, one mark) right after its last word, then any [notes], then the key to
+ * the bars, last, so it sits next to the rows it explains.
  */
 @Composable
 private fun ListCaption(
     text: Int,
     comparison: Comparison,
     formats: Formats,
+    notes: @Composable () -> Unit = {},
 ) = Column {
-    Row(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            stringResource(text),
-            Modifier.weight(1f, fill = false),
-            color = CoulombTheme.colors.textSecondary,
-            style = CoulombTheme.typography.caption,
-        )
-        ProvenanceMark(Provenance.DERIVED)
-    }
+    MarkedText(
+        stringResource(text),
+        Provenance.DERIVED,
+        style = CoulombTheme.typography.caption,
+        color = CoulombTheme.colors.textSecondary,
+        modifier = Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
+    )
+    notes()
     PairedBarsKey(
         formats.days(comparison.first.days.first, comparison.first.days.last),
         formats.days(comparison.second.days.first, comparison.second.days.last),
@@ -315,9 +319,7 @@ private fun LazyItemScope.GroupTop(
 
                         // Batterystats' rates divide by the time its windows covered; say that it was part.
                         coverage == Coverage.PARTIAL -> {
-                            Note(
-                                stringResource(R.string.drain_compare_note_partial, stringResource(slot.label)),
-                            )
+                            Qualifier(stringResource(R.string.drain_compare_note_partial, stringResource(slot.label)))
                         }
                     }
                 }
@@ -556,7 +558,7 @@ private fun rowFigure(
     after: Double,
     formats: Formats,
 ): (Double) -> String {
-    val shows = formats.amount(abs(after - before)) != formats.amount(0.0)
+    val shows = !formats.roundsToZero(after - before)
     return if (shows && formats.amount(before) == formats.amount(after)) formats::fineAmount else formats::amount
 }
 
@@ -575,7 +577,7 @@ private fun spokenRow(
     val figure = rowFigure(before, after, formats)
     val direction =
         when {
-            step == formats.amount(0.0) -> stringResource(R.string.drain_compare_same)
+            formats.roundsToZero(change) -> stringResource(R.string.drain_compare_same)
             change > 0 -> stringResource(R.string.drain_compare_up, stringResource(unit.template, step))
             else -> stringResource(R.string.drain_compare_down, stringResource(unit.template, step))
         }

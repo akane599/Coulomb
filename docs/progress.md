@@ -76,8 +76,9 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     clarify passed with every finding fixed (`docs/design-gates/2026-11-09-*-drain.md`). Animate,
     adapt and optimize passed with no critical or major finding left open; one adapt nit waits for
     the list-detail decision (`docs/questions.md`).
+  - Polish passed with its major fixed (`2026-11-09-polish-drain.md`), so all eight SPEC 11.12
+    gates have run on Drain with no critical or major finding open.
   - Open before the Drain gates close:
-    - polish;
     - on the API 37 emulator: the rail's insets with 3-button navigation in landscape, and TalkBack
       on the opened lists.
 

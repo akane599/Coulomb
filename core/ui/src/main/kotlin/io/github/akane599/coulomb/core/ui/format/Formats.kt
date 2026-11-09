@@ -109,8 +109,19 @@ public class Formats(
             unit = resources.getString(R.string.unit_mah),
         )
 
-    /** An amount without its unit, such as a rate: whole, or one decimal under 10 ("36", "4.5"). */
-    public fun amount(value: Double): String = if (abs(value) < SMALL_MAH) oneDecimal.format(value) else integer.format(value.roundToLong())
+    /**
+     * An amount without its unit, such as a rate: whole, or one decimal under 10 ("36", "4.5"). An
+     * exact zero is "0", so it reads apart from a trace that rounds to "0.0".
+     */
+    public fun amount(value: Double): String =
+        when {
+            value == 0.0 -> integer.format(0)
+            abs(value) < SMALL_MAH -> oneDecimal.format(value)
+            else -> integer.format(value.roundToLong())
+        }
+
+    /** Whether [amount] prints [value] as zero: an exact zero, or a trace that rounds to "0.0". */
+    public fun roundsToZero(value: Double): Boolean = value == 0.0 || amount(abs(value)) == oneDecimal.format(0.0)
 
     /** [amount] one digit finer, where two amounts round alike: one decimal, or two under 10 ("21.4", "0.56"). */
     public fun fineAmount(value: Double): String = if (abs(value) < SMALL_MAH) twoDecimals.format(value) else oneDecimal.format(value)
@@ -119,7 +130,7 @@ public class Formats(
     public fun signedAmount(value: Double): String {
         val size = amount(abs(value))
         return when {
-            size == amount(0.0) -> size
+            roundsToZero(value) -> size
             value > 0 -> isolated("+$size")
             else -> isolated("$MINUS$size")
         }

@@ -49,6 +49,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.format.Formats
 
@@ -256,8 +257,9 @@ private fun <T> LazyListScope.group(
                         .fillMaxWidth()
                         .padding(top = if (at == 0) 0.dp else CoulombSpacing.Space16, bottom = CoulombSpacing.Space8)
                         .semantics { heading() },
+                    // A step below the group's Label head (polish gate).
                     color = CoulombTheme.colors.textSecondary,
-                    style = CoulombTheme.typography.captionEmphasis,
+                    style = CoulombTheme.typography.caption,
                 )
             }
         }
@@ -469,36 +471,49 @@ private fun RecordRow(
             .padding(vertical = CoulombSpacing.Space12),
         verticalArrangement = Arrangement.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16)) {
-            Column(Modifier.weight(1f)) {
-                Text(if (rawName) breakable(name) else name, color = colors.textPrimary, style = if (rawName) type.mono else type.bodyName)
-                if (tag != null) {
+        // The value sits on the name's line, as on Apps rows, and drops under the name at large text.
+        NameBesideValue(
+            name = {
+                Column {
                     Text(
-                        breakable(tag),
-                        color = colors.textSecondary,
-                        style = type.mono,
-                        maxLines = tagLines(),
-                        overflow = TextOverflow.Ellipsis,
+                        if (rawName) breakable(name) else name,
+                        color = colors.textPrimary,
+                        style = if (rawName) type.mono else type.bodyName,
                     )
+                    if (tag != null) {
+                        Text(
+                            breakable(tag),
+                            color = colors.textSecondary,
+                            style = type.mono,
+                            maxLines = tagLines(),
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (meaning != null) Text(meaning, color = colors.textSecondary, style = type.caption)
+                    if (facts != null) Text(facts, color = colors.textSecondary, style = type.caption)
                 }
-                if (meaning != null) Text(meaning, color = colors.textSecondary, style = type.caption)
-                if (facts != null) Text(facts, color = colors.textSecondary, style = type.caption)
-            }
+            },
             // The group's heading carries the value's Measured mark.
-            Text(value, Modifier.widthIn(max = ValueMax), color = colors.textPrimary, style = type.data.copy(textAlign = TextAlign.End))
-        }
+            value = {
+                Text(value, Modifier.widthIn(max = ValueMax), color = colors.textPrimary, style = type.data.copy(textAlign = TextAlign.End))
+            },
+        )
         if (share != null) ShareBar(share.toFloat(), Modifier.padding(top = CoulombSpacing.Space8))
     }
 }
 
 /**
  * A raw identifier ("PowerManagerService.WakeLocks", "app.halcyon/.sync.SyncJob") that may
- * wrap after its separators rather than mid-word: a zero-width space follows each. TalkBack does
- * not read it.
+ * wrap after its separators rather than mid-word: a zero-width space follows each, but only inside
+ * a run without spaces long enough to need it, so a name that can break between words still does
+ * and leaves no fragment alone on a line. TalkBack does not read it.
  */
-internal fun breakable(raw: String): String = raw.replace(SEPARATORS) { it.value + ZERO_WIDTH_SPACE }
+internal fun breakable(raw: String): String = raw.replace(LONG_RUN) { run -> run.value.replace(SEPARATORS) { it.value + ZERO_WIDTH_SPACE } }
 
 private val SEPARATORS = Regex("[./_:]")
+
+/** A run this long may not fit a narrow column at large text; shorter ones break between words. */
+private val LONG_RUN = Regex("\\S{16,}")
 private const val ZERO_WIDTH_SPACE = "\u200B"
 
 /**
