@@ -26,6 +26,7 @@ import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.PowerColumn
@@ -35,6 +36,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -111,7 +114,18 @@ internal class DrainReader
                 components = report.breakdown?.of(uid, total),
                 processStates = ProcessStates.of(report.breakdown?.apps?.get(uid), total),
                 wakes = report.wakes.filter { it.uid == uid },
-                counters = counters(bounds, uid),
+                // The collector stores no zero counters, so for an app with a row, where S5 was read at
+                // both ends of every window, a missing counter is 0, not unrecorded (ADR-0041 amendment).
+                counters =
+                    counters(bounds, uid).let {
+                        if (app != null &&
+                            report.wakeCoverage.batteryStats == Coverage.WHOLE
+                        ) {
+                            it.zeroFilled()
+                        } else {
+                            it
+                        }
+                    },
                 trend = trend(uid, nowWallMs),
             )
         }
@@ -146,8 +160,9 @@ internal class DrainReader
 
         /**
          * [uid]'s mAh on each of the last [TREND_DAYS] local days (ADR-0041 §4): its rows in the
-         * consecutive windows that end that day, the whole-UID row where a window has one. A day no
-         * window ends in has none.
+         * consecutive windows, the whole-UID row where a window has one, each window shared among
+         * the days it overlaps by wall time ([dayShares]). A screen-off window lasts the whole
+         * night, so the evening's part stays on its own day. A day no window overlaps has none.
          */
         private suspend fun trend(
             uid: Int,
@@ -163,21 +178,20 @@ internal class DrainReader
                     .atStartOfDay(z)
                     .toInstant()
                     .toEpochMilli()
-
-            fun day(wallMs: Long) = Instant.ofEpochMilli(wallMs).atZone(z).toLocalDate()
-            val withData = windows.consecutiveEnds(fromMs, toMs).mapTo(HashSet(), ::day)
-            val perDay =
-                windows
-                    .consecutiveUse(uid, fromMs, toMs)
-                    .groupBy { it.windowId }
-                    .values
-                    .groupBy({ rows -> day(rows.first().toWallMs) }) { rows ->
-                        val whole = rows.filter { it.component == WindowDrainsBuilder.ALL_COMPONENTS }
-                        whole.ifEmpty { rows }.sumOf { it.mAh }
-                    }
+            val withData = HashSet<LocalDate>()
+            windows.consecutiveSpans(fromMs, toMs).forEach { withData += dayShares(it.fromWallMs, it.toWallMs, z, first, today).keys }
+            val perDay = HashMap<LocalDate, Double>()
+            windows.consecutiveUse(uid, fromMs, toMs).groupBy { it.windowId }.values.forEach { rows ->
+                val whole = rows.filter { it.component == WindowDrainsBuilder.ALL_COMPONENTS }
+                val mah = whole.ifEmpty { rows }.sumOf { it.mAh }
+                val window = rows.first()
+                dayShares(window.fromWallMs, window.toWallMs, z, first, today).forEach { (day, share) ->
+                    perDay.merge(day, mah * share, Double::plus)
+                }
+            }
             return (0 until TREND_DAYS).map { offset ->
                 val day = first.plusDays(offset)
-                DayUse(day, if (day in withData) perDay[day]?.sum() ?: 0.0 else null)
+                DayUse(day, if (day in withData) perDay[day] ?: 0.0 else null)
             }
         }
 
@@ -583,6 +597,43 @@ internal class DrainReader
 
             /** A chain covers a stored window when their times differ by at most a minute. */
             const val COVER_SLACK_MS: Long = 60_000L
+
+            /**
+             * The share of the window `[fromWallMs, toWallMs)` in each local day from [first] to
+             * [last], by wall time in [zone] (ADR-0041 §4). Days outside them get nothing. A window
+             * whose wall clock did not move forward, as after a time change, counts whole for the
+             * day it ends.
+             */
+            fun dayShares(
+                fromWallMs: Long,
+                toWallMs: Long,
+                zone: ZoneId,
+                first: LocalDate,
+                last: LocalDate,
+            ): Map<LocalDate, Double> {
+                fun day(wallMs: Long) = Instant.ofEpochMilli(wallMs).atZone(zone).toLocalDate()
+                if (toWallMs <= fromWallMs) {
+                    val end = day(toWallMs)
+                    return if (end in first..last) mapOf(end to 1.0) else emptyMap()
+                }
+                val length = (toWallMs - fromWallMs).toDouble()
+                val shares = LinkedHashMap<LocalDate, Double>()
+                var day = maxOf(day(fromWallMs), first)
+                val end = minOf(day(toWallMs - 1), last)
+                while (day <= end) {
+                    val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
+                    val next =
+                        day
+                            .plusDays(1)
+                            .atStartOfDay(zone)
+                            .toInstant()
+                            .toEpochMilli()
+                    val overlap = minOf(toWallMs, next) - maxOf(fromWallMs, start)
+                    if (overlap > 0) shares[day] = overlap / length
+                    day = day.plusDays(1)
+                }
+                return shares
+            }
 
             /** [a] comes strictly before [b] in boot and elapsed order (SPEC 7.8). */
             fun before(

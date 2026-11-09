@@ -33,19 +33,22 @@ a span" from a stored window or a chain of consecutive windows.
      - jobs: count and run time;
      - network: mobile and Wi-Fi bytes received and sent;
      - time with an activity in the foreground, and with a foreground service;
-   - a counter with no row reads "not recorded", never 0.
+   - a counter with no row reads "not recorded", never 0. Amended 2026-11-09: the collector stores
+     no zero counters, so for an app with a row whose windows all read S5 at both ends (the span's
+     S5 coverage is whole), a missing counter is 0.
 2. **Component breakdown** is Drain's chip data for this app (`SpanBreakdown.of`, ADR-0035 §7),
    with "Not broken down" for the rest.
 3. **Process-state breakdown** comes from the same S4 rows: foreground, background, foreground
    service and cached, in mAh. "Not split" is the app's total minus those four, shown when it is at
    least 0.05 mAh, as for components. Without S4, both breakdowns show the S4-off state and name the
    setting (ADR-0035 §2). S5 has no process states.
-4. **The 14-day trend** has one value per local day: the app's mAh summed over the consecutive
-   windows that end that day.
+4. **The 14-day trend** has one value per local day: the app's mAh over the consecutive windows,
+   each window shared among the days it overlaps by wall time (amended 2026-11-09).
    - Consecutive windows keep their detail for 30 days, so all 14 days are there.
-   - A window that ends just after midnight counts for the day it ends. Windows are minutes long,
-     so a day loses or gains at most one window's worth.
-   - A day with no consecutive window has no value: drawn as a gap, never as zero.
+   - A screen-off window lasts the whole session (SPEC 7.2 takes no snapshot while the screen is
+     off), so a night from 22:00 to 07:30 puts 2/9.5 of its mAh on the evening and the rest on the
+     morning. A clock that went backwards puts the window on the day it ends.
+   - A day no consecutive window overlaps has no value: drawn as a gap, never as zero.
    - A day where the app was folded into small apps adds less than 0.1 mAh a window
      (`WindowBuilder`'s floor), so its value is a lower bound by at most that.
    - Today is the day so far.
@@ -61,8 +64,9 @@ a span" from a stored window or a chain of consecutive windows.
 ## Consequences
 
 - `DrainReader` gains `readApp(span, uid)`. It reads the span's bounds once and builds both
-  reports, plus two `WindowDao` queries for the trend. The days with data count only windows that
-  keep their records, so a pruned day is a gap, not zero.
+  reports, plus two `WindowDao` queries for the trend (`consecutiveSpans`, `consecutiveUse`), both
+  by the windows' wall-clock ends. The days with data count only windows that keep their records,
+  so a pruned day is a gap, not zero.
 - `DrainRepository.app(span, uid)` shares Drain's inputs, so it is read again after each heavy
   snapshot like Drain. `AppUpdates` adds the update marker off the main thread.
 - Drain's app rows and Compare's rows open App detail (amended 2026-11-09, below).
@@ -94,6 +98,12 @@ a span" from a stored window or a chain of consecutive windows.
   Navigation3 `SceneStrategy` of our own (`ListDetailStrategy`), not Material's adaptive
   list-detail. Material's version would add a dependency and its own pane motion, while SPEC 11.6
   allows only the cross-fade.
+- **Review fixes** (the independent review before the gate):
+  - the trend shares each window among its days (§4) instead of putting it on the day it ends;
+  - counters fill in 0 for a kept app whose records were all read (§1);
+  - the update marker uses the trend's zone source.
+  Where the app was folded into small apps in some windows, its counters are a lower bound, like
+  its figure. The header's lower-bound note covers both.
 - **Not yet:** the story, the Act insight card and the actions (P5, ADR-0026). The shared-element
   transition from a Drain row (SPEC 11.6) waits for the screen's animate gate.
 

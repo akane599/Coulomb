@@ -23,12 +23,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 /** ADR-0041: one app over the chosen window, its counters and its 14 days. */
 @RunWith(AndroidJUnit4::class)
 internal class AppDetailReaderTest : DrainDbTest() {
-    /** §1: the header is the Drain row; wakes and counters are the app's own, and a missing counter is null. */
+    /**
+     * §1: the header is the Drain row; wakes and counters are the app's own. The app has a row and S5
+     * was read at both ends, so a counter the collector left out (it stores no zeros) is 0.
+     */
     @Test
     fun theStoredWindowGivesTheAppsRowWakesAndCounters() =
         runTest {
@@ -67,8 +71,12 @@ internal class AppDetailReaderTest : DrainDbTest() {
                         alarmWakeups = 4,
                         jobCount = 2,
                         jobRuntimeMs = 30_000,
+                        mobileRxBytes = 0,
+                        mobileTxBytes = 0,
                         wifiRxBytes = 1_000_000,
+                        wifiTxBytes = 0,
                         foregroundActivityMs = 0,
+                        foregroundServiceMs = 0,
                     ),
                 )
             assertThat(detail.components).isNull()
@@ -144,8 +152,8 @@ internal class AppDetailReaderTest : DrainDbTest() {
         }
 
     /**
-     * §4: a day sums the windows that end in it, the whole-UID row where a window has one; a day with
-     * windows but none of the app's rows is 0, a day without windows a gap, and older days are left out.
+     * §4: a day sums the windows in it, the whole-UID row where a window has one; a day with windows
+     * but none of the app's rows is 0, a day without windows a gap, and older days are left out.
      */
     @Test
     fun theTrendSumsEachDaysWindowsAndLeavesGaps() =
@@ -173,7 +181,7 @@ internal class AppDetailReaderTest : DrainDbTest() {
             ) = store(window(snapshotAt(wallMs - 1), snapshotAt(wallMs)), rows)
 
             windowEnding(at(20, 10), WindowRows(uids = listOf(uid(APP, 99.0))))
-            windowEnding(at(13, 0), WindowRows(uids = listOf(uid(APP, 1.5))))
+            windowEnding(at(13, 1), WindowRows(uids = listOf(uid(APP, 1.5))))
             windowEnding(at(13, 23), WindowRows(uids = listOf(uid(APP, 2.0), uid(APP, 1.2, "CPU"))))
             windowEnding(at(5, 12), WindowRows(uids = listOf(uid(OTHER_APP, 4.0))))
             windowEnding(at(1, 8), WindowRows(uids = listOf(uid(APP, 0.4, "CPU"), uid(APP, 0.6, "WIFI"))))
@@ -198,6 +206,77 @@ internal class AppDetailReaderTest : DrainDbTest() {
             assertThat(byDaysBack[0]).isNull()
             assertThat(byDaysBack.filterKeys { it !in setOf(13L, 5L, 1L) }.values.toSet()).containsExactly(null)
         }
+
+    /** §4: a night's screen-off window is shared between the evening and the morning by wall time. */
+    @Test
+    fun theTrendSharesANightBetweenItsDays() =
+        runTest {
+            val now = BASE_WALL
+            val today = day(now)
+
+            fun at(
+                daysBack: Long,
+                minutes: Int,
+            ) = today
+                .minusDays(daysBack)
+                .atStartOfDay(ZoneOffset.UTC)
+                .plusMinutes(minutes.toLong())
+                .toInstant()
+                .toEpochMilli()
+
+            // 22:00 to 07:30: 2 h in the evening, 7.5 h in the morning.
+            store(
+                window(heavy(1_000, wallMs = at(3, 22 * 60)), heavy(1_000 + 34_200, wallMs = at(2, 7 * 60 + 30))),
+                WindowRows(uids = listOf(uid(APP, 19.0))),
+            )
+
+            val detail = checkNotNull(reader.readApp(DrainSpan.Last24Hours, APP, empty(), now))
+            val byDay = detail.trend.associate { it.day to it.mah }
+
+            assertThat(byDay[today.minusDays(3)]).isWithin(1e-9).of(4.0)
+            assertThat(byDay[today.minusDays(2)]).isWithin(1e-9).of(15.0)
+            assertThat(byDay[today.minusDays(1)]).isNull()
+        }
+
+    @Test
+    fun dayShareSplitsByWallTimeAcrossDaylightSaving() {
+        val zone = ZoneId.of("Europe/Berlin")
+        // 2026-10-25 has 25 hours there: a window from 18:00 the day before to 06:00 is 13 hours long.
+        val from =
+            LocalDate
+                .of(2026, 10, 24)
+                .atTime(18, 0)
+                .atZone(zone)
+                .toInstant()
+                .toEpochMilli()
+        val to =
+            LocalDate
+                .of(2026, 10, 25)
+                .atTime(6, 0)
+                .atZone(zone)
+                .toInstant()
+                .toEpochMilli()
+        val shares = DrainReader.dayShares(from, to, zone, LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 30))
+
+        assertThat(shares.getValue(LocalDate.of(2026, 10, 24))).isWithin(1e-9).of(6 / 13.0)
+        assertThat(shares.getValue(LocalDate.of(2026, 10, 25))).isWithin(1e-9).of(7 / 13.0)
+    }
+
+    @Test
+    fun dayShareClipsToTheTrendAndKeepsABackwardsClockOnItsEnd() {
+        val zone = ZoneOffset.UTC
+        val first = LocalDate.of(2026, 11, 1)
+        val from =
+            first
+                .minusDays(1)
+                .atTime(20, 0)
+                .toInstant(zone)
+                .toEpochMilli()
+        val to = first.atTime(4, 0).toInstant(zone).toEpochMilli()
+
+        assertThat(DrainReader.dayShares(from, to, zone, first, first.plusDays(13))).containsExactly(first, 0.5)
+        assertThat(DrainReader.dayShares(to, from, zone, first.minusDays(1), first)).containsExactly(first.minusDays(1), 1.0)
+    }
 
     /** A remainder under 0.05 mAh is rounding, not a "Not split" part; no state at all is no split. */
     @Test

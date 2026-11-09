@@ -117,8 +117,15 @@ public data class ChainStat(
     val value: Long,
 )
 
-/** One row of a UID in one consecutive window, with the wall time the window ends at (ADR-0041 §4). */
+/** A consecutive window's wall-clock ends (ADR-0041 §4). */
+public data class WallSpan(
+    val fromWallMs: Long,
+    val toWallMs: Long,
+)
+
+/** One UID's row in a consecutive window, with the window's wall-clock ends (ADR-0041 §4). */
 public data class UidWindowUse(
+    val fromWallMs: Long,
     val toWallMs: Long,
     val windowId: Long,
     val component: String,
@@ -363,26 +370,27 @@ public abstract class WindowDao {
     public abstract fun observeForUid(uid: Int): Flow<List<WindowUid>>
 
     /**
-     * The wall times of the consecutive windows that end in `[fromWallMs, toWallMs)` and keep their
-     * records: the days with data (ADR-0041 §4).
+     * The wall-clock spans of the consecutive windows that overlap `[fromWallMs, toWallMs)` and keep
+     * their records: the days with data (ADR-0041 §4).
      */
     @Query(
-        "SELECT s.wallMs FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId " +
+        "SELECT f.wallMs AS fromWallMs, s.wallMs AS toWallMs FROM window_result w " +
+            "JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
             "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND w.detailPruned = 0 " +
-            "AND s.wallMs >= :fromWallMs AND s.wallMs < :toWallMs",
+            "AND s.wallMs > :fromWallMs AND f.wallMs < :toWallMs",
     )
-    public abstract suspend fun consecutiveEnds(
+    public abstract suspend fun consecutiveSpans(
         fromWallMs: Long,
         toWallMs: Long,
-    ): List<Long>
+    ): List<WallSpan>
 
-    /** [uid]'s rows in the consecutive windows that end in `[fromWallMs, toWallMs)` and keep them (ADR-0041 §4). */
+    /** [uid]'s rows in the consecutive windows that overlap `[fromWallMs, toWallMs)` and keep them (ADR-0041 §4). */
     @Query(
-        "SELECT s.wallMs AS toWallMs, u.windowId, c.name AS component, u.mAh FROM window_uid u " +
+        "SELECT f.wallMs AS fromWallMs, s.wallMs AS toWallMs, u.windowId, c.name AS component, u.mAh FROM window_uid u " +
             "JOIN window_result w ON w.id = u.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
-            "JOIN stat_key c ON c.id = u.componentId " +
+            "JOIN snapshot f ON f.id = w.fromSnapshotId JOIN stat_key c ON c.id = u.componentId " +
             "WHERE u.uid = :uid AND w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND w.detailPruned = 0 " +
-            "AND s.wallMs >= :fromWallMs AND s.wallMs < :toWallMs",
+            "AND s.wallMs > :fromWallMs AND f.wallMs < :toWallMs",
     )
     public abstract suspend fun consecutiveUse(
         uid: Int,

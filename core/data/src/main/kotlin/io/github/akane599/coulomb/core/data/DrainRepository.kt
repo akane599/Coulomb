@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.AppScope
+import io.github.akane599.coulomb.core.common.ZoneSource
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUid
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,6 +38,7 @@ public class DrainRepository
     internal constructor(
         private val reader: DrainReader,
         private val updates: AppUpdates,
+        private val zone: ZoneSource,
         private val dispatchers: AppDispatchers,
         scope: AppScope,
     ) {
@@ -71,11 +74,12 @@ public class DrainRepository
                             ?.let { AppUpdates.packages(it.packagesJson) }
                             .orEmpty()
                     val first = detail.trend.first().day
+                    // The trend's zone, so the marker lands on the trend's days.
                     val updated =
                         updates.lastUpdate(packages)?.takeIf {
-                            !java.time.Instant
+                            !Instant
                                 .ofEpochMilli(it)
-                                .atZone(java.time.ZoneId.systemDefault())
+                                .atZone(zone.zone())
                                 .toLocalDate()
                                 .isBefore(first)
                         }

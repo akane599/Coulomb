@@ -71,8 +71,8 @@ public data class ProcessStates(
 }
 
 /**
- * An app's counters over the window (ADR-0041 §1). Null means no row was stored for it: not
- * recorded, never zero.
+ * An app's counters over the window (ADR-0041 §1). Null means not recorded. The collector stores
+ * no zeros, so the reader fills them in as 0 for an app with a row whose records were all read.
  */
 public data class AppCounters(
     val alarmWakeups: Long? = null,
@@ -84,7 +84,21 @@ public data class AppCounters(
     val wifiTxBytes: Long? = null,
     val foregroundActivityMs: Long? = null,
     val foregroundServiceMs: Long? = null,
-)
+) {
+    /** Every counter, a missing one as 0: for an app whose records were all read. */
+    internal fun zeroFilled(): AppCounters =
+        AppCounters(
+            alarmWakeups = alarmWakeups ?: 0,
+            jobCount = jobCount ?: 0,
+            jobRuntimeMs = jobRuntimeMs ?: 0,
+            mobileRxBytes = mobileRxBytes ?: 0,
+            mobileTxBytes = mobileTxBytes ?: 0,
+            wifiRxBytes = wifiRxBytes ?: 0,
+            wifiTxBytes = wifiTxBytes ?: 0,
+            foregroundActivityMs = foregroundActivityMs ?: 0,
+            foregroundServiceMs = foregroundServiceMs ?: 0,
+        )
+}
 
 /**
  * The app's mAh on one local day (ADR-0041 §4): summed over the consecutive windows that end that
