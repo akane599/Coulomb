@@ -101,7 +101,9 @@ After the SPEC 11.12 critique and audit (`docs/design-gates/2026-11-09-*-chargin
 
 1. **Signed power.** While the phone draws on the battery, the hero shows the net power with a minus
    sign, in ink rather than copper. Copper means charging, and a clamped "0.0 W" hid a real figure.
-   The curve's power panel still starts at zero, so a drawing stretch lies on its axis.
+   The curve's power panel shows power into the battery from zero, so a drawing stretch is a gap
+   there (amended at the harden gate; a line along the axis read as zero). Its table gives the
+   signed figure.
 2. **Estimated marks** on the phase and on a matched charger's share of its baseline.
 3. **Why a time is missing**, case by case:
    - the level is below this charge's highest (`ChargingNow.belowHighest`);
@@ -109,7 +111,11 @@ After the SPEC 11.12 critique and audit (`docs/design-gates/2026-11-09-*-chargin
    - the same for full.
 4. **The projection on the curve.** While there is a time to the target, the session chart runs on
    to its latest end. It draws the target as a marker, and the 14% copper cone and bracket from the
-   present reading to the target window, as on Now and in the lab (DESIGN.md's signature).
+   present reading to the target window, as on Now and in the lab (DESIGN.md's signature). The line
+   meets the cone with no dot (DESIGN.md). The projection shows only while the session keeps at
+   least a third of the time axis; earlier in a long charge it would shrink to a sliver (harden
+   gate). The review proposed half; a third keeps the cone on a typical charge 20 minutes in, whose
+   target is about as far ahead.
 5. **"Calibrating"** in place of power and current until calibration (SPEC 6.1).
 6. **The level scale's "View as table"** action opens a table of the level and when the target and
    full are reached (SPEC 11.8: hero scales too). Both tables are snapshots taken when they open.
@@ -117,8 +123,21 @@ After the SPEC 11.12 critique and audit (`docs/design-gates/2026-11-09-*-chargin
 8. **A cold flow.** `ChargingRepository.now` has its own caches per collector. A failed read reaches
    the screen's error state, and "Try again" reads afresh. The model starts at Loading and returns
    to it once stopped, so a later charge never opens on an earlier one's figures. Each sample costs
-   two short queries: the open session, and the samples since the last.
+   three short queries: the latest sample, the open session, and the samples since the last. Closed
+   charges' level lines never change, so one cache under a lock serves every collector.
 9. **The power figure does not roll.** At 1 Hz a rolling figure would never rest (Still Screen Rule).
+
+After the harden, clarify, animate, adapt and optimize gates:
+
+10. **Holding needs a small current either way.** A level held while a real current leaves the
+    battery is DRAWING, not HOLDING: the 10%-of-full-speed (or 100 mA) limit applies to the size of
+    the current (`ChargePhases`). At or above the target the screen says it is holding at the target.
+11. **A still time axis.** The session chart's axis ends on the next 5 minutes, so the curve does
+    not shift each second.
+12. **Table times name the day** of a reading from an earlier day; today's keep their seconds. A
+    lower end under a minute reads "<1 min", and a current that rounds to zero has no direction.
+13. **Reduced motion.** The swap between Now and Charging is a crossfade, and under reduced motion
+    a 150 ms fade on the real clock (`CoulombCrossfade`). The skeleton waits 150 ms, as Health's.
 
 ## Consequences
 

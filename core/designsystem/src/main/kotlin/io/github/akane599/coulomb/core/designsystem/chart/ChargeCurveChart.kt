@@ -28,6 +28,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import kotlin.math.abs
 import kotlin.math.ceil
 
 /** One reading of a charge: level, and power into the battery where it is known. */
@@ -79,9 +80,9 @@ private val WATT_STEPS = listOf(1.0, 2.0, 5.0, 10.0, 20.0, 25.0, 50.0, 100.0)
 private const val POWER_LINES = 2
 private const val MAX_POINTS = 800
 private val BracketWidth = 3.dp
+private val MarkerClearance = 2.dp
 private val BracketStop = 7.dp
 private val EdgeWidth = 1.dp
-private val DotRadius = 4.dp
 private const val TINT = 0.14f
 
 /**
@@ -90,8 +91,9 @@ private const val TINT = 0.14f
  * level panel has a dashed rule at [taperLevel]; the power panel one at [fullSpeedW]. Readings
  * without power leave the power line broken there, so a gap never reads as zero. Values on the
  * right in Caption, the session's start and end clock under the axis. A [projection] runs the time
- * axis on to its latest end and draws the cone from the present reading to the target. Draws in
- * once; TalkBack reads [summary] and offers "View as table".
+ * axis on to its latest end and draws the cone from the present reading to the target; [endMs], when
+ * later, holds the axis's end still between readings. Draws in once; TalkBack reads [summary] and
+ * offers "View as table".
  */
 @Composable
 @Suppress("LongParameterList") // One chart's data, labels and accessibility.
@@ -105,6 +107,7 @@ public fun ChargeCurveChart(
     onViewTable: () -> Unit,
     modifier: Modifier = Modifier,
     projection: CurveProjection? = null,
+    endMs: Long? = null,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -134,14 +137,14 @@ public fun ChargeCurveChart(
         val wattTop = wattTop(readings)
         val width = size.width - valueWidth(text, labels, wattTop.takeIf { hasPower })
         val start = readings.first().wallMs
-        val end = maxOf(readings.last().wallMs, projection?.latestMs ?: 0L).coerceAtLeast(start + 1)
+        val end = axisEnd(readings, projection, endMs)
 
         fun x(ms: Long) = (ms - start).toFloat() / (end - start) * width
         val levelTop = labelHeight + LabelGap.toPx()
         val levelBottom = levelTop + LevelHeight.toPx()
         val level = Panel(levelTop, levelBottom, FULL.toDouble())
         val strong = ChartText(measurer, strongStyle)
-        levelGrid(level, width, ink, text, strong, labels, projection?.targetPct)
+        levelGrid(level, width, ink, Values(text, strong, labels), projection?.targetPct)
         taperLevel?.let { rule(level.y(it.toDouble()), width, ink, text, labels.taper) }
         var axis = levelBottom
         val power =
@@ -160,19 +163,12 @@ public fun ChargeCurveChart(
             revealed {
                 series(readings.map { Offset(x(it.wallMs), level.y(it.levelPct.toDouble())) }, ink)
                 power?.let { panel -> powerRuns(readings, panel, ::x).forEach { series(it, ink) } }
-            }
-            projection?.let { p ->
-                val last = readings.last()
-                drawProjection(
-                    p,
-                    Offset(x(last.wallMs), level.y(last.levelPct.toDouble())),
-                    x(p.earliestMs),
-                    x(p.latestMs),
-                    level,
-                    ink,
-                    strong,
-                    width,
-                )
+                // The line meets the cone with no dot (DESIGN.md, as `ProjectionScale`).
+                projection?.let { p ->
+                    val last = readings.last()
+                    val apex = Offset(x(last.wallMs), level.y(last.levelPct.toDouble()))
+                    drawProjection(p, apex, x(p.earliestMs) to x(p.latestMs), level, ink, strong, width)
+                }
             }
         }
     }
@@ -198,6 +194,13 @@ internal fun thinned(readings: List<CurveReading>): List<CurveReading> {
         }
     return listOf(readings.first()) + inner + readings.last()
 }
+
+/** The time axis's end: the last reading, or later for a projection's latest end or a given end. */
+private fun axisEnd(
+    readings: List<CurveReading>,
+    projection: CurveProjection?,
+    endMs: Long?,
+): Long = maxOf(readings.last().wallMs, projection?.latestMs ?: 0L, endMs ?: 0L).coerceAtLeast(readings.first().wallMs + 1)
 
 /** Two label lines and the level panel, and under them the power panel with its top label where there is power. */
 private fun chartHeight(
@@ -316,39 +319,55 @@ private fun DrawScope.valueWidth(
 ): Float =
     maxOf(text.measure(labels.percent(FULL)).size.width, wattTop?.let { text.measure(labels.watts(it)).size.width } ?: 0) + ValueGap.toPx()
 
-/** The level panel's 0, 50 and 100% lines, and the target's marker in place of the line it falls on. */
-@Suppress("LongParameterList") // One panel's scale, ink and words.
+/** The value column's two text styles and the words they set. */
+private class Values(
+    val text: ChartText,
+    val strong: ChartText,
+    val labels: CurveLabels,
+)
+
+/**
+ * The level panel's 0, 50 and 100% lines, and the target's marker in place of the line it falls on.
+ * A line too close to the marker keeps its hairline but not its value, so the two never overlap.
+ */
 private fun DrawScope.levelGrid(
     level: Panel,
     width: Float,
     ink: ChartInk,
-    text: ChartText,
-    strong: ChartText,
-    labels: CurveLabels,
+    values: Values,
     targetPct: Int?,
 ) {
+    val targetY = targetPct?.let { level.y(it.toDouble()) }
+    val clearance =
+        values.text
+            .measure(values.labels.percent(FULL))
+            .size.height + MarkerClearance.toPx()
     listOf(0, HALF, FULL).filter { it != targetPct }.forEach { pct ->
-        gridLine(level.y(pct.toDouble()), width, ink, text, labels.percent(pct))
+        val y = level.y(pct.toDouble())
+        if (targetY != null && abs(y - targetY) < clearance) {
+            drawLine(ink.hairline, Offset(0f, y), Offset(width, y), 1.dp.toPx())
+        } else {
+            gridLine(y, width, ink, values.text, values.labels.percent(pct))
+        }
     }
-    targetPct?.let { marker(level.y(it.toDouble()), width, ink, strong, labels.percent(it)) }
+    targetPct?.let { marker(level.y(it.toDouble()), width, ink, values.strong, values.labels.percent(it)) }
 }
 
-/** The cone from the present reading at [apex] to the target between [from] and [to], its bracket and words, and the reading's dot. */
+/** The cone from the present reading at [apex] to the target across [span], with its bracket and words. */
 @Suppress("LongParameterList") // The estimate, where it sits and how it is drawn.
 private fun DrawScope.drawProjection(
     projection: CurveProjection,
     apex: Offset,
-    from: Float,
-    to: Float,
+    span: Pair<Float, Float>,
     level: Panel,
     ink: ChartInk,
     strong: ChartText,
     width: Float,
 ) {
+    val (from, to) = span
     val y = level.y(projection.targetPct.toDouble())
     cone(apex, from, to, y, ink)
     bracketLabel(strong.measure(projection.label), from, to, y, width)
-    drawCircle(ink.line, DotRadius.toPx(), apex)
 }
 
 /** The target's marker: a solid rule in `text-secondary` with its value, emphasised, at the end. */

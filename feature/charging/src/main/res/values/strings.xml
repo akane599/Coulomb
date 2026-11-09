@@ -15,24 +15,25 @@
     <string name="charging_phase_full">full</string>
     <string name="charging_phase_full_speed_def">The charger’s full current goes in. Engineers call this constant current.</string>
     <string name="charging_phase_slowing_def">The current falls as the battery nears full, which protects it. Engineers call this constant voltage.</string>
-    <string name="charging_phase_holding_def">The level has not risen for 10 minutes and almost no current goes in, as when a charge limit is on.</string>
+    <string name="charging_phase_holding_def">The level has not changed for 10 minutes and almost no current goes in or out, as when a charge limit is on.</string>
     <string name="charging_phase_full_def" formatted="false">The battery reports 100%. It may take a little current to stay there.</string>
-    <string name="charging_charger_known">%1$s · %2$s of its baseline</string>
+    <string name="charging_charger_known">%1$s · %2$s of its usual power</string>
     <string name="charging_charger_new">%1$s · new, saved when this charge ends</string>
-    <string name="charging_charger_learning" formatted="false">Coulomb tells which charger this is after 2 minutes of charging below 50%.</string>
+    <string name="charging_charger_learning" formatted="false">Coulomb can tell which charger this is after 2 minutes of charging below 50%.</string>
     <string name="charging_charger_high" formatted="false">Too few readings below 50% to tell which charger this is.</string>
     <string name="charging_target_at">%1$s at %2$s</string>
     <string name="charging_target_plain">Target %1$s</string>
     <string name="charging_to_level">%1$s in %2$s</string>
     <string name="charging_full_in">Full in %1$s</string>
-    <string name="charging_times_holding">The level is holding, so there is no time to give. Times return when it rises.</string>
+    <string name="charging_times_holding">The level is holding, as at a charge limit, so there is no time to give.</string>
+    <string name="charging_times_held_target">Holding at the target.</string>
     <string name="charging_readings">Live readings</string>
     <string name="charging_current">Current</string>
     <string name="charging_current_in">into the battery</string>
     <string name="charging_current_out">out of the battery</string>
     <string name="charging_voltage">Voltage</string>
     <string name="charging_voltage_at">at the battery</string>
-    <string name="charging_temperature">Battery</string>
+    <string name="charging_temperature">Temperature</string>
     <string name="charging_temp_up">up %1$s</string>
     <string name="charging_temp_down">down %1$s</string>
     <string name="charging_temp_steady">steady</string>
@@ -46,15 +47,15 @@
     <string name="charging_column_level">Level</string>
     <string name="charging_column_power">Power</string>
     <string name="charging_target">Target</string>
-    <string name="charging_target_note">Sets the tick and the time to the target. There is no alert at the target yet.</string>
+    <string name="charging_target_note">Moves the mark on the level bar and the time to it. There is no alert at the target yet.</string>
     <string name="charging_scale_description">Level %1$s, target %2$s.</string>
     <string name="charging_scale_description_time">Level %1$s, target %2$s, estimated to be reached at %3$s.</string>
     <string name="charging_phase_drawing">drawing from the battery</string>
     <string name="charging_phase_drawing_def">The phone uses more than the charger gives, so the level falls.</string>
     <string name="charging_calibrating">Calibrating</string>
-    <string name="charging_times_need_target">Time to %1$s shows after three past charges that started below this level and reached %1$s.</string>
-    <string name="charging_times_need_full" formatted="false">Time to full shows after three past charges that started below this level and reached 100%.</string>
-    <string name="charging_times_falling">No time while the level is below its highest this charge.</string>
+    <string name="charging_times_need_target">Time to %1$s shows after three past charges that started below this level and reached %1$s without a pause.</string>
+    <string name="charging_times_need_full" formatted="false">Time to full shows after three past charges that started below this level and reached 100% without a pause.</string>
+    <string name="charging_times_falling">No times while the level is below this charge’s highest. They return once it climbs back.</string>
     <string name="charging_table_scale">Level and target</string>
     <string name="charging_column_reading">Reading</string>
     <string name="charging_column_value">Value</string>

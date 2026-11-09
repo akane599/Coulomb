@@ -22,14 +22,16 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * The Charging screen's side (SPEC 10.9, ADR-0046): the charge in progress, read again at each
- * sample, which comes every second while the screen shows (SPEC 7.3). Each sample costs two short
- * queries, the open session and the samples since the last; the past charges are read again only
- * when one closes.
+ * sample, which comes every second while the screen shows (SPEC 7.3). Each sample costs three short
+ * queries: the latest sample, the open session and the samples since the last. The past charges are
+ * read again only when one closes, and a closed charge's line only once while the app runs.
  */
 @Singleton
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -43,6 +45,10 @@ public class ChargingRepository
     ) {
         private val latest: Flow<BatterySampleEntity?> = samples.observeLatest().distinctUntilChanged()
 
+        /** Closed charges' level lines never change, so every collector shares them, one at a time. */
+        private val pastLines = PastLineCache()
+        private val pastLock = Mutex()
+
         /** Whether the phone is plugged in, for showing Charging in place of Now (SPEC 10.9). */
         public val plugged: Flow<Boolean> = latest.map { it != null && it.plugType != 0 }.distinctUntilChanged()
 
@@ -54,12 +60,11 @@ public class ChargingRepository
         public val now: Flow<ChargingNow?> =
             flow {
                 val live = LiveChargeCache()
-                val pastLines = PastLineCache()
                 val history =
                     sessions
                         .observeClosed(SessionKind.CHARGE, HISTORY)
                         .distinctUntilChanged()
-                        .mapLatest { readHistory(it, pastLines) }
+                        .mapLatest { rows -> pastLock.withLock { readHistory(rows, pastLines) } }
                 emitAll(
                     combine(
                         latest,

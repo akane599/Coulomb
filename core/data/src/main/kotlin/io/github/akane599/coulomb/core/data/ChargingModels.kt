@@ -36,7 +36,7 @@ public data class ChargingNow(
     val toFull: ChargeTime?,
     val startWallMs: Long,
     val startLevelPct: Int,
-    /** The session so far, a point a sample; the chart thins it. */
+    /** The session so far, a point a sample, power signed as [watts]; the chart thins it. */
     val curve: List<ChargeCurvePoint>,
     val wallMs: Long,
 )

@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,8 @@ import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.page.StandIn
+import kotlinx.coroutines.delay
+import java.time.Instant
 import java.time.ZoneId
 
 /**
@@ -95,7 +98,13 @@ internal fun ChargingContent(
     ) {
         when (state) {
             ChargingUiState.Loading -> {
-                Skeleton()
+                // The first sample is usually read well within this; only a slow read shows the skeleton.
+                var late by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    delay(SKELETON_DELAY_MS)
+                    late = true
+                }
+                if (late) Skeleton()
             }
 
             ChargingUiState.Error -> {
@@ -133,6 +142,7 @@ internal fun ChargingContent(
 }
 
 private const val CURVE_TABLE = "curve"
+private const val SKELETON_DELAY_MS = 150L
 private const val SCALE_TABLE = "scale"
 
 /** The level scale as a table: the level, and when the target and full are reached. */
@@ -204,15 +214,26 @@ private fun curveTableOf(
         rows =
             now.curve.asReversed().map { point ->
                 listOfNotNull(
-                    formats.clockWithSeconds(point.wallMs, zone),
+                    // A reading from an earlier day names it (gate harden); today's keep their seconds.
+                    if (sameDay(point.wallMs, now.wallMs, zone)) {
+                        formats.clockWithSeconds(point.wallMs, zone)
+                    } else {
+                        formats.clock(point.wallMs, zone, now.wallMs)
+                    },
                     formats.percent(point.levelPct),
-                    if (power) point.watts?.let { formats.watts(it).joined() } ?: DASH else null,
+                    if (power) point.watts?.let { formats.signedWatts(it).joined() } ?: DASH else null,
                 )
             },
         // The level is the fuel gauge's, power is from current and voltage.
         provenance = Provenance.MODELED.takeIf { !power },
         columnProvenance = listOf(null, Provenance.MODELED, Provenance.DERIVED).takeIf { power },
     )
+
+private fun sameDay(
+    a: Long,
+    b: Long,
+    zone: ZoneId,
+): Boolean = Instant.ofEpochMilli(a).atZone(zone).toLocalDate() == Instant.ofEpochMilli(b).atZone(zone).toLocalDate()
 
 /** SPEC 10.11 loading: a still skeleton in the hero's, scale's and strip's shape. */
 @Composable

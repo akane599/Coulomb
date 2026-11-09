@@ -265,7 +265,8 @@ internal fun Times(
     val colors = CoulombTheme.colors
     if (now.phase == ChargePhase.FULL || now.phase == ChargePhase.DRAWING) return
     if (now.phase == ChargePhase.HOLDING) {
-        StandIn(stringResource(R.string.charging_times_holding), top = CoulombSpacing.Space16)
+        val held = if (now.levelPct >= now.targetPct) R.string.charging_times_held_target else R.string.charging_times_holding
+        StandIn(stringResource(held), top = CoulombSpacing.Space16)
         return
     }
     val wantsTarget = now.levelPct < now.targetPct
@@ -316,7 +317,9 @@ private fun span(
     formats: Formats,
 ): String {
     val (shortest, longest) = minutes(time)
-    return formats.range(formats.duration(shortest), formats.duration(longest))
+    // A lower end under a minute reads "<1 min", never "0 min" (gate harden).
+    val from = if (shortest == 0L) formats.held(0) else formats.duration(shortest)
+    return formats.range(from, formats.duration(longest))
 }
 
 /** Current, voltage and temperature, each Measured (SPEC 10.9's secondary figures). */
@@ -333,7 +336,7 @@ internal fun Readings(
             val current = now.currentMa
             CoulombFigure(
                 stringResource(R.string.charging_current),
-                current?.let { stringResource(if (it >= 0) R.string.charging_current_in else R.string.charging_current_out) },
+                current?.let { direction(it) },
             ) {
                 if (current != null) {
                     FigureText(formats.current(current).affixed(), numberStyle = type.title, unitStyle = type.label)
@@ -348,6 +351,17 @@ internal fun Readings(
                 FigureText(formats.celsius(now.tempDeciC.toDouble()).affixed(), numberStyle = type.title, unitStyle = type.label)
             }
         }
+    }
+}
+
+/** "into the battery" or "out of it"; none for a current that rounds to zero (gate harden). */
+@Composable
+private fun direction(ma: Double): String? {
+    val rounded = Rounding.currentMa(ma)
+    return when {
+        rounded > 0 -> stringResource(R.string.charging_current_in)
+        rounded < 0 -> stringResource(R.string.charging_current_out)
+        else -> null
     }
 }
 
@@ -388,9 +402,13 @@ internal fun Session(
         val to = formats.percent(now.levelPct)
         val start = formats.clock(now.startWallMs, zone, now.wallMs)
         val summary =
-            now.watts?.let { stringResource(R.string.charging_curve_summary_power, from, to, start, formats.watts(it).joined()) }
+            now.watts?.let { stringResource(R.string.charging_curve_summary_power, from, to, start, formats.signedWatts(it).joined()) }
                 ?: stringResource(R.string.charging_curve_summary, from, to, start)
-        val readings = remember(now.curve) { now.curve.map { CurveReading(it.wallMs, it.levelPct.toFloat(), it.watts?.toFloat()) } }
+        // The power panel shows power into the battery; a stretch drawing on it is a gap, never a dip to zero.
+        val readings =
+            remember(now.curve) {
+                now.curve.map { CurveReading(it.wallMs, it.levelPct.toFloat(), it.watts?.takeIf { w -> w >= 0 }?.toFloat()) }
+            }
         val labels =
             remember(formats, zone, now.startWallMs) {
                 CurveLabels(
@@ -414,12 +432,17 @@ internal fun Session(
             viewTableLabel = stringResource(UiR.string.page_view_table),
             onViewTable = onViewTable,
             projection = projection(now, formats, zone),
+            endMs = axisEnd(now),
         )
         ViewTableButton(onViewTable)
     }
 }
 
-/** The cone and bracket to the target, while there is a time to it (ADR-0046 §6, DESIGN.md's signature). */
+/**
+ * The cone and bracket to the target, while there is a time to it (ADR-0046 gate amendment 4, DESIGN.md's
+ * signature). Only while the session keeps at least a third of the axis: early in a long charge it
+ * would shrink to a sliver (gate harden).
+ */
 private fun projection(
     now: ChargingNow,
     formats: Formats,
@@ -427,9 +450,23 @@ private fun projection(
 ): CurveProjection? {
     val time = now.toTarget?.takeIf { now.levelPct < now.targetPct } ?: return null
     val (shortest, longest) = minutes(time)
+    val latest = reachedMs(now.wallMs, longest)
+    val start = now.curve.firstOrNull()?.wallMs ?: return null
+    if (latest - now.wallMs > PROJECTION_SHARE * (now.wallMs - start)) return null
     val label = reachedAt(time, now.wallMs, formats, zone)
-    return CurveProjection(now.targetPct, reachedMs(now.wallMs, shortest), reachedMs(now.wallMs, longest), label)
+    return CurveProjection(now.targetPct, reachedMs(now.wallMs, shortest), latest, label)
 }
+
+/** The axis's end on the next 5 minutes, so the curve does not shift with each second's reading. */
+private fun axisEnd(now: ChargingNow): Long {
+    val last = now.curve.lastOrNull()?.wallMs ?: now.wallMs
+    return Math.ceilDiv(maxOf(last, now.wallMs), AXIS_STEP_MS) * AXIS_STEP_MS
+}
+
+private const val AXIS_STEP_MS = 5 * 60_000L
+
+/** The future may take up to twice the session so far: the session keeps a third of the axis. */
+private const val PROJECTION_SHARE = 2
 
 /** The 80/85/90/100% group (ADR-0026), which sets the tick and the time to target (ADR-0046 §4). */
 @Composable

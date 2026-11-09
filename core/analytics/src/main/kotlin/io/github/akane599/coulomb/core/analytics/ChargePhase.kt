@@ -3,6 +3,8 @@
 
 package io.github.akane599.coulomb.core.analytics
 
+import kotlin.math.abs
+
 /** Where a charge is, in plain words (SPEC 10.9; constant current and voltage stay in the glossary). */
 public enum class ChargePhase {
     /** The charger's full current. */
@@ -80,7 +82,8 @@ public object ChargePhases {
         val since = samples.lastOrNull { it.levelPct != last.levelPct }?.elapsedNs ?: samples.first().elapsedNs
         if ((last.elapsedNs - since) / NS_PER_MS < HOLD_MS) return false
         val limit = fullSpeedUa?.let { it * HOLD_SHARE } ?: HOLD_MAX_UA.toDouble()
-        return currentUa <= limit
+        // Either way: a level held while a real current leaves is drawing, not holding (gate harden).
+        return abs(currentUa.toDouble()) <= limit
     }
 
     private fun slowing(

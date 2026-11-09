@@ -5,7 +5,6 @@ package io.github.akane599.coulomb.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -48,6 +47,7 @@ import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import io.github.akane599.coulomb.R
 import io.github.akane599.coulomb.core.designsystem.component.CoulombBackButton
+import io.github.akane599.coulomb.core.designsystem.component.CoulombCrossfade
 import io.github.akane599.coulomb.core.designsystem.component.CoulombIconButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombNavigationBar
 import io.github.akane599.coulomb.core.designsystem.component.CoulombNavigationBarItem
@@ -260,7 +260,7 @@ private fun appEntries(
             val plugged = screens.plugged()
             val title = if (plugged == true) stringResource(ChargingR.string.charging_title) else null
             DestinationScreen(Destination.Now, navigator::open, title) {
-                Crossfade(plugged, animationSpec = CoulombMotion.effects(), label = "plugged") { shown ->
+                CoulombCrossfade(plugged) { shown ->
                     when (shown) {
                         true -> screens.charging(navigator)
                         false -> screens.now(navigator)

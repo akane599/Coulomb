@@ -101,7 +101,12 @@ class ChargingScreenshotTest {
     fun arabic() = shoot("ar", rtl = true) { Charging(labNow()) }
 
     @Test
-    fun loading() = shoot("loading") { ChargingContent(ChargingUiState.Loading, NoActions, zone = ZONE) }
+    fun loading() {
+        shoot("loading", capture = false) { ChargingContent(ChargingUiState.Loading, NoActions, zone = ZONE) }
+        // The skeleton shows only once a read takes longer than 150 ms.
+        compose.mainClock.advanceTimeBy(SKELETON_WAIT_MS)
+        compose.onRoot().captureRoboImage("src/test/screenshots/charging-loading.png")
+    }
 
     @Test
     fun error() = shoot("error") { ChargingContent(ChargingUiState.Error, NoActions, zone = ZONE) }
@@ -128,6 +133,14 @@ class ChargingScreenshotTest {
     @Test
     @Config(qualifiers = "$PAGE-xhdpi")
     fun holding() = shoot("holding") { Charging(holdingNow()) }
+
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun holdingBelowTarget() = shoot("holding-below-target") { Charging(holdingBelowTargetNow()) }
+
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun rightToLeftChargerName() = shoot("rtl-name") { Charging(rtlNameNow()) }
 
     @Test
     @Config(qualifiers = "$PAGE-xhdpi")
@@ -229,6 +242,7 @@ class ChargingScreenshotTest {
     }
 }
 
+private const val SKELETON_WAIT_MS = 200L
 private const val COMPACT = "w412dp-h915dp-xhdpi"
 private const val PAGE = "w412dp-h1800dp"
 private val ZONE = ZoneOffset.UTC

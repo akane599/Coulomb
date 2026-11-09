@@ -210,3 +210,16 @@ internal fun hardenedNow(): ChargingNow =
         toTarget = ChargeTime(118.0, 161.0, ChargeTimeBasis.ANY_CHARGER, charges = 3),
         tempRiseDeciC = -6,
     )
+
+/** Held by a charge limit below the 90% target: no time, and the reason is the hold. */
+internal fun holdingBelowTargetNow(): ChargingNow = holdingNow().copy(targetPct = 90)
+
+/** SPEC 11.12 harden: a right-to-left charger name in a left-to-right page keeps the line's order. */
+internal fun rtlNameNow(): ChargingNow =
+    labNow().copy(
+        charger =
+            LiveCharger.Known(
+                DESK.copy(name = "\u0634\u0627\u062D\u0646 \u0627\u0644\u0645\u0643\u062A\u0628"),
+                shareOfBaseline = 0.96,
+            ),
+    )

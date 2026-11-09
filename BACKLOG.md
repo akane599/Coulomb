@@ -10,5 +10,7 @@ where the spec has it.
 - CPU frequency residency and thermal zones read from sysfs as root, which the T3 row listed before
   ADR-0028 (SPEC 2, "CPU time and frequency residency"; ADR-0028 §2).
 - Validation runs longer than protocol E's one night (SPEC 17, P2 gate).
+- A two-pane Charging layout for expanded windows, readings and session beside the hero (SPEC 10.10's
+  adaptive layouts; the Charging adapt gate, ADR-0034 keeps one column).
 
 Read but not listed: SPEC 9.1's "optional action ids" is a field a rule may leave empty, not a task.

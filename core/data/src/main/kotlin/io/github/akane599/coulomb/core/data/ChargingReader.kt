@@ -64,7 +64,18 @@ internal object ChargingReader {
             toFull = if (timed && level < FULL) ChargeTimes.toLevel(levels, past, FULL) else null,
             startWallMs = startWallMs,
             startLevelPct = samples.first().levelPct,
-            curve = HealthReader.curve(samples),
+            // Signed, unlike a closed charge's curve: power out of the battery is not zero (gate harden).
+            curve =
+                samples.map {
+                    ChargeCurvePoint(
+                        it.wallMs,
+                        it.levelPct,
+                        it.currentUa?.let { ua ->
+                            ua * it.voltageMv.toDouble() / NW_PER_W
+                        },
+                        it.tempDeciC,
+                    )
+                },
             wallMs = last.wallMs,
         )
     }

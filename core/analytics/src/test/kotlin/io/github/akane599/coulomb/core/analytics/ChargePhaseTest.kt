@@ -49,6 +49,17 @@ class ChargePhaseTest {
     }
 
     @Test
+    fun aLevelHeldWhileARealCurrentLeavesIsDrawingNotHolding() {
+        val climb = run(from = 20, to = 80, ua = 4_000_000)
+        // Past 10% of the 4 A full speed: a real current out.
+        val leaving = (1..11).map { sample(61 + it, 80, -600_000) }
+        assertThat(ChargePhases.of(climb + leaving, usualTaperLevel = null)).isEqualTo(ChargePhase.DRAWING)
+        // A trickle either way at a charge limit is still holding.
+        val trickle = (1..11).map { sample(61 + it, 80, -50_000) }
+        assertThat(ChargePhases.of(climb + trickle, usualTaperLevel = null)).isEqualTo(ChargePhase.HOLDING)
+    }
+
+    @Test
     fun aHundredIsFullAndNoCurrentIsNoPhase() {
         assertThat(ChargePhases.of(run(from = 95, to = 100, ua = 300_000), usualTaperLevel = null)).isEqualTo(ChargePhase.FULL)
         assertThat(ChargePhases.of(listOf(sample(0, 50, null)), usualTaperLevel = null)).isNull()
