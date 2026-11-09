@@ -166,8 +166,18 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     and phase state (uncalibrated, learning, started high, new, holding at and below the target,
     drawing, full), a target outside the group, the slowing phase in Turkish at 200%, and both
     table sheets.
-  - Pending on the emulator: the 1 Hz rate while resumed and its return on pause, and the
-    Now/Charging swap on a faked plug. Pending on a device: the phase and times on a real charge.
+  - Emulator check (2026-11-09, API 37, plug faked on the emulator only): a faked plug swaps Now
+    for Charging. With Charging in front, samples come every 1,002 ms (median of 18). Behind Home
+    with the screen on they return to 5,002 ms (SPEC 7.3). Pending on a device: the phase and
+    times on a real charge.
+- Macrobenchmark, cold start to verdict with cached data (SPEC 1.3, 16.5):
+  - Now reports the app fully drawn once it shows the battery. The benchmark onboards once in basic
+    mode, then measures 10 cold starts to that point.
+  - The app's benchmark variant alone is profileable.
+  - API 37 emulator, unplugged by a faked plug, 2026-11-09: time to verdict median 686 ms (min 522,
+    max 719); first frame median 562 ms.
+  - Indicative only: the target (p50 < 800 ms, p90 < 1.2 s) is for the S25 Ultra, so that gate is
+    pending real device.
 - Whole-app follow-up from the Charging audit: `BatteryRepository` and `DrainRepository` share a
   `stateIn`/`shareIn` flow in the app scope. A failed read ends that shared flow for every later
   collector, so "Try again" cannot recover without a restart. Charging moved to a cold flow per

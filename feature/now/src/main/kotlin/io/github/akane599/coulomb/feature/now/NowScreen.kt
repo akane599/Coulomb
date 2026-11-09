@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.now
 
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -61,6 +63,8 @@ public fun NowScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    // Time to verdict (SPEC 1.3, 16.5): the app is fully drawn once Now shows the battery.
+    ReportDrawnWhen { state is NowUiState.Ready }
     NowContent(
         state = state,
         refreshing = refreshing,
@@ -87,6 +91,9 @@ internal class NowActions(
     val openPrivileges: () -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
 )
+
+/** What the Macrobenchmark waits for: Now's content once the verdict shows (SPEC 16.5). */
+internal const val NOW_VERDICT_TAG = "now-verdict"
 
 /** Now's column on wide windows (ADR-0034). */
 private val MaxContentWidth = 720.dp
@@ -127,7 +134,7 @@ internal fun NowContent(
 
                 is NowUiState.Ready -> {
                     FadeInOnce {
-                        Column {
+                        Column(Modifier.testTag(NOW_VERDICT_TAG)) {
                             Hero(state, formats, zone, onViewTable = { table = OpenTable.LEVEL })
                             if (state.discharge != null) SessionStrip(state.discharge, formats)
                             TopDrains(state, formats, zone, actions)
