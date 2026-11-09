@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
@@ -270,7 +271,7 @@ internal object WindowBuilder {
         }
         val uidRows =
             uids.map { (key, mah) ->
-                WindowUidEntity(0, key.uid, key.component, key.processState, WindowUidEntity.WHOLE_UID, mah, Provenance.MODELED)
+                WindowUid(0, key.uid, key.component, key.processState, WindowUidEntity.WHOLE_UID, mah, Provenance.MODELED)
             }
         return WindowRows(uids = uidRows, wakes = wakes(chain, ownUid), stats = stats(chain, kept))
     }

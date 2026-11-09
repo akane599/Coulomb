@@ -19,6 +19,7 @@ import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ChargeSource
@@ -582,7 +583,7 @@ class DrainReaderTest {
         uid: Int,
         mah: Double,
         component: String = WindowDrainsBuilder.ALL_COMPONENTS,
-    ) = WindowUidEntity(
+    ) = WindowUid(
         0,
         uid,
         component,

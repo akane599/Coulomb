@@ -8,6 +8,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
+import io.github.akane599.coulomb.core.model.Breakdown
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
@@ -48,7 +49,7 @@ import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
     ],
     indices = [Index("fromSnapshotId"), Index("toSnapshotId"), Index("sessionId"), Index("kind", "toSnapshotId")],
 )
-@TypeConverters(KernelCodes::class)
+@TypeConverters(KernelCodes::class, BreakdownCodes::class)
 public data class WindowResultEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val kind: WindowKind,
@@ -72,6 +73,11 @@ public data class WindowResultEntity(
      * kernel source was collected for the window.
      */
     val kernelCoverage: KernelCoverage? = null,
+    /**
+     * Consecutive windows only: broken down by S4, or the first rule that failed (ADR-0035 §5). Null
+     * on other kinds and on windows from before schema 4.
+     */
+    val breakdown: Breakdown? = null,
 )
 
 /**
@@ -80,10 +86,14 @@ public data class WindowResultEntity(
  * component has either one [WHOLE_UID] row or rows per process, never both. UIDs below the
  * retention policy's threshold are summed per component into an [OTHER_UID] row (ADR-0015).
  * [provenance] is stored as a [DetailCodes] code (ADR-0021).
+ *
+ * The component and process-state names are [StatKeyEntity] ids without a foreign key, like
+ * `window_stat`'s keys (ADR-0021 margin step 1, taken by ADR-0035); `WindowDao` reads and writes
+ * them as text, as [WindowUid].
  */
 @Entity(
     tableName = "window_uid",
-    primaryKeys = ["windowId", "uid", "component", "processState", "process"],
+    primaryKeys = ["windowId", "uid", "componentId", "processStateId", "process"],
     foreignKeys = [
         ForeignKey(
             entity = WindowResultEntity::class,
@@ -98,8 +108,8 @@ public data class WindowResultEntity(
 public data class WindowUidEntity(
     val windowId: Long,
     val uid: Int,
-    val component: String,
-    val processState: String,
+    val componentId: Int,
+    val processStateId: Int,
     val process: String,
     val mAh: Double,
     val provenance: Provenance,
@@ -111,6 +121,18 @@ public data class WindowUidEntity(
         public const val OTHER_UID: Int = -2
     }
 }
+
+/** A [WindowUidEntity] with its component and process state as text. [windowId] is ignored on insert. */
+@TypeConverters(DetailCodes::class)
+public data class WindowUid(
+    val windowId: Long,
+    val uid: Int,
+    val component: String,
+    val processState: String,
+    val process: String,
+    val mAh: Double,
+    val provenance: Provenance,
+)
 
 /**
  * A wakelock, kernel wakelock, wakeup reason or root kernel cause's change over a window, so the

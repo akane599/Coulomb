@@ -48,7 +48,31 @@ internal object Migrations {
             }
         }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+    /**
+     * Version 4 (ADR-0035) adds S4's breakdown and takes ADR-0021's margin step 1:
+     * - `window_uid`'s `component` and `processState` names move to `stat_key`, which already holds
+     *   every other window name; the rows are rebuilt with their ids, losing nothing;
+     * - `window_result.breakdown`, null on the rows already stored, which no S4 read covers;
+     * - the empty tables `uid_component_power` and `window_component`.
+     *
+     * `window_uid` has no `AUTOINCREMENT` counter, and nothing references its rows.
+     */
+    val MIGRATION_3_4: Migration =
+        object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                (windowUidIds() + componentsV4()).forEach(db::execSQL)
+            }
+        }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+
+    /** The 20 S4 columns of version 4 (`PowerColumns`), in their exported order. */
+    private const val POWER_COLUMNS =
+        "`screen` INTEGER NOT NULL, `cpu` INTEGER NOT NULL, `bluetooth` INTEGER NOT NULL, `camera` INTEGER NOT NULL, " +
+            "`audio` INTEGER NOT NULL, `video` INTEGER NOT NULL, `flashlight` INTEGER NOT NULL, `mobileRadio` INTEGER NOT NULL, " +
+            "`sensors` INTEGER NOT NULL, `gnss` INTEGER NOT NULL, `wifi` INTEGER NOT NULL, `wakelock` INTEGER NOT NULL, " +
+            "`phone` INTEGER NOT NULL, `ambientDisplay` INTEGER NOT NULL, `custom` INTEGER NOT NULL, `other` INTEGER NOT NULL, " +
+            "`foreground` INTEGER NOT NULL, `background` INTEGER NOT NULL, `foregroundService` INTEGER NOT NULL, `cached` INTEGER NOT NULL"
 
     /**
      * The codes of `DetailCodes` at version 2, frozen here. A value outside them fails the NOT NULL
@@ -149,6 +173,34 @@ internal object Migrations {
                 "FOREIGN KEY(`readSnapshotId`) REFERENCES `snapshot`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_kernel_log_event_kernelBoot_seq` ON `kernel_log_event` (`kernelBoot`, `seq`)",
             "CREATE INDEX IF NOT EXISTS `index_kernel_log_event_readSnapshotId` ON `kernel_log_event` (`readSnapshotId`)",
+        )
+
+    private fun windowUidIds() =
+        listOf(
+            "INSERT OR IGNORE INTO `stat_key` (`name`) SELECT `component` FROM `window_uid` " +
+                "UNION SELECT `processState` FROM `window_uid` ORDER BY 1",
+            "CREATE TABLE IF NOT EXISTS `_new_window_uid` (`windowId` INTEGER NOT NULL, `uid` INTEGER NOT NULL, " +
+                "`componentId` INTEGER NOT NULL, `processStateId` INTEGER NOT NULL, `process` TEXT NOT NULL, " +
+                "`mAh` REAL NOT NULL, `provenance` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`windowId`, `uid`, `componentId`, `processStateId`, `process`), " +
+                "FOREIGN KEY(`windowId`) REFERENCES `window_result`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "INSERT INTO `_new_window_uid` (`windowId`, `uid`, `componentId`, `processStateId`, `process`, `mAh`, `provenance`) " +
+                "SELECT u.`windowId`, u.`uid`, c.`id`, p.`id`, u.`process`, u.`mAh`, u.`provenance` FROM `window_uid` u " +
+                "JOIN `stat_key` c ON c.`name` = u.`component` JOIN `stat_key` p ON p.`name` = u.`processState`",
+            "DROP TABLE `window_uid`",
+            "ALTER TABLE `_new_window_uid` RENAME TO `window_uid`",
+            "CREATE INDEX IF NOT EXISTS `index_window_uid_uid_windowId` ON `window_uid` (`uid`, `windowId`)",
+        )
+
+    private fun componentsV4() =
+        listOf(
+            "ALTER TABLE `window_result` ADD COLUMN `breakdown` INTEGER",
+            "CREATE TABLE IF NOT EXISTS `uid_component_power` (`snapshotId` INTEGER NOT NULL, `uid` INTEGER NOT NULL, " +
+                "$POWER_COLUMNS, PRIMARY KEY(`snapshotId`, `uid`), FOREIGN KEY(`snapshotId`) REFERENCES `snapshot`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE TABLE IF NOT EXISTS `window_component` (`windowId` INTEGER NOT NULL, `uid` INTEGER NOT NULL, " +
+                "$POWER_COLUMNS, PRIMARY KEY(`windowId`, `uid`), FOREIGN KEY(`windowId`) REFERENCES `window_result`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE CASCADE )",
         )
 
     /**

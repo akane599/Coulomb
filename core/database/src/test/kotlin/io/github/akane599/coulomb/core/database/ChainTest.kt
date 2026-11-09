@@ -12,6 +12,7 @@ import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
@@ -31,11 +32,11 @@ class ChainTest : DatabaseTest() {
         uid: Int,
         mah: Double,
         component: String = "all",
-    ) = WindowUidEntity(0, uid, component, UidPowerEntity.ANY_STATE, WindowUidEntity.WHOLE_UID, mah, Provenance.MODELED)
+    ) = WindowUid(0, uid, component, UidPowerEntity.ANY_STATE, WindowUidEntity.WHOLE_UID, mah, Provenance.MODELED)
 
     private fun rows(
         vararg wakes: WindowWake,
-        uids: List<WindowUidEntity> = emptyList(),
+        uids: List<WindowUid> = emptyList(),
         alarms: Long = 0,
     ) = WindowRows(
         uids = uids,

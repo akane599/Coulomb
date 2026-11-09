@@ -7,6 +7,7 @@ import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.AppScope
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
@@ -62,7 +63,7 @@ internal object WindowDrainsBuilder {
         window: WindowResultEntity,
         fromWallMs: Long,
         toWallMs: Long,
-        rows: List<WindowUidEntity>,
+        rows: List<WindowUid>,
         meta: List<UidMetaEntity>,
     ): WindowDrains =
         build(
@@ -85,7 +86,7 @@ internal object WindowDrainsBuilder {
         measuredMah: Double?,
         measuredProvenance: Provenance?,
         modeledMah: Double?,
-        rows: List<WindowUidEntity>,
+        rows: List<WindowUid>,
         meta: List<UidMetaEntity>,
         levelEstimate: LevelEstimate? = null,
     ): WindowDrains {
@@ -122,7 +123,7 @@ internal object WindowDrainsBuilder {
     }
 
     /** A UID's whole total when stored, else the sum of its parts: never both (WindowUidEntity). */
-    private fun total(rows: List<WindowUidEntity>): Double {
+    private fun total(rows: List<WindowUid>): Double {
         val whole = rows.filter { it.component == ALL_COMPONENTS }
         return (whole.ifEmpty { rows }).sumOf { it.mAh }
     }

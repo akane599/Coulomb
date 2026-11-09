@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
 import io.github.akane599.coulomb.core.database.entity.ChargeDetailEntity
 import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.SessionCloseReason
@@ -31,7 +32,7 @@ class WindowSessionTest : DatabaseTest() {
 
     private fun detail() =
         WindowRows(
-            uids = listOf(WindowUidEntity(0, 10_123, "cpu", UidPowerEntity.ANY_STATE, WindowUidEntity.WHOLE_UID, 4.0, Provenance.DERIVED)),
+            uids = listOf(WindowUid(0, 10_123, "cpu", UidPowerEntity.ANY_STATE, WindowUidEntity.WHOLE_UID, 4.0, Provenance.DERIVED)),
             wakes = listOf(WindowWake(null, "qcom_rx_wakelock", WakeKind.KERNEL, 1_200, 3, null)),
             stats = listOf(WindowStat(UidPowerEntity.DEVICE_UID, "wakeups", 14, Provenance.MEASURED)),
         )
@@ -58,7 +59,8 @@ class WindowSessionTest : DatabaseTest() {
             val first = windows.insert(window(from, to), detail())
             val other = WindowWake(10_123, "*job*/sync", WakeKind.PARTIAL, 900, 1, 0)
             val second = windows.insert(window(from, to), detail().copy(wakes = detail().wakes + other))
-            assertThat(long("SELECT COUNT(*) FROM stat_key")).isEqualTo(1)
+            // One counter key, and the uid row's component and process state (ADR-0035).
+            assertThat(long("SELECT COUNT(*) FROM stat_key")).isEqualTo(3)
             assertThat(long("SELECT COUNT(*) FROM wake_tag")).isEqualTo(2)
             assertThat(windows.rows(second).wakes.map { it.tag }).containsExactly("qcom_rx_wakelock", "*job*/sync").inOrder()
 
@@ -69,7 +71,7 @@ class WindowSessionTest : DatabaseTest() {
             windows.pruneDetail(listOf(first))
             assertThat(long("SELECT COUNT(*) FROM wake_tag")).isEqualTo(0)
             // Keys are never pruned: the set is small and only grows.
-            assertThat(long("SELECT COUNT(*) FROM stat_key")).isEqualTo(1)
+            assertThat(long("SELECT COUNT(*) FROM stat_key")).isEqualTo(3)
         }
 
     @Test

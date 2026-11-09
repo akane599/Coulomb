@@ -6,6 +6,7 @@ package io.github.akane599.coulomb.core.data
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
@@ -38,7 +39,7 @@ class WindowDrainsBuilderTest {
         mah: Double,
         component: String = "all",
         state: String = "any",
-    ) = WindowUidEntity(1, uid, component, state, WindowUidEntity.WHOLE_UID, mah, Provenance.MODELED)
+    ) = WindowUid(1, uid, component, state, WindowUidEntity.WHOLE_UID, mah, Provenance.MODELED)
 
     @Test
     fun appsRankByTheirWholeTotalWithNamesAndTheRemainderApart() {

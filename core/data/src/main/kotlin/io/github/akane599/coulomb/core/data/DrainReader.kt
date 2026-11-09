@@ -17,6 +17,7 @@ import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ChargeSource
@@ -89,7 +90,7 @@ internal class DrainReader
             val measured = measured(exact, totals, chain, from, to)
             val uids =
                 rows?.uids ?: chain.uids().map {
-                    WindowUidEntity(
+                    WindowUid(
                         windowId = 0,
                         uid = it.uid,
                         component = it.component,
@@ -158,7 +159,7 @@ internal class DrainReader
         }
 
         /** The device rows, which hold each component's total with the apps' share in it (CounterMapper). */
-        private fun components(rows: List<WindowUidEntity>): List<ComponentDrain> =
+        private fun components(rows: List<WindowUid>): List<ComponentDrain> =
             rows
                 .filter { it.uid == UidPowerEntity.DEVICE_UID }
                 .groupBy { PowerComponent.ofStored(it.component) }

@@ -19,6 +19,7 @@ import io.github.akane599.coulomb.core.database.entity.NetStatEntity
 import io.github.akane599.coulomb.core.database.entity.RailEnergyEntity
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
@@ -41,6 +42,8 @@ public data class SnapshotRows(
     val railEnergy: List<RailEnergyEntity> = emptyList(),
     val uidStats: List<UidStatEntity> = emptyList(),
     val deviceStats: List<DeviceStatEntity> = emptyList(),
+    /** S4's cumulative columns per consumer (ADR-0035 §6); only when S4 was `ok`. */
+    val componentPower: List<UidComponentPowerEntity> = emptyList(),
 )
 
 /**
@@ -83,6 +86,7 @@ public abstract class SnapshotDao {
         insertRailEnergy(rows.railEnergy.map { it.copy(snapshotId = id) })
         insertUidStats(rows.uidStats.map { it.copy(snapshotId = id) })
         insertDeviceStats(rows.deviceStats.map { it.copy(snapshotId = id) })
+        insertComponentPower(rows.componentPower.map { it.copy(snapshotId = id) })
         kernel?.let { insertKernel(id, it) }
         return id
     }
@@ -255,6 +259,7 @@ public abstract class SnapshotDao {
             railEnergy = railEnergy(snapshotId),
             uidStats = uidStats(snapshotId),
             deviceStats = deviceStats(snapshotId),
+            componentPower = componentPower(snapshotId),
         )
 
     /** A reference the user named (SPEC 7.6). */
@@ -302,6 +307,7 @@ public abstract class SnapshotDao {
         val ids = prunableCounters(cutBootSeq, cutElapsedNs)
         ids.chunked(MAX_IDS).forEach { chunk ->
             deleteUidPower(chunk)
+            deleteComponentPower(chunk)
             deleteWakeStats(chunk)
             deleteAlarmStats(chunk)
             deleteJobStats(chunk)
@@ -430,6 +436,9 @@ public abstract class SnapshotDao {
     protected abstract suspend fun insertUidPower(rows: List<UidPowerEntity>)
 
     @Insert
+    protected abstract suspend fun insertComponentPower(rows: List<UidComponentPowerEntity>)
+
+    @Insert
     protected abstract suspend fun insertWakeStats(rows: List<WakeStatEntity>)
 
     @Insert
@@ -452,6 +461,9 @@ public abstract class SnapshotDao {
 
     @Query("SELECT * FROM uid_power WHERE snapshotId = :snapshotId")
     protected abstract suspend fun uidPower(snapshotId: Long): List<UidPowerEntity>
+
+    @Query("SELECT * FROM uid_component_power WHERE snapshotId = :snapshotId ORDER BY uid")
+    protected abstract suspend fun componentPower(snapshotId: Long): List<UidComponentPowerEntity>
 
     @Query("SELECT * FROM wake_stat WHERE snapshotId = :snapshotId ORDER BY id")
     protected abstract suspend fun wakeStats(snapshotId: Long): List<WakeStatEntity>
@@ -489,6 +501,9 @@ public abstract class SnapshotDao {
 
     @Query("DELETE FROM uid_power WHERE snapshotId IN (:ids)")
     protected abstract suspend fun deleteUidPower(ids: List<Long>)
+
+    @Query("DELETE FROM uid_component_power WHERE snapshotId IN (:ids)")
+    protected abstract suspend fun deleteComponentPower(ids: List<Long>)
 
     @Query("DELETE FROM wake_stat WHERE snapshotId IN (:ids)")
     protected abstract suspend fun deleteWakeStats(ids: List<Long>)

@@ -11,12 +11,19 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.database.dao.KernelRows
+import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.HistoryCodes
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.KmsgSpan
+import io.github.akane599.coulomb.core.database.entity.PowerColumns
+import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
+import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
+import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
+import io.github.akane599.coulomb.core.model.Breakdown
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
@@ -179,6 +186,87 @@ class MigrationTest {
                 ).isEqualTo(2)
             }
         }
+
+    @Test
+    fun threeToFourMovesWindowUidNamesToIdsAndAddsS4Storage() =
+        runTest {
+            helper.createDatabase(NAME, 3).use { v3 ->
+                (
+                    snapshotsAndWindow() +
+                        listOf(
+                            // `cpu` is already a counter key: the migration reuses its id.
+                            "INSERT INTO stat_key VALUES (4, 'cpu')",
+                            "INSERT INTO window_stat VALUES (7, 10123, 4, 900, 0)",
+                            "INSERT INTO window_uid VALUES (7, 10123, 'all', 'any', '', 4.5, 1)",
+                            "INSERT INTO window_uid VALUES (7, 10123, 'cpu', 'any', 'com.example:remote', 1.25, 1)",
+                            "INSERT INTO window_uid VALUES (7, -2, 'all', 'any', '', 0.5, 3)",
+                            "INSERT INTO window_uid VALUES (7, -1, 'SCREEN', 'any', '', 30.0, 1)",
+                        )
+                ).forEach(v3::execSQL)
+            }
+
+            helper.runMigrationsAndValidate(NAME, 4, true, *Migrations.ALL).close()
+
+            migrated { db ->
+                val rows = db.windowDao().rows(7)
+                assertThat(rows.uids)
+                    .containsExactly(
+                        WindowUid(7, 10123, "all", "any", "", 4.5, Provenance.MODELED),
+                        WindowUid(7, 10123, "cpu", "any", "com.example:remote", 1.25, Provenance.MODELED),
+                        WindowUid(7, -2, "all", "any", "", 0.5, Provenance.DERIVED),
+                        WindowUid(7, -1, "SCREEN", "any", "", 30.0, Provenance.MODELED),
+                    )
+                assertThat(rows.stats).containsExactly(WindowStat(10123, "cpu", 900, Provenance.MEASURED))
+                assertThat(long(db, "SELECT COUNT(*) FROM stat_key")).isEqualTo(4)
+                assertThat(long(db, "SELECT id FROM stat_key WHERE name = 'cpu'")).isEqualTo(4)
+                val window = checkNotNull(db.windowDao().window(7))
+                assertThat(window.breakdown).isNull()
+
+                s4StorageWorks(db, window)
+            }
+        }
+
+    /** Breakdowns, component rows and S4 snapshot rows store and read back on a migrated file. */
+    private suspend fun s4StorageWorks(
+        db: CoulombDatabase,
+        window: WindowResultEntity,
+    ) {
+        val power = PowerColumns(cpu = 120, wifi = 30, foreground = 100, background = 20)
+        val windowId =
+            db.windowDao().insert(
+                window.copy(id = 0, breakdown = Breakdown.BROKEN_DOWN),
+                WindowRows(
+                    uids = listOf(WindowUid(0, 10123, "all", "any", "", 4.2, Provenance.MODELED)),
+                    components = listOf(WindowComponentEntity(0, 10123, power), WindowComponentEntity(0, -1, power)),
+                ),
+            )
+        assertThat(db.windowDao().window(windowId)?.breakdown).isEqualTo(Breakdown.BROKEN_DOWN)
+        assertThat(
+            db
+                .windowDao()
+                .rows(windowId)
+                .components
+                .map { it.uid to it.power.toPower() },
+        ).containsExactly(-1 to power.toPower(), 10123 to power.toPower())
+            .inOrder()
+        assertThat(long(db, "SELECT COUNT(*) FROM stat_key")).isEqualTo(4)
+        db.windowDao().pruneDetail(listOf(windowId))
+        assertThat(db.windowDao().rows(windowId).components).isEmpty()
+
+        val snapshotId =
+            db.snapshotDao().insert(
+                db.snapshotDao().snapshot(2)!!.copy(id = 0, elapsedNs = 30 * NS_PER_S),
+                SnapshotRows(componentPower = listOf(UidComponentPowerEntity(0, 10123, power))),
+            )
+        assertThat(
+            db
+                .snapshotDao()
+                .rows(snapshotId)
+                .componentPower
+                .single()
+                .power,
+        ).isEqualTo(power)
+    }
 
     private fun long(
         db: CoulombDatabase,

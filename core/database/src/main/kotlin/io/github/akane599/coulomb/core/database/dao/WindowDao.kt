@@ -13,8 +13,10 @@ import io.github.akane599.coulomb.core.database.entity.DetailCodes
 import io.github.akane599.coulomb.core.database.entity.KernelCodes
 import io.github.akane599.coulomb.core.database.entity.StatKeyEntity
 import io.github.akane599.coulomb.core.database.entity.WakeTagEntity
+import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 import io.github.akane599.coulomb.core.model.ChargeSource
@@ -119,16 +121,19 @@ public data class ChainStep(
     val kernelCoverage: KernelCoverage? = null,
 )
 
-/** The per-UID records of one window. The uid rows' `windowId` is ignored on insert. */
+/** The per-UID records of one window. The uid and component rows' `windowId` is ignored on insert. */
 public data class WindowRows(
-    val uids: List<WindowUidEntity> = emptyList(),
+    val uids: List<WindowUid> = emptyList(),
     val wakes: List<WindowWake> = emptyList(),
     val stats: List<WindowStat> = emptyList(),
+    /** S4's breakdown (ADR-0035 §6); only on consecutive windows that passed every rule. */
+    val components: List<WindowComponentEntity> = emptyList(),
 )
 
 /**
- * Drain windows and their per-UID records (SPEC 6.2, 6.5). Stat keys and wake tags are stored once
- * in `stat_key` and `wake_tag` (ADR-0021); this DAO reads and writes them as text.
+ * Drain windows and their per-UID records (SPEC 6.2, 6.5). Stat keys, `window_uid`'s component and
+ * process-state names and wake tags are stored once in `stat_key` and `wake_tag` (ADR-0021,
+ * ADR-0035); this DAO reads and writes them as text.
  */
 @Dao
 public abstract class WindowDao {
@@ -139,7 +144,22 @@ public abstract class WindowDao {
         rows: WindowRows = WindowRows(),
     ): Long {
         val id = insertWindow(window)
-        insertUids(rows.uids.map { it.copy(windowId = id) })
+        if (rows.uids.isNotEmpty()) {
+            val names = keyIds(rows.uids.flatMapTo(LinkedHashSet()) { listOf(it.component, it.processState) })
+            insertUids(
+                rows.uids.map {
+                    WindowUidEntity(
+                        id,
+                        it.uid,
+                        names.getValue(it.component),
+                        names.getValue(it.processState),
+                        it.process,
+                        it.mAh,
+                        it.provenance,
+                    )
+                },
+            )
+        }
         if (rows.wakes.isNotEmpty()) {
             val tags = rows.wakes.mapTo(LinkedHashSet()) { it.tag }.toList()
             insertWakeTags(tags.map { WakeTagEntity(tag = it) })
@@ -152,13 +172,20 @@ public abstract class WindowDao {
             )
         }
         if (rows.stats.isNotEmpty()) {
-            val keys = rows.stats.mapTo(LinkedHashSet()) { it.key }.toList()
-            insertStatKeys(keys.map { StatKeyEntity(name = it) })
-            val keyIds = HashMap<String, Int>(keys.size)
-            keys.chunked(MAX_IDS).forEach { chunk -> statKeys(chunk).forEach { keyIds[it.name] = it.id } }
+            val keyIds = keyIds(rows.stats.mapTo(LinkedHashSet()) { it.key })
             insertStats(rows.stats.map { WindowStatEntity(id, it.uid, keyIds.getValue(it.key), it.value, it.provenance) })
         }
+        insertComponents(rows.components.map { it.copy(windowId = id) })
         return id
+    }
+
+    /** The `stat_key` ids of [names], adding the names not stored yet. */
+    private suspend fun keyIds(names: Set<String>): Map<String, Int> {
+        val list = names.toList()
+        insertStatKeys(list.map { StatKeyEntity(name = it) })
+        val ids = HashMap<String, Int>(list.size)
+        list.chunked(MAX_IDS).forEach { chunk -> statKeys(chunk).forEach { ids[it.name] = it.id } }
+        return ids
     }
 
     @Query("SELECT * FROM window_result WHERE id = :id")
@@ -166,7 +193,8 @@ public abstract class WindowDao {
 
     /** The window's records; empty once [WindowResultEntity.detailPruned] is set. */
     @Transaction
-    public open suspend fun rows(windowId: Long): WindowRows = WindowRows(uids(windowId), wakes(windowId), stats(windowId))
+    public open suspend fun rows(windowId: Long): WindowRows =
+        WindowRows(uids(windowId), wakes(windowId), stats(windowId), components(windowId))
 
     /** Every window of [kind], oldest first; for REFERENCE windows, at most one per reference (ADR-0032). */
     @Query("SELECT * FROM window_result WHERE kind = :kind ORDER BY id")
@@ -247,9 +275,9 @@ public abstract class WindowDao {
 
     /** As [chainTotals], each UID's modeled mAh per component (device rows included). */
     @Query(
-        "SELECT u.uid, u.component, SUM(u.mAh) AS mAh FROM window_uid u " +
+        "SELECT u.uid, c.name AS component, SUM(u.mAh) AS mAh FROM window_uid u JOIN stat_key c ON c.id = u.componentId " +
             "JOIN window_result w ON w.id = u.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
-            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY u.uid, u.component",
+            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY u.uid, u.componentId",
     )
     public abstract suspend fun chainUids(
         fromBootSeq: Int,
@@ -289,8 +317,8 @@ public abstract class WindowDao {
     ): List<ChainStat>
 
     /** One UID's shares across the windows that still have them, for app detail (SPEC 10). */
-    @Query("SELECT * FROM window_uid WHERE uid = :uid ORDER BY windowId")
-    public abstract fun observeForUid(uid: Int): Flow<List<WindowUidEntity>>
+    @Query("$UID_ROWS WHERE u.uid = :uid ORDER BY u.windowId")
+    public abstract fun observeForUid(uid: Int): Flow<List<WindowUid>>
 
     /** Windows of [kinds] that end before the cut and still have their records. */
     @Query(
@@ -346,6 +374,7 @@ public abstract class WindowDao {
             deleteUids(chunk)
             deleteWakes(chunk)
             deleteStats(chunk)
+            deleteComponents(chunk)
             markDetailPruned(chunk)
         }
         deleteUnusedWakeTags()
@@ -363,6 +392,9 @@ public abstract class WindowDao {
     @Insert
     protected abstract suspend fun insertStats(rows: List<WindowStatEntity>)
 
+    @Insert
+    protected abstract suspend fun insertComponents(rows: List<WindowComponentEntity>)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertWakeTags(tags: List<WakeTagEntity>)
 
@@ -375,8 +407,11 @@ public abstract class WindowDao {
     @Query("SELECT * FROM stat_key WHERE name IN (:names)")
     protected abstract suspend fun statKeys(names: List<String>): List<StatKeyEntity>
 
-    @Query("SELECT * FROM window_uid WHERE windowId = :windowId")
-    protected abstract suspend fun uids(windowId: Long): List<WindowUidEntity>
+    @Query("$UID_ROWS WHERE u.windowId = :windowId")
+    protected abstract suspend fun uids(windowId: Long): List<WindowUid>
+
+    @Query("SELECT * FROM window_component WHERE windowId = :windowId ORDER BY uid")
+    protected abstract suspend fun components(windowId: Long): List<WindowComponentEntity>
 
     @Query(
         "SELECT w.uid, t.tag, w.kind, w.totalMs, w.count, w.screenOffMs, w.wakeups FROM window_wake w " +
@@ -399,6 +434,9 @@ public abstract class WindowDao {
     @Query("DELETE FROM window_stat WHERE windowId IN (:ids)")
     protected abstract suspend fun deleteStats(ids: List<Long>)
 
+    @Query("DELETE FROM window_component WHERE windowId IN (:ids)")
+    protected abstract suspend fun deleteComponents(ids: List<Long>)
+
     @Query("UPDATE window_result SET detailPruned = 1 WHERE id IN (:ids)")
     protected abstract suspend fun markDetailPruned(ids: List<Long>)
 
@@ -420,5 +458,10 @@ public abstract class WindowDao {
                 "AND (s.bootSeq < :toBootSeq OR (s.bootSeq = :toBootSeq AND s.elapsedNs <= :toElapsedNs))"
 
         const val MAX_IDS = 500
+
+        /** `window_uid` rows with their names as text ([WindowUid]). */
+        const val UID_ROWS =
+            "SELECT u.windowId, u.uid, c.name AS component, p.name AS processState, u.process, u.mAh, u.provenance " +
+                "FROM window_uid u JOIN stat_key c ON c.id = u.componentId JOIN stat_key p ON p.id = u.processStateId"
     }
 }

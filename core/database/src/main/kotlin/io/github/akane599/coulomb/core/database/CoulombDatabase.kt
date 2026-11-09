@@ -41,6 +41,7 @@ import io.github.akane599.coulomb.core.database.entity.SampleAggregateEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.StatKeyEntity
+import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.UidPackageEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
@@ -48,19 +49,20 @@ import io.github.akane599.coulomb.core.database.entity.UidStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeTagEntity
 import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
+import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 
 /**
- * The SPEC 8 schema (ADR-0015, ADR-0021, ADR-0029). Schemas are exported to `core/database/schemas` and
+ * The SPEC 8 schema (ADR-0015, ADR-0021, ADR-0029, ADR-0035). Schemas are exported to `core/database/schemas` and
  * committed; a version bump needs a migration and a migration test (SPEC 8). Enums are stored by
  * name, except the position codes of the history and window detail tables ([HistoryCodes],
  * [DetailCodes]).
  */
 @Database(
-    version = 3,
+    version = 4,
     exportSchema = true,
     entities = [
         DeviceProfileEntity::class,
@@ -75,6 +77,7 @@ import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
         HealthSummaryEntity::class,
         SnapshotEntity::class,
         UidPowerEntity::class,
+        UidComponentPowerEntity::class,
         UidMetaEntity::class,
         WakeStatEntity::class,
         AlarmStatEntity::class,
@@ -92,6 +95,7 @@ import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
         WindowUidEntity::class,
         WindowWakeEntity::class,
         WindowStatEntity::class,
+        WindowComponentEntity::class,
         StatKeyEntity::class,
         WakeTagEntity::class,
         HistoryEventEntity::class,

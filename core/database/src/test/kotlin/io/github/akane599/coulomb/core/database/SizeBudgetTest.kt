@@ -13,9 +13,12 @@ import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.KmsgSpan
+import io.github.akane599.coulomb.core.database.entity.PowerColumns
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
+import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
+import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.Provenance
@@ -106,7 +109,7 @@ class SizeBudgetTest : DatabaseTest() {
         WindowRows(
             uids =
                 List(DETAIL_ROWS) { i ->
-                    WindowUidEntity(
+                    WindowUid(
                         0,
                         10_000 + i / 3,
                         COMPONENTS[i % 3],
@@ -211,6 +214,63 @@ class SizeBudgetTest : DatabaseTest() {
             assertThat(rootMb).isLessThan(ROOT_BUDGET_MB)
         }
 
+    /**
+     * S4's rows (ADR-0035 Size): a `window_component` row at most 64 bytes, and `window_uid` rows
+     * with their names as `stat_key` ids (ADR-0021 margin step 1). The 30-day projection uses the
+     * upper bound: 150 consecutive windows a day, each broken down, with 33 rows.
+     */
+    @Test
+    fun s4RowsStayNarrow() =
+        runTest {
+            db.snapshotDao().insert(snapshot(elapsedS = 1))
+            db.snapshotDao().insert(snapshot(elapsedS = 2))
+            val component = bytesPer(WINDOWS * COMPONENT_ROWS) { repeat(WINDOWS) { db.windowDao().insert(window(1, 2), componentRows()) } }
+            val uid = bytesPer(WINDOWS * DETAIL_ROWS) { repeat(WINDOWS) { db.windowDao().insert(window(1, 2), uidRows()) } }
+            val s4Mb = component * COMPONENT_ROWS_KEPT / MB
+            println("S4 bytes per row: window_component %.1f, window_uid %.1f; S4 adds at day 30: %.1f MB".format(component, uid, s4Mb))
+
+            assertThat(component).isLessThan(64.0)
+            // With its names as text a row took about 71 bytes, stored three times: the table, the
+            // primary key's index and the (uid, windowId) index.
+            assertThat(uid).isLessThan(64.0)
+            assertThat(s4Mb).isLessThan(S4_BUDGET_MB)
+        }
+
+    /** A window's breakdown: apps with a few components and states, other apps, and the device. */
+    private fun componentRows(): WindowRows =
+        WindowRows(
+            components =
+                List(COMPONENT_ROWS) { i ->
+                    val uid = if (i == COMPONENT_ROWS - 1) UidPowerEntity.DEVICE_UID else 10_000 + i
+                    val cpu = 200L + random.nextInt(1_800)
+                    val wifi = random.nextInt(400).toLong()
+                    val wakelock = random.nextInt(90).toLong()
+                    val foreground = cpu / 3
+                    WindowComponentEntity(
+                        0,
+                        uid,
+                        PowerColumns(
+                            screen = if (uid < 0) 4_000L + random.nextInt(4_000) else 0,
+                            cpu = cpu,
+                            wifi = wifi,
+                            mobileRadio = if (i % 3 == 0) random.nextInt(900).toLong() else 0,
+                            wakelock = wakelock,
+                            foreground = foreground,
+                            background = cpu - foreground + wakelock,
+                            foregroundService = wifi,
+                        ),
+                    )
+                },
+        )
+
+    private fun uidRows(): WindowRows =
+        WindowRows(
+            uids =
+                List(DETAIL_ROWS) { i ->
+                    WindowUid(0, 10_000 + i, COMPONENTS[0], UidPowerEntity.ANY_STATE, WindowUidEntity.WHOLE_UID, 1.5, Provenance.MODELED)
+                },
+        )
+
     /** A heavy snapshot as the engine stores it, with days of uptime and a Shizuku mode. */
     private fun heavySnapshot(elapsedS: Long) =
         snapshot(
@@ -312,6 +372,12 @@ class SizeBudgetTest : DatabaseTest() {
         const val KERNEL_EVENTS_KEPT = 7 * 3_000.0
         const val SOURCE_ROWS_KEPT = 20 * 300.0
         const val KERNEL_DETAIL_ROWS_KEPT = 365 * 2.5 * 20 + 30 * 102 * 20.0
+
+        // S4 (ADR-0035): 33 rows a window (30 kept UIDs, Coulomb's own, other apps, the device),
+        // 150 consecutive windows a day for 30 days.
+        const val COMPONENT_ROWS = 33
+        const val COMPONENT_ROWS_KEPT = 30 * 150 * 33.0
+        const val S4_BUDGET_MB = 9.5
 
         /** What root may add on top of shell mode's projection; see ADR-0029's size section. */
         const val ROOT_BUDGET_MB = 6.0
