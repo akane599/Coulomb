@@ -152,7 +152,9 @@ public object Charging {
     /** A profile's baseline is over this many of its latest sessions. */
     public const val BASELINE_SESSIONS: Int = 10
 
-    private const val TAPER_SEARCH_FROM = 50
+    /** Full speed is read below this level, where no charge has started to slow. */
+    public const val TAPER_SEARCH_FROM: Int = 50
+
     private const val MIN_TAPER_POINTS = 3
     private const val HOT_DECI_C = 380
     private const val NW_PER_W = 1e9
