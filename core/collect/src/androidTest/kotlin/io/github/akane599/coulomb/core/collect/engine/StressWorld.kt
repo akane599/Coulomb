@@ -13,9 +13,11 @@ import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.collect.snapshot.LightSource
 import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
+import io.github.akane599.coulomb.core.collect.snapshot.UsageRead
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
+import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import java.time.ZoneId
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -52,6 +54,9 @@ internal class StressWorld(
     private var statsRealtimeMs = STATS_RUNNING_MS
     private var batteryRealtimeMs = STATS_RUNNING_MS / 2
     private var startCount = 1L
+
+    /** The last S5 dump, which S4 follows. */
+    private var lastStats: BatteryStatsDump? = null
 
     /** The next dump's read sleeps: the CPU suspends inside it (ADR-0018). */
     var sleepInNextDump: Boolean = false
@@ -107,11 +112,18 @@ internal class StressWorld(
 
             override suspend fun stats(timeoutMs: Long): StatsRead {
                 val dump = counters.dump(StatsTimes(statsStartWallMs, startCount, statsRealtimeMs, batteryRealtimeMs))
+                lastStats = dump
                 if (sleepInNextDump) {
                     sleepInNextDump = false
                     advanceTo(wallMs + DUMP_SLEEP_MS, asleep = true)
                 }
                 return StatsRead(dump, mapOf(HeavyReader.S5 to SourceStatus.OK), rawProto, rawIncomplete = null)
+            }
+
+            /** S4 right after S5, as the collector reads it: the same counters (ADR-0035 §3). */
+            override suspend fun usage(timeoutMs: Long): UsageRead {
+                val dump = SyntheticUsage.of(checkNotNull(lastStats) { "S4 is read only after S5" })
+                return UsageRead(dump, SourceStatus.OK, SyntheticUsage.raw(dump))
             }
 
             override suspend fun history(

@@ -14,6 +14,7 @@ import com.google.common.truth.Truth.assertWithMessage
 import io.github.akane599.coulomb.core.collect.android.FileBlobStore
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
+import io.github.akane599.coulomb.core.database.entity.RecordCodes
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.history.HistoryRecord
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryHistoryParser
@@ -36,7 +37,9 @@ import kotlin.random.Random
  * on a simulated clock through the whole collector, on a file database, in under 10 minutes on the
  * API 37 emulator. It runs 31 days so that the 30-day retention cuts run once. Pass: no crash and no
  * ANR, heap growth after GC under 10% from day 1 to the last day, and the database within the 7.7
- * projection.
+ * projection with root's kernel storage added (ADR-0029). Component breakdown is on, with an S4
+ * dump at every heavy snapshot that S4 would read, so every window on battery stores component rows
+ * (ADR-0035, Size): at most 33 a window.
  *
  * The synthetic phone follows the rates measured on the S25 Ultra at the 2026-11-07 checkpoint:
  * about 75 screen cycles, 160 heavy and 210 light snapshots and 66,000 stored history events a day.
@@ -81,11 +84,11 @@ class CollectorStressTest {
             val minutes = (SystemClock.elapsedRealtime() - started) / MINUTE_MS.toDouble()
 
             val heapGrowth = (sim.heapEnd - sim.heapDay1).toDouble() / sim.heapDay1
-            val projectedMb = projection(checkNotNull(sim.sizesMid), checkNotNull(sim.sizesEnd)) / MB
+            val projectedMb = projection(checkNotNull(sim.sizesMid), checkNotNull(sim.sizesEnd)) / MB + ROOT_MB
             log("run: %.1f min; worst main-thread delay %d ms".format(minutes, watchdog.worstMs))
             log("heap after GC: day 1 %.1f MB, day $DAYS %.1f MB (%+.1f%%)".format(sim.heapDay1 / MB, sim.heapEnd / MB, heapGrowth * 100))
             log(
-                "database: day $DAYS file %.1f MB, projected after a year %.1f MB".format(
+                "database: day $DAYS file %.1f MB, projected after a year %.1f MB with root's $ROOT_MB".format(
                     checkNotNull(sim.sizesEnd).fileBytes / MB,
                     projectedMb,
                 ),
@@ -96,6 +99,12 @@ class CollectorStressTest {
             assertWithMessage("light snapshots of the first 6 h left at day $DAYS (the 30-day cut ran)")
                 .that(sim.earlyLightEnd)
                 .isEqualTo(0)
+            val brokenDown = long("SELECT COUNT(*) FROM window_result WHERE kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND breakdown = 0")
+            val consecutive = long("SELECT COUNT(*) FROM window_result WHERE kind = ${RecordCodes.WINDOW_CONSECUTIVE}")
+            val mostRows = long("SELECT COALESCE(MAX(n), 0) FROM (SELECT COUNT(*) n FROM window_component GROUP BY windowId)")
+            log("S4: $brokenDown of $consecutive consecutive windows broken down; at most $mostRows component rows a window")
+            assertWithMessage("broken-down windows left at day $DAYS (S4 ran)").that(brokenDown).isAtLeast(MIN_BROKEN_DOWN)
+            assertWithMessage("component rows in one window (ADR-0035)").that(mostRows).isAtMost(MAX_COMPONENT_ROWS)
             assertWithMessage("worst main-thread delay, ms (ANR)").that(watchdog.worstMs).isLessThan(ANR_MS)
             assertWithMessage("heap growth after GC, day 1 to day 30").that(heapGrowth).isLessThan(MAX_HEAP_GROWTH)
             assertWithMessage("database projected after a year, MB (SPEC 7.7, ADR-0020)").that(projectedMb).isLessThan(BUDGET_MB)
@@ -302,7 +311,8 @@ class CollectorStressTest {
             totals.count(action)
         }
 
-        private fun newEngine() = CollectorEngine(db, world.light, world.heavy, world.identity, world.clock, blobs, NoLabels)
+        private fun newEngine() =
+            CollectorEngine(db, world.light, world.heavy, world.identity, world.clock, blobs, NoLabels, CollectorSettings { true })
 
         private fun add(
             wallMs: Long,
@@ -341,7 +351,10 @@ class CollectorStressTest {
                 DAYS -> {
                     heapEnd = heapAfterGc()
                     historyRowsEnd = history
-                    earlyLightEnd = long("SELECT COUNT(*) FROM snapshot WHERE kind = 'LIGHT' AND wallMs < ${START_WALL_MS + EARLY_MS}")
+                    earlyLightEnd =
+                        long(
+                            "SELECT COUNT(*) FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_LIGHT} AND wallMs < ${START_WALL_MS + EARLY_MS}",
+                        )
                     sizesEnd = sizes()
                     detailPerWindow()
                 }
@@ -401,13 +414,13 @@ class CollectorStressTest {
         }
 
         private fun detailPerWindow() {
-            val windows = long("SELECT COUNT(*) FROM window_result WHERE kind = 'CONSECUTIVE' AND detailPruned = 0")
+            val windows = long("SELECT COUNT(*) FROM window_result WHERE kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND detailPruned = 0")
             val perWindow =
                 DETAIL_TABLES.joinToString { table ->
                     val rows =
                         long(
                             "SELECT COUNT(*) FROM $table d JOIN window_result w ON w.id = d.windowId " +
-                                "WHERE w.kind = 'CONSECUTIVE' AND w.detailPruned = 0",
+                                "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND w.detailPruned = 0",
                         )
                     "$table %.1f".format(rows.toDouble() / windows)
                 }
@@ -469,6 +482,8 @@ class CollectorStressTest {
                 if (all == 0L) 0.0 else long("SELECT COUNT(*) FROM $table x WHERE $capped").toDouble() / all
             }
         val sizes = Sizes(long("PRAGMA page_count") * long("PRAGMA page_size"), bytes, cappedShare)
+        // Free pages count in the file, as on the phone: retention vacuums only above 10% (ADR-0018).
+        log("free pages: %.2f MB".format(long("PRAGMA freelist_count") * long("PRAGMA page_size") / MB))
         log(
             "tables: " +
                 bytes.entries
@@ -619,23 +634,25 @@ class CollectorStressTest {
                 "rail_energy",
                 "uid_stat",
                 "device_stat",
+                "uid_component_power",
             )
-        val DETAIL_TABLES = listOf("window_uid", "window_wake", "window_stat")
+        val DETAIL_TABLES = listOf("window_uid", "window_wake", "window_stat", "window_component")
 
         /** Rows that retention removes after 30 days, per table, as a condition on its row `x`. */
         val CAPPED_ROWS: Map<String, String> =
             DETAIL_TABLES.associateWith {
                 "x.windowId IN (SELECT w.id FROM window_result w LEFT JOIN session s ON s.id = w.sessionId " +
-                    "WHERE w.kind IN ('CONSECUTIVE', 'REFERENCE') OR (w.kind = 'SESSION' AND s.kind = 'CHARGE'))"
+                    "WHERE w.kind IN (${RecordCodes.WINDOW_CONSECUTIVE}, ${RecordCodes.WINDOW_REFERENCE}) OR " +
+                    "(w.kind = ${RecordCodes.WINDOW_SESSION} AND s.kind = ${RecordCodes.SESSION_CHARGE}))"
             } +
                 mapOf(
-                    "window_result" to "x.kind = 'CONSECUTIVE'",
+                    "window_result" to "x.kind = ${RecordCodes.WINDOW_CONSECUTIVE}",
                     "snapshot" to
                         "x.id NOT IN (SELECT startSnapshotId FROM session WHERE startSnapshotId IS NOT NULL) " +
                         "AND x.id NOT IN (SELECT endSnapshotId FROM session WHERE endSnapshotId IS NOT NULL) " +
                         "AND x.id NOT IN (SELECT snapshotId FROM reference) " +
-                        "AND x.id NOT IN (SELECT fromSnapshotId FROM window_result WHERE kind <> 'CONSECUTIVE') " +
-                        "AND x.id NOT IN (SELECT toSnapshotId FROM window_result WHERE kind <> 'CONSECUTIVE')",
+                        "AND x.id NOT IN (SELECT fromSnapshotId FROM window_result WHERE kind <> ${RecordCodes.WINDOW_CONSECUTIVE}) " +
+                        "AND x.id NOT IN (SELECT toSnapshotId FROM window_result WHERE kind <> ${RecordCodes.WINDOW_CONSECUTIVE})",
                 )
         const val AGGREGATES = "sample_aggregate"
         const val RAW_DAYS = 14
@@ -655,6 +672,15 @@ class CollectorStressTest {
         /** 95% of the phone's 158 a day. */
         const val MIN_HEAVY_PER_DAY = 150
         const val MIN_HISTORY_ROWS = (0.8 * DAYS * HISTORY_PER_DAY).toLong()
+
+        /** Root's kernel storage after a year, an upper bound (ADR-0029): the run is in shell mode. */
+        const val ROOT_MB = 5.5
+
+        /** 30 kept UIDs, Coulomb's own, OTHER_UID and DEVICE_UID (ADR-0035, Size). */
+        const val MAX_COMPONENT_ROWS = 33L
+
+        /** A third of the 30 days of consecutive windows kept at 150 a day: most of each day is on battery. */
+        const val MIN_BROKEN_DOWN = 30 * 50L
     }
 }
 
