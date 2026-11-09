@@ -139,6 +139,9 @@ public class Formats(
     /** A power to 0.1 W (SPEC 6.7). */
     public fun watts(value: Double): Figure = Figure(oneDecimal.format(value), resources.getString(R.string.unit_w))
 
+    /** A voltage to the hundredth of a volt: "4.02 V". */
+    public fun volts(millivolts: Int): Figure = Figure(twoDecimals.format(millivolts / MV_PER_V), resources.getString(R.string.unit_v))
+
     /** A temperature to 0.1 °C from tenths of a degree, as the battery reports it. */
     public fun celsius(deciC: Double): Figure = Figure(oneDecimal.format(deciC / DECI), resources.getString(R.string.unit_celsius))
 
@@ -343,6 +346,7 @@ public class Formats(
         private const val DECI = 10.0
         private const val SMALL_MAH = 10.0
         private const val MA_PER_A = 1_000.0
+        private const val MV_PER_V = 1_000.0
         private const val MINUTES_PER_HOUR = 60L
         private const val MS_PER_MINUTE = 60_000L
         private const val MINUS = '−'

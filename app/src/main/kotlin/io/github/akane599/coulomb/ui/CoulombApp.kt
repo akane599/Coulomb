@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,6 +66,8 @@ import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
 import io.github.akane599.coulomb.feature.appdetail.AppDetailScreen
 import io.github.akane599.coulomb.feature.appdetail.appDetailTitle
 import io.github.akane599.coulomb.feature.appdetail.appDetailViewModel
+import io.github.akane599.coulomb.feature.charging.ChargingScreen
+import io.github.akane599.coulomb.feature.charging.rememberPlugged
 import io.github.akane599.coulomb.feature.drain.CompareScreen
 import io.github.akane599.coulomb.feature.drain.DrainScreen
 import io.github.akane599.coulomb.feature.health.ChargeSessionScreen
@@ -78,6 +81,7 @@ import io.github.akane599.coulomb.navigation.ListDetailStrategy
 import io.github.akane599.coulomb.navigation.PaneMin
 import io.github.akane599.coulomb.navigation.Route
 import io.github.akane599.coulomb.navigation.rememberAppNavigator
+import io.github.akane599.coulomb.feature.charging.R as ChargingR
 import io.github.akane599.coulomb.feature.drain.R as DrainR
 import io.github.akane599.coulomb.feature.health.R as HealthR
 
@@ -191,6 +195,9 @@ private fun Navigation(
 @Suppress("LongParameterList") // One slot per built screen.
 class AppScreens(
     val now: @Composable (AppNavigator) -> Unit,
+    /** Whether the phone is plugged in, or null before it is known: Charging then takes Now's place. */
+    val plugged: @Composable () -> Boolean?,
+    val charging: @Composable (AppNavigator) -> Unit,
     val drain: @Composable (AppNavigator) -> Unit,
     val compare: @Composable (AppNavigator) -> Unit,
     /** App detail for a UID; its title slot reads the same entry's model. */
@@ -209,6 +216,8 @@ class AppScreens(
                         onOpenPrivileges = { navigator.open(Route.Privileges) },
                     )
                 },
+                plugged = { rememberPlugged() },
+                charging = { ChargingScreen() },
                 drain = { navigator ->
                     DrainScreen(
                         onOpenApp = { navigator.openDetail(Route.AppDetail(it)) },
@@ -246,7 +255,20 @@ private fun appEntries(
     screens: AppScreens,
 ): (NavKey) -> NavEntry<NavKey> =
     entryProvider {
-        entry<Route.Now> { DestinationScreen(Destination.Now, navigator::open) { screens.now(navigator) } }
+        entry<Route.Now> {
+            // ADR-0046 §1: Charging in place of Now while plugged in, under its own name.
+            val plugged = screens.plugged()
+            val title = if (plugged == true) stringResource(ChargingR.string.charging_title) else null
+            DestinationScreen(Destination.Now, navigator::open, title) {
+                Crossfade(plugged, animationSpec = CoulombMotion.effects(), label = "plugged") { shown ->
+                    when (shown) {
+                        true -> screens.charging(navigator)
+                        false -> screens.now(navigator)
+                        null -> Unit
+                    }
+                }
+            }
+        }
         entry<Route.Drain>(metadata = ListDetailStrategy.list) {
             DestinationScreen(Destination.Drain, navigator::open) { screens.drain(navigator) }
         }
@@ -278,10 +300,11 @@ private fun appEntries(
 private fun DestinationScreen(
     destination: Destination,
     onOpen: (Route) -> Unit,
+    title: String? = null,
     content: @Composable () -> Unit,
 ) {
     ShellScreen(
-        title = stringResource(destination.label),
+        title = title ?: stringResource(destination.label),
         actions = {
             CoulombIconButton(CoulombIcons.FactCheck, stringResource(R.string.screen_action_center), { onOpen(Route.ActionCenter) })
             CoulombIconButton(CoulombIcons.ShieldPerson, stringResource(R.string.screen_privileges), { onOpen(Route.Privileges) })

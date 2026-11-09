@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="charging_title">Charging</string>
+    <string name="charging_loading">Loading the charge</string>
+    <string name="charging_error_title">Couldn’t read the charge</string>
+    <string name="charging_error_body">Coulomb’s records could not be read just now. Nothing was lost.</string>
+    <string name="charging_error_action">Try again</string>
+    <string name="charging_unplugged">Unplugged.</string>
+    <string name="charging_power_calibrating">Power shows once Coulomb has calibrated this phone’s current reading.</string>
+    <string name="charging_phase_full_speed">full speed</string>
+    <string name="charging_phase_slowing">slowing down near full</string>
+    <string name="charging_phase_holding">holding</string>
+    <string name="charging_phase_full">full</string>
+    <string name="charging_phase_full_speed_def">The charger’s full current goes in. Engineers call this constant current.</string>
+    <string name="charging_phase_slowing_def">The current falls as the battery nears full, which protects it. Engineers call this constant voltage.</string>
+    <string name="charging_phase_holding_def">The level has not risen for 10 minutes and almost no current goes in, as when a charge limit is on.</string>
+    <string name="charging_phase_full_def">The battery reports 100%. It may take a little current to stay there.</string>
+    <string name="charging_charger_known">%1$s · %2$s of its baseline</string>
+    <string name="charging_charger_new">A charger Coulomb hasn’t seen. It is saved when this charge ends.</string>
+    <string name="charging_charger_learning">Coulomb tells the charger after a few minutes of charging.</string>
+    <string name="charging_charger_high">Too few readings below 50% to tell which charger this is.</string>
+    <string name="charging_target_at">%1$s at %2$s</string>
+    <string name="charging_target_plain">Target %1$s</string>
+    <string name="charging_to_level">%1$s in %2$s</string>
+    <string name="charging_full_in">Full in %1$s</string>
+    <string name="charging_times_need">Times show after three charges that went past this level.</string>
+    <string name="charging_times_holding">The level is holding, so there is no time to give. Times return when it rises.</string>
+    <string name="charging_readings">Live readings</string>
+    <string name="charging_current">Current</string>
+    <string name="charging_current_in">into the battery</string>
+    <string name="charging_current_out">out of the battery</string>
+    <string name="charging_voltage">Voltage</string>
+    <string name="charging_voltage_at">at the battery</string>
+    <string name="charging_temperature">Battery</string>
+    <string name="charging_temp_up">up %1$s</string>
+    <string name="charging_temp_down">down %1$s</string>
+    <string name="charging_temp_steady">steady</string>
+    <string name="charging_session">This session</string>
+    <string name="charging_since">Since %1$s</string>
+    <string name="charging_curve_summary">Level from %1$s to %2$s since %3$s.</string>
+    <string name="charging_curve_summary_power">Level from %1$s to %2$s since %3$s; power now %4$s.</string>
+    <string name="charging_no_curve">The curve starts with the next reading.</string>
+    <string name="charging_table_curve">Charge readings</string>
+    <string name="charging_column_time">Time</string>
+    <string name="charging_column_level">Level</string>
+    <string name="charging_column_power">Power</string>
+    <string name="charging_target">Target</string>
+    <string name="charging_target_note">Sets the tick and the time to target. The alert comes with notifications.</string>
+    <string name="charging_scale_description">Level %1$s, target %2$s.</string>
+    <string name="charging_scale_description_time">Level %1$s, target %2$s, reached at %3$s.</string>
+    <string name="charging_phase_drawing">drawing from the battery</string>
+    <string name="charging_phase_drawing_def">The phone uses more than the charger gives, so the level falls.</string>
+</resources>

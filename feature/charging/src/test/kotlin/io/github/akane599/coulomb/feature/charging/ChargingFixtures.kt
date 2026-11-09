@@ -1,0 +1,180 @@
+// SPDX-FileCopyrightText: The Coulomb contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package io.github.akane599.coulomb.feature.charging
+
+import android.os.BatteryManager
+import io.github.akane599.coulomb.core.analytics.ChargePhase
+import io.github.akane599.coulomb.core.analytics.ChargeTime
+import io.github.akane599.coulomb.core.analytics.ChargeTimeBasis
+import io.github.akane599.coulomb.core.data.ChargeCurvePoint
+import io.github.akane599.coulomb.core.data.Charger
+import io.github.akane599.coulomb.core.data.ChargingNow
+import io.github.akane599.coulomb.core.data.LiveCharger
+import java.time.LocalDate
+import java.time.ZoneOffset
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+// The lab's Charging (design-lab/charging.html): a desk charger since 18:31 UTC, 52% at 18:50.
+
+private val TODAY: LocalDate = LocalDate.of(2026, 11, 9)
+private const val SECOND = 1_000L
+private const val MINUTE = 60 * SECOND
+private val START_MS: Long = TODAY.atTime(18, 31).toInstant(ZoneOffset.UTC).toEpochMilli()
+internal val NOW_MS: Long = START_MS + 19 * MINUTE
+private const val START_LEVEL = 21
+private const val LAB_LEVEL = 52
+private const val STEP_MS = 5 * SECOND
+private const val FULL_SPEED_W = 18.6
+private const val RAMP_MS = 40 * SECOND
+private const val START_TEMP = 297
+private const val LAB_TEMP = 338
+
+internal val DESK =
+    Charger(
+        id = 1,
+        name = "Desk charger",
+        plugType = BatteryManager.BATTERY_PLUGGED_AC,
+        baselineW = 19.2,
+        firstSeenWallMs = START_MS - 60 * 24 * 60 * MINUTE,
+        lastSeenWallMs = START_MS,
+    )
+
+/** A sample every five seconds: a short ramp, then full speed with a little ripple; level and temperature climb. */
+private fun labCurve(
+    to: Int = LAB_LEVEL,
+    calibrated: Boolean = true,
+): List<ChargeCurvePoint> {
+    val span = NOW_MS - START_MS
+    return (0..span / STEP_MS).map { i ->
+        val t = i * STEP_MS
+        val share = t.toDouble() / span
+        val ramp = (t.toDouble() / RAMP_MS).coerceAtMost(1.0)
+        val watts = FULL_SPEED_W * (0.3 + 0.7 * ramp) + 0.35 * sin(i / 7.0)
+        ChargeCurvePoint(
+            wallMs = START_MS + t,
+            levelPct = (START_LEVEL + (to - START_LEVEL) * share).toInt(),
+            watts = if (calibrated) (watts * 10).roundToInt() / 10.0 else null,
+            tempDeciC = (START_TEMP + (LAB_TEMP - START_TEMP) * share).roundToInt(),
+        )
+    }
+}
+
+internal fun labNow(): ChargingNow =
+    ChargingNow(
+        levelPct = LAB_LEVEL,
+        plugType = BatteryManager.BATTERY_PLUGGED_AC,
+        watts = 18.4,
+        currentMa = 4_580.0,
+        voltageMv = 4_020,
+        tempDeciC = LAB_TEMP,
+        tempRiseDeciC = LAB_TEMP - START_TEMP,
+        phase = ChargePhase.FULL_SPEED,
+        charger = LiveCharger.Known(DESK, shareOfBaseline = 0.96),
+        targetPct = 80,
+        toTarget = ChargeTime(16.3, 19.6, ChargeTimeBasis.SAME_CHARGER, charges = 7),
+        toFull = ChargeTime(44.2, 52.6, ChargeTimeBasis.SAME_CHARGER, charges = 7),
+        startWallMs = START_MS,
+        startLevelPct = START_LEVEL,
+        curve = labCurve(),
+        wallMs = NOW_MS,
+    )
+
+/** Before calibration: no current, so no power, phase, charger or times. */
+internal fun uncalibratedNow(): ChargingNow =
+    labNow().copy(
+        watts = null,
+        currentMa = null,
+        phase = null,
+        charger = LiveCharger.Learning(BatteryManager.BATTERY_PLUGGED_AC),
+        toTarget = null,
+        toFull = null,
+        curve = labCurve(calibrated = false),
+    )
+
+/** A first charge on a new charger: no past charges, so no times yet. */
+internal fun newChargerNow(): ChargingNow =
+    labNow().copy(
+        charger = LiveCharger.New(BatteryManager.BATTERY_PLUGGED_USB, fullSpeedW = 9.8),
+        plugType = BatteryManager.BATTERY_PLUGGED_USB,
+        watts = 9.6,
+        currentMa = 2_390.0,
+        toTarget = null,
+        toFull = null,
+    )
+
+/** Two minutes in: still learning the charger, one sample of curve too few for a line. */
+internal fun learningNow(): ChargingNow =
+    labNow().copy(
+        levelPct = START_LEVEL,
+        charger = LiveCharger.Learning(BatteryManager.BATTERY_PLUGGED_AC),
+        tempRiseDeciC = null,
+        curve = labCurve().take(1),
+        toTarget = ChargeTime(41.0, 47.5, ChargeTimeBasis.ANY_CHARGER, charges = 4),
+        toFull = null,
+    )
+
+/** Plugged in at 74%: the charger cannot be told, slowing by the usual taper, 90% as the target. */
+internal fun startedHighNow(): ChargingNow =
+    labNow().copy(
+        levelPct = 81,
+        watts = 9.1,
+        currentMa = 2_150.0,
+        voltageMv = 4_240,
+        phase = ChargePhase.SLOWING,
+        charger = LiveCharger.StartedHigh(BatteryManager.BATTERY_PLUGGED_AC),
+        targetPct = 90,
+        toTarget = ChargeTime(13.6, 17.2, ChargeTimeBasis.SAME_CHARGER, charges = 5),
+        toFull = ChargeTime(38.0, 46.4, ChargeTimeBasis.SAME_CHARGER, charges = 5),
+        startLevelPct = 74,
+        curve = labCurve().map { it.copy(levelPct = 74 + (it.levelPct - START_LEVEL) * 7 / (LAB_LEVEL - START_LEVEL)) },
+    )
+
+/** Held at the 80% target by the phone's charge limit. */
+internal fun holdingNow(): ChargingNow =
+    labNow().copy(
+        levelPct = 80,
+        watts = 0.3,
+        currentMa = 70.0,
+        voltageMv = 4_180,
+        phase = ChargePhase.HOLDING,
+        toTarget = null,
+        toFull = null,
+    )
+
+/** A phone drawing more than a weak charger gives: the battery is going down while plugged in. */
+internal fun drawingNow(): ChargingNow =
+    labNow().copy(
+        watts = 0.0,
+        currentMa = -320.0,
+        phase = ChargePhase.DRAWING,
+        charger = LiveCharger.New(BatteryManager.BATTERY_PLUGGED_USB, fullSpeedW = 2.4),
+        toTarget = null,
+        toFull = null,
+    )
+
+internal fun fullNow(): ChargingNow =
+    labNow().copy(
+        levelPct = 100,
+        watts = 0.2,
+        currentMa = 40.0,
+        voltageMv = 4_380,
+        phase = ChargePhase.FULL,
+        targetPct = 100,
+        toTarget = null,
+        toFull = null,
+    )
+
+/** SPEC 11.12 harden: a long charger name, a 100% target, past charges on any charger, a fall in temperature. */
+internal fun hardenedNow(): ChargingNow =
+    labNow().copy(
+        charger =
+            LiveCharger.Known(
+                DESK.copy(name = "Travel adapter with the long braided cable from the hotel"),
+                shareOfBaseline = 0.78,
+            ),
+        targetPct = 100,
+        toTarget = ChargeTime(118.0, 161.0, ChargeTimeBasis.ANY_CHARGER, charges = 3),
+        tempRiseDeciC = -6,
+    )

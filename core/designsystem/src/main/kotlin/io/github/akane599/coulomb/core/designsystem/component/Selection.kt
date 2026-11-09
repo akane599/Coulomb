@@ -97,6 +97,27 @@ public fun CoulombWindowSelector(
     }
 }
 
+/**
+ * A radio group of connected choices, as [CoulombWindowSelector]'s presets without "More", such as
+ * Charging's target (ADR-0026: 80/85/90/100%). The chosen one is the region's copper selection.
+ *
+ * @param selected the chosen option's index, or -1 when none of them is the current value.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+public fun CoulombChoiceGroup(
+    options: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(ChoiceGap)) {
+        options.forEachIndexed { i, label ->
+            WindowChoice(label, i == selected, Corners(start = i == 0, end = i == options.lastIndex), Role.RadioButton, { onSelect(i) })
+        }
+    }
+}
+
 /** Which ends of a connected choice are the group's outer, fully round ends. */
 private data class Corners(
     val start: Boolean,

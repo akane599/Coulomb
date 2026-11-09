@@ -125,6 +125,8 @@ class ShellScreenshotTest {
 private val StandIns =
     AppScreens(
         now = {},
+        plugged = { false },
+        charging = {},
         drain = { navigator ->
             Column {
                 Text("Rows")
