@@ -45,7 +45,8 @@ internal class AndroidLightSource(
             health = sticky?.intExtra(BatteryManager.EXTRA_HEALTH),
             voltageMv = sticky?.intExtra(BatteryManager.EXTRA_VOLTAGE),
             tempDeciC = sticky?.intExtra(BatteryManager.EXTRA_TEMPERATURE),
-            cycleCount = sticky?.intExtra(BatteryManager.EXTRA_CYCLE_COUNT),
+            // A negative count is a placeholder, not a count (gate review M2).
+            cycleCount = sticky?.intExtra(BatteryManager.EXTRA_CYCLE_COUNT)?.takeIf { it >= 0 },
             currentRaw = property(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW),
             currentAverageRaw = property(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE),
             chargeUah = property(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)?.takeIf { it > 0 },

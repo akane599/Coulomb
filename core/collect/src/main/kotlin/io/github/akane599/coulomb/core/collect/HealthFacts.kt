@@ -7,6 +7,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.akane599.coulomb.core.collect.android.AndroidHealthSource
 import io.github.akane599.coulomb.core.model.BatteryDates
+import io.github.akane599.coulomb.core.model.DesignCapacity
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,4 +30,7 @@ public class HealthFacts
 
         /** The battery's manufacture and first-use dates, as of [today]. */
         public suspend fun dates(today: LocalDate): BatteryDates = withContext(Dispatchers.IO) { source.dates(today) }
+
+        /** The design capacity the phone reports (ADR-0042 §1), for undoing the owner's entry. */
+        public suspend fun designCapacity(): DesignCapacity? = withContext(Dispatchers.IO) { source.designCapacity() }
     }

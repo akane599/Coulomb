@@ -112,7 +112,9 @@ internal class AndroidHealthSource(
 
     /**
      * S23: `charge_full_design` in µAh (kernel Documentation/ABI/testing/sysfs-class-power), where
-     * the worker can read it: shell on some devices, root on others (SPEC 5, S23).
+     * the worker can read it: shell on some devices, root on others (SPEC 5, S23). healthd reads the
+     * same file under each battery supply for the Health HAL's design capacity
+     * (system/core healthd/BatteryMonitor.cpp, android-16.0.0_r4 L918-923, android-17.0.0_r1 L964-969).
      */
     private suspend fun sysfsMah(): Double? {
         val result = access.readSysfs(SysfsRoot.POWER_SUPPLY, CHARGE_FULL_DESIGN)

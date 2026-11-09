@@ -45,3 +45,11 @@ type, the calibrated current and the voltage.
 - Tests: `ChargingTest` (taper, start above 50%, recovering dip, too few samples, matching,
   baseline); `CollectorEngineTest` follows a charge to its detail and a new profile.
 - Gets the independent estimator review with ADR-0037 and ADR-0042 before the P4 gate.
+
+## Amendments after the estimator review (2026-11-09)
+
+- **Full speed needs early samples.** A charge with fewer than 10 powered samples below 50% (a
+  top-up started high) has a peak but no full speed and no taper. Its first third is already in
+  the constant-voltage phase on many phones, so it would understate the charger.
+- **A hold is not a taper.** When the level never rises after the low-current tail starts (a
+  phone held at a charge limit), there is no taper level.

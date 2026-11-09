@@ -45,7 +45,7 @@ public object OemBatteryReader {
 
     /**
      * Samsung (One UI 9, `fixtures/sm-s938b/S938BXXSDDZJ1/battery.txt`): `mSavedBatteryAsoc` and
-     * `mSavedBatteryBsoh`, both percentages there (100 and 96 on a weeks-old battery). Which one
+     * `mSavedBatteryBsoh`, both percentages there (100 and 96 on a battery a few weeks into use). Which one
      * Samsung's own Settings shows is not known yet (`docs/questions.md`), so both are kept.
      */
     private val HEALTH_KEYS = listOf("mSavedBatteryAsoc", "mSavedBatteryBsoh")

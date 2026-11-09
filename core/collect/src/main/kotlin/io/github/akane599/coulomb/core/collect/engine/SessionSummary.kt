@@ -38,8 +38,15 @@ internal object SessionSummary {
     private const val HIGH_LEVEL = 80
     private const val FULL_LEVEL = 100
 
-    /** A sample stands for at most this long; a longer gap is not counted as time at its level. */
+    /** A sample stands for at most this long; a longer gap is not counted as time at its value. */
     private const val MAX_SAMPLE_SPAN_NS = 120_000_000_000L
+
+    /**
+     * A level holds until the next sample for up to this long: every level change is sampled
+     * (ADR-0037 §1), so a sparse gap while the phone sleeps on the charger is time at that level.
+     * The same bound as the habits' `timeAtOrAbove` (ADR-0044 §2, gate review m2).
+     */
+    private const val LEVEL_HOLD_NS = 6 * 3_600_000_000_000L
     private const val COUNTER_STEP_UAH = 1_000.0
     private const val LEVEL_QUALITY = 0.5
     private const val GAP_PENALTY = 0.5
@@ -191,7 +198,7 @@ internal object SessionSummary {
         return if (total == 0L) points.map { it.second }.average() else weighted / total
     }
 
-    /** Minutes the samples spent where [test] holds; a sample counts until the next, up to two minutes. */
+    /** Minutes the samples spent where the level [test] holds; a sample counts until the next, up to [LEVEL_HOLD_NS]. */
     private fun minutesWhere(
         samples: List<BatterySampleEntity>,
         test: (BatterySampleEntity) -> Boolean,
@@ -201,7 +208,7 @@ internal object SessionSummary {
                 .zipWithNext()
                 .filter { (a, _) ->
                     test(a)
-                }.sumOf { (a, b) -> (b.elapsedNs - a.elapsedNs).coerceIn(0, MAX_SAMPLE_SPAN_NS) }
+                }.sumOf { (a, b) -> (b.elapsedNs - a.elapsedNs).let { if (it in 0..LEVEL_HOLD_NS) it else 0L } }
         return (ns / NS_PER_MIN).toInt()
     }
 }

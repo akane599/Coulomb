@@ -58,11 +58,17 @@ public object Charging {
             }
         val minutesHot = minutesWhere(points) { it.tempDeciC > HOT_DECI_C }
         if (powered.size < MIN_POWER_POINTS) return ChargeFigures(plug, null, null, null, minutesHot)
-        val taper = taperLevel(powered)
+        val peak = powered.maxOf { it.watts }
+        // A top-up that starts high may already be slowing: with too few readings below
+        // TAPER_SEARCH_FROM there is no telling full speed from the taper, so neither is given and
+        // the session leaves the charger profiles alone (gate review M3).
+        val early = powered.filter { it.levelPct < TAPER_SEARCH_FROM }
+        if (early.size < MIN_POWER_POINTS) return ChargeFigures(plug, peak, null, null, minutesHot)
+        val taper = taperLevel(powered, early)
         val fullSpeed = powered.filter { taper == null || it.levelPct < taper }.map { it.watts }
         return ChargeFigures(
             plugType = plug,
-            peakW = powered.maxOf { it.watts },
+            peakW = peak,
             fullSpeedW = fullSpeed.takeIf { it.size >= MIN_POWER_POINTS }?.let(::median),
             ccToCvLevel = taper,
             minutesAbove38C = minutesHot,
@@ -88,20 +94,23 @@ public object Charging {
     public fun baseline(latestFullSpeedW: List<Double>): Double = median(latestFullSpeedW.take(BASELINE_SESSIONS))
 
     /**
-     * Full speed is the median current below [TAPER_SEARCH_FROM] (the first third of the samples
-     * when the charge started higher). The taper is the lowest level above that from which every
-     * later sample's current stays below [TAPER_SHARE] of it, with at least [MIN_TAPER_POINTS] such
-     * samples; a dip that recovers, as under brief heat, is not a taper.
+     * Full speed is the median current of the [early] samples, those below [TAPER_SEARCH_FROM]. The
+     * taper is the lowest level above them from which every later sample's current stays below
+     * [TAPER_SHARE] of it, with at least [MIN_TAPER_POINTS] such samples, while the level still
+     * rises. A dip that recovers, as under brief heat, is not a taper; nor is a hold at one level,
+     * as when a battery protection limit stops the charge at 80%.
      */
-    private fun taperLevel(powered: List<Powered>): Int? {
-        val early = powered.filter { it.levelPct < TAPER_SEARCH_FROM }.ifEmpty { powered.take(powered.size / EARLY_SHARE_DIVISOR) }
-        if (early.isEmpty()) return null
+    private fun taperLevel(
+        powered: List<Powered>,
+        early: List<Powered>,
+    ): Int? {
         val fullSpeedUa = median(early.map { it.currentUa.toDouble() })
         val limit = fullSpeedUa * TAPER_SHARE
         // Walk back from the end while the current stays low; the first high sample ends the taper.
         val tail = powered.asReversed().takeWhile { it.currentUa < limit }
         if (tail.size < MIN_TAPER_POINTS) return null
         val level = tail.minOf { it.levelPct }
+        if (tail.maxOf { it.levelPct } <= level) return null
         return level.takeIf { it > early.maxOf { e -> e.levelPct } }
     }
 
@@ -144,7 +153,6 @@ public object Charging {
     public const val BASELINE_SESSIONS: Int = 10
 
     private const val TAPER_SEARCH_FROM = 50
-    private const val EARLY_SHARE_DIVISOR = 3
     private const val MIN_TAPER_POINTS = 3
     private const val HOT_DECI_C = 380
     private const val NW_PER_W = 1e9

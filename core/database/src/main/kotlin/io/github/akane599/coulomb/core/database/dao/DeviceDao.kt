@@ -42,16 +42,29 @@ public abstract class DeviceDao {
         source: String,
     )
 
-    /** The owner's design capacity (ADR-0044 §5): replaces whatever is stored for the build. */
+    /**
+     * The owner's design capacity (ADR-0044 §5): replaces whatever is stored for the build. Returns
+     * the rows written, 0 before the collector has made the build's profile.
+     */
     @Query("UPDATE device_profile SET designCapacityMah = :mah, designCapacitySource = :source WHERE fingerprint = :fingerprint")
     public abstract suspend fun setDesignCapacity(
         fingerprint: String,
         mah: Int,
         source: String,
-    )
+    ): Int
 
-    /** A design capacity the owner entered on any build, to carry to a new one (ADR-0044 §5). */
-    @Query("SELECT designCapacityMah FROM device_profile WHERE designCapacitySource = :source AND designCapacityMah IS NOT NULL LIMIT 1")
+    /** Clears every build's design capacity from [source], so an undone entry is not carried to a new build. */
+    @Query("UPDATE device_profile SET designCapacityMah = NULL, designCapacitySource = NULL WHERE designCapacitySource = :source")
+    public abstract suspend fun clearDesignCapacityFrom(source: String)
+
+    /**
+     * The design capacity the owner entered most recently, on any build, to carry to a new one
+     * (ADR-0044 §5): the latest profile's, as an entry on a later build corrects an earlier one.
+     */
+    @Query(
+        "SELECT designCapacityMah FROM device_profile WHERE designCapacitySource = :source AND designCapacityMah IS NOT NULL " +
+            "ORDER BY rowid DESC LIMIT 1",
+    )
     public abstract suspend fun designCapacityFrom(source: String): Int?
 
     /**

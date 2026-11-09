@@ -56,3 +56,13 @@ close, inside the snapshot's transaction.
   `CollectorEngineTest` follows a 20% to 100% charge through to its estimate, wear and summary.
 - The window choice and the wear wiring get their independent estimator review before the P4 gate
   (AGENTS.md), together with the Health screen's sources.
+
+## Amendments after the estimator review (2026-11-09)
+
+- **A window's ends move the session's way** (§1): a level change counts as an end only when it goes
+  up while charging or down while discharging, and the window must move that way overall. A step
+  back, such as a load on the charger, has not just crossed a step the way the session runs.
+- **Minutes at 80% or more and at 100% hold the level across gaps** up to 6 hours, as the habits'
+  `timeAtOrAbove` does (ADR-0044 §2). Every level change is sampled, so a sparse gap while the phone
+  sleeps on the charger is time at that level. Minutes above 38 °C keep the two-minute cap, since
+  a temperature can change without a sample.

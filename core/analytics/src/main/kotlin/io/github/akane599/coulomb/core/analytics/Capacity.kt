@@ -74,7 +74,10 @@ public object Capacity {
     private const val MIN_INTERVAL_SHARE = 0.01
     private const val LOW_QUANTILE = 0.025
     private const val HIGH_QUANTILE = 0.975
-    private const val FULL_QUALITY_WINDOWS = 3.0
+
+    /** Windows from which an estimate's interval is its own and not only the SPEC 6.3 floor. */
+    public const val SETTLED_WINDOWS: Int = 3
+    private const val FULL_QUALITY_WINDOWS = SETTLED_WINDOWS.toDouble()
     private const val ZERO_QUALITY_SHARE = 0.10
     private const val TIE_TOLERANCE = 1e-9
 

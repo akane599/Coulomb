@@ -49,9 +49,23 @@ class ChargingTest {
     }
 
     @Test
-    fun aChargeStartedHighTakesFullSpeedFromItsFirstThird() {
-        val figures = Charging.figures(charge(55, 100, taperAt = 85))
-        assertThat(figures.ccToCvLevel).isEqualTo(85)
+    fun aTopUpThatStartsHighHasAPeakButNoFullSpeedOrTaper() {
+        // 85% to full, already slowing: a third of full speed throughout, with no reading below 50%.
+        val figures = Charging.figures(charge(85, 100, ua = 1_000_000))
+        assertThat(figures.peakW).isWithin(1e-9).of(4.0)
+        assertThat(figures.fullSpeedW).isNull()
+        assertThat(figures.ccToCvLevel).isNull()
+        // Nor one still at full speed from 55%: without readings below 50% there is no telling.
+        assertThat(Charging.figures(charge(55, 100, taperAt = 85)).fullSpeedW).isNull()
+    }
+
+    @Test
+    fun aHoldAtOneLevelIsNotATaper() {
+        // A protection limit: full speed to 80%, then the current falls and the level stays at 80.
+        val toLimit = charge(20, 80)
+        val held = (1..20).map { i -> toLimit.last().copy(elapsedNs = toLimit.last().elapsedNs + i * 60_000_000_000L, currentUa = 50_000) }
+        val figures = Charging.figures(toLimit + held)
+        assertThat(figures.ccToCvLevel).isNull()
         assertThat(figures.fullSpeedW).isWithin(1e-9).of(12.0)
     }
 

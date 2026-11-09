@@ -68,18 +68,19 @@ public abstract class SampleDao {
      * watched, in ms (ADR-0044 §2). The level holds from each sample to the next of its boot:
      * a level change is always sampled (ADR-0037 §1). Minute aggregates stand in for compacted
      * samples, at their last level. A gap longer than [maxGapMs] counts as neither, as when the
-     * process was not running.
+     * process was not running. Spans run on the elapsed clock, so a wall-clock change does not stretch
+     * or drop them; the wall clock only picks the window (gate review m3).
      */
     @Query(
         "SELECT COALESCE(SUM(CASE WHEN level >= :level THEN span ELSE 0 END), 0) AS atOrAboveMs, " +
             "COALESCE(SUM(span), 0) AS watchedMs FROM (" +
-            "SELECT level, nextWall - wallMs AS span FROM (" +
-            "SELECT level, wallMs, LEAD(wallMs) OVER (PARTITION BY bootSeq ORDER BY elapsedNs) AS nextWall FROM (" +
+            "SELECT level, (nextNs - elapsedNs) / 1000000 AS span FROM (" +
+            "SELECT level, elapsedNs, LEAD(elapsedNs) OVER (PARTITION BY bootSeq ORDER BY elapsedNs) AS nextNs FROM (" +
             "SELECT bootSeq, elapsedNs, wallMs, levelPct AS level FROM battery_sample " +
             "WHERE wallMs >= :fromWall AND wallMs < :toWall " +
             "UNION ALL SELECT bootSeq, startElapsedNs AS elapsedNs, startWallMs AS wallMs, levelLastPct AS level " +
             "FROM sample_aggregate WHERE resolutionS = $MINUTE_S AND startWallMs >= :fromWall AND startWallMs < :toWall)) " +
-            "WHERE nextWall IS NOT NULL AND nextWall > wallMs AND nextWall - wallMs <= :maxGapMs)",
+            "WHERE nextNs IS NOT NULL AND nextNs > elapsedNs AND (nextNs - elapsedNs) / 1000000 <= :maxGapMs)",
     )
     public abstract suspend fun timeAtOrAbove(
         level: Int,

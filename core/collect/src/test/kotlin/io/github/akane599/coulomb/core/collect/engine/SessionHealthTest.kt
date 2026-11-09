@@ -55,6 +55,23 @@ class SessionHealthTest {
     }
 
     @Test
+    fun aStepAgainstTheSessionsDirectionIsNotAnEnd() {
+        // A charge from 31% to 60%, then a load on the charger takes it back to 59%.
+        val samples =
+            (31..60).mapIndexed { i, level -> sample(1 + i, level, 1_550_000L + 50_000L * (i + 1)) } +
+                listOf(sample(40, 59, 3_020_000))
+        val window = checkNotNull(SessionHealth.capacityWindow(SessionKind.CHARGE, 30, samples, counterReliable = true))
+        assertThat(window.deltaSocPct).isEqualTo(29.0)
+        assertThat(window.deltaChargeUah).isEqualTo(29 * 50_000L)
+    }
+
+    @Test
+    fun aDischargeThatOnlyStepsUpHasNoWindow() {
+        val samples = listOf(sample(0, 50, 2_500_000), sample(1, 51, 2_550_000), sample(2, 52, 2_600_000))
+        assertThat(SessionHealth.capacityWindow(SessionKind.DISCHARGE, 50, samples, counterReliable = true)).isNull()
+    }
+
+    @Test
     fun aHotStretchInsideTheWindowRejectsIt() {
         val samples =
             (30..80).mapIndexed { i, level -> sample(i, level, 1_500_000L + 50_000L * i, if (level == 60) 412 else 300) }

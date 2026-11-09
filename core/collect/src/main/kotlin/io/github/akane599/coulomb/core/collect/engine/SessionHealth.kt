@@ -27,8 +27,11 @@ internal object SessionHealth {
 
     /**
      * The window from the session's first level change to its last, at the samples that saw them
-     * (ADR-0037 §1). A level change is a sample whose level differs from the one before it, or from
-     * [startLevel] for the first; only samples with a charge reading count. At both ends the true
+     * (ADR-0037 §1). A level change is a sample whose level moved from the one before it, or from
+     * [startLevel] for the first, in the session's direction: up while charging, down while
+     * discharging. A step back (a reading settling, a brief load on the charger) is not an end,
+     * since the level there has not just crossed a step the way the session runs (gate review m4).
+     * Only samples with a charge reading count, and the window must move the session's way. At both ends the true
      * level has just crossed a step, so ΔSoC is exact; the session's own ends could be up to a point
      * off each. Null with fewer than two such changes. [samples] are the session's, in time order.
      */
@@ -39,14 +42,17 @@ internal object SessionHealth {
         counterReliable: Boolean,
     ): CapacityWindow? {
         if (kind !in KINDS) return null
+        val sign = if (kind == SessionKind.CHARGE) 1 else -1
         val changes =
             samples.indices.filter {
-                samples[it].levelPct != (if (it == 0) startLevel else samples[it - 1].levelPct) && samples[it].chargeUah != null
+                val before = if (it == 0) startLevel else samples[it - 1].levelPct
+                (samples[it].levelPct - before) * sign > 0 && samples[it].chargeUah != null
             }
         if (changes.size < 2) return null
         val span = samples.subList(changes.first(), changes.last() + 1)
         val first = span.first()
         val last = span.last()
+        if ((last.levelPct - first.levelPct) * sign <= 0) return null
         return CapacityWindow(
             charging = kind == SessionKind.CHARGE,
             deltaSocPct = (last.levelPct - first.levelPct).toDouble(),

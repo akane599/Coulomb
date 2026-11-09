@@ -109,6 +109,9 @@ public interface SessionDao {
     @Upsert
     public suspend fun upsertHealthSummary(summary: HealthSummaryEntity)
 
+    @Query("SELECT * FROM health_summary WHERE epochDay = :epochDay")
+    public suspend fun healthSummary(epochDay: Int): HealthSummaryEntity?
+
     @Query("SELECT * FROM health_summary ORDER BY epochDay")
     public fun observeHealthSummaries(): Flow<List<HealthSummaryEntity>>
 

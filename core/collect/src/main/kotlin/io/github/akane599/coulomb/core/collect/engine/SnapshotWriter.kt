@@ -300,22 +300,29 @@ internal class SnapshotWriter(
      * The day's [HealthSummaryEntity] as of [atWall], rewritten at each charge or discharge close:
      * health % against the design capacity, and the system's and OEM's readings of the day
      * (ADR-0037 §5, ADR-0042 §2). Each stays null where its source gave nothing.
+     *
+     * The readings merge into the stored row: a close before the first heavy snapshot of a process
+     * has none yet and keeps the day's. Only today's row takes today's readings, so closing an
+     * earlier boot's session on a later day leaves that day's own (gate review m1).
      */
     private suspend fun healthSummary(
         atWall: Long,
         context: WriteContext,
     ) {
         val estimate = capacity(atWall, context.designMah)
+        val day = localDate(atWall, context.zone).toEpochDay().toInt()
+        val today = day == localDate(context.reading.wallMs, context.zone).toEpochDay().toInt()
+        val stored = sessions.healthSummary(day)
         sessions.upsertHealthSummary(
             HealthSummaryEntity(
-                epochDay = localDate(atWall, context.zone).toEpochDay().toInt(),
+                epochDay = day,
                 estimateMah = estimate?.estimateMah,
                 ciLowMah = estimate?.ciLowMah,
                 ciHighMah = estimate?.ciHighMah,
                 healthPct = estimate?.healthPct,
-                systemSohPct = context.health.systemSohPct,
-                oemHealth = OemHealthCodec.encode(context.health.oemHealth),
-                cycleCount = context.reading.cycleCount,
+                systemSohPct = context.health.systemSohPct?.takeIf { today } ?: stored?.systemSohPct,
+                oemHealth = OemHealthCodec.encode(context.health.oemHealth)?.takeIf { today } ?: stored?.oemHealth,
+                cycleCount = context.reading.cycleCount?.takeIf { today } ?: stored?.cycleCount,
                 cycleEquivalentsSum = sessions.cycleEquivalentsSum(SessionKind.CHARGE),
             ),
         )
