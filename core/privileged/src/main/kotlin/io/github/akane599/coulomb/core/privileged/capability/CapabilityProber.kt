@@ -29,6 +29,8 @@ import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeState
 import io.github.akane599.coulomb.core.model.kernel.KernelPaths
+import io.github.akane599.coulomb.core.model.parse.Parsed
+import io.github.akane599.coulomb.core.model.stats.UsageStatsDump
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DumpResult
 import io.github.akane599.coulomb.core.privileged.FailureReason
@@ -37,6 +39,7 @@ import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import io.github.akane599.coulomb.core.privileged.PrivilegedQuery
 import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.Route
+import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SettingsNamespace
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
@@ -59,6 +62,7 @@ public class CapabilityProber
         @ApplicationContext private val context: Context,
         private val access: PrivilegedAccess,
         private val config: PrivilegeConfig,
+        private val usageParser: UsageParser,
     ) {
         public suspend fun probeAll(): List<Capability> {
             access.refreshGrants()
@@ -68,6 +72,7 @@ public class CapabilityProber
                 add(healthProperties())
                 add(batteryStatsFlags())
                 add(batteryStatsDump(CapabilityId.BATTERYSTATS_PROTO, BatteryStatsMode.PROTO))
+                add(usageDump())
                 add(batteryStatsDump(CapabilityId.BATTERYSTATS_CHECKIN, BatteryStatsMode.CHECKIN))
                 add(historyCursor())
                 add(kernelWakelocks())
@@ -279,6 +284,66 @@ public class CapabilityProber
                     if (mode == BatteryStatsMode.PROTO) put("looks_like_proto", looksLikeProto(drained.head).toString())
                 }
             return streamed(id, result, drained, detail)
+        }
+
+        /**
+         * S4 (ADR-0035 §4): a usage dump that parses and passes every check, with the consumers
+         * that failed each rule. It is probed whether or not Component breakdown is on: the dump
+         * only reads (its forced samples append to the battery history, as at each snapshot).
+         */
+        private suspend fun usageDump(): Capability {
+            val id = CapabilityId.BATTERYSTATS_USAGE
+            val result =
+                access.dumpBatteryStats(
+                    BatteryStatsMode.USAGE_PROTO,
+                    isComplete = { parsed: Parsed<UsageStatsDump?> -> parsed.report.complete },
+                    route = RoutePreference.IN_APP_FIRST,
+                ) { usageParser.parse(it) }
+            val parsed = result.valueOrNull() ?: return failed(id, result, dumpTier())
+            val dump = parsed.value
+            val failures = dump?.failures.orEmpty().filterValues { it > 0 }
+            val detail =
+                buildMap {
+                    put("bytes", parsed.report.bytesRead.toString())
+                    put("route", routeOf(result))
+                    put("issues", parsed.report.issueCount.toString())
+                    if (dump != null) {
+                        put("uids", dump.uids.size.toString())
+                        put("device", (dump.device != null).toString())
+                        put("failures", failures.entries.joinToString(",") { (check, n) -> "${check.name}=$n" })
+                    }
+                }
+            return when {
+                dump == null -> {
+                    cap(id, DEGRADED, tierOf(result), "no usage dump parsed", null, detail)
+                }
+
+                failures.isNotEmpty() -> {
+                    cap(
+                        id,
+                        DEGRADED,
+                        tierOf(result),
+                        "failed checks: ${failures.keys.joinToString(",")}",
+                        null,
+                        detail,
+                    )
+                }
+
+                result !is DumpResult.Complete -> {
+                    cap(
+                        id,
+                        DEGRADED,
+                        tierOf(result),
+                        (result as? DumpResult.Partial)?.reason?.name,
+                        null,
+                        detail,
+                    )
+                }
+
+                else -> {
+                    available(id, tierOf(result), detail)
+                }
+            }
         }
 
         /**

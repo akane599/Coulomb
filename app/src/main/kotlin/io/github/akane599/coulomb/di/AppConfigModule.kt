@@ -13,7 +13,9 @@ import dagger.hilt.components.SingletonComponent
 import io.github.akane599.coulomb.BuildConfig
 import io.github.akane599.coulomb.core.collect.engine.CollectorSettings
 import io.github.akane599.coulomb.core.datastore.SettingsStore
+import io.github.akane599.coulomb.core.parsing.batterystats.UsageStatsProtoParser
 import io.github.akane599.coulomb.core.privileged.PrivilegeConfig
+import io.github.akane599.coulomb.core.privileged.capability.UsageParser
 import kotlinx.coroutines.flow.first
 
 @Module
@@ -35,4 +37,8 @@ object AppConfigModule {
     // ADR-0035 §2: the collector reads "Component breakdown" at each heavy snapshot.
     @Provides
     fun collectorSettings(store: SettingsStore): CollectorSettings = CollectorSettings { store.settings.first().componentBreakdown }
+
+    /** S4's parser for the capability probe (ADR-0035). */
+    @Provides
+    fun usageParser(): UsageParser = UsageParser { UsageStatsProtoParser.parse(it) }
 }

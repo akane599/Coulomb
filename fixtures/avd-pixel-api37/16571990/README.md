@@ -51,6 +51,11 @@ was unplugged by `dumpsys battery unplug`, which started a new statistics sessio
 | File | Command | Bytes |
 | --- | --- | --- |
 | `unplugged.bin` | `adb shell dumpsys batterystats --usage --proto`, 132 s into the session | 361 |
+| `plugged.bin` | the same on 2026-11-09, by `tools/emulator/usage-capture.sh`: 60 s after `dumpsys battery unplug`, then 60 s after `set ac 1` and `set status 2` | 46 |
+
+`plugged.bin` keeps the session start of the unplugged read taken a minute earlier in the same run:
+plugging in does not start a new S4 session, and its end time and duration keep moving while
+plugged in. That is why only the plug-in snapshot's S4 read can close a window (ADR-0035 §3).
 
 The emulator has no power model, so every UID but Android System (1000) has time in state and no
 energy, and the device consumer is left out (its measured discharge rounds to 0). The proto holds

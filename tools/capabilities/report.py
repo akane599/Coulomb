@@ -50,6 +50,7 @@ def main() -> int:
     add("`dumpsys batterystats` flags (`-h`)", "AVAILABLE" if flags else "UNAVAILABLE", "T2",
         ", ".join(f"`{f}`" for f in flags) or "help output empty")
     for f, cap, src in (
+        ("batterystats.usage.bin", "Usage proto (`--usage --proto`, ADR-0035)", "S4"),
         ("batterystats.proto.bin", "Proto output (`--proto`)", "S5"),
         ("batterystats.checkin.txt", "Checkin text (`-c`, ADR-0005)", "S6"),
         ("batterystats.history.txt", "Battery history (`--history`)", "S7"),

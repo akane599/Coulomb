@@ -29,6 +29,7 @@ public enum class CapabilityId(
     CURRENT_NOW("s2.current_now"),
     CHARGE_COUNTER("s2.charge_counter"),
     HEALTH_PROPERTIES("s3.health_properties"),
+    BATTERYSTATS_USAGE("s4.batterystats_usage"),
     BATTERYSTATS_FLAGS("s5.batterystats_flags"),
     BATTERYSTATS_PROTO("s5.batterystats_proto"),
     BATTERYSTATS_CHECKIN("s6.batterystats_checkin"),

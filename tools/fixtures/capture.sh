@@ -51,6 +51,9 @@ sh_ getprop | grep -E '^\[(ro\.build\.|ro\.product\.(model|manufacturer|brand|de
 # SPEC 16.2 fixture set.
 run batterystats.help.txt     dumpsys batterystats -h
 run batterystats.proto.bin    dumpsys batterystats --proto
+# S4 (ADR-0035). Its forced power-stats samples append to the battery history; it resets nothing.
+# The plug state is never faked here: on a phone that can reset the statistics (ADR-0035).
+run batterystats.usage.bin    dumpsys batterystats --usage --proto
 run batterystats.checkin.txt  dumpsys batterystats -c
 run batterystats.history.txt  dumpsys batterystats --history
 run alarm.txt                 dumpsys alarm
