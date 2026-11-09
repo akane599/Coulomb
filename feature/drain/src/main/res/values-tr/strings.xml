@@ -85,7 +85,6 @@
     <string name="drain_components_coarse">Android bu aralık için bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
     <string name="drain_components_off">Bileşen dökümü bu aralığın bir kısmında ya da tamamında kapalıydı, bu yüzden Android bileşenlerin yalnızca bazılarını adlandırıyor. Ayarlar’da bulunur.</string>
     <string name="drain_component_app">%1$s %2$s</string>
-    <string name="drain_not_broken_down">Bileşenlere ayrılmadı</string>
     <string name="drain_not_broken_down_detail">Bu aralığın Coulomb’un bileşenlere ayıramadığı kısımları</string>
     <string name="drain_not_broken_down_off">Bileşen dökümü bu aralığın bir kısmında kapalıydı. Ayarlar’da bulunur.</string>
     <string name="drain_breakdown_off">Bileşen dökümü bu aralıkta kapalıydı, bu yüzden uygulamalar bileşenlere ayrılmadı. Ayarlar’da bulunur.</string>
@@ -105,25 +104,6 @@
     <string name="drain_row_measured">Ölçülen</string>
     <string name="drain_row_modeled">Android’in modellediği</string>
     <string name="drain_components_chart">Bileşenlere göre güç: %1$s</string>
-    <string name="drain_component_screen">Ekran</string>
-    <string name="drain_component_cpu">İşlemci</string>
-    <string name="drain_component_mobile_radio">Mobil ağ</string>
-    <string name="drain_component_wifi">Wi-Fi</string>
-    <string name="drain_component_bluetooth">Bluetooth</string>
-    <string name="drain_component_gnss">GPS</string>
-    <string name="drain_component_sensors">Sensörler</string>
-    <string name="drain_component_camera">Kamera</string>
-    <string name="drain_component_audio">Ses</string>
-    <string name="drain_component_video">Video</string>
-    <string name="drain_component_flashlight">Fener</string>
-    <string name="drain_component_wakelock">Uyanık tutmalar</string>
-    <string name="drain_component_memory">Bellek</string>
-    <string name="drain_component_phone">Aramalar</string>
-    <string name="drain_component_ambient_display">Her zaman açık ekran</string>
-    <string name="drain_component_idle">Telefon boşta</string>
-    <string name="drain_component_system_services">Sistem hizmetleri</string>
-    <string name="drain_component_custom">Cihaza özgü</string>
-    <string name="drain_component_other">Diğer</string>
 
     <string name="drain_wakeups_caption">Tutulma süresine, süre yoksa sayıya göre sıralı. Çubuklar tutulma süresinin grubun sayıldığı süreye oranını, süre yoksa grubun sayısındaki payı gösterir. Kısa uyandırmalar güç modelinin saydığından fazlasına mal olur.</string>
     <string name="drain_basis_screen_off">Yalnızca pildeyken ve ekran kapalıyken sayıldı: %1$s</string>

@@ -35,7 +35,11 @@ import io.github.akane599.coulomb.core.designsystem.component.CoulombIconButton
 import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.ui.breakdown.Swatch
+import io.github.akane599.coulomb.core.ui.breakdown.hue
+import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.R as UiR
 
 /**
  * A row in a list where some rows open to their components (lab `.drain-row`): [row] (drawn
@@ -120,7 +124,7 @@ internal fun AppBreakdownList(
             Chip(stringResource(part.component.label), formats.mah(part.mah * factor).joined(), colors.hue(part.component))
         }
         breakdown.notBrokenDownMah?.let { rest ->
-            Chip(stringResource(R.string.drain_not_broken_down), formats.mah(rest * factor).joined(), hue = null)
+            Chip(stringResource(UiR.string.component_not_broken_down), formats.mah(rest * factor).joined(), hue = null)
         }
     }
 }
@@ -144,25 +148,6 @@ private fun Chip(
         Box(Modifier.width(SwatchGap))
         Text(value, color = colors.textSecondary, style = type.label.copy(fontWeight = type.body.fontWeight))
     }
-}
-
-/**
- * A component's 10 dp swatch in [hue]; null draws it hollow, a 1 dp `text-secondary` outline, for
- * the energy that has no component (DESIGN.md, Breakdown).
- */
-@Composable
-internal fun Swatch(
-    hue: Color?,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(SwatchCorner)
-    val fill =
-        if (hue != null) {
-            Modifier.background(hue, shape)
-        } else {
-            Modifier.border(Outline, CoulombTheme.colors.textSecondary, shape)
-        }
-    Box(modifier.size(SwatchSize).then(fill))
 }
 
 /** List hairlines across the full width: above the first row, and under each row. */
@@ -189,7 +174,5 @@ private val SlotWidth = 48.dp - ButtonOverhang
 private val BreakdownIndent = 56.dp
 private val ChipHeight = 24.dp
 private val SwatchGap = 6.dp
-private val SwatchSize = 10.dp
-private val SwatchCorner = 2.dp
 private val Outline = 1.dp
 private const val HALF_TURN = 180f

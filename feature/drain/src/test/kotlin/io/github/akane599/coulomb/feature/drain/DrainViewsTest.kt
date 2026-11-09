@@ -8,7 +8,6 @@ import io.github.akane599.coulomb.core.analytics.WakeSubsystem
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.LevelEstimate
-import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.data.WakeBasis
 import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.data.WakeEntry
@@ -17,6 +16,8 @@ import io.github.akane599.coulomb.core.data.basisMs
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
+import io.github.akane599.coulomb.core.ui.breakdown.barSegments
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -253,7 +254,7 @@ class DrainViewsTest {
                 ComponentDrain(PowerComponent.IDLE, 4.0),
             )
         val hues = mapOf(PowerComponent.SCREEN to Color.Blue, PowerComponent.CPU to Color.Red)
-        val segments = barSegments(parts, { hues[it] ?: Color.Gray }, Color.Gray)
+        val segments = barSegments(parts, { it.component }, { it.mah }, { hues[it] ?: Color.Gray }, Color.Gray)
         assertEquals(listOf(Color.Blue, Color.Red, Color.Gray), segments.map { it.first })
         assertEquals(listOf(10.0, 6.0, 12.0), segments.map { it.second })
     }
@@ -261,11 +262,25 @@ class DrainViewsTest {
     @Test
     fun theUnsplitRestIsAHollowSegmentAfterTheNeutralOne() {
         val parts = listOf(ComponentDrain(PowerComponent.SCREEN, 10.0), ComponentDrain(PowerComponent.IDLE, 4.0))
-        val segments = barSegments(parts, { if (it == PowerComponent.SCREEN) Color.Blue else Color.Gray }, Color.Gray, rest = 3.0)
+        val segments =
+            barSegments(parts, { it.component }, { it.mah }, {
+                if (it ==
+                    PowerComponent.SCREEN
+                ) {
+                    Color.Blue
+                } else {
+                    Color.Gray
+                }
+            }, Color.Gray, rest = 3.0)
         assertEquals(listOf(Color.Blue, Color.Gray, null), segments.map { it.first })
         assertEquals(listOf(10.0, 4.0, 3.0), segments.map { it.second })
         // No rest, or none left, adds no segment.
-        assertEquals(listOf<Color?>(Color.Gray), barSegments(parts, { Color.Gray }, Color.Gray, rest = 0.0).map { it.first })
+        assertEquals(
+            listOf<Color?>(Color.Gray),
+            barSegments(parts, {
+                it.component
+            }, { it.mah }, { Color.Gray }, Color.Gray, rest = 0.0).map { it.first },
+        )
     }
 
     @Test

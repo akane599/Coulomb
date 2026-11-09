@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Power components by their friendly names (SPEC 6.5), shared by Drain and App detail. -->
+<resources>
+    <string name="component_screen">Screen</string>
+    <string name="component_cpu">CPU</string>
+    <string name="component_mobile_radio">Mobile network</string>
+    <string name="component_wifi">Wi-Fi</string>
+    <string name="component_bluetooth">Bluetooth</string>
+    <string name="component_gnss">GPS</string>
+    <string name="component_sensors">Sensors</string>
+    <string name="component_camera">Camera</string>
+    <string name="component_audio">Audio</string>
+    <string name="component_video">Video</string>
+    <string name="component_flashlight">Flashlight</string>
+    <string name="component_wakelock">Wakelocks</string>
+    <string name="component_memory">Memory</string>
+    <string name="component_phone">Calls</string>
+    <string name="component_ambient_display">Always-on display</string>
+    <string name="component_idle">Phone idle</string>
+    <string name="component_system_services">System services</string>
+    <string name="component_custom">Device-specific</string>
+    <string name="component_other">Other</string>
+    <!-- Energy S4 did not split by component (ADR-0035 §7). -->
+    <string name="component_not_broken_down">Not broken down</string>
+</resources>

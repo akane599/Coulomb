@@ -9,13 +9,13 @@ import io.github.akane599.coulomb.core.data.AlarmEntry
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
-import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.data.WakeBasis
 import io.github.akane599.coulomb.core.data.WakeEntry
 import io.github.akane599.coulomb.core.data.basis
 import io.github.akane599.coulomb.core.data.basisMs
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import kotlin.math.abs
 import kotlin.math.roundToLong
 

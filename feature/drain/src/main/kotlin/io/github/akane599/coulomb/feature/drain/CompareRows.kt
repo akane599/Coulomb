@@ -32,7 +32,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.data.WakeBasis
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombSwitchRow
@@ -45,12 +44,14 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import io.github.akane599.coulomb.core.ui.AppIconTile
 import io.github.akane599.coulomb.core.ui.FigureText
 import io.github.akane599.coulomb.core.ui.IconStandIn
 import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
+import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
 import kotlin.math.abs

@@ -43,6 +43,8 @@ import io.github.akane599.coulomb.core.ui.FigureText
 import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
+import io.github.akane599.coulomb.core.ui.breakdown.BarShape
+import io.github.akane599.coulomb.core.ui.breakdown.chartSemantics
 import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
 import java.time.LocalDate
@@ -276,7 +278,7 @@ private fun Reconcile(
                 Modifier
                     .fillMaxWidth()
                     .height(
-                        BarBox,
+                        BarShape.Box,
                     ).chartSemantics(description, stringResource(R.string.drain_view_table), onViewTable),
         )
         FlowRow(

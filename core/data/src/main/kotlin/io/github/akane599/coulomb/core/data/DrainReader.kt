@@ -29,6 +29,7 @@ import io.github.akane599.coulomb.core.model.WindowKind
 import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.PowerColumn
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine

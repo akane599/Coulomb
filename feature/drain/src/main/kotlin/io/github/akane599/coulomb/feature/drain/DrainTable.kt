@@ -8,6 +8,7 @@ import androidx.compose.ui.res.stringResource
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.DataTable
+import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
 
 /** The bars whose figures "View as table" opens (SPEC 11.8). */

@@ -9,7 +9,6 @@ import io.github.akane599.coulomb.core.data.ComponentApp
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
-import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.data.SpanBreakdown
 import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.data.WakeEntry
@@ -19,6 +18,7 @@ import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.PowerColumn
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import java.time.Instant
 
 internal const val MINUTE = 60_000L

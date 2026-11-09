@@ -16,6 +16,7 @@ import io.github.akane599.coulomb.core.model.Breakdown
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.test.runTest
 import org.junit.Test

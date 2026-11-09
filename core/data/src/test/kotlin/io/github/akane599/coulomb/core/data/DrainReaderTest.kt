@@ -37,6 +37,7 @@ import io.github.akane599.coulomb.core.model.WindowKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

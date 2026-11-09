@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Power components by their friendly names (SPEC 6.5), shared by Drain and App detail. -->
+<resources>
+    <string name="component_screen">Ekran</string>
+    <string name="component_cpu">İşlemci</string>
+    <string name="component_mobile_radio">Mobil ağ</string>
+    <string name="component_wifi">Wi-Fi</string>
+    <string name="component_bluetooth">Bluetooth</string>
+    <string name="component_gnss">GPS</string>
+    <string name="component_sensors">Sensörler</string>
+    <string name="component_camera">Kamera</string>
+    <string name="component_audio">Ses</string>
+    <string name="component_video">Video</string>
+    <string name="component_flashlight">Fener</string>
+    <string name="component_wakelock">Uyanık tutmalar</string>
+    <string name="component_memory">Bellek</string>
+    <string name="component_phone">Aramalar</string>
+    <string name="component_ambient_display">Her zaman açık ekran</string>
+    <string name="component_idle">Telefon boşta</string>
+    <string name="component_system_services">Sistem hizmetleri</string>
+    <string name="component_custom">Cihaza özgü</string>
+    <string name="component_other">Diğer</string>
+    <!-- Energy S4 did not split by component (ADR-0035 §7). -->
+    <string name="component_not_broken_down">Bileşenlere ayrılmadı</string>
+</resources>

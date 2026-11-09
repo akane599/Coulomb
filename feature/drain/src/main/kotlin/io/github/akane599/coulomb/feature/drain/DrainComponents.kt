@@ -41,17 +41,25 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
-import io.github.akane599.coulomb.core.data.PowerComponent
 import io.github.akane599.coulomb.core.designsystem.component.ShareBar
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombColors
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import io.github.akane599.coulomb.core.ui.FigureText
 import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
+import io.github.akane599.coulomb.core.ui.breakdown.BarShape
+import io.github.akane599.coulomb.core.ui.breakdown.StackedBar
+import io.github.akane599.coulomb.core.ui.breakdown.Swatch
+import io.github.akane599.coulomb.core.ui.breakdown.barSegments
+import io.github.akane599.coulomb.core.ui.breakdown.chartSemantics
+import io.github.akane599.coulomb.core.ui.breakdown.hue
+import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.R as UiR
 
 /**
  * The Components lens (SPEC 10.3): the device's modeled power by component, as one stacked bar in
@@ -92,7 +100,7 @@ internal fun LazyListScope.componentItems(
             val detail = if (report.breakdownOff) R.string.drain_not_broken_down_off else R.string.drain_not_broken_down_detail
             Box(rowMotion()) {
                 ComponentRow(
-                    stringResource(R.string.drain_not_broken_down),
+                    stringResource(UiR.string.component_not_broken_down),
                     stringResource(detail),
                     rest,
                     rest / total,
@@ -161,79 +169,27 @@ private fun ComponentsHead(
         }
         val parts =
             components.map { stringResource(it.component.label) to it.mah } +
-                listOfNotNull(rest?.let { stringResource(R.string.drain_not_broken_down) to it })
+                listOfNotNull(rest?.let { stringResource(UiR.string.component_not_broken_down) to it })
         val description =
             stringResource(
                 R.string.drain_components_chart,
                 parts.joinToString(", ") { (name, mah) -> "$name ${formats.share(mah / total)}" },
             )
-        val segments = remember(components, rest, colors) { barSegments(components, { colors.hue(it) }, colors.dataOther, rest) }
+        val segments =
+            remember(
+                components,
+                rest,
+                colors,
+            ) { barSegments(components, { it.component }, { it.mah }, { colors.hue(it) }, colors.dataOther, rest) }
         StackedBar(
             segments,
             total,
             Modifier
                 .padding(top = CoulombSpacing.Space16)
                 .fillMaxWidth()
-                .height(BarBox)
+                .height(BarShape.Box)
                 .chartSemantics(description, stringResource(R.string.drain_view_table), onViewTable),
         )
-    }
-}
-
-/**
- * The bar's segments: each hued component in rank order, then every neutral one as one segment,
- * then [rest], the energy with no component, as a hollow one (a null colour).
- */
-internal fun barSegments(
-    components: List<ComponentDrain>,
-    hue: (PowerComponent) -> Color,
-    neutral: Color,
-    rest: Double? = null,
-): List<Pair<Color?, Double>> {
-    // Only segments with energy: the bar draws each one, with a gap between.
-    val (hued, unhued) = components.filter { it.mah > 0 }.partition { hue(it.component) != neutral }
-    return hued.map { hue(it.component) to it.mah } +
-        listOfNotNull(unhued.sumOf { it.mah }.takeIf { it > 0 }?.let { neutral to it }) +
-        listOfNotNull(rest?.takeIf { it > 0 }?.let { null to it })
-}
-
-/**
- * A 14 dp bar of [segments] (each above zero) from the start edge, 2 dp apart with 2 dp ends,
- * mirrored in RTL. A segment with no colour is a 1 dp `text-secondary` outline, as its swatch.
- */
-@Composable
-private fun StackedBar(
-    segments: List<Pair<Color?, Double>>,
-    total: Double,
-    modifier: Modifier = Modifier,
-) {
-    val outline = CoulombTheme.colors.textSecondary
-    Canvas(modifier) {
-        val height = BarHeight.toPx()
-        val top = (size.height - height) / 2
-        val gap = SegmentGap.toPx()
-        val corner = CornerRadius(BarEnd.toPx())
-        val room = size.width - gap * (segments.size - 1).coerceAtLeast(0)
-        val stroke = Hairline.toPx()
-        var start = 0f
-        segments.forEach { (color, mah) ->
-            val width = (room * (mah / total)).toFloat()
-            val x = if (layoutDirection == LayoutDirection.Rtl) size.width - start - width else start
-            if (color != null) {
-                drawRoundRect(color, Offset(x, top), Size(width, height), corner)
-            } else {
-                // Inside its box, so it is no wider than a filled segment of the same energy.
-                val inset = stroke / 2
-                drawRoundRect(
-                    outline,
-                    Offset(x + inset, top + inset),
-                    Size((width - stroke).coerceAtLeast(0f), height - stroke),
-                    corner,
-                    style = Stroke(stroke),
-                )
-            }
-            start += width + gap
-        }
     }
 }
 
@@ -294,45 +250,5 @@ private fun ComponentRow(
     }
 }
 
-/** The component's data hue; those without one take the neutral Other (DESIGN.md, Data palette). */
-internal fun CoulombColors.hue(component: PowerComponent): Color =
-    when (component) {
-        PowerComponent.SCREEN, PowerComponent.AMBIENT_DISPLAY -> dataScreen
-        PowerComponent.CPU -> dataCpu
-        PowerComponent.MOBILE_RADIO, PowerComponent.PHONE -> dataRadio
-        PowerComponent.WIFI -> dataWifi
-        PowerComponent.GNSS -> dataGnss
-        PowerComponent.BLUETOOTH -> dataBluetooth
-        PowerComponent.SENSORS -> dataSensors
-        else -> dataOther
-    }
-
-/** SPEC 6.5: friendly names, never the platform's identifiers. */
-@get:StringRes
-internal val PowerComponent.label: Int
-    get() =
-        when (this) {
-            PowerComponent.SCREEN -> R.string.drain_component_screen
-            PowerComponent.CPU -> R.string.drain_component_cpu
-            PowerComponent.MOBILE_RADIO -> R.string.drain_component_mobile_radio
-            PowerComponent.WIFI -> R.string.drain_component_wifi
-            PowerComponent.BLUETOOTH -> R.string.drain_component_bluetooth
-            PowerComponent.GNSS -> R.string.drain_component_gnss
-            PowerComponent.SENSORS -> R.string.drain_component_sensors
-            PowerComponent.CAMERA -> R.string.drain_component_camera
-            PowerComponent.AUDIO -> R.string.drain_component_audio
-            PowerComponent.VIDEO -> R.string.drain_component_video
-            PowerComponent.FLASHLIGHT -> R.string.drain_component_flashlight
-            PowerComponent.WAKELOCK -> R.string.drain_component_wakelock
-            PowerComponent.MEMORY -> R.string.drain_component_memory
-            PowerComponent.PHONE -> R.string.drain_component_phone
-            PowerComponent.AMBIENT_DISPLAY -> R.string.drain_component_ambient_display
-            PowerComponent.IDLE -> R.string.drain_component_idle
-            PowerComponent.SYSTEM_SERVICES -> R.string.drain_component_system_services
-            PowerComponent.CUSTOM -> R.string.drain_component_custom
-            PowerComponent.OTHER -> R.string.drain_component_other
-        }
-
 private val SwatchSize = 10.dp
-private val Hairline = 1.dp
 private val RowHeight = 56.dp

@@ -89,7 +89,6 @@
     <string name="drain_components_coarse">Android names only some components for this window; the rest is under Other.</string>
     <string name="drain_components_off">Component breakdown was off for some or all of this window, so Android names only some components. It’s in Settings.</string>
     <string name="drain_component_app">%1$s %2$s</string>
-    <string name="drain_not_broken_down">Not broken down</string>
     <string name="drain_not_broken_down_detail">Parts of this window Coulomb couldn’t split by component</string>
     <string name="drain_not_broken_down_off">Component breakdown was off for part of this window. It’s in Settings.</string>
     <string name="drain_breakdown_off">Component breakdown was off for this window, so apps aren’t split by component. It’s in Settings.</string>
@@ -109,25 +108,6 @@
     <string name="drain_row_measured">Measured</string>
     <string name="drain_row_modeled">Modeled by Android</string>
     <string name="drain_components_chart">Power by component: %1$s</string>
-    <string name="drain_component_screen">Screen</string>
-    <string name="drain_component_cpu">CPU</string>
-    <string name="drain_component_mobile_radio">Mobile network</string>
-    <string name="drain_component_wifi">Wi-Fi</string>
-    <string name="drain_component_bluetooth">Bluetooth</string>
-    <string name="drain_component_gnss">GPS</string>
-    <string name="drain_component_sensors">Sensors</string>
-    <string name="drain_component_camera">Camera</string>
-    <string name="drain_component_audio">Audio</string>
-    <string name="drain_component_video">Video</string>
-    <string name="drain_component_flashlight">Flashlight</string>
-    <string name="drain_component_wakelock">Wakelocks</string>
-    <string name="drain_component_memory">Memory</string>
-    <string name="drain_component_phone">Calls</string>
-    <string name="drain_component_ambient_display">Always-on display</string>
-    <string name="drain_component_idle">Phone idle</string>
-    <string name="drain_component_system_services">System services</string>
-    <string name="drain_component_custom">Device-specific</string>
-    <string name="drain_component_other">Other</string>
 
     <string name="drain_wakeups_caption">Ranked by time held, or by count where no time is kept. Bars show the time held as a share of the time a group was counted, or a share of the group’s count. Short wakeups cost more than the power model counts.</string>
     <!-- When a wake group's counter ran, and how long that was in the window (ADR-0036 §34). -->
