@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
 import io.github.akane599.coulomb.core.designsystem.component.SkeletonBlock
@@ -46,6 +48,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
+import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -61,13 +64,15 @@ import java.time.ZoneId
 public fun appDetailViewModel(uid: Int): AppDetailViewModel =
     hiltViewModel<AppDetailViewModel, AppDetailViewModel.Factory>(key = "app-$uid", creationCallback = { it.create(uid) })
 
-/** The app's name for the top app bar (lab: the app bar's title), or nothing while it loads. */
+/**
+ * The app's name for the top app bar (lab: the app bar's title). Once a window has named the app,
+ * the name stays through a window change, an empty window and an error; nothing before that.
+ */
 @Composable
 public fun appDetailTitle(viewModel: AppDetailViewModel): String {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val detail = (state as? AppDetailUiState.Ready)?.detail
+    val name by viewModel.name.collectAsStateWithLifecycle()
     val formats = rememberFormats()
-    return detail?.let { formats.appName(it.label, it.uid) }.orEmpty()
+    return name?.let { formats.appName(it.label, viewModel.uid) }.orEmpty()
 }
 
 /**
@@ -133,7 +138,7 @@ internal fun AppDetailContent(
         is AppDetailUiState.Ready -> {
             val detail = state.detail
             if (detail == null) {
-                Column(modifier.fillMaxSize().padding(horizontal = gutter)) { Empty() }
+                Column(modifier.fillMaxSize().padding(horizontal = gutter)) { Empty(state.span) }
             } else {
                 val view = remember(detail, state.scaled) { AppDetailView.of(detail, state.scaled) }
                 FadeInOnce(modifier.fillMaxSize()) { Ready(view, actions, zone) }
@@ -157,7 +162,7 @@ private fun Ready(
     val gutter = currentGutter()
     var table by rememberSaveable { mutableStateOf<AppTable?>(null) }
     val icon = rememberAppIcon(view.detail.iconPackage, actions.icon, actions.peekIcon)
-    val sections = Sections(view, formats, icon, zone, actions) { table = it }
+    val sections = remember(view, formats, icon, zone, actions) { Sections(view, formats, icon, zone, actions) { table = it } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val column = MinColumnWidth * LocalDensity.current.fontScale.coerceAtLeast(1f)
         val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= column * 2
@@ -223,7 +228,7 @@ private val Bottom: Dp = CoulombSpacing.Space48
 private fun Skeleton() {
     val loading = stringResource(R.string.appdetail_loading)
     Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8).semantics { contentDescription = loading }) {
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             SkeletonBlock(40.dp, Modifier.width(40.dp))
             Column(Modifier.padding(start = CoulombSpacing.Space16)) {
                 SkeletonBlock(14.dp, Modifier.width(180.dp))
@@ -232,16 +237,24 @@ private fun Skeleton() {
         }
         SkeletonBlock(60.dp, Modifier.padding(top = CoulombSpacing.Space24).width(180.dp))
         SkeletonBlock(16.dp, Modifier.padding(top = CoulombSpacing.Space8).width(260.dp))
-        SkeletonBlock(26.dp, Modifier.padding(top = CoulombSpacing.Space32).width(160.dp))
+        SkeletonBlock(26.dp, Modifier.padding(top = currentSectionGap()).width(160.dp))
         SkeletonBlock(14.dp, Modifier.padding(top = CoulombSpacing.Space16).fillMaxWidth())
     }
 }
 
-/** SPEC 10.11 empty: the window has no two ends yet. */
+/** SPEC 10.11 empty: why the chosen window has no two ends yet, in Drain's words. */
 @Composable
-private fun Empty() {
+private fun Empty(span: DrainSpan) {
+    val text =
+        when (span) {
+            DrainSpan.SinceUnplugged -> R.string.appdetail_empty_since_unplugged
+            DrainSpan.Today -> R.string.appdetail_empty_today
+            DrainSpan.Last24Hours -> R.string.appdetail_empty_last_24h
+            DrainSpan.LastNight -> R.string.appdetail_empty_last_night
+            is DrainSpan.Days -> R.string.appdetail_empty_days
+        }
     Text(
-        stringResource(R.string.appdetail_empty),
+        stringResource(text),
         Modifier.widthIn(max = ReadingWidth).padding(top = CoulombSpacing.Space24),
         color = CoulombTheme.colors.textSecondary,
         style = CoulombTheme.typography.body,

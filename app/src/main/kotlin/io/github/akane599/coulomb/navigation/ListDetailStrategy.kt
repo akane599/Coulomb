@@ -6,12 +6,18 @@ package io.github.akane599.coulomb.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
@@ -50,9 +56,10 @@ internal class ListDetailStrategy<T : Any>(
 }
 
 /**
- * The list at a third of the width (between [ListMin] and [ListMax]) and the detail in the rest,
- * split by a hairline. The scene keeps the list's key, so choosing another row swaps only the
- * detail; back leaves the list on its own.
+ * The list at 40% of the width (between [PaneMin] and [ListMax], both scaled with the text) and
+ * the detail in the rest, split by a hairline. Each pane pads only the screen edges it touches:
+ * the list not the end's insets, the detail not the start's. The scene keeps the list's key, so
+ * choosing another row swaps only the detail; back leaves the list on its own.
  */
 private data class ListDetailScene<T : Any>(
     val list: NavEntry<T>,
@@ -63,11 +70,17 @@ private data class ListDetailScene<T : Any>(
     override val entries: List<NavEntry<T>> = listOf(list, detail)
     override val content: @Composable () -> Unit = {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val listWidth = (maxWidth * LIST_SHARE).coerceIn(ListMin, ListMax)
+            val scale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+            val listMin = PaneMin * scale
+            val listWidth = (maxWidth * LIST_SHARE).coerceIn(listMin, maxOf(ListMax * scale, listMin))
             Row(Modifier.fillMaxSize()) {
-                Box(Modifier.width(listWidth).fillMaxHeight()) { list.Content() }
+                Box(Modifier.width(listWidth).fillMaxHeight().consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.End))) {
+                    list.Content()
+                }
                 VerticalDivider(thickness = Hairline, color = CoulombTheme.colors.hairline)
-                Box(Modifier.weight(1f).fillMaxHeight()) { detail.Content() }
+                Box(Modifier.weight(1f).fillMaxHeight().consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))) {
+                    detail.Content()
+                }
             }
         }
     }
@@ -76,6 +89,5 @@ private data class ListDetailScene<T : Any>(
 /** Both panes need this much at 100% text; larger text needs it in proportion. */
 internal val PaneMin: Dp = 360.dp
 private const val LIST_SHARE = 0.4f
-private val ListMin = PaneMin
 private val ListMax = 480.dp
 private val Hairline = 1.dp

@@ -51,7 +51,9 @@ import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
+import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.tagLines
 
 /** The Wakeups lens's groups, in order (SPEC 10.3), each with its SPEC 19.3 glossary line. */
 internal enum class WakeGroup(
@@ -501,30 +503,6 @@ private fun RecordRow(
         if (share != null) ShareBar(share.toFloat(), Modifier.padding(top = CoulombSpacing.Space8))
     }
 }
-
-/**
- * A raw identifier ("PowerManagerService.WakeLocks", "app.halcyon/.sync.SyncJob") that may
- * wrap after its separators rather than mid-word: a zero-width space follows each, but only inside
- * a run without spaces long enough to need it, so a name that can break between words still does
- * and leaves no fragment alone on a line. TalkBack does not read it.
- */
-internal fun breakable(raw: String): String = raw.replace(LONG_RUN) { run -> run.value.replace(SEPARATORS) { it.value + ZERO_WIDTH_SPACE } }
-
-private val SEPARATORS = Regex("[./_:]")
-
-/** A run this long may not fit a narrow column at large text; shorter ones break between words. */
-private val LONG_RUN = Regex("\\S{16,}")
-private const val ZERO_WIDTH_SPACE = "\u200B"
-
-/**
- * A wakelock tag is cut at two lines; at large text it wraps in full, since the cut would drop
- * the end that tells two tags apart.
- */
-@Composable
-internal fun tagLines(): Int = if (LocalDensity.current.fontScale > LARGE_TEXT) Int.MAX_VALUE else TAG_LINES
-
-private const val LARGE_TEXT = 1.3f
-private const val TAG_LINES = 2
 
 /** A count as a plural quantity; counts past Int's range take its largest. */
 private fun Long.toQuantity(): Int = coerceAtMost(Int.MAX_VALUE.toLong()).toInt()

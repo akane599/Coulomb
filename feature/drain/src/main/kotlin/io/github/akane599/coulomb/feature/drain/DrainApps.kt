@@ -37,6 +37,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.AppDrainRow
 import io.github.akane599.coulomb.core.ui.IconStandIn
+import io.github.akane599.coulomb.core.ui.appIconKey
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
 
@@ -360,6 +361,8 @@ private fun AppRow(
         onClick = open?.let { { it(app.uid) } },
         modifier = modifier,
         hairlines = false,
+        selected = app.uid == actions.selectedApp,
+        sharedIconKey = appIconKey(app.uid),
     )
 }
 

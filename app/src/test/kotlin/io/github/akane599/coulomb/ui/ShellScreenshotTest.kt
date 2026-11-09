@@ -88,6 +88,16 @@ class ShellScreenshotTest {
         compose.onNodeWithContentDescription("Back").assertExists()
     }
 
+    /** A long app name in the top bar wraps in full; the bar grows and back stays beside it. */
+    @Test
+    fun compactLongTitle() {
+        setShell()
+        compose.onNodeWithText("Drain").performClick()
+        compose.onNodeWithText("Open 10456").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/shell-compact-long-title.png")
+    }
+
     private fun shoot(
         name: String,
         dark: Boolean = false,
@@ -125,7 +135,7 @@ private val StandIns =
         },
         compare = {},
         appDetail = { _, uid -> Text("Detail $uid") },
-        appDetailTitle = { "Halcyon" },
+        appDetailTitle = { uid -> if (uid == 10_456) "Very Long Navigation And Offline Maps Application Name" else "Halcyon" },
     )
 
 private const val COMPACT_SIZE = "w412dp-h915dp"

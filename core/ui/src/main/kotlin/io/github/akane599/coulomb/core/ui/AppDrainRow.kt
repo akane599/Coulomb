@@ -42,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
@@ -50,6 +51,7 @@ import io.github.akane599.coulomb.core.designsystem.component.ShareBar
 import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.designsystem.theme.sharedElement
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.format.Figure
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -59,6 +61,8 @@ private val IconCorner = 12.dp
 private val RowMinHeight = 72.dp
 private val Hairline = 1.dp
 private val GlyphSize = 20.dp
+private val SelectedBleed = CoulombSpacing.Space8
+private val SelectedCorner = 12.dp
 
 /**
  * A ranked row with a share bar (DESIGN.md, Rows with share bars; lab `.app-row`): the 40 dp icon,
@@ -67,6 +71,9 @@ private val GlyphSize = 20.dp
  * columns. Hairlines divide rows; the [first] row also draws one above itself. TalkBack reads the
  * row as one item. Without an icon, [standIn] fills the slot: by default the name's initial on a
  * quiet tile. Without [hairlines] the row draws none, for a caller that draws them around more.
+ * A [selected] row, the one open in the detail pane beside the list (SPEC 10.10), sits on
+ * `surface-raised` reaching a little past its text, and TalkBack reads it as selected. With a
+ * [sharedIconKey] (see [appIconKey]), the icon moves to the screen the row opens.
  */
 @Composable
 @Suppress("LongParameterList") // One row's content; the screen builds it from a read model.
@@ -83,6 +90,8 @@ public fun AppDrainRow(
     modifier: Modifier = Modifier,
     standIn: IconStandIn? = null,
     hairlines: Boolean = true,
+    selected: Boolean = false,
+    sharedIconKey: Any? = null,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -91,17 +100,26 @@ public fun AppDrainRow(
         modifier
             .fillMaxWidth()
             .drawBehind {
+                if (selected) {
+                    val bleed = SelectedBleed.toPx()
+                    drawRoundRect(
+                        colors.surfaceRaised,
+                        topLeft = Offset(-bleed, 0f),
+                        size = Size(size.width + bleed * 2, size.height),
+                        cornerRadius = CornerRadius(SelectedCorner.toPx()),
+                    )
+                }
                 if (!hairlines) return@drawBehind
                 val stroke = Hairline.toPx()
                 if (first) drawLine(colors.hairline, Offset(0f, stroke / 2), Offset(size.width, stroke / 2), stroke)
                 drawLine(colors.hairline, Offset(0f, size.height - stroke / 2), Offset(size.width, size.height - stroke / 2), stroke)
             }.then(clickable)
-            .semantics(mergeDescendants = true) {}
+            .semantics(mergeDescendants = true) { if (selected) this.selected = true }
             .heightIn(min = RowMinHeight)
             .padding(vertical = CoulombSpacing.Space12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AppIconTile(icon, standIn ?: IconStandIn.initialOf(name))
+        AppIconTile(icon, standIn ?: IconStandIn.initialOf(name), sharedElement(sharedIconKey))
         Spacer(Modifier.width(CoulombSpacing.Space16))
         Column(Modifier.weight(1f)) {
             NameBesideValue(
@@ -132,6 +150,9 @@ public fun AppDrainRow(
         }
     }
 }
+
+/** The key an app's icon moves under from its row to App detail (SPEC 11.6). */
+public fun appIconKey(uid: Int): String = "app-icon-$uid"
 
 /**
  * The name column and the value column side by side, the value at the end. When the value leaves

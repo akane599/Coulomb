@@ -505,7 +505,8 @@ Android scales text non-linearly at 2.0. Layouts reflow and never clip (SPEC 11.
 - App rows wrap names and details; values keep their column.
 - Window choices wrap to a second line instead of scrolling off the edge.
 - Under a container query in em, which follows text size, lens segments stack and table rows put the name
-  above its values. The query never applies at 1.0 or 1.3.
+  above its values, each value led by its column's name in `text-secondary` ("Time 9 min"). The query
+  never applies at 1.0 or 1.3.
 - The floating toolbar scrolls its ranges internally; the layers button and Now stay in reach.
 - Provenance glyphs stay 12 dp.
 - **Names break only between words.** At large text the name column takes width from the value column;
@@ -594,6 +595,9 @@ key, one line each. Long-press explains a mark; TalkBack gets an "Explain proven
   value column holds the signed change in Data. A key under the list caption shows a 16 dp swatch of
   each bar beside its period. The bars and labels are decoration: TalkBack reads the row as one
   sentence with both rates and the direction of the change.
+- **Selected (list-detail, SPEC 10.10):** the row whose App detail is open beside the list sits on
+  `surface-raised`, 8 dp wider than the row on each side, with 12 dp corners, and carries selected
+  semantics. No copper: the chosen window stays the region's one copper selection.
 - **Remainder and gap:** a truncated list ends with a remainder row ("22 more apps") whose icon slot is a
   hairline-outlined tile. Unattributed energy has its own group with a dashed tile. The list caption names
   the denominator ("Shares are of the 1,204 mAh measured"). The remainder count fits its tile at every
@@ -696,7 +700,9 @@ SPEC 11.6, held as tokens in `lab.css` and ported as `CoulombMotion`:
   150 ms opacity crossfade, and nothing else moves.
 
 What moves: digits roll in place, list reorders animate, charts draw in once on first appearance, an app
-row shares its element into App detail, and predictive back is seekable. CSS has no spring, so the lab
+row's icon tile moves into App detail's header on the spatial spring, and predictive back is seekable.
+The icon is shared only when the detail covers the list; beside the list, in list-detail, the row stays
+in view and nothing moves between the panes. CSS has no spring, so the lab
 tweens with an ease-out quart curve at 150 and 250 ms; that curve is a lab stand-in, not a token.
 
 **The Still Screen Rule.** Nothing animates while idle: no shimmer, pulse or loop. The live current chart

@@ -87,13 +87,29 @@ public class Formats(
     /** [percent] split around its digits, for the hero numeral. */
     public fun percentParts(points: Int): Affixed = split(percent(points))
 
-    /** A share from 0 to 1 as a whole percentage; a share above zero never shows as 0%. */
+    /**
+     * A share from 0 to 1 as a whole percentage; a share above zero never shows as 0%, nor one
+     * short of the whole as 100%.
+     */
     public fun share(fraction: Double): String {
         val points = (fraction * PERCENT).roundToLong()
-        return if (fraction > 0 && points == 0L) {
-            isolated(resources.getString(R.string.format_less_than, percent(1)))
-        } else {
-            percent(points.toInt())
+        return when {
+            fraction > 0 && points == 0L -> {
+                isolated(resources.getString(R.string.format_less_than, percent(1)))
+            }
+
+            fraction < 1 && points >= PERCENT.toLong() -> {
+                isolated(
+                    resources.getString(
+                        R.string.format_more_than,
+                        percent(PERCENT.toInt() - 1),
+                    ),
+                )
+            }
+
+            else -> {
+                percent(points.toInt())
+            }
         }
     }
 

@@ -27,7 +27,15 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+
+/** An app's label as read; null is a UID with no label, which reads "UID n". */
+@Immutable
+internal data class AppName(
+    val label: String?,
+)
 
 /** What App detail shows (SPEC 10.4), in the states of SPEC 10.11. */
 internal sealed interface AppDetailUiState {
@@ -67,12 +75,22 @@ public class AppDetailViewModel
         internal val state: StateFlow<AppDetailUiState> =
             attempt
                 .flatMapLatest {
-                    val details = window.span.flatMapLatest { span -> drains.app(span, uid).map { span to it } }
+                    // A new window shows the skeleton until it is read, not the old window's figures.
+                    val details =
+                        window.span.flatMapLatest { span ->
+                            drains.app(span, uid).map<AppDetailReport?, Loaded?> { Loaded(span, it) }.onStart { emit(null) }
+                        }
                     val scaled = settings.settings.map { it.scaleToMeasured }.distinctUntilChanged()
-                    combine(details, scaled) { (span, detail), scale ->
-                        AppDetailUiState.Ready(span, detail, scale) as AppDetailUiState
+                    combine(details, scaled) { loaded, scale ->
+                        loaded?.let { AppDetailUiState.Ready(it.span, it.detail, scale) } ?: AppDetailUiState.Loading
                     }.catch { emit(AppDetailUiState.Error) }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AppDetailUiState.Loading)
+
+        /** The app's label from the last window that read it; null until one has (the title's source). */
+        internal val name: StateFlow<AppName?> =
+            state
+                .mapNotNull { (it as? AppDetailUiState.Ready)?.detail?.let { detail -> AppName(detail.label) } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
         /** After [AppDetailUiState.Error]: reads everything again. */
         internal fun retry() {
@@ -96,6 +114,11 @@ public class AppDetailViewModel
         public interface Factory {
             public fun create(uid: Int): AppDetailViewModel
         }
+
+        private class Loaded(
+            val span: DrainSpan,
+            val detail: AppDetailReport?,
+        )
 
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L

@@ -3,6 +3,8 @@
 
 package io.github.akane599.coulomb.core.designsystem.theme
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalRippleConfiguration
@@ -14,6 +16,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -23,6 +26,20 @@ import androidx.compose.ui.graphics.Color
 private val LocalCoulombColors = staticCompositionLocalOf { LightColors }
 private val LocalCoulombTypography = staticCompositionLocalOf { CoulombTypography() }
 internal val LocalReducedMotion = staticCompositionLocalOf { false }
+
+/** Where a shared element moves: the shell's transition and, once a screen sets it, its own enter and exit. */
+@Immutable
+internal class SharedBoundsScope(
+    val transition: SharedTransitionScope,
+    val visibility: AnimatedVisibilityScope?,
+)
+
+/**
+ * Null where nothing moves between screens: in tests, and while list and detail sit side by side.
+ * Set only by ProvideSharedTransition and ProvideSharedVisibility: a shared element needs the
+ * scopes of the screen it sits in, which no parameter reaches through the screens between.
+ */
+internal val LocalSharedBounds = staticCompositionLocalOf<SharedBoundsScope?> { null }
 
 /**
  * Coulomb's theme: its colour and type roles, also mapped onto Material 3 for the Material

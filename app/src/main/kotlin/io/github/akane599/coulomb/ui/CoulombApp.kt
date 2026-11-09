@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -34,12 +35,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import io.github.akane599.coulomb.R
 import io.github.akane599.coulomb.core.designsystem.component.CoulombBackButton
@@ -53,6 +57,8 @@ import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombMotion
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.designsystem.theme.ProvideSharedTransition
+import io.github.akane599.coulomb.core.designsystem.theme.ProvideSharedVisibility
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
@@ -111,15 +117,21 @@ fun CoulombApp(
                 val panes = PaneMin * 2 * LocalDensity.current.fontScale.coerceAtLeast(1f)
                 val split = currentWindowWidth() == WindowWidth.Expanded && maxWidth >= panes
                 val strategy = remember(split) { ListDetailStrategy<NavKey>(split) }
-                NavDisplay(
-                    entries = entries.getValue(navigator.current),
-                    modifier = Modifier.fillMaxSize().consumeWindowInsets(navigationInsets(rail)),
-                    sceneStrategies = listOf(strategy),
-                    onBack = navigator::back,
-                    transitionSpec = { fade() },
-                    popTransitionSpec = { fade() },
-                    predictivePopTransitionSpec = { fade() },
-                )
+                // An app's icon moves from its row to App detail (SPEC 11.6); beside the list, both stay put.
+                SharedTransitionLayout {
+                    ProvideSharedTransition(this.takeIf { !split }) {
+                        NavDisplay(
+                            entries = entries.getValue(navigator.current),
+                            modifier = Modifier.fillMaxSize().consumeWindowInsets(navigationInsets(rail)),
+                            sceneStrategies = listOf(strategy),
+                            sharedTransitionScope = this,
+                            onBack = navigator::back,
+                            transitionSpec = { fade() },
+                            popTransitionSpec = { fade() },
+                            predictivePopTransitionSpec = { fade() },
+                        )
+                    }
+                }
             }
         }
     }
@@ -193,6 +205,8 @@ class AppScreens(
                         onOpenApp = { navigator.openDetail(Route.AppDetail(it)) },
                         onOpenPrivileges = { navigator.open(Route.Privileges) },
                         onOpenCompare = { navigator.open(Route.DrainCompare) },
+                        // Shown only while the detail is beside the list; under it, Drain is not on screen.
+                        selectedApp = navigator.openApp(Destination.Drain),
                     )
                 },
                 compare = { navigator -> CompareScreen(onOpenApp = { navigator.openDetail(Route.AppDetail(it)) }) },
@@ -216,7 +230,7 @@ private fun appEntries(
             InnerScreen(stringResource(DrainR.string.drain_compare_title), navigator::back) { screens.compare(navigator) }
         }
         entry<Route.AppDetail>(metadata = ListDetailStrategy.detail) { key ->
-            InnerScreen(screens.appDetailTitle(key.uid), navigator::back) { screens.appDetail(navigator, key.uid) }
+            InnerScreen(screens.appDetailTitle(key.uid), navigator::back, pane = true) { screens.appDetail(navigator, key.uid) }
         }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { NotBuilt() } }
         entry<Route.Health> { DestinationScreen(Destination.Health, navigator::open) { NotBuilt() } }
@@ -243,16 +257,21 @@ private fun DestinationScreen(
     )
 }
 
-/** A screen below a destination: back, then its name. */
+/**
+ * A screen below a destination: back, then its name. A [pane] screen can change beside a list
+ * (SPEC 10.10), so TalkBack announces its title when it does.
+ */
 @Composable
 private fun InnerScreen(
     title: String,
     onBack: () -> Unit,
+    pane: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     ShellScreen(
         title = title,
         navigationIcon = { CoulombBackButton(onClick = onBack) },
+        modifier = if (pane && title.isNotEmpty()) Modifier.semantics { paneTitle = title } else Modifier,
         content = content,
     )
 }
@@ -260,11 +279,12 @@ private fun InnerScreen(
 @Composable
 private fun ShellScreen(
     title: String,
+    modifier: Modifier = Modifier,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
+    Column(modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
         CoulombTopAppBar(title = title, navigationIcon = navigationIcon, actions = actions)
         // The top bar pads the top; the bar or the rail pads its own edge (navigationInsets). The
         // content pads what is left: on the rail, the bottom bar and an end-side bar or cutout.
@@ -276,7 +296,8 @@ private fun ShellScreen(
                     .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
         ) {
-            content()
+            // Each screen's own enter and exit, for an element shared with the next screen.
+            ProvideSharedVisibility(LocalNavAnimatedContentScope.current, content)
         }
     }
 }

@@ -70,6 +70,7 @@ import java.time.ZoneId
  * @param onOpenApp opens App detail for a UID; null while there is none to open.
  * @param onOpenPrivileges opens Privileges, where a privilege issue is fixed.
  * @param onOpenCompare opens Compare two periods (ADR-0038).
+ * @param selectedApp the UID open in the detail pane beside the list (SPEC 10.10), if any.
  */
 @Composable
 public fun DrainScreen(
@@ -77,12 +78,13 @@ public fun DrainScreen(
     onOpenPrivileges: () -> Unit,
     onOpenCompare: () -> Unit,
     modifier: Modifier = Modifier,
+    selectedApp: Int? = null,
     viewModel: DrainViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val actions =
-        remember(viewModel, onOpenApp, onOpenPrivileges, onOpenCompare) {
+        remember(viewModel, onOpenApp, onOpenPrivileges, onOpenCompare, selectedApp) {
             DrainActions(
                 choose = viewModel::choose,
                 refresh = viewModel::refresh,
@@ -94,6 +96,7 @@ public fun DrainScreen(
                 openCompare = onOpenCompare,
                 icon = viewModel::icon,
                 peekIcon = viewModel::peekIcon,
+                selectedApp = selectedApp,
             )
         }
     DrainContent(state = state, actions = actions, modifier = modifier, refreshing = refreshing)
@@ -112,6 +115,8 @@ internal class DrainActions(
     val openCompare: () -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
     val peekIcon: (packageName: String, sizePx: Int) -> ImageBitmap? = { _, _ -> null },
+    /** The UID open in the detail pane beside the list, shown selected. */
+    val selectedApp: Int? = null,
 )
 
 /** The three views of the same window (SPEC 10.3). */

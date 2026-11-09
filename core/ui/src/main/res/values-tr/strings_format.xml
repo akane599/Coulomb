@@ -8,6 +8,7 @@
     <string name="format_minutes">%1$s dk</string>
     <string name="format_range">%1$s – %2$s</string>
     <string name="format_less_than">&lt;%1$s</string>
+    <string name="format_more_than">&gt;%1$s</string>
     <string name="unit_b">B</string>
     <string name="unit_pct_per_hour">%/sa</string>
 

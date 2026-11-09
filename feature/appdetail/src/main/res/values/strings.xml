@@ -15,15 +15,17 @@
     <string name="appdetail_share_of_measured">%1$s of the %2$s measured</string>
     <string name="appdetail_share_of_modeled">%1$s of the %2$s that Android modeled</string>
     <string name="appdetail_share_scaled">%1$s of the %2$s measured, scaled from Android’s model</string>
-    <string name="appdetail_lower_bound">Summed from shorter windows, so this may be a little low.</string>
-    <string name="appdetail_no_use">No battery use recorded for this app in this window.</string>
+    <string name="appdetail_lower_bound">Summed from shorter windows, so this figure and the counts below may be a little low.</string>
+    <string name="appdetail_charged">It charged in between, so the total counts only the time on battery.</string>
+    <string name="appdetail_no_use">No battery use recorded for this app in this window. Small amounts are counted with Small apps on Drain.</string>
 
     <!-- Where it went (SPEC 10.4 item 4). -->
     <string name="appdetail_where">Where it went</string>
     <string name="appdetail_components_chart">%1$s by component: %2$s</string>
     <string name="appdetail_components_title">%1$s by component</string>
     <string name="appdetail_column_component">Component</string>
-    <string name="appdetail_components_off">Component breakdown was off for some or all of this window. It’s in Settings.</string>
+    <string name="appdetail_components_off">Component breakdown was off for this window. You can turn it on in Settings.</string>
+    <string name="appdetail_components_off_part">Component breakdown was off for part of this window; that part isn’t split by component.</string>
     <string name="appdetail_components_none">Coulomb couldn’t split this app by component in this window.</string>
     <string name="appdetail_states">By process state</string>
     <string name="appdetail_state">State</string>
@@ -33,7 +35,7 @@
     <string name="appdetail_state_cached">Cached</string>
     <string name="appdetail_state_cached_definition">Kept in memory but not running, so Android can reopen it quickly.</string>
     <string name="appdetail_state_not_split">Not split</string>
-    <string name="appdetail_term_action">What this means</string>
+    <string name="appdetail_term_action">Show meaning</string>
 
     <!-- Woke the phone (SPEC 10.4 item 5). -->
     <plurals name="appdetail_woke">
@@ -41,11 +43,14 @@
         <item quantity="other">Woke the phone %1$s times</item>
     </plurals>
     <string name="appdetail_wakeups">Wakeups</string>
-    <string name="appdetail_alarms_not_recorded">Its wakeup alarms weren’t recorded in this window.</string>
-    <string name="appdetail_alarms_note">By its wakeup alarms. Android counts them per app, not per alarm.</string>
-    <string name="appdetail_alarms_partial">Recorded for part of this window, so these are at least the counts shown.</string>
-    <string name="appdetail_wakelocks">Wakelocks</string>
+    <string name="appdetail_alarms_not_recorded">Wakeup alarms weren’t collected for this window.</string>
+    <string name="appdetail_alarms_note">Counted from its wakeup alarms. Android keeps one total per app, so there’s no list of alarms.</string>
+    <string name="appdetail_alarms_partial">Only part of this window was collected, so the real counts may be higher.</string>
+    <string name="appdetail_wakelocks">Partial wakelocks</string>
     <string name="appdetail_jobs">Jobs</string>
+    <string name="appdetail_wakelocks_definition">An app’s request to keep the CPU running with the screen off.</string>
+    <string name="appdetail_jobs_definition">Work an app asks Android to run later, when the phone is ready, such as a sync.</string>
+    <string name="appdetail_jobs_not_recorded">Not collected for this window.</string>
     <string name="appdetail_column_tag">Tag</string>
     <string name="appdetail_column_job">Job</string>
     <string name="appdetail_column_time">Time</string>
@@ -54,17 +59,26 @@
     <string name="appdetail_screen_off_all">All with the screen off</string>
     <string name="appdetail_screen_off_none">All with the screen on</string>
     <string name="appdetail_screen_off_share">%1$s with the screen off</string>
-    <string name="appdetail_wakelocks_none">No wakelocks recorded.</string>
-    <string name="appdetail_wakelocks_not_recorded">Wakelocks weren’t recorded in this window.</string>
-    <string name="appdetail_jobs_total">%1$s runs, %2$s in all</string>
-    <string name="appdetail_jobs_none">No jobs recorded.</string>
+    <string name="appdetail_wakelocks_none">None among the longest holds Coulomb keeps for this window.</string>
+    <string name="appdetail_wakelocks_not_recorded">Not collected for this window.</string>
+    <plurals name="appdetail_jobs_total">
+        <item quantity="one">%1$s run, %2$s in all</item>
+        <item quantity="other">%1$s runs, %2$s in all</item>
+    </plurals>
+    <string name="appdetail_show_all">Show all %1$s</string>
+    <string name="appdetail_show_fewer">Show fewer</string>
+    <string name="appdetail_state_expanded">Expanded</string>
+    <string name="appdetail_state_collapsed">Collapsed</string>
+    <string name="appdetail_jobs_none">None among the longest runs Coulomb keeps for this window.</string>
 
-    <!-- Network and screen time (SPEC 10.4 item 6). -->
-    <string name="appdetail_network">Network and screen time</string>
+    <!-- Network and foreground time (SPEC 10.4 item 6). -->
+    <string name="appdetail_network">Network and foreground time</string>
     <string name="appdetail_mobile">Mobile data</string>
     <string name="appdetail_wifi">Wi-Fi</string>
     <string name="appdetail_foreground">Foreground</string>
     <string name="appdetail_traffic">%1$s down, %2$s up</string>
+    <string name="appdetail_traffic_down_only">%1$s down; sent not recorded</string>
+    <string name="appdetail_traffic_up_only">%1$s up; received not recorded</string>
     <string name="appdetail_foreground_service">Foreground service %1$s</string>
     <string name="appdetail_not_recorded">Not recorded</string>
 
@@ -72,13 +86,15 @@
     <string name="appdetail_trend">Last 14 days</string>
     <string name="appdetail_trend_axis">mAh a day</string>
     <string name="appdetail_trend_today">Today</string>
-    <string name="appdetail_trend_updated">Updated</string>
-    <string name="appdetail_trend_caption">Android’s model, by the day each window ended.</string>
+    <string name="appdetail_trend_updated">App updated</string>
+    <string name="appdetail_trend_caption">From Android’s model. A stretch that runs past midnight is split between its days.</string>
+    <string name="appdetail_trend_unscaled">Not scaled to measured.</string>
+    <string name="appdetail_trend_all_gaps">No records in the last 14 days.</string>
     <plurals name="appdetail_trend_gaps">
         <item quantity="one">No records on one day.</item>
         <item quantity="other">No records on %1$s days.</item>
     </plurals>
-    <string name="appdetail_trend_updated_on">Updated on %1$s.</string>
+    <string name="appdetail_trend_updated_on">App updated on %1$s.</string>
     <string name="appdetail_trend_chart">%1$s over the last 14 days: %2$s</string>
     <string name="appdetail_trend_day_gap">%1$s no records</string>
     <string name="appdetail_trend_table">%1$s, last 14 days</string>
@@ -92,7 +108,11 @@
 
     <!-- SPEC 10.11 states. -->
     <string name="appdetail_loading">Loading</string>
-    <string name="appdetail_empty">Nothing recorded for this window yet. Figures appear after the next snapshot.</string>
+    <string name="appdetail_empty_since_unplugged">Per-app drain appears with the first full reading after the unplug.</string>
+    <string name="appdetail_empty_today">Nothing is stored for today yet.</string>
+    <string name="appdetail_empty_last_24h">Nothing is stored for the last 24 hours yet.</string>
+    <string name="appdetail_empty_last_night">No screen-off stretch of an hour or more in the last day.</string>
+    <string name="appdetail_empty_days">Nothing is stored for those days.</string>
     <string name="appdetail_error_title">Coulomb couldn’t read its battery records</string>
     <string name="appdetail_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
     <string name="appdetail_error_action">Try again</string>

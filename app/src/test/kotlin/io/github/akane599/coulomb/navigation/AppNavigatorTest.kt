@@ -84,6 +84,19 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun theOpenAppIsTheDetailOnTopOfItsStack() {
+        navigator.select(Destination.Drain)
+        assertThat(navigator.openApp(Destination.Drain)).isNull()
+
+        navigator.openDetail(Route.AppDetail(10_123))
+        assertThat(navigator.openApp(Destination.Drain)).isEqualTo(10_123)
+        assertThat(navigator.openApp(Destination.Now)).isNull()
+
+        navigator.back()
+        assertThat(navigator.openApp(Destination.Drain)).isNull()
+    }
+
+    @Test
     fun aDetailOpensAboveCompare() {
         navigator.select(Destination.Drain)
         navigator.open(Route.DrainCompare)

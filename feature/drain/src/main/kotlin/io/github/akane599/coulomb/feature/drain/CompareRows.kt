@@ -51,9 +51,11 @@ import io.github.akane599.coulomb.core.ui.IconStandIn
 import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
+import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
+import io.github.akane599.coulomb.core.ui.tagLines
 import kotlin.math.abs
 
 /**

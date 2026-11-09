@@ -57,6 +57,9 @@ class AppNavigator internal constructor(
         backStack.add(route)
     }
 
+    /** The UID of the App detail on top of [destination]'s stack, if one is. */
+    fun openApp(destination: Destination): Int? = (stacks.getValue(destination).lastOrNull() as? Route.AppDetail)?.uid
+
     fun back() {
         when {
             backStack.size > 1 -> backStack.removeAt(backStack.lastIndex)

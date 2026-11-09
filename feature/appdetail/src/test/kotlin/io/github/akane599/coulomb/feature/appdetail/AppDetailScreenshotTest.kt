@@ -6,7 +6,9 @@ package io.github.akane599.coulomb.feature.appdetail
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
@@ -20,12 +22,16 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.then
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.akane599.coulomb.core.data.AppCounters
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.WakeEntry
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.WakeKind
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -78,10 +84,41 @@ class AppDetailScreenshotTest {
     @Config(qualifiers = "w1000dp-h1400dp-xhdpi")
     fun expanded() = shoot("expanded", ready())
 
-    /** The detail pane beside Drain's list at 840 dp: about 380 dp, so one list. */
+    /**
+     * The detail pane beside Drain's list in an 840 dp window: the rail and a 360 dp list leave
+     * 399 dp, in an expanded window's gutters, so one list.
+     */
     @Test
-    @Config(qualifiers = "w380dp-h1400dp-xhdpi")
-    fun pane() = shoot("pane", ready())
+    @Config(qualifiers = "w840dp-h1400dp-xhdpi")
+    fun pane() = shoot("pane", ready(), width = 399.dp)
+
+    /** A medium window beside the rail: 620 dp, so two columns. */
+    @Test
+    @Config(qualifiers = "w700dp-h1400dp-xhdpi")
+    fun mediumRail() = shoot("medium-rail", ready(), width = 620.dp)
+
+    /** Its jobs ran but none was among the window's longest: the note, then the counters' total. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun jobsOnlyInTotal() =
+        shoot(
+            "jobs-total",
+            ready(
+                labDetail().let { d ->
+                    d.copy(wakes = d.wakes.filterNot { AppDetailView.JOB_TAG.containsMatchIn(it.tag) })
+                },
+            ),
+        )
+
+    /** More wakelocks than the table shows: the first five, then "Show all". */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun manyWakelocks() = shoot("many-wakelocks", ready(manyWakelockDetail()))
+
+    /** Every day of the trend without a record: a line in place of the chart. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun trendAllGaps() = shoot("trend-all-gaps", ready(labDetail(trend = labTrend(gapDays = (0..13).toSet()))))
 
     @Test
     @Config(qualifiers = "tr-$PAGE-xhdpi")
@@ -148,6 +185,7 @@ class AppDetailScreenshotTest {
         fontScale: Float = 1f,
         rtl: Boolean = false,
         capture: Boolean = true,
+        width: Dp? = null,
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
         val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -157,7 +195,9 @@ class AppDetailScreenshotTest {
             ) {
                 CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
-                        AppDetailContent(state, NoActions, zone = ZoneOffset.UTC)
+                        Box(if (width != null) Modifier.width(width).fillMaxHeight() else Modifier.fillMaxSize()) {
+                            AppDetailContent(state, NoActions, zone = ZoneOffset.UTC)
+                        }
                     }
                 }
             }
@@ -175,6 +215,27 @@ private fun ready(
     detail: io.github.akane599.coulomb.core.data.AppDetailReport = labDetail(),
     scaled: Boolean = false,
 ) = AppDetailUiState.Ready(DrainSpan.SinceUnplugged, detail, scaled)
+
+private fun manyWakelockDetail() =
+    labDetail().let { detail ->
+        detail.copy(
+            wakes =
+                detail.wakes +
+                    (1..6).map {
+                        WakeEntry(
+                            WakeKind.PARTIAL,
+                            UID,
+                            "Halcyon",
+                            PACKAGE,
+                            "HalcyonSync:Worker$it",
+                            it * MINUTE,
+                            10L * it,
+                            0.5,
+                            null,
+                        )
+                    },
+        )
+    }
 
 private fun hardenedDetail() =
     labDetail(

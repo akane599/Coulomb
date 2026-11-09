@@ -104,6 +104,41 @@ a span" from a stored window or a chain of consecutive windows.
   - the update marker uses the trend's zone source.
   Where the app was folded into small apps in some windows, its counters are a lower bound, like
   its figure. The header's lower-bound note covers both.
-- **Not yet:** the story, the Act insight card and the actions (P5, ADR-0026). The shared-element
-  transition from a Drain row (SPEC 11.6) waits for the screen's animate gate.
+- **Not yet:** the story, the Act insight card and the actions (P5, ADR-0026).
+
+## Gate decisions 2026-11-09
+
+The SPEC 11.12 runs are in `docs/design-gates/2026-11-09-*-app-detail.md`. Their fixes decided:
+
+- **Shared element** (SPEC 11.6). `NavDisplay` sits in a `SharedTransitionLayout` and gets its
+  scope. Feature modules can't see `:app`, so `:core:designsystem` carries the transition and the
+  entry's `AnimatedContentScope` in one CompositionLocal, set by the shell, and exposes
+  `sharedElement(key)`. Drain's row tile and the header tile share `app-icon-<uid>` on the
+  spatial spring. The shell passes no transition in split view, where the row stays in view, and
+  `sharedElement` returns a plain modifier under reduced motion.
+- **Selected row.** In list-detail the open app's Drain row sits on `surface-raised` with selected
+  semantics; the shell reads the UID from the top of Drain's stack (`AppNavigator.openApp`).
+- **Panes.** The list pane consumes the End side of the safe-drawing insets and the detail the
+  Start side, so neither pads the seam. Both pane bounds take the font scale. The detail pane's
+  title is the app's name.
+- **Tables.** Figure cells are end-aligned boxes, so digits line up in RTL. Stacked rows lead each
+  value with its column's name. Each row is one TalkBack item, a term's definition included.
+  Wakelock and job tables show five rows, then "Show all N" with its state. An empty table says it
+  holds none of the window's longest holds; the jobs total still shows, from the counters.
+- **Breaks.** `breakable` moved to `:core:ui`: in runs of 16 or more characters without a space,
+  break chances after `.` `/` `_` `:`, and between camel humps inside words of 16 or more.
+- **Shares.** Below the whole, a share that rounds to 100% reads ">99%", on Drain too.
+- **Wording** follows Drain's: zero against not collected, "aralık" in Turkish, per-window empty
+  states, a charged note, a partly-off breakdown note, "Partial wakelocks" and "Jobs" as terms,
+  "Network and foreground time" with one Measured mark on its heading.
+- **Window change** shows the skeleton until the new window's report arrives.
+- **Polish.** Table rows stack once a name would get less than 7.5 em, with one em converted
+  before multiplying, since non-linear text scaling barely grows 120 sp. Lines that stand in for
+  a missing table or chart are Body, as on Drain; a heading over such a line carries no mark. The
+  title keeps the last label read through loading, empty and error. App info is a row between
+  hairlines, as in the lab.
+- **Accepted, with reasons in the gate docs:** no share bars on table rows; "Change it on Drain"
+  and the Settings line stay plain text until Settings exists; the expanded columns follow SPEC
+  10.4's order; the cut when the split detail swaps; chart redraw when the column count changes;
+  scroll reset across the threshold; the chart measures in its draw; one Drain report per pane.
 

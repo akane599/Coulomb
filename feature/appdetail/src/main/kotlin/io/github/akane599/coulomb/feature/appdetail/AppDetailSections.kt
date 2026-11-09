@@ -13,13 +13,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.painterResource
@@ -28,14 +32,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTerm
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
+import io.github.akane599.coulomb.core.designsystem.theme.sharedElement
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.AppIconTile
 import io.github.akane599.coulomb.core.ui.FigureText
@@ -43,6 +50,8 @@ import io.github.akane599.coulomb.core.ui.IconStandIn
 import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
+import io.github.akane599.coulomb.core.ui.appIconKey
+import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.breakdown.BarShape
 import io.github.akane599.coulomb.core.ui.breakdown.StackedBar
 import io.github.akane599.coulomb.core.ui.breakdown.Swatch
@@ -69,9 +78,9 @@ internal fun Header(
     val name = formats.appName(view.detail.label, view.detail.uid)
     Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AppIconTile(icon, IconStandIn.initialOf(name))
+            AppIconTile(icon, IconStandIn.initialOf(name), sharedElement(appIconKey(view.detail.uid)))
             Column(Modifier.padding(start = CoulombSpacing.Space16).weight(1f)) {
-                view.detail.iconPackage?.let { Text(it, color = colors.textSecondary, style = type.mono) }
+                view.detail.iconPackage?.let { Text(breakable(it), color = colors.textSecondary, style = type.mono) }
                 Text(
                     stringResource(R.string.appdetail_window_note, windowName(span, formats)),
                     color = colors.textSecondary,
@@ -96,20 +105,20 @@ internal fun Header(
                     numberStyle = type.display,
                     unitStyle = type.displayUnit,
                     modifier = Modifier.alignByBaseline(),
+                    rolling = true,
                 )
                 // On the numeral's baseline, as Drain's total; the caption says where it came from.
                 Box(Modifier.alignBy { it.measuredHeight }.padding(start = CoulombSpacing.Space4)) { ProvenanceMark(view.provenance) }
             }
             Text(shareCaption(view, formats), Modifier.fillMaxWidth(), color = colors.textSecondary, style = type.body)
         }
-        if (view.detail.report.lowerBound) {
-            Text(
-                stringResource(R.string.appdetail_lower_bound),
-                Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space4),
-                color = colors.textSecondary,
-                style = type.caption,
+        val report = view.detail.report
+        val notes =
+            listOfNotNull(
+                stringResource(R.string.appdetail_charged).takeIf { report.chargedInSpan },
+                stringResource(R.string.appdetail_lower_bound).takeIf { report.lowerBound },
             )
-        }
+        notes.forEach { Note(it, top = CoulombSpacing.Space4) }
     }
 }
 
@@ -162,28 +171,54 @@ internal fun SectionTitle(
     }
 }
 
-/** A table's or group's sub-heading (lab `.subhead`). */
+/** A table's or group's sub-heading (lab `.subhead`); a glossary term when it has a [definition]. */
 @Composable
-internal fun Subhead(text: String) {
-    Text(
-        text,
-        Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space24, bottom = CoulombSpacing.Space4).semantics { heading() },
-        color = CoulombTheme.colors.textPrimary,
-        style = CoulombTheme.typography.bodySubhead,
-    )
+internal fun Subhead(
+    text: String,
+    definition: String? = null,
+) {
+    val colors = CoulombTheme.colors
+    val type = CoulombTheme.typography
+    val modifier = Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space24, bottom = CoulombSpacing.Space4).semantics { heading() }
+    if (definition != null) {
+        Box(
+            modifier,
+        ) { CoulombTerm(text, definition, stringResource(R.string.appdetail_term_action), type.bodySubhead, colors.textPrimary) }
+    } else {
+        Text(text, modifier, color = colors.textPrimary, style = type.bodySubhead)
+    }
 }
 
-/** A line under a heading or table, in Caption, `text-secondary`. */
+/** A line that qualifies a figure or table above it, in Caption, `text-secondary`. */
 @Composable
 internal fun Note(
     text: String,
     modifier: Modifier = Modifier,
+    top: Dp = CoulombSpacing.Space8,
 ) {
     Text(
         text,
-        modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
+        modifier.fillMaxWidth().padding(top = top),
         color = CoulombTheme.colors.textSecondary,
         style = CoulombTheme.typography.caption,
+    )
+}
+
+/**
+ * A line that stands in for a missing table, list or chart, in Body, `text-secondary`, as on Drain
+ * (DESIGN.md: a line standing in for content is Body; a note qualifying one is Caption).
+ */
+@Composable
+internal fun StandIn(
+    text: String,
+    modifier: Modifier = Modifier,
+    top: Dp = CoulombSpacing.Space8,
+) {
+    Text(
+        text,
+        modifier.fillMaxWidth().padding(top = top),
+        color = CoulombTheme.colors.textSecondary,
+        style = CoulombTheme.typography.body,
     )
 }
 
@@ -200,10 +235,12 @@ internal fun WhereItWent(
     val colors = CoulombTheme.colors
     val detail = view.detail
     Column(Modifier.fillMaxWidth()) {
-        SectionTitle(stringResource(R.string.appdetail_where), view.provenance)
         val components = detail.components
         val total = detail.app?.mah ?: 0.0
-        if (components == null || total <= 0.0) {
+        val split = components != null && total > 0.0
+        // A mark only over figures: a sentence in their place carries none.
+        SectionTitle(stringResource(R.string.appdetail_where), view.provenance.takeIf { split })
+        if (components == null || !split) {
             val off = detail.report.breakdownOff
             Text(
                 stringResource(if (off) R.string.appdetail_components_off else R.string.appdetail_components_none),
@@ -251,6 +288,7 @@ internal fun WhereItWent(
             }
             components.notBrokenDownMah?.let { Chip(notBrokenDown, formats.mah(it * view.factor).joined(), hue = null) }
         }
+        if (detail.report.breakdownOff) Note(stringResource(R.string.appdetail_components_off_part))
         detail.processStates?.let { ProcessStateTable(it, view.factor, formats) }
     }
 }
@@ -276,7 +314,10 @@ private fun Chip(
 private val ChipHeight = 24.dp
 private val SwatchGap = 6.dp
 
-/** The App info row (lab `.link-row`): opens the system's page for the app, outside Coulomb. */
+/**
+ * The App info row (lab `.link-row` in `.rows`): a row between hairlines, its label in Data and a
+ * 20 dp icon, that opens the system's page for the app, outside Coulomb.
+ */
 @Composable
 internal fun AppInfoRow(onClick: () -> Unit) {
     val colors = CoulombTheme.colors
@@ -284,21 +325,32 @@ internal fun AppInfoRow(onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(top = currentSectionGap())
-            .heightIn(min = LinkRowHeight)
+            .drawBehind {
+                val stroke = 1.dp.toPx()
+                drawLine(colors.hairline, Offset(0f, stroke / 2), Offset(size.width, stroke / 2), stroke)
+                drawLine(colors.hairline, Offset(0f, size.height - stroke / 2), Offset(size.width, size.height - stroke / 2), stroke)
+            }.heightIn(min = LinkRowHeight)
             .clickable(role = Role.Button, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(R.string.appdetail_app_info),
-            Modifier.weight(1f),
+            // Wrapped, so the label starts the row in either direction whatever its script.
+            Modifier.weight(1f).wrapContentWidth(Alignment.Start),
             color = colors.textPrimary,
-            style = CoulombTheme.typography.bodyName,
+            style = CoulombTheme.typography.data,
         )
-        Icon(painterResource(CoulombIcons.OpenInNew), contentDescription = null, tint = colors.textSecondary)
+        Icon(
+            painterResource(CoulombIcons.OpenInNew),
+            contentDescription = null,
+            modifier = Modifier.size(LinkIconSize),
+            tint = colors.textSecondary,
+        )
     }
 }
 
 private val LinkRowHeight = 56.dp
+private val LinkIconSize = 20.dp
 
 /** "View as table" under an evidence chart (DESIGN.md, Charts). */
 @Composable

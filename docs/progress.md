@@ -56,8 +56,9 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     figure's single text. `DayClockTest` covers day-aware times.
   - Open minors, each with its home:
     - an "as of" time when the latest reading is stale, from collector health (Privileges, P4);
-    - a spoken form for units in `FigureText` (P4 accessibility pass, all screens);
-    - app rows that open App detail (when App detail lands in P4).
+    - a spoken form for units in `FigureText` (P4 accessibility pass, all screens).
+    - App rows that open App detail: done on Drain and Compare with App detail; Now's top drains
+      join when Now opens App detail.
   - Found by the deep-sleep review, then fixed: nothing wrote a session's `awakeRatio`, so the
     strip's deep sleep would have stayed "Collecting" on a device. A closing session now gets
     uptime over elapsed time between the snapshot it opened at and its last one in that boot
@@ -90,6 +91,26 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
       and the remainder row stay the same semantics node when they open, so TalkBack focus has
       nowhere to fall. The walk itself is pending a device with TalkBack.
   - Drain's gates are closed except that TalkBack walk.
+- App detail (SPEC 10.4, ADR-0041):
+  - header with the Drain row's figure and its share, where it went (component bar and process
+    states), woke the phone (alarm count, partial wakelocks, jobs), network and foreground time,
+    the 14-day trend with the update marker, and App info. The story, Act card and actions wait
+    for P5 (ADR-0026);
+  - opens from Drain and Compare rows; on expanded widths beside the list (`ListDetailStrategy`),
+    with the open row selected; on compact widths the row's icon moves into the header.
+  - Gate runs (SPEC 11.12), in `docs/design-gates/2026-11-09-*-app-detail.md`:
+    - critique: 27/40;
+    - audit: 16/20;
+    - harden, clarify, animate, adapt, optimize and polish: no critical or major finding left
+      open, so all eight gates have run with none open (summary at the end of the polish doc);
+    - Decisions in ADR-0041, "Gate decisions".
+  - Goldens: light, dark, black, 130% and 200% text, Turkish, Arabic, RTL and 200% with hardened
+    data, medium with and without the rail, expanded, the split pane, every SPEC 10.11 state, a
+    trend with no records, a jobs total with an empty table, a capped wakelock table and the trend
+    table; in the shell, list-detail and a long title.
+  - Pending the emulator: the shared element, split-pane insets with 3-button navigation in
+    landscape, the cut when the split detail swaps, a landscape split golden. Pending a device
+    with TalkBack: the walk of the split.
 - S4, the per-component breakdown (ADR-0035), built in order:
   - parser, schema 4, collector (decision 5's checks per consecutive window), read layer and Drain
     UI (component rows with their top apps, an expandable breakdown per app row, a hollow "Not
