@@ -170,6 +170,29 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     for Charging. With Charging in front, samples come every 1,002 ms (median of 18). Behind Home
     with the screen on they return to 5,002 ms (SPEC 7.3). Pending on a device: the phase and
     times on a real charge.
+- Onboarding, Privileges and Settings (SPEC 14.1–14.3, ADR-0047):
+  - Onboarding in place of the shell until "Show my battery": the path choice, permissions, the
+    Shizuku step with every SPEC 4.5 issue state and the ADB commands copy-ready, and the result
+    with the capability summary, the grants, keeping the monitor running on One UI and the key to
+    the marks. Predictive back between steps; the footer stays while the step crossfades.
+  - Privileges: the manager, the grants with their repair, the Capability Matrix by tier with its
+    evidence, "Re-run probes" and the exported Markdown report. Settings: the stored preferences,
+    with a note when a save fails.
+  - Gate runs (SPEC 11.12), in `docs/design-gates/2026-11-09-*-onboarding-privileges-settings.md`:
+    - critique 28/27/27; audit 16/20; harden 3 majors fixed; adapt and optimize 1 major each,
+      fixed; clarify and animate minors fixed; polish 1 major (the Turkish register), fixed;
+    - all eight gates have run with no critical or major open (summary at the end of the polish
+      doc); decisions in ADR-0047, "Gate amendments". One nit waits for the whole-app pass: button
+      padding at 200% text.
+    - A failed read used to end the app's shared flows; Now, Drain and App detail read through cold
+      flows now (ADR-0048).
+  - Goldens: every step and issue state, light and dark, 200% text, Turkish, Arabic, wide windows,
+    a back gesture half way, the first probe failing, a failed save and the exported report.
+  - Emulator check (2026-11-09, API 37): predictive back fades and shrinks the step with the
+    gesture, cancel keeps the step and commit goes back.
+  - Turkish: onboarding, Privileges and Settings use "sen", as the other screens do.
+  - Pending on the phone: the One UI keep-running link and the wording of its "never sleeping
+    apps" list in Turkish.
 - Macrobenchmark, cold start to verdict with cached data (SPEC 1.3, 16.5):
   - Now reports the app fully drawn once it shows the battery. The benchmark onboards once in basic
     mode, then measures 10 cold starts to that point.

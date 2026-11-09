@@ -3,29 +3,29 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
     <string name="privilege_basic_mode_title">Temel mod</string>
-    <string name="privilege_basic_mode_body">Coulomb şu an her uygulamanın okuyabildiği verileri kullanıyor. Uygulama başına tüketim, uyanık tutma kilitleri ve çekirdek uyanmaları için Shizuku ya da Sui bağlayın.</string>
+    <string name="privilege_basic_mode_body">Coulomb şu an her uygulamanın okuyabildiği verileri kullanıyor. Uygulama başına tüketim, uyanık tutma kilitleri ve çekirdek uyanmaları için Shizuku ya da Sui bağla.</string>
     <string name="privilege_basic_mode_action">Shizuku ya da Sui edin</string>
 
     <string name="privilege_stopped_title">Shizuku durdu</string>
-    <string name="privilege_stopped_body">Shizuku uygulamasından başlatın, Coulomb kendiliğinden yeniden bağlanır. Daha önce verdiğiniz izinler çalışmaya devam eder.</string>
+    <string name="privilege_stopped_body">Shizuku uygulamasından başlat, Coulomb kendiliğinden yeniden bağlanır. Daha önce verdiğin izinler çalışmaya devam eder.</string>
     <string name="privilege_stopped_action">Shizuku’yu aç</string>
 
     <string name="privilege_denied_title">Shizuku izni reddedildi</string>
-    <string name="privilege_denied_body">Coulomb bu izinle sistemin kendine sakladığı pil ayrıntılarını okur. Siz dokunmadan hiçbir ayarı değiştirmez. Erişimi bir kez ADB ile de verebilirsiniz.</string>
+    <string name="privilege_denied_body">Coulomb bu izinle sistemin kendine sakladığı pil ayrıntılarını okur. Sen dokunmadan hiçbir ayarı değiştirmez. Erişimi bir kez ADB ile de verebilirsin.</string>
 
-    <string name="privilege_hang_title_android17">Shizuku sürümünüz Android 17’de uygulamalara yetki veremiyor</string>
+    <string name="privilege_hang_title_android17">Shizuku sürümün Android 17’de uygulamalara yetki veremiyor</string>
     <string name="privilege_hang_title">Shizuku yanıt vermedi</string>
-    <string name="privilege_hang_body">Bu Android sürümünü destekleyen bir Shizuku çatalı ya da Sui kullanın. O zamana kadar erişimi bir kez ADB ile verin, Coulomb çalışmaya devam eder.</string>
-    <string name="privilege_hang_body_retry">Shizuku’yu açıp çalıştığından emin olun, sonra yeniden deneyin. Erişimi bir kez ADB ile de verebilirsiniz.</string>
+    <string name="privilege_hang_body">Bu Android sürümünü destekleyen bir Shizuku çatalı ya da Sui kullan. O zamana kadar erişimi bir kez ADB ile ver, Coulomb çalışmaya devam eder.</string>
+    <string name="privilege_hang_body_retry">Shizuku’yu açıp çalıştığından emin ol, sonra yeniden dene. Erişimi bir kez ADB ile de verebilirsin.</string>
     <string name="privilege_helper_hang_title">Shizuku, Coulomb’un yardımcı sürecini başlatamıyor</string>
     <string name="privilege_helper_hang_body">Coulomb verilen izinlerle çalışmaya devam eder, ancak yardımcı sürecin ayrıntıları olmaz. Bu Android sürümünü destekleyen bir Shizuku çatalı ya da Sui bu süreci başlatabilir.</string>
-    <string name="privilege_try_again">Tekrar dene</string>
+    <string name="privilege_try_again">Yeniden dene</string>
 
     <string name="privilege_too_old_title">Bu Shizuku sürümü çok eski</string>
-    <string name="privilege_too_old_body">Coulomb’un yardımcı sürecini başlatamıyor. Shizuku’yu güncelleyin ya da erişimi bir kez ADB ile verin.</string>
+    <string name="privilege_too_old_body">Coulomb’un yardımcı sürecini başlatamıyor. Shizuku’yu güncelle ya da erişimi bir kez ADB ile ver.</string>
 
     <string name="privilege_revoked_title">Coulomb’un izinleri kaldırıldı</string>
-    <string name="privilege_revoked_body">Bu genellikle bir sistem güncellemesinden sonra olur. İzinleri Shizuku ile ya da bir kez ADB ile yeniden verin.</string>
+    <string name="privilege_revoked_body">Bu genellikle bir sistem güncellemesinden sonra olur. İzinleri Shizuku ile ya da bir kez ADB ile yeniden ver.</string>
     <string name="privilege_revoked_action">Yeniden ver</string>
 
     <string name="privilege_show_adb">ADB komutlarını göster</string>
@@ -39,12 +39,12 @@
     <string name="grant_usage">Kullanım erişimi</string>
     <string name="grant_history">Coulomb’un kendi sürecinde pil geçmişi</string>
     <string name="grant_settings">Sistem ayarlarını değiştirme</string>
-    <string name="grant_settings_why">Yalnızca Eylem Merkezi’ni açtığınızda istenir</string>
+    <string name="grant_settings_why">Yalnızca Eylem Merkezi’ni açtığında istenir</string>
     <string name="grant_state_granted">Verildi</string>
     <string name="grant_state_missing">Verilmedi</string>
     <string name="grant_state_later">Sonra istenir</string>
 
-    <string name="adb_body">USB hata ayıklaması açık bir bilgisayardan bunları bir kez çalıştırın. Erişim yeniden başlatmadan sonra da kalır.</string>
+    <string name="adb_body">USB hata ayıklaması açık bir bilgisayardan bunları bir kez çalıştır. Erişim yeniden başlatmadan sonra da kalır.</string>
     <string name="adb_copy">Komutları kopyala</string>
     <string name="adb_clip_label">Coulomb ADB komutları</string>
 

@@ -216,7 +216,7 @@ class PrivilegesScreenshotTest {
         )
 
     @Test
-    @Config(qualifiers = TALL)
+    @Config(qualifiers = TALLER)
     fun exported() = shoot("exported", linked().copy(export = ExportResult.SAVED))
 
     private fun linked() =
@@ -260,6 +260,9 @@ class PrivilegesScreenshotTest {
 
 private const val COMPACT = "w412dp-h915dp-xhdpi"
 private const val TALL = "w412dp-h2600dp"
+
+/** Down to the Re-run and Export buttons and the export note under the whole matrix. */
+private const val TALLER = "w412dp-h3100dp"
 
 /** 2026-11-09 14:00 UTC; the matrix was probed at 13:42. */
 private const val NOW_MS = 1_762_696_800_000L

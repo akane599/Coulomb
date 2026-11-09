@@ -34,12 +34,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -277,7 +280,7 @@ private fun ColumnScope.Issue(
         }
     }
     // SPEC 4.5: where Shizuku can't help, the commands show at once, copy-ready.
-    if (state.showsCommands) AdbCommands(state.adbCommands)
+    if (state.showsCommands) AdbCommands(state.adbCommands, Modifier.padding(top = CoulombSpacing.Space24))
 }
 
 /**
@@ -472,8 +475,9 @@ private fun ColumnScope.Matrix(
         }
     SectionTitle(stringResource(R.string.privileges_matrix), provenance = null, first = besideFirst, caption = checked)
     MatrixStatus(state)
-    state.groups.forEach { (tier, rows) ->
-        Subhead(stringResource(tier.group))
+    state.groups.forEachIndexed { index, (tier, rows) ->
+        // The first group sits a head's gap under the title, unless a note stands between them.
+        Subhead(stringResource(tier.group), top = if (index == 0 && !state.probeFailed) 0.dp else CoulombSpacing.Space24)
         Column(Modifier.fillMaxWidth()) {
             rows.forEach { row ->
                 HorizontalDivider(thickness = Hairline, color = CoulombTheme.colors.hairline)
@@ -541,7 +545,14 @@ private fun CapabilityRow(
             Text(stringResource(text), color = colors.textSecondary, style = type.caption)
         }
         val evidence = listOfNotNull(row.id.key, row.reason).joinToString(EVIDENCE_SEPARATOR)
-        Text(evidence, color = colors.textSecondary, style = type.mono.copy(textDirection = TextDirection.Ltr))
+        // Left-to-right text, held at the row's start in either direction when it wraps.
+        Text(
+            evidence,
+            Modifier.fillMaxWidth(),
+            color = colors.textSecondary,
+            style = type.mono.copy(textDirection = TextDirection.Ltr),
+            textAlign = startAlign(),
+        )
     }
 }
 
@@ -577,6 +588,7 @@ private fun ColumnScope.Fact(
             value,
             Modifier.weight(1f).alignByBaseline().wrapContentWidth(Alignment.End),
             color = colors.textPrimary,
+            textAlign = endAlign(),
             style = if (latin) CoulombTheme.typography.data.copy(textDirection = TextDirection.Ltr) else CoulombTheme.typography.data,
         )
     }
@@ -591,3 +603,10 @@ private val MaxTwoColumnWidth = 1200.dp
 private val MaxOneColumnWidth = 720.dp
 private val Bottom = CoulombSpacing.Space48
 private val Hairline = 1.dp
+
+/** The layout's start and end as absolute sides, for text whose own direction may differ (RTL). */
+@Composable
+private fun startAlign(): TextAlign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) TextAlign.Right else TextAlign.Left
+
+@Composable
+private fun endAlign(): TextAlign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) TextAlign.Left else TextAlign.Right

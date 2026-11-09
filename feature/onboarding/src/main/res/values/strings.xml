@@ -15,7 +15,8 @@
     <string name="onboarding_welcome_shizuku_title">With Shizuku (recommended)</string>
     <string name="onboarding_welcome_shizuku_body">Per-app drain, wakelocks and kernel wakeups. Needs Shizuku or Sui on this phone.</string>
     <string name="onboarding_welcome_basic_title">In basic mode</string>
-    <string name="onboarding_welcome_basic_body">Battery level, current and temperature, and screen time per app. Works on any phone, and you can connect Shizuku later.</string>
+    <string name="onboarding_denied_body">Allow Coulomb when Shizuku asks again, or grant access once over ADB with the commands below.</string>
+    <string name="onboarding_welcome_basic_body">Battery level, current, temperature and screen time per app. Works on any phone, and you can connect Shizuku later.</string>
     <string name="onboarding_connect_shizuku">Connect Shizuku</string>
     <string name="onboarding_start_basic">Start in basic mode</string>
 

@@ -91,10 +91,11 @@ public fun Subhead(
     modifier: Modifier = Modifier,
     definition: String? = null,
     provenance: Provenance? = null,
+    top: Dp = CoulombSpacing.Space24,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
-    val head = modifier.fillMaxWidth().padding(top = CoulombSpacing.Space24, bottom = CoulombSpacing.Space4).semantics { heading() }
+    val head = modifier.fillMaxWidth().padding(top = top, bottom = CoulombSpacing.Space4).semantics { heading() }
     Row(head, verticalAlignment = Alignment.CenterVertically) {
         if (definition != null) {
             CoulombTerm(text, definition, stringResource(R.string.page_term_action), type.bodySubhead, colors.textPrimary)

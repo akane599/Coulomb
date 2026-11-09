@@ -199,7 +199,9 @@ private fun ColumnScope.Problem(
 ) {
     val problem = state.privilege.problem() ?: return
     val copy = problem.copy(device.sdkInt)
-    Block(copy.title, copy.body)
+    // Onboarding has already said why Coulomb asks; a refusal here needs only the two ways on.
+    val body = if (problem == PrivilegeIssue.PERMISSION_DENIED) R.string.onboarding_denied_body else copy.body
+    Block(copy.title, body)
     copy.action?.let {
         CoulombOutlinedButton(stringResource(it), actions.allowShizuku, Modifier.padding(top = CoulombSpacing.Space12))
     }

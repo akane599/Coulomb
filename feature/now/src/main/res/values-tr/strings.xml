@@ -59,6 +59,6 @@
     <string name="now_column_current">Akım</string>
 
     <string name="now_error_title">Coulomb pil kayıtlarını okuyamadı</string>
-    <string name="now_error_body">Hiçbir şey kaybolmadı. Yeniden deneyin; sürerse uygulamayı yeniden başlatın.</string>
+    <string name="now_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="now_error_action">Yeniden dene</string>
 </resources>

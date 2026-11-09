@@ -31,16 +31,16 @@
     <string name="privileges_manager_shizuku">Shizuku</string>
     <string name="privileges_get_fork">thedjchi’nin Shizuku’sunu edin</string>
     <string name="privileges_get_sui">Sui’yi edin</string>
-    <string name="privileges_android17">Android 17’de asıl Shizuku yeni uygulamalara yetki veremiyor. Bir çatal ya da Sui kullanın.</string>
+    <string name="privileges_android17">Android 17’de asıl Shizuku yeni uygulamalara yetki veremiyor. Bir çatal ya da Sui kullan.</string>
     <string name="privileges_allow">Shizuku’da Coulomb’a izin ver</string>
 
     <string name="privileges_grants">İzinler</string>
     <string name="privileges_grants_durable">Shizuku durursa ya da telefon yeniden başlarsa da verili kalırlar.</string>
-    <string name="privileges_grants_missing">Eksik olanları Shizuku ile ya da bir kez ADB ile verin. Yeniden başlatmadan sonra da verili kalırlar.</string>
-    <string name="privileges_grants_missing_adb">Eksik olanları bir kez ADB ile verin. Yeniden başlatmadan sonra da verili kalırlar.</string>
+    <string name="privileges_grants_missing">Eksik olanları Shizuku ile ya da bir kez ADB ile ver. Yeniden başlatmadan sonra da verili kalırlar.</string>
+    <string name="privileges_grants_missing_adb">Eksik olanları bir kez ADB ile ver. Yeniden başlatmadan sonra da verili kalırlar.</string>
     <string name="privileges_grant_again">Shizuku ile ver</string>
     <string name="privileges_granting">Veriliyor…</string>
-    <string name="privileges_grant_failed">Bazı izinler verilemedi. Aşağıdaki ADB komutlarını kullanın.</string>
+    <string name="privileges_grant_failed">Bazı izinler verilemedi. Aşağıdaki ADB komutlarını kullan.</string>
     <string name="privileges_usage_settings">Ayarlar’dan kullanım erişimi ver</string>
 
     <string name="privileges_matrix">Yetenek Matrisi</string>
@@ -49,7 +49,7 @@
     <string name="privileges_rerun">Denetimleri yeniden çalıştır</string>
     <string name="privileges_probing">Bakılıyor…</string>
     <string name="privileges_probe_failed">Son denetim başarısız oldu; aşağıdaki sonuçlar öncekiler.</string>
-    <string name="privileges_probe_failed_first">Denetim başarısız oldu. Yeniden denemek için denetimleri yeniden çalıştırın.</string>
+    <string name="privileges_probe_failed_first">Denetim başarısız oldu. Yeniden denemek için denetimleri yeniden çalıştır.</string>
     <string name="privileges_export">Yetenek raporunu dışa aktar</string>
     <string name="privileges_export_title">yetenek raporu</string>
     <string name="privileges_export_done">Rapor kaydedildi.</string>
@@ -70,7 +70,7 @@
     <string name="fix_notifications">Bildirimlere izin verilmesi gerekir.</string>
     <string name="fix_root">Root gerekir.</string>
     <string name="fix_none">Bu telefon bunu sunmuyor.</string>
-    <string name="privileges_fix_changed">Bu denetimden sonra değişti. Güncellemek için denetimleri yeniden çalıştırın.</string>
+    <string name="privileges_fix_changed">Bu denetimden sonra değişti. Güncellemek için denetimleri yeniden çalıştır.</string>
 
     <string name="capability_battery_changed">Pil seviyesi ve sıcaklığı</string>
     <string name="capability_current_now">Pil akımı</string>
@@ -107,7 +107,7 @@
     <string name="settings_scale_note">Her uygulamanın modellenen tüketimini, toplam ölçülen düşüşe eşit olacak şekilde ölçekler. Ölçeklenen değerler Türetilen olarak işaretlenir.</string>
     <string name="settings_target">Şarj hedefi</string>
     <string name="settings_target_note">Şarj ekranı bu seviyeye kalan süreyi gösterir. Bu seviyede henüz uyarı yok.</string>
-    <string name="settings_save_failed">Bu değişiklik kaydedilemedi. Yeniden deneyin.</string>
+    <string name="settings_save_failed">Bu değişiklik kaydedilemedi. Yeniden dene.</string>
     <string name="settings_advanced">Gelişmiş</string>
     <string name="settings_breakdown">Bileşen dağılımı</string>
     <string name="settings_breakdown_note">Tüketimi bileşenlere göre ayırır. Her anlık görüntüde bir sistem raporu ekler; bu biraz pil harcar.</string>
