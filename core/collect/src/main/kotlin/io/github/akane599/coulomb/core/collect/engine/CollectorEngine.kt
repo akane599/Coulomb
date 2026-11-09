@@ -44,6 +44,7 @@ import io.github.akane599.coulomb.core.model.history.HistoryKind
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import java.time.Instant
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * The collector's single consumer (SPEC 7.5, ADR-0018). Each call handles one trigger or sample
@@ -60,6 +61,7 @@ internal class CollectorEngine(
     private val blobs: BlobStore,
     private val labels: AppLabels,
     private val settings: CollectorSettings = CollectorSettings { false },
+    private val health: HealthSource = HealthSource.None,
 ) {
     private val writer = SnapshotWriter(db)
     private val retention = Retention(db, blobs)
@@ -77,6 +79,9 @@ internal class CollectorEngine(
     private var lastSnapshotElapsedNs: Long? = null
     private var lastRetentionElapsedNs: Long? = null
     private var lastCounterPruneElapsedNs: Long? = null
+    private var designTried = false
+    private var healthReadings: HealthReadings? = null
+    private var healthReadAtNs: Long? = null
     private var capacityMah: Double? = null
     private var knownPackages: Map<Int, List<String>> = emptyMap()
     private var packagesDay: Long? = null
@@ -130,6 +135,8 @@ internal class CollectorEngine(
         counterReliable = profile?.chargeCounterReliable == true,
         capacityMah = capacityMah,
         currentUa = calibration?.let { c -> c::currentUa },
+        designMah = profile?.designCapacityMah?.toDouble(),
+        health = healthReadings ?: HealthReadings.NONE,
         zone = identity.zone(),
         ownUid = identity.appUid,
     )
@@ -173,8 +180,33 @@ internal class CollectorEngine(
                     calibratedAtWall = null,
                     calibrationQuality = null,
                 ).also { devices.upsertProfile(it) }
-        profile = stored
+        profile = withDesignCapacity(stored)
         calibration = calibrator.stored(stored)
+    }
+
+    /**
+     * SPEC 6.3's design capacity, read once per process while the build has none stored
+     * (ADR-0042 §1). A stored value, the owner's included, is never read over.
+     */
+    private suspend fun withDesignCapacity(stored: DeviceProfileEntity): DeviceProfileEntity {
+        if (stored.designCapacityMah != null || designTried) return stored
+        designTried = true
+        val design = health.designCapacity() ?: return stored
+        val updated = stored.copy(designCapacityMah = design.mah.roundToInt(), designCapacitySource = design.source.code)
+        db.deviceDao().upsertProfile(updated)
+        return updated
+    }
+
+    /** S3 and S21 at most once a day, at a heavy snapshot: one with [dump] (ADR-0042 §2). */
+    private suspend fun refreshHealth(
+        dump: BatteryStatsDump?,
+        elapsedNs: Long,
+    ) {
+        if (dump == null) return
+        val last = healthReadAtNs
+        if (last != null && elapsedNs - last < HEALTH_INTERVAL_NS) return
+        healthReadAtNs = elapsedNs
+        healthReadings = health.readings()
     }
 
     /** Whether the sessions no longer match the device, as after a missed broadcast. */
@@ -243,6 +275,7 @@ internal class CollectorEngine(
         val usage = stats?.let { usage(trigger, read, it, startNs) }
         val dump = stats?.dump?.takeIf { counterSource(stats.statuses) != null }
         rememberCapacity(dump)
+        refreshHealth(dump, reading.elapsedNs)
         val liveMode = heavy.liveMode()
         val kernelDue = wantHeavy && liveMode == PrivilegeMode.ROOT
         val files = kernelFiles(kernelDue, dump != null, startNs, read)
@@ -700,6 +733,9 @@ internal class CollectorEngine(
         /** SPEC 7.5: a heavy snapshot is capped at 4 s; past it the history read is skipped. */
         const val BUDGET_NS: Long = 4_000_000_000L
         const val RETENTION_EVERY_NS: Long = 24 * 3_600_000_000_000L
+
+        /** ADR-0042 §2: the health readings at most once a day. */
+        const val HEALTH_INTERVAL_NS: Long = 24 * 3_600_000_000_000L
         const val COUNTER_PRUNE_EVERY_NS: Long = 3_600_000_000_000L
 
         /** ADR-0035 §3: S4 is skipped when S5 finished later than this after the snapshot started. */

@@ -8,7 +8,9 @@ import io.github.akane599.coulomb.core.collect.snapshot.KernelFilesRead
 import io.github.akane599.coulomb.core.collect.snapshot.KernelLogResult
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
 import io.github.akane599.coulomb.core.collect.snapshot.UsageRead
+import io.github.akane599.coulomb.core.model.DesignCapacity
 import io.github.akane599.coulomb.core.model.PrivilegeMode
+import io.github.akane599.coulomb.core.model.dumpsys.OemHealthValue
 import java.time.ZoneId
 
 /** The privileged part of a heavy snapshot; `HeavyReader` in the app, a fake in tests. */
@@ -41,6 +43,34 @@ internal interface HeavySource {
         afterSeq: Long,
         timeoutMs: Long,
     ): KernelLogResult
+}
+
+/** The health readings beside Coulomb's estimate (ADR-0042 §2), each null or empty where absent. */
+internal data class HealthReadings(
+    /** S3 `BATTERY_PROPERTY_STATE_OF_HEALTH`, 1 to 150. */
+    val systemSohPct: Int?,
+    /** S21's OEM values, as reported. */
+    val oemHealth: List<OemHealthValue>,
+) {
+    companion object {
+        val NONE = HealthReadings(null, emptyList())
+    }
+}
+
+/** The design capacity and the health readings (ADR-0042); `AndroidHealthSource` in the app. */
+internal interface HealthSource {
+    /** S20, then S23: read once per build while the stored value is unset (SPEC 6.3). */
+    suspend fun designCapacity(): DesignCapacity?
+
+    /** S3 and S21, read at most once a day (SPEC 5: "Daily and Health screen"). */
+    suspend fun readings(): HealthReadings
+
+    /** No source: tests that are not about health. */
+    object None : HealthSource {
+        override suspend fun designCapacity(): DesignCapacity? = null
+
+        override suspend fun readings(): HealthReadings = HealthReadings.NONE
+    }
 }
 
 /**

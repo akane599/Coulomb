@@ -21,11 +21,14 @@ import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ChargeSource
+import io.github.akane599.coulomb.core.model.DesignCapacity
+import io.github.akane599.coulomb.core.model.DesignCapacitySource
 import io.github.akane599.coulomb.core.model.SessionCloseReason
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.dumpsys.OemHealthValue
 import io.github.akane599.coulomb.core.model.history.BatteryHistory
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
@@ -66,7 +69,8 @@ class CollectorEngineTest {
     @After
     fun close() = db.close()
 
-    private fun engine() = CollectorEngine(db, device, stats, identity, clock, MemoryBlobs(), labels)
+    private fun engine(health: HealthSource = HealthSource.None) =
+        CollectorEngine(db, device, stats, identity, clock, MemoryBlobs(), labels, health = health)
 
     private suspend fun reliableCounter() =
         db.deviceDao().upsertProfile(
@@ -173,12 +177,75 @@ class CollectorEngineTest {
             assertThat(health.cycleEquivalentsSum).isWithin(1e-9).of(4_000.0 / 4_930.0)
         }
 
+    /** ADR-0042: the design capacity is read once and kept; the summary has health % and the day's readings. */
+    @Test
+    fun theDesignCapacityAndTheDaysReadingsReachTheSummary() =
+        runTest {
+            reliableCounter()
+            val source = FakeHealth(DesignCapacity(5_000.0, DesignCapacitySource.POWER_PROFILE))
+            chargeFromTwentyPercent(source)
+            val profile = checkNotNull(db.deviceDao().profile(identity.fingerprint))
+            assertThat(profile.designCapacityMah).isEqualTo(5_000)
+            assertThat(profile.designCapacitySource).isEqualTo("power_profile")
+            assertThat(source.designReads).isEqualTo(1)
+            // Three heavy snapshots within two hours: one read of the day's readings.
+            assertThat(source.readingReads).isEqualTo(1)
+            val health =
+                db
+                    .sessionDao()
+                    .observeHealthSummaries()
+                    .first()
+                    .single()
+            assertThat(health.healthPct).isWithin(1e-9).of(100.0 * 4_930.0 / 5_000.0)
+            assertThat(health.systemSohPct).isEqualTo(97)
+            assertThat(health.oemHealth).isEqualTo("mSavedBatteryAsoc=100")
+        }
+
+    /** A stored design capacity, as the owner's entry, is never read over (ADR-0042 §1). */
+    @Test
+    fun aStoredDesignCapacityIsNeverReadOver() =
+        runTest {
+            db.deviceDao().upsertProfile(
+                DeviceProfileEntity(identity.fingerprint, "test", "test", 37, 3_700_000, 4_800, "user", 1, 1, true, 0, 0.95),
+            )
+            val source = FakeHealth(DesignCapacity(5_000.0, DesignCapacitySource.POWER_PROFILE))
+            chargeFromTwentyPercent(source)
+            val profile = checkNotNull(db.deviceDao().profile(identity.fingerprint))
+            assertThat(profile.designCapacityMah).isEqualTo(4_800)
+            assertThat(profile.designCapacitySource).isEqualTo("user")
+            assertThat(source.designReads).isEqualTo(0)
+            val health =
+                db
+                    .sessionDao()
+                    .observeHealthSummaries()
+                    .first()
+                    .single()
+            assertThat(health.healthPct).isWithin(1e-9).of(100.0 * 4_930.0 / 4_800.0)
+        }
+
+    private class FakeHealth(
+        private val design: DesignCapacity?,
+    ) : HealthSource {
+        var designReads = 0
+        var readingReads = 0
+
+        override suspend fun designCapacity(): DesignCapacity? {
+            designReads++
+            return design
+        }
+
+        override suspend fun readings(): HealthReadings {
+            readingReads++
+            return HealthReadings(97, listOf(OemHealthValue("mSavedBatteryAsoc", 100)))
+        }
+    }
+
     /**
      * A charge from 20% to 100% in an hour, a sample a minute, then an unplug that resets the
      * statistics. Returns the plug-in snapshot.
      */
-    private suspend fun chargeFromTwentyPercent(): SnapshotEntity {
-        val engine = engine()
+    private suspend fun chargeFromTwentyPercent(health: HealthSource = HealthSource.None): SnapshotEntity {
+        val engine = engine(health)
         device.set(hours = 10.0, level = 25, chargeMah = 1_250.0, screenOn = true)
         engine.handle(SnapshotTrigger.SERVICE_STARTED)
         device.set(hours = 11.0, level = 20, chargeMah = 1_000.0, screenOn = true, plugged = true)

@@ -37,6 +37,7 @@ import io.github.akane599.coulomb.core.model.Breakdown
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.WindowKind
+import io.github.akane599.coulomb.core.model.dumpsys.OemHealthCodec
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -55,6 +56,10 @@ internal data class WriteContext(
     val capacityMah: Double?,
     /** Turns raw current into calibrated µA; null before calibration. */
     val currentUa: ((Long) -> Long)?,
+    /** SPEC 6.3's design capacity, or null until a source gave one (ADR-0042 §1). */
+    val designMah: Double? = null,
+    /** The day's state of health readings beside the estimate (ADR-0042 §2). */
+    val health: HealthReadings = HealthReadings.NONE,
     val zone: ZoneId,
     /** Coulomb's own UID (SPEC 6.9). */
     val ownUid: Int,
@@ -224,19 +229,19 @@ internal class SnapshotWriter(
                 ),
             )
         }
-        return SessionHealth.withWear(session, capacity(endWall)?.estimateMah, thresholds)
+        return SessionHealth.withWear(session, capacity(endWall, context.designMah)?.estimateMah, thresholds)
     }
 
     /**
-     * The day's [HealthSummaryEntity] as of [atWall], rewritten at each charge or discharge close.
-     * The design capacity, the system's state of health and the OEM's value come with their
-     * sources (ADR-0037 §5); until then health % and those columns stay null.
+     * The day's [HealthSummaryEntity] as of [atWall], rewritten at each charge or discharge close:
+     * health % against the design capacity, and the system's and OEM's readings of the day
+     * (ADR-0037 §5, ADR-0042 §2). Each stays null where its source gave nothing.
      */
     private suspend fun healthSummary(
         atWall: Long,
         context: WriteContext,
     ) {
-        val estimate = capacity(atWall)
+        val estimate = capacity(atWall, context.designMah)
         sessions.upsertHealthSummary(
             HealthSummaryEntity(
                 epochDay = localDate(atWall, context.zone).toEpochDay().toInt(),
@@ -244,8 +249,8 @@ internal class SnapshotWriter(
                 ciLowMah = estimate?.ciLowMah,
                 ciHighMah = estimate?.ciHighMah,
                 healthPct = estimate?.healthPct,
-                systemSohPct = null,
-                oemHealth = null,
+                systemSohPct = context.health.systemSohPct,
+                oemHealth = OemHealthCodec.encode(context.health.oemHealth),
                 cycleCount = context.reading.cycleCount,
                 cycleEquivalentsSum = sessions.cycleEquivalentsSum(SessionKind.CHARGE),
             ),
@@ -253,12 +258,15 @@ internal class SnapshotWriter(
     }
 
     /** SPEC 6.3's estimate from the latest stored readings, as of [atWall]. */
-    private suspend fun capacity(atWall: Long): CapacityEstimate? {
+    private suspend fun capacity(
+        atWall: Long,
+        designMah: Double?,
+    ): CapacityEstimate? {
         val readings =
             sessions.latestCapacityEstimates(Capacity.MAX_WINDOWS).map {
                 CapacityReading(it.capacityMah, it.weight, (atWall - it.createdWall).toDouble() / MS_PER_DAY)
             }
-        return Capacity.estimate(readings, designMah = null)
+        return Capacity.estimate(readings, designMah)
     }
 
     /**

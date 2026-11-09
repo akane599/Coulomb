@@ -333,7 +333,7 @@ Every number in Coulomb comes from one of the sources below; the agent MUST NOT 
 | S17 | `SystemHealthManager.takeUidSnapshots` | T1 | Heavy snapshots | `HealthStats` per UID: wakelocks, jobs, CPU time (cross-check for S4/S5) |
 | S18 | `PowerManager` states and thermal API (`getCurrentThermalStatus`, headroom, listener) | T0 | Events | Doze flags, battery saver, thermal status |
 | S19 | `dumpsys thermalservice` | T2 | Snapshots, Charging screen | Skin, CPU, battery temperatures and throttling status |
-| S20 | `PowerProfile` (`com.android.internal.os.PowerProfile`) | T2 (worker) | Once per build | Design capacity (`battery.capacity`), model coefficients for explanations |
+| S20 | `PowerProfile` (`com.android.internal.os.PowerProfile`); its resource is read in the app (ADR-0042) | T0 | Once per build | Design capacity (`battery.capacity`), model coefficients for explanations |
 | S21 | `dumpsys battery` | T2 | Snapshots | AOSP fields plus OEM extras, parsed generically into a key-value map |
 | S22 | Samsung settings keys (battery protection and related) | T2 | Snapshots | Protection mode; keys discovered by probe, never hardcoded |
 | S23 | `/sys/class/power_supply/battery/*` | T2 if readable, else T3 | Daily and Health screen | Cycle count, full-charge and design capacity, OEM health fields where present |

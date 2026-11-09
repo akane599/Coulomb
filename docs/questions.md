@@ -5,6 +5,10 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-09. Samsung prints two health-like values in `dumpsys battery`: `mSavedBatteryAsoc` (100) and
+  `mSavedBatteryBsoh` (96). Which one does Settings > Battery > Battery information show on the
+  phone? Default: Health shows both, each named by its key, and neither stands for "the" OEM health
+  (ADR-0042 §3).
 - 2026-11-07. Protocol B's capacity: the night report turns the level change into mAh with the capacity
   the platform reports (`pws`, the summary's capacity). Coulomb's own estimate (SPEC 6.3) could replace
   it once it exists. Default: the platform's capacity, so B does not test Coulomb against itself.
