@@ -117,6 +117,14 @@ public data class ChainStat(
     val value: Long,
 )
 
+/** One row of a UID in one consecutive window, with the wall time the window ends at (ADR-0041 §4). */
+public data class UidWindowUse(
+    val toWallMs: Long,
+    val windowId: Long,
+    val component: String,
+    val mAh: Double,
+)
+
 /**
  * One consecutive window of a chain, in order: what its measured drain came from, whether it started
  * on battery, the levels at its ends, and which records it kept. A span's Estimated total takes its
@@ -353,6 +361,34 @@ public abstract class WindowDao {
     /** One UID's shares across the windows that still have them, for app detail (SPEC 10). */
     @Query("$UID_ROWS WHERE u.uid = :uid ORDER BY u.windowId")
     public abstract fun observeForUid(uid: Int): Flow<List<WindowUid>>
+
+    /**
+     * The wall times of the consecutive windows that end in `[fromWallMs, toWallMs)` and keep their
+     * records: the days with data (ADR-0041 §4).
+     */
+    @Query(
+        "SELECT s.wallMs FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND w.detailPruned = 0 " +
+            "AND s.wallMs >= :fromWallMs AND s.wallMs < :toWallMs",
+    )
+    public abstract suspend fun consecutiveEnds(
+        fromWallMs: Long,
+        toWallMs: Long,
+    ): List<Long>
+
+    /** [uid]'s rows in the consecutive windows that end in `[fromWallMs, toWallMs)` and keep them (ADR-0041 §4). */
+    @Query(
+        "SELECT s.wallMs AS toWallMs, u.windowId, c.name AS component, u.mAh FROM window_uid u " +
+            "JOIN window_result w ON w.id = u.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "JOIN stat_key c ON c.id = u.componentId " +
+            "WHERE u.uid = :uid AND w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND w.detailPruned = 0 " +
+            "AND s.wallMs >= :fromWallMs AND s.wallMs < :toWallMs",
+    )
+    public abstract suspend fun consecutiveUse(
+        uid: Int,
+        fromWallMs: Long,
+        toWallMs: Long,
+    ): List<UidWindowUse>
 
     /** Windows of [kinds] that end before the cut and still have their records. */
     @Query(

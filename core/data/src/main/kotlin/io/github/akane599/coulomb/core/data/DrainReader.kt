@@ -33,6 +33,7 @@ import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import java.time.Instant
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -83,8 +84,104 @@ internal class DrainReader
         suspend fun read(
             span: DrainSpan,
             inputs: DrainInputs,
-        ): DrainReport? {
+        ): DrainReport? = bounds(span, inputs)?.let { report(span, it, inputs) }
+
+        /**
+         * [uid] over [span] (ADR-0041): Drain's report for the span, the app's parts of it, its
+         * counters over the same windows, and its last 14 local days up to [nowWallMs].
+         */
+        suspend fun readApp(
+            span: DrainSpan,
+            uid: Int,
+            inputs: DrainInputs,
+            nowWallMs: Long,
+        ): AppDetailReport? {
             val bounds = bounds(span, inputs) ?: return null
+            val report = report(span, bounds, inputs)
+            val app = report.drains.apps.firstOrNull { it.uid == uid }
+            val total = app?.mah ?: 0.0
+            return AppDetailReport(
+                uid = uid,
+                report = report,
+                app = app,
+                components = report.breakdown?.of(uid, total),
+                processStates = ProcessStates.of(report.breakdown?.apps?.get(uid), total),
+                wakes = report.wakes.filter { it.uid == uid },
+                counters = counters(bounds, uid),
+                trend = trend(uid, nowWallMs),
+            )
+        }
+
+        /** [uid]'s counters over the span: the stored window's records, or the chain's (ADR-0041 §1). */
+        private suspend fun counters(
+            bounds: Bounds,
+            uid: Int,
+        ): AppCounters {
+            val detail = bounds.exact?.takeIf { !it.detailPruned }
+            val stats = detail?.let { windows.rows(it.id).stats.filter { stat -> stat.uid == uid } }
+            val chain = Chain(bounds.from, bounds.to)
+
+            suspend fun value(key: String): Long? =
+                if (stats != null) {
+                    stats.filter { it.key == key }.takeIf { it.isNotEmpty() }?.sumOf { it.value }
+                } else {
+                    chain.stat(key).firstOrNull { it.uid == uid }?.value
+                }
+            return AppCounters(
+                alarmWakeups = value(UidKeys.ALARM_WAKEUPS),
+                jobCount = value(UidKeys.JOB_COUNT),
+                jobRuntimeMs = value(UidKeys.JOB_RUNTIME_MS),
+                mobileRxBytes = value(UidKeys.MOBILE_RX_BYTES),
+                mobileTxBytes = value(UidKeys.MOBILE_TX_BYTES),
+                wifiRxBytes = value(UidKeys.WIFI_RX_BYTES),
+                wifiTxBytes = value(UidKeys.WIFI_TX_BYTES),
+                foregroundActivityMs = value(UidKeys.FOREGROUND_ACTIVITY_MS),
+                foregroundServiceMs = value(UidKeys.FOREGROUND_SERVICE_MS),
+            )
+        }
+
+        /**
+         * [uid]'s mAh on each of the last [TREND_DAYS] local days (ADR-0041 §4): its rows in the
+         * consecutive windows that end that day, the whole-UID row where a window has one. A day no
+         * window ends in has none.
+         */
+        private suspend fun trend(
+            uid: Int,
+            nowWallMs: Long,
+        ): List<DayUse> {
+            val z = zone.zone()
+            val today = Instant.ofEpochMilli(nowWallMs).atZone(z).toLocalDate()
+            val first = today.minusDays(TREND_DAYS - 1)
+            val fromMs = first.atStartOfDay(z).toInstant().toEpochMilli()
+            val toMs =
+                today
+                    .plusDays(1)
+                    .atStartOfDay(z)
+                    .toInstant()
+                    .toEpochMilli()
+
+            fun day(wallMs: Long) = Instant.ofEpochMilli(wallMs).atZone(z).toLocalDate()
+            val withData = windows.consecutiveEnds(fromMs, toMs).mapTo(HashSet(), ::day)
+            val perDay =
+                windows
+                    .consecutiveUse(uid, fromMs, toMs)
+                    .groupBy { it.windowId }
+                    .values
+                    .groupBy({ rows -> day(rows.first().toWallMs) }) { rows ->
+                        val whole = rows.filter { it.component == WindowDrainsBuilder.ALL_COMPONENTS }
+                        whole.ifEmpty { rows }.sumOf { it.mAh }
+                    }
+            return (0 until TREND_DAYS).map { offset ->
+                val day = first.plusDays(offset)
+                DayUse(day, if (day in withData) perDay[day]?.sum() ?: 0.0 else null)
+            }
+        }
+
+        private suspend fun report(
+            span: DrainSpan,
+            bounds: Bounds,
+            inputs: DrainInputs,
+        ): DrainReport {
             val (from, to, exact) = bounds
             val chain = Chain(from, to)
             val totals = chain.totals()
@@ -473,6 +570,9 @@ internal class DrainReader
 
             /** ADR-0035 §7: below this share of the span's modeled total, the lens keeps S5's device rows. */
             const val MIN_COVERED = 0.5
+
+            /** SPEC 10.4: App detail's trend covers 14 days. */
+            const val TREND_DAYS = 14L
 
             /** SPEC 10.3: each component lists its top apps. */
             const val TOP_APPS = 3

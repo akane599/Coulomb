@@ -35,6 +35,7 @@ public class DrainRepository
     @Inject
     internal constructor(
         private val reader: DrainReader,
+        private val updates: AppUpdates,
         private val dispatchers: AppDispatchers,
         scope: AppScope,
     ) {
@@ -52,6 +53,34 @@ public class DrainRepository
 
         /** The report for [span], read again after every heavy snapshot; null until it has two ends. */
         public fun report(span: DrainSpan): Flow<DrainReport?> = inputs.mapLatest { reader.read(span, it) }.flowOn(dispatchers.io)
+
+        /**
+         * App detail for [uid] over [span] (ADR-0041), read again after every heavy snapshot; null
+         * until the span has two ends. The trend ends today, as of the read.
+         */
+        public fun app(
+            span: DrainSpan,
+            uid: Int,
+        ): Flow<AppDetailReport?> =
+            inputs
+                .mapLatest { inputs ->
+                    val detail = reader.readApp(span, uid, inputs, System.currentTimeMillis()) ?: return@mapLatest null
+                    val packages =
+                        inputs.meta
+                            .firstOrNull { it.uid == uid }
+                            ?.let { AppUpdates.packages(it.packagesJson) }
+                            .orEmpty()
+                    val first = detail.trend.first().day
+                    val updated =
+                        updates.lastUpdate(packages)?.takeIf {
+                            !java.time.Instant
+                                .ofEpochMilli(it)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDate()
+                                .isBefore(first)
+                        }
+                    detail.copy(updatedWallMs = updated)
+                }.flowOn(dispatchers.io)
     }
 
 /** Turns a stored window and its UID rows into [WindowDrains]. Pure. */
