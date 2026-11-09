@@ -19,8 +19,9 @@ start of every phase. Answered questions move to the bottom with the answer and 
   without cross-user access, which would leave those apps unnamed. Default: they show the fallback name
   until an emulator check with a work profile settles it.
 - 2026-11-09. Drain at 1000 dp and up leaves the summary column mostly empty below the reconcile bar
-  (`drain-apps-expanded`). Default: left as is until the list-detail decision for App detail
-  (ADR-0036 §23), which may fill that space.
+  (`drain-apps-expanded`). Default: left as is. App detail now opens beside Drain at expanded
+  widths (ADR-0041 amendment), which fills the width while an app is open; Drain alone keeps its
+  two columns.
 
 - 2026-11-08. Now on expanded widths: one column capped at 720 dp, or two panes at 840 dp and up
   (hero, verdict and strip on the left; drains and live current on the right). Default: the capped
@@ -41,6 +42,12 @@ start of every phase. Answered questions move to the bottom with the answer and 
   Drain's "It's in Settings" need it. Default: a minimal Settings screen ships in P4 with onboarding and
   Privileges (both SPEC 14), holding the settings that exist so far; the rest of 14.4 joins as each
   setting's feature lands.
+- 2026-11-09. App detail's alarms: S5 names each wakeup alarm, but only the app's total is
+  stored, so App detail shows the count and no per-alarm table (ADR-0041 amendment). Default: no
+  table. Storing alarm names needs a schema change and its own budget check.
+- 2026-11-09. App detail's window: the header names Drain's window and says to change it on Drain,
+  instead of offering the lab's window button. Default: one window for both screens, so App
+  detail's figure always equals the Drain row it came from.
 
 ## Answered
 

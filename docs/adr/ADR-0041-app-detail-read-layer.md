@@ -65,4 +65,35 @@ a span" from a stored window or a chain of consecutive windows.
   keep their records, so a pruned day is a gap, not zero.
 - `DrainRepository.app(span, uid)` shares Drain's inputs, so it is read again after each heavy
   snapshot like Drain. `AppUpdates` adds the update marker off the main thread.
-- Drain's app rows, its components' top apps and Now's top drains open App detail.
+- Drain's app rows and Compare's rows open App detail (amended 2026-11-09, below).
+
+## Amendment 2026-11-09: the screen as built
+
+- **Which rows open it.** Drain's app rows and Compare's rows. Now's top drains and the
+  Components lens's top apps do not, for now. SPEC 10.2 and 10.3 ask neither to. Also, App detail
+  reads Drain's chosen window, and Now's window can differ, so a tap from Now would show other
+  figures than the row it came from. "See all" already takes Now's window to Drain.
+- **Window.** The header names the window and says it is changed on Drain. The lab's window
+  button is left out: one window for Drain and App detail keeps the header equal to the Drain
+  row (§1). Recorded in `docs/questions.md`.
+- **Alarms.** S5's per-alarm names are not stored (only the app's `ALARM_WAKEUPS` total is), so
+  there is no alarms table: the count heads the section, with a note that Android counts them per
+  app. Storing names would need a schema change. Recorded in `docs/questions.md`.
+- **Process states** show mAh only. S4's per-state times are not stored.
+- **Jobs** are the app's partial wakelocks whose tag matches JobScheduler's format: `*job*`, an
+  optional type letter, `/`, then the battery name (`JobStatus.getWakelockTag`,
+  android-16.0.0_r4 `JobStatus.java` 1501-1513, android-17.0.0_r1 1733-1745). The name drops the
+  optional `#trace#` and `@namespace@` and shortens the app's own package to a leading dot.
+- **Tables** are inline: fixed-width figure columns. Where a name would get less than 7.5 em, as
+  at 200% text, each row stacks.
+- **Trend scale.** The top is the smallest round value (quarters at 1, 1.5, 2, 2.5, 3, 4, 5, 6 or
+  8 times a power of ten) at or above the largest day, so the bars fill most of the plot.
+- **Expanded widths** (SPEC 10.10). App detail opens beside Drain's or Compare's list where both
+  panes fit at 360 dp times the font scale: the list takes 40% (360 to 480 dp), the detail the
+  rest. Choosing another row swaps the detail instead of stacking it. The panes are a small
+  Navigation3 `SceneStrategy` of our own (`ListDetailStrategy`), not Material's adaptive
+  list-detail. Material's version would add a dependency and its own pane motion, while SPEC 11.6
+  allows only the cross-fade.
+- **Not yet:** the story, the Act insight card and the actions (P5, ADR-0026). The shared-element
+  transition from a Drain row (SPEC 11.6) waits for the screen's animate gate.
+

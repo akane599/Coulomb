@@ -101,8 +101,11 @@ internal class DrainReader
             val report = report(span, bounds, inputs)
             val app = report.drains.apps.firstOrNull { it.uid == uid }
             val total = app?.mah ?: 0.0
+            val meta = inputs.meta.firstOrNull { it.uid == uid }
             return AppDetailReport(
                 uid = uid,
+                label = app?.label ?: meta?.label?.takeIf { it.isNotBlank() },
+                iconPackage = app?.iconPackage ?: meta?.iconCacheKey?.takeIf { it.isNotEmpty() },
                 report = report,
                 app = app,
                 components = report.breakdown?.of(uid, total),

@@ -110,6 +110,24 @@ public class Formats(
         )
 
     /**
+     * A data amount in decimal units, as Android's settings show them: bytes, then kB, MB and GB,
+     * each whole, or one decimal under 10 ("312 MB", "4.5 GB").
+     */
+    public fun bytes(value: Long): Figure {
+        var amount = value.toDouble()
+        var unit = 0
+        // Steps up while the whole figure would print 1,000 or more, so 999.6 kB reads "1.0 MB".
+        while (amount.roundToLong() >= BYTES_STEP && unit < BYTE_UNITS.lastIndex) {
+            amount /= BYTES_STEP
+            unit++
+        }
+        // One decimal only while it prints under 10, so 9.96 MB reads "10 MB", not "10.0 MB".
+        val number =
+            if (unit > 0 && amount < ONE_DECIMAL_BELOW) oneDecimal.format(amount) else integer.format(amount.roundToLong())
+        return Figure(number, resources.getString(BYTE_UNITS[unit]))
+    }
+
+    /**
      * An amount without its unit, such as a rate: whole, or one decimal under 10 ("36", "4.5"). An
      * exact zero is "0", so it reads apart from a trace that rounds to "0.0".
      */
@@ -276,6 +294,9 @@ public class Formats(
         private const val MINUTES_PER_HOUR = 60L
         private const val MS_PER_MINUTE = 60_000L
         private const val MINUS = '−'
+        private const val BYTES_STEP = 1_000L
+        private const val ONE_DECIMAL_BELOW = 9.95
+        private val BYTE_UNITS = listOf(R.string.unit_b, R.string.unit_kb, R.string.unit_mb, R.string.unit_gb)
 
         /**
          * [text] as a left-to-right isolate (U+2066 … U+2069), so a sign or "<" stays before its

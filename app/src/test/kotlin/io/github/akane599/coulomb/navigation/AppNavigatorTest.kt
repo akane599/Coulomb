@@ -70,4 +70,26 @@ class AppNavigatorTest {
 
         assertThat(navigator.backStack).containsExactly(Route.Now)
     }
+
+    @Test
+    fun anotherDetailReplacesTheOneOnTop() {
+        navigator.select(Destination.Drain)
+        navigator.openDetail(Route.AppDetail(10_123))
+
+        navigator.openDetail(Route.AppDetail(10_456))
+
+        assertThat(navigator.backStack).containsExactly(Route.Drain, Route.AppDetail(10_456)).inOrder()
+        navigator.back()
+        assertThat(navigator.backStack).containsExactly(Route.Drain)
+    }
+
+    @Test
+    fun aDetailOpensAboveCompare() {
+        navigator.select(Destination.Drain)
+        navigator.open(Route.DrainCompare)
+
+        navigator.openDetail(Route.AppDetail(10_123))
+
+        assertThat(navigator.backStack).containsExactly(Route.Drain, Route.DrainCompare, Route.AppDetail(10_123)).inOrder()
+    }
 }

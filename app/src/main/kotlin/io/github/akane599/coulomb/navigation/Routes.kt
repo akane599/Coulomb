@@ -26,6 +26,12 @@ sealed interface Route : NavKey {
     @Serializable
     data object DrainCompare : Route
 
+    /** One app over Drain's window (SPEC 10.4), below Drain or Compare. */
+    @Serializable
+    data class AppDetail(
+        val uid: Int,
+    ) : Route
+
     @Serializable
     data object Timeline : Route
 

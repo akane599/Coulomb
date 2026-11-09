@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- App detail (SPEC 10.4, ADR-0041). -->
+<resources>
+    <!-- The window App detail shows, chosen on Drain (SPEC 10.1). -->
+    <string name="appdetail_window_since_unplugged">Since unplugged</string>
+    <string name="appdetail_window_today">Today</string>
+    <string name="appdetail_window_last_24h">Last 24 h</string>
+    <string name="appdetail_window_last_night">Last night</string>
+    <string name="appdetail_window_days">%1$s</string>
+    <string name="appdetail_window_note">Window: %1$s. Change it on Drain.</string>
+
+    <!-- The header's caption under the app's figure. -->
+    <string name="appdetail_share_of_measured">%1$s of the %2$s measured</string>
+    <string name="appdetail_share_of_modeled">%1$s of the %2$s that Android modeled</string>
+    <string name="appdetail_share_scaled">%1$s of the %2$s measured, scaled from Android’s model</string>
+    <string name="appdetail_lower_bound">Summed from shorter windows, so this may be a little low.</string>
+    <string name="appdetail_no_use">No battery use recorded for this app in this window.</string>
+
+    <!-- Where it went (SPEC 10.4 item 4). -->
+    <string name="appdetail_where">Where it went</string>
+    <string name="appdetail_components_chart">%1$s by component: %2$s</string>
+    <string name="appdetail_components_title">%1$s by component</string>
+    <string name="appdetail_column_component">Component</string>
+    <string name="appdetail_components_off">Component breakdown was off for some or all of this window. It’s in Settings.</string>
+    <string name="appdetail_components_none">Coulomb couldn’t split this app by component in this window.</string>
+    <string name="appdetail_states">By process state</string>
+    <string name="appdetail_state">State</string>
+    <string name="appdetail_state_foreground">Foreground</string>
+    <string name="appdetail_state_background">Background</string>
+    <string name="appdetail_state_foreground_service">Foreground service</string>
+    <string name="appdetail_state_cached">Cached</string>
+    <string name="appdetail_state_cached_definition">Kept in memory but not running, so Android can reopen it quickly.</string>
+    <string name="appdetail_state_not_split">Not split</string>
+    <string name="appdetail_term_action">What this means</string>
+
+    <!-- Woke the phone (SPEC 10.4 item 5). -->
+    <plurals name="appdetail_woke">
+        <item quantity="one">Woke the phone once</item>
+        <item quantity="other">Woke the phone %1$s times</item>
+    </plurals>
+    <string name="appdetail_wakeups">Wakeups</string>
+    <string name="appdetail_alarms_not_recorded">Its wakeup alarms weren’t recorded in this window.</string>
+    <string name="appdetail_alarms_note">By its wakeup alarms. Android counts them per app, not per alarm.</string>
+    <string name="appdetail_alarms_partial">Recorded for part of this window, so these are at least the counts shown.</string>
+    <string name="appdetail_wakelocks">Wakelocks</string>
+    <string name="appdetail_jobs">Jobs</string>
+    <string name="appdetail_column_tag">Tag</string>
+    <string name="appdetail_column_job">Job</string>
+    <string name="appdetail_column_time">Time</string>
+    <string name="appdetail_column_count">Count</string>
+    <string name="appdetail_column_runs">Runs</string>
+    <string name="appdetail_screen_off_all">All with the screen off</string>
+    <string name="appdetail_screen_off_none">All with the screen on</string>
+    <string name="appdetail_screen_off_share">%1$s with the screen off</string>
+    <string name="appdetail_wakelocks_none">No wakelocks recorded.</string>
+    <string name="appdetail_wakelocks_not_recorded">Wakelocks weren’t recorded in this window.</string>
+    <string name="appdetail_jobs_total">%1$s runs, %2$s in all</string>
+    <string name="appdetail_jobs_none">No jobs recorded.</string>
+
+    <!-- Network and screen time (SPEC 10.4 item 6). -->
+    <string name="appdetail_network">Network and screen time</string>
+    <string name="appdetail_mobile">Mobile data</string>
+    <string name="appdetail_wifi">Wi-Fi</string>
+    <string name="appdetail_foreground">Foreground</string>
+    <string name="appdetail_traffic">%1$s down, %2$s up</string>
+    <string name="appdetail_foreground_service">Foreground service %1$s</string>
+    <string name="appdetail_not_recorded">Not recorded</string>
+
+    <!-- The 14-day trend (SPEC 10.4 item 7). -->
+    <string name="appdetail_trend">Last 14 days</string>
+    <string name="appdetail_trend_axis">mAh a day</string>
+    <string name="appdetail_trend_today">Today</string>
+    <string name="appdetail_trend_updated">Updated</string>
+    <string name="appdetail_trend_caption">Android’s model, by the day each window ended.</string>
+    <plurals name="appdetail_trend_gaps">
+        <item quantity="one">No records on one day.</item>
+        <item quantity="other">No records on %1$s days.</item>
+    </plurals>
+    <string name="appdetail_trend_updated_on">Updated on %1$s.</string>
+    <string name="appdetail_trend_chart">%1$s over the last 14 days: %2$s</string>
+    <string name="appdetail_trend_day_gap">%1$s no records</string>
+    <string name="appdetail_trend_table">%1$s, last 14 days</string>
+    <string name="appdetail_column_day">Day</string>
+    <string name="appdetail_column_mah">mAh</string>
+    <string name="appdetail_no_records">No records</string>
+    <string name="appdetail_view_table">View as table</string>
+
+    <!-- SPEC 10.4 item 8; the restrictions arrive with the Action Center (P5). -->
+    <string name="appdetail_app_info">App info</string>
+
+    <!-- SPEC 10.11 states. -->
+    <string name="appdetail_loading">Loading</string>
+    <string name="appdetail_empty">Nothing recorded for this window yet. Figures appear after the next snapshot.</string>
+    <string name="appdetail_error_title">Coulomb couldn’t read its battery records</string>
+    <string name="appdetail_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
+    <string name="appdetail_error_action">Try again</string>
+</resources>

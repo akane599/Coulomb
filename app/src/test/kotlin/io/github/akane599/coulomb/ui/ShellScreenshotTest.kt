@@ -4,6 +4,10 @@
 package io.github.akane599.coulomb.ui
 
 import android.app.Application
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -13,6 +17,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.navigation.Route
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,6 +61,33 @@ class ShellScreenshotTest {
         compose.onRoot().captureRoboImage("src/test/screenshots/shell-inner-settings.png")
     }
 
+    /** SPEC 10.10: on expanded widths App detail opens beside Drain's list, and another row swaps it. */
+    @Test
+    @Config(qualifiers = "w1000dp-h800dp-xhdpi")
+    fun expandedListDetail() {
+        setShell()
+        compose.onNodeWithText("Drain").performClick()
+        compose.onNodeWithText("Open 10123").performClick()
+        compose.onNodeWithText("Open 10456").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Rows").assertExists()
+        compose.onNodeWithText("Detail 10456").assertExists()
+        compose.onNodeWithText("Detail 10123").assertDoesNotExist()
+        compose.onRoot().captureRoboImage("src/test/screenshots/shell-expanded-list-detail.png")
+    }
+
+    /** On compact widths the detail covers the list, with back. */
+    @Test
+    fun compactDetailCoversTheList() {
+        setShell()
+        compose.onNodeWithText("Drain").performClick()
+        compose.onNodeWithText("Open 10123").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Rows").assertDoesNotExist()
+        compose.onNodeWithText("Detail 10123").assertExists()
+        compose.onNodeWithContentDescription("Back").assertExists()
+    }
+
     private fun shoot(
         name: String,
         dark: Boolean = false,
@@ -71,11 +103,30 @@ class ShellScreenshotTest {
     ) {
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale)) {
-                CoulombTheme(darkTheme = dark) { CoulombApp(screens = AppScreens(now = {}, drain = {}, compare = {})) }
+                CoulombTheme(darkTheme = dark) {
+                    CoulombApp(screens = StandIns)
+                }
             }
         }
     }
 }
+
+/** Stand-ins without Hilt: Drain's rows open App detail, which names its UID. */
+private val StandIns =
+    AppScreens(
+        now = {},
+        drain = { navigator ->
+            Column {
+                Text("Rows")
+                listOf(10_123, 10_456).forEach { uid ->
+                    Text("Open $uid", Modifier.clickable { navigator.openDetail(Route.AppDetail(uid)) })
+                }
+            }
+        },
+        compare = {},
+        appDetail = { _, uid -> Text("Detail $uid") },
+        appDetailTitle = { "Halcyon" },
+    )
 
 private const val COMPACT_SIZE = "w412dp-h915dp"
 private const val COMPACT = "$COMPACT_SIZE-xhdpi"

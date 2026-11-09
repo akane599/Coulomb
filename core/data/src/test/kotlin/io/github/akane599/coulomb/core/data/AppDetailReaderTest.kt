@@ -130,6 +130,8 @@ internal class AppDetailReaderTest : DrainDbTest() {
             val detail = checkNotNull(reader.readApp(DrainSpan.Last24Hours, APP, empty(), wall(b)))
 
             assertThat(detail.app).isNull()
+            assertThat(detail.label).isEqualTo("Halcyon")
+            assertThat(detail.iconPackage).isEqualTo("com.example.halcyon")
             assertThat(detail.wakes).isEmpty()
             assertThat(detail.counters).isEqualTo(AppCounters())
             assertThat(detail.trend.last().mah).isEqualTo(0.0)

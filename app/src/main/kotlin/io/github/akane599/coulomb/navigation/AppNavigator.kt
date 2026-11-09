@@ -48,6 +48,15 @@ class AppNavigator internal constructor(
         backStack.add(route)
     }
 
+    /**
+     * Opens a detail [route], replacing a detail already on top: beside the list on expanded
+     * widths (SPEC 10.10), choosing another row swaps the detail instead of stacking it.
+     */
+    fun openDetail(route: Route) {
+        if (backStack.lastOrNull() is Route.AppDetail) backStack.removeAt(backStack.lastIndex)
+        backStack.add(route)
+    }
+
     fun back() {
         when {
             backStack.size > 1 -> backStack.removeAt(backStack.lastIndex)

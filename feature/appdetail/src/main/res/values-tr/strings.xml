@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="appdetail_window_since_unplugged">Şarjdan çıkalı</string>
+    <string name="appdetail_window_today">Bugün</string>
+    <string name="appdetail_window_last_24h">Son 24 sa</string>
+    <string name="appdetail_window_last_night">Dün gece</string>
+    <string name="appdetail_window_days">%1$s</string>
+    <string name="appdetail_window_note">Pencere: %1$s. Drain’de değiştirebilirsin.</string>
+
+    <string name="appdetail_share_of_measured">Ölçülen %2$s içinde %1$s</string>
+    <string name="appdetail_share_of_modeled">Android’in modellediği %2$s içinde %1$s</string>
+    <string name="appdetail_share_scaled">Ölçülen %2$s içinde %1$s, Android’in modelinden ölçeklendi</string>
+    <string name="appdetail_lower_bound">Daha kısa pencerelerden toplandı; bu değer biraz düşük olabilir.</string>
+    <string name="appdetail_no_use">Bu pencerede bu uygulama için pil kullanımı kaydedilmedi.</string>
+
+    <string name="appdetail_where">Nereye gitti</string>
+    <string name="appdetail_components_chart">Bileşenlere göre %1$s: %2$s</string>
+    <string name="appdetail_components_title">Bileşenlere göre %1$s</string>
+    <string name="appdetail_column_component">Bileşen</string>
+    <string name="appdetail_components_off">Bu pencerenin bir kısmında bileşen dökümü kapalıydı. Ayarlar’dan açabilirsin.</string>
+    <string name="appdetail_components_none">Coulomb bu pencerede bu uygulamayı bileşenlere ayıramadı.</string>
+    <string name="appdetail_states">İşlem durumuna göre</string>
+    <string name="appdetail_state">Durum</string>
+    <string name="appdetail_state_foreground">Ön planda</string>
+    <string name="appdetail_state_background">Arka planda</string>
+    <string name="appdetail_state_foreground_service">Ön plan hizmeti</string>
+    <string name="appdetail_state_cached">Önbellekte</string>
+    <string name="appdetail_state_cached_definition">Bellekte tutuluyor ama çalışmıyor; Android onu hızlıca yeniden açabilir.</string>
+    <string name="appdetail_state_not_split">Ayrılmadı</string>
+    <string name="appdetail_term_action">Bu ne demek</string>
+
+    <plurals name="appdetail_woke">
+        <item quantity="one">Telefonu bir kez uyandırdı</item>
+        <item quantity="other">Telefonu %1$s kez uyandırdı</item>
+    </plurals>
+    <string name="appdetail_wakeups">Uyandırmalar</string>
+    <string name="appdetail_alarms_not_recorded">Bu pencerede uyandırma alarmları kaydedilmedi.</string>
+    <string name="appdetail_alarms_note">Uyandırma alarmlarıyla. Android bunları alarm başına değil, uygulama başına sayar.</string>
+    <string name="appdetail_alarms_partial">Pencerenin bir kısmında kaydedildi; sayılar en az gösterilen kadardır.</string>
+    <string name="appdetail_wakelocks">Uyanık tutmalar</string>
+    <string name="appdetail_jobs">İşler</string>
+    <string name="appdetail_column_tag">Etiket</string>
+    <string name="appdetail_column_job">İş</string>
+    <string name="appdetail_column_time">Süre</string>
+    <string name="appdetail_column_count">Sayı</string>
+    <string name="appdetail_column_runs">Çalışma</string>
+    <string name="appdetail_screen_off_all">Tamamı ekran kapalıyken</string>
+    <string name="appdetail_screen_off_none">Tamamı ekran açıkken</string>
+    <string name="appdetail_screen_off_share">%1$s ekran kapalıyken</string>
+    <string name="appdetail_wakelocks_none">Uyanık tutma kaydedilmedi.</string>
+    <string name="appdetail_wakelocks_not_recorded">Bu pencerede uyanık tutmalar kaydedilmedi.</string>
+    <string name="appdetail_jobs_total">%1$s çalışma, toplam %2$s</string>
+    <string name="appdetail_jobs_none">İş kaydedilmedi.</string>
+
+    <string name="appdetail_network">Ağ ve ekran süresi</string>
+    <string name="appdetail_mobile">Mobil veri</string>
+    <string name="appdetail_wifi">Wi-Fi</string>
+    <string name="appdetail_foreground">Ön planda</string>
+    <string name="appdetail_traffic">%1$s indirme, %2$s yükleme</string>
+    <string name="appdetail_foreground_service">Ön plan hizmeti %1$s</string>
+    <string name="appdetail_not_recorded">Kaydedilmedi</string>
+
+    <string name="appdetail_trend">Son 14 gün</string>
+    <string name="appdetail_trend_axis">Günde mAh</string>
+    <string name="appdetail_trend_today">Bugün</string>
+    <string name="appdetail_trend_updated">Güncellendi</string>
+    <string name="appdetail_trend_caption">Android’in modeli, her pencerenin bittiği güne göre.</string>
+    <plurals name="appdetail_trend_gaps">
+        <item quantity="one">Bir gün için kayıt yok.</item>
+        <item quantity="other">%1$s gün için kayıt yok.</item>
+    </plurals>
+    <string name="appdetail_trend_updated_on">%1$s tarihinde güncellendi.</string>
+    <string name="appdetail_trend_chart">Son 14 günde %1$s: %2$s</string>
+    <string name="appdetail_trend_day_gap">%1$s kayıt yok</string>
+    <string name="appdetail_trend_table">%1$s, son 14 gün</string>
+    <string name="appdetail_column_day">Gün</string>
+    <string name="appdetail_column_mah">mAh</string>
+    <string name="appdetail_no_records">Kayıt yok</string>
+    <string name="appdetail_view_table">Tablo olarak göster</string>
+
+    <string name="appdetail_app_info">Uygulama bilgisi</string>
+
+    <string name="appdetail_loading">Yükleniyor</string>
+    <string name="appdetail_empty">Bu pencere için henüz kayıt yok. Değerler bir sonraki anlık görüntüden sonra görünür.</string>
+    <string name="appdetail_error_title">Coulomb pil kayıtlarını okuyamadı</string>
+    <string name="appdetail_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
+    <string name="appdetail_error_action">Yeniden dene</string>
+</resources>

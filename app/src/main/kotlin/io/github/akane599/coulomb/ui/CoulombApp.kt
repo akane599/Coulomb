@@ -4,12 +4,12 @@
 package io.github.akane599.coulomb.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,6 +32,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
@@ -55,11 +56,16 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.feature.appdetail.AppDetailScreen
+import io.github.akane599.coulomb.feature.appdetail.appDetailTitle
+import io.github.akane599.coulomb.feature.appdetail.appDetailViewModel
 import io.github.akane599.coulomb.feature.drain.CompareScreen
 import io.github.akane599.coulomb.feature.drain.DrainScreen
 import io.github.akane599.coulomb.feature.now.NowScreen
 import io.github.akane599.coulomb.navigation.AppNavigator
 import io.github.akane599.coulomb.navigation.Destination
+import io.github.akane599.coulomb.navigation.ListDetailStrategy
+import io.github.akane599.coulomb.navigation.PaneMin
 import io.github.akane599.coulomb.navigation.Route
 import io.github.akane599.coulomb.navigation.rememberAppNavigator
 import io.github.akane599.coulomb.feature.drain.R as DrainR
@@ -100,14 +106,21 @@ fun CoulombApp(
         ) {
             // NavDisplay handles back inside a stack; at the first screen of another destination, back goes to Now.
             BackHandler(enabled = navigator.backReturnsToNow, onBack = navigator::back)
-            NavDisplay(
-                entries = entries.getValue(navigator.current),
-                modifier = Modifier.fillMaxSize().consumeWindowInsets(navigationInsets(rail)),
-                onBack = navigator::back,
-                transitionSpec = { fade() },
-                popTransitionSpec = { fade() },
-                predictivePopTransitionSpec = { fade() },
-            )
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                // SPEC 10.10: list and detail side by side on expanded widths, when both panes fit the text size.
+                val panes = PaneMin * 2 * LocalDensity.current.fontScale.coerceAtLeast(1f)
+                val split = currentWindowWidth() == WindowWidth.Expanded && maxWidth >= panes
+                val strategy = remember(split) { ListDetailStrategy<NavKey>(split) }
+                NavDisplay(
+                    entries = entries.getValue(navigator.current),
+                    modifier = Modifier.fillMaxSize().consumeWindowInsets(navigationInsets(rail)),
+                    sceneStrategies = listOf(strategy),
+                    onBack = navigator::back,
+                    transitionSpec = { fade() },
+                    popTransitionSpec = { fade() },
+                    predictivePopTransitionSpec = { fade() },
+                )
+            }
         }
     }
 }
@@ -162,6 +175,9 @@ class AppScreens(
     val now: @Composable (AppNavigator) -> Unit,
     val drain: @Composable (AppNavigator) -> Unit,
     val compare: @Composable (AppNavigator) -> Unit,
+    /** App detail for a UID; its title slot reads the same entry's model. */
+    val appDetail: @Composable (AppNavigator, uid: Int) -> Unit,
+    val appDetailTitle: @Composable (uid: Int) -> String,
 ) {
     companion object {
         val Default: AppScreens =
@@ -172,15 +188,17 @@ class AppScreens(
                         onOpenPrivileges = { navigator.open(Route.Privileges) },
                     )
                 },
-                // App detail arrives later in P4; until then the rows open nothing.
                 drain = { navigator ->
                     DrainScreen(
-                        onOpenApp = null,
+                        onOpenApp = { navigator.openDetail(Route.AppDetail(it)) },
                         onOpenPrivileges = { navigator.open(Route.Privileges) },
                         onOpenCompare = { navigator.open(Route.DrainCompare) },
                     )
                 },
-                compare = { CompareScreen(onOpenApp = null) },
+                compare = { navigator -> CompareScreen(onOpenApp = { navigator.openDetail(Route.AppDetail(it)) }) },
+                // One model per entry: both calls get the entry's instance for the UID.
+                appDetail = { _, uid -> AppDetailScreen(appDetailViewModel(uid)) },
+                appDetailTitle = { uid -> appDetailTitle(appDetailViewModel(uid)) },
             )
     }
 }
@@ -191,13 +209,20 @@ private fun appEntries(
 ): (NavKey) -> NavEntry<NavKey> =
     entryProvider {
         entry<Route.Now> { DestinationScreen(Destination.Now, navigator::open) { screens.now(navigator) } }
-        entry<Route.Drain> { DestinationScreen(Destination.Drain, navigator::open) { screens.drain(navigator) } }
-        entry<Route.DrainCompare> { InnerScreen(DrainR.string.drain_compare_title, navigator::back) { screens.compare(navigator) } }
+        entry<Route.Drain>(metadata = ListDetailStrategy.list) {
+            DestinationScreen(Destination.Drain, navigator::open) { screens.drain(navigator) }
+        }
+        entry<Route.DrainCompare>(metadata = ListDetailStrategy.list) {
+            InnerScreen(stringResource(DrainR.string.drain_compare_title), navigator::back) { screens.compare(navigator) }
+        }
+        entry<Route.AppDetail>(metadata = ListDetailStrategy.detail) { key ->
+            InnerScreen(screens.appDetailTitle(key.uid), navigator::back) { screens.appDetail(navigator, key.uid) }
+        }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { NotBuilt() } }
         entry<Route.Health> { DestinationScreen(Destination.Health, navigator::open) { NotBuilt() } }
-        entry<Route.ActionCenter> { InnerScreen(R.string.screen_action_center, navigator::back) { NotBuilt() } }
-        entry<Route.Privileges> { InnerScreen(R.string.screen_privileges, navigator::back) { NotBuilt() } }
-        entry<Route.Settings> { InnerScreen(R.string.screen_settings, navigator::back) { NotBuilt() } }
+        entry<Route.ActionCenter> { InnerScreen(stringResource(R.string.screen_action_center), navigator::back) { NotBuilt() } }
+        entry<Route.Privileges> { InnerScreen(stringResource(R.string.screen_privileges), navigator::back) { NotBuilt() } }
+        entry<Route.Settings> { InnerScreen(stringResource(R.string.screen_settings), navigator::back) { NotBuilt() } }
     }
 
 /** A destination's first screen: its name, then Action Center, Privileges and Settings (DESIGN.md, Navigation). */
@@ -221,12 +246,12 @@ private fun DestinationScreen(
 /** A screen below a destination: back, then its name. */
 @Composable
 private fun InnerScreen(
-    @StringRes title: Int,
+    title: String,
     onBack: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     ShellScreen(
-        title = stringResource(title),
+        title = title,
         navigationIcon = { CoulombBackButton(onClick = onBack) },
         content = content,
     )

@@ -14,6 +14,11 @@
     <string name="unit_mah" translatable="false">mAh</string>
     <string name="unit_ma" translatable="false">mA</string>
     <string name="unit_a" translatable="false">A</string>
+    <!-- Data amounts in decimal units, as Android's settings show them. -->
+    <string name="unit_b">B</string>
+    <string name="unit_kb" translatable="false">kB</string>
+    <string name="unit_mb" translatable="false">MB</string>
+    <string name="unit_gb" translatable="false">GB</string>
     <string name="unit_pct_per_hour">%/h</string>
 
     <!-- A UID with no package name yet (SPEC 6.5). -->

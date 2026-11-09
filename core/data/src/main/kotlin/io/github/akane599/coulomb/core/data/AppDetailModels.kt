@@ -13,6 +13,10 @@ import java.time.LocalDate
  */
 public data class AppDetailReport(
     val uid: Int,
+    /** The app's name, from its row or the last one seen; null while it has none (SPEC 6.5). */
+    val label: String?,
+    /** The package whose icon stands for the UID, and whose App info opens ([AppIcons]). */
+    val iconPackage: String?,
     val report: DrainReport,
     /** The app's row in [report]; null when it recorded no use in the window. */
     val app: AppDrain?,
