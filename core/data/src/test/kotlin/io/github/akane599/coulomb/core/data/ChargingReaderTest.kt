@@ -96,7 +96,9 @@ class ChargingReaderTest {
         assertThat(now.phase).isEqualTo(ChargePhase.DRAWING)
         assertThat(now.toTarget).isNull()
         assertThat(now.toFull).isNull()
-        assertThat(now.watts).isWithin(1e-9).of(0.0)
+        // Net power out of the battery is shown as it is, never clamped to zero (gate critique).
+        assertThat(now.watts).isWithin(1e-9).of(-1.2)
+        assertThat(now.belowHighest).isTrue()
     }
 
     @Test

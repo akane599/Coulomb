@@ -15,8 +15,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
@@ -41,13 +43,15 @@ private const val WAVE_STEPS_PER_LENGTH = 16
  * a still copper wave up to [levelPct], a hairline track on to 100%, and a tick at [targetPct] with
  * [targetLabel] over it, such as the time the target is reached with its Estimated mark. The label
  * centres on the tick and stays inside the scale. Nothing moves: the wave is drawn once per level.
- * TalkBack reads [description].
+ * TalkBack reads [description] and offers [viewTableLabel] (SPEC 11.8: every chart, hero scales included).
  */
 @Composable
 public fun ChargeLevelScale(
     levelPct: Int,
     targetPct: Int?,
     description: String,
+    viewTableLabel: String,
+    onViewTable: () -> Unit,
     modifier: Modifier = Modifier,
     targetLabel: (@Composable () -> Unit)? = null,
 ) {
@@ -62,7 +66,11 @@ public fun ChargeLevelScale(
             targetLabel?.invoke()
             track()
         },
-        modifier = modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = description },
+        modifier =
+            modifier.fillMaxWidth().clearAndSetSemantics {
+                contentDescription = description
+                customActions = listOf(CustomAccessibilityAction(viewTableLabel) { onViewTable().let { true } })
+            },
     ) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val label = if (measurables.size > 1) measurables.first().measure(loose) else null

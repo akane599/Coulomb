@@ -14,8 +14,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,10 +60,13 @@ public fun ChargingScreen(
         viewModel.visible(true)
         onPauseOrDispose { viewModel.visible(false) }
     }
-    ChargingContent(state, ChargingActions(retry = viewModel::retry, setTarget = viewModel::setTarget), modifier)
+    // One instance, so sections that take only the actions skip the 1 Hz recompositions.
+    val actions = remember(viewModel) { ChargingActions(retry = viewModel::retry, setTarget = viewModel::setTarget) }
+    ChargingContent(state, actions, modifier)
 }
 
 /** What Charging's controls do; the screen itself holds no logic. */
+@Immutable
 internal class ChargingActions(
     val retry: () -> Unit,
     val setTarget: (Int) -> Unit,
@@ -78,7 +83,7 @@ internal fun ChargingContent(
     zone: ZoneId = ZoneId.systemDefault(),
 ) {
     val formats = rememberFormats()
-    var table by rememberSaveable { mutableStateOf(false) }
+    var table by rememberSaveable { mutableStateOf<String?>(null) }
     Column(
         modifier
             .fillMaxSize()
@@ -106,19 +111,64 @@ internal fun ChargingContent(
                     Column {
                         val now = state.now
                         Hero(now, formats)
-                        LevelScale(now, formats, zone)
+                        LevelScale(now, formats, zone, onViewTable = { table = SCALE_TABLE })
                         Times(now, formats)
                         Readings(now, formats)
-                        Session(now, formats, zone, onViewTable = { table = true })
+                        Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
                         Target(now.targetPct, formats, actions.setTarget)
                     }
                 }
             }
         }
     }
-    val ready = state as? ChargingUiState.Ready
-    if (table && ready != null) DataTableSheet(curveTable(ready.now, formats, zone), onDismiss = { table = false })
+    // A snapshot taken when the sheet opens: at 1 Hz the rows would otherwise shift under the reader (gate audit).
+    val ready = (state as? ChargingUiState.Ready)?.now
+    val shown = remember(table, ready == null) { ready }
+    if (shown != null) {
+        when (table) {
+            CURVE_TABLE -> DataTableSheet(curveTable(shown, formats, zone), onDismiss = { table = null })
+            SCALE_TABLE -> DataTableSheet(scaleTable(shown, formats, zone), onDismiss = { table = null })
+        }
+    }
 }
+
+private const val CURVE_TABLE = "curve"
+private const val SCALE_TABLE = "scale"
+
+/** The level scale as a table: the level, and when the target and full are reached. */
+@Composable
+private fun scaleTable(
+    now: ChargingNow,
+    formats: Formats,
+    zone: ZoneId,
+): DataTable {
+    val toTarget = now.toTarget?.takeIf { now.levelPct < now.targetPct }
+    val toFull = now.toFull?.takeIf { now.levelPct < FULL_PCT && now.targetPct < FULL_PCT }
+    val rows =
+        listOfNotNull(
+            listOf(stringResource(R.string.charging_row_level), formats.percent(now.levelPct)) to Provenance.MODELED,
+            toTarget?.let {
+                listOf(
+                    stringResource(R.string.charging_row_reaches, formats.percent(now.targetPct)),
+                    reachedAt(it, now.wallMs, formats, zone),
+                ) to
+                    Provenance.ESTIMATED
+            },
+            toFull?.let {
+                listOf(stringResource(R.string.charging_row_full), reachedAt(it, now.wallMs, formats, zone)) to
+                    Provenance.ESTIMATED
+            },
+        )
+    return DataTable(
+        title = stringResource(R.string.charging_table_scale),
+        columns = listOf(stringResource(R.string.charging_column_reading), stringResource(R.string.charging_column_value)),
+        rows = rows.map { it.first },
+        provenance = null,
+        rowProvenance = rows.map { it.second },
+    )
+}
+
+private const val FULL_PCT = 100
 
 /** The session's readings, newest first, as the curve's table. */
 @Composable
@@ -128,14 +178,29 @@ private fun curveTable(
     zone: ZoneId,
 ): DataTable {
     val power = now.curve.any { it.watts != null }
-    return DataTable(
-        title = stringResource(R.string.charging_table_curve),
-        columns =
-            listOfNotNull(
-                stringResource(R.string.charging_column_time),
-                stringResource(R.string.charging_column_level),
-                stringResource(R.string.charging_column_power).takeIf { power },
-            ),
+    val title = stringResource(R.string.charging_table_curve)
+    val columns =
+        listOfNotNull(
+            stringResource(R.string.charging_column_time),
+            stringResource(R.string.charging_column_level),
+            stringResource(R.string.charging_column_power).takeIf { power },
+        )
+    // Formatted once per snapshot, not at each recomposition while the sheet is open.
+    return remember(now, formats, zone, title, columns) { curveTableOf(now, formats, zone, title, columns, power) }
+}
+
+@Suppress("LongParameterList") // A snapshot, its formats and its headings.
+private fun curveTableOf(
+    now: ChargingNow,
+    formats: Formats,
+    zone: ZoneId,
+    title: String,
+    columns: List<String>,
+    power: Boolean,
+): DataTable =
+    DataTable(
+        title = title,
+        columns = columns,
         rows =
             now.curve.asReversed().map { point ->
                 listOfNotNull(
@@ -148,7 +213,6 @@ private fun curveTable(
         provenance = Provenance.MODELED.takeIf { !power },
         columnProvenance = listOf(null, Provenance.MODELED, Provenance.DERIVED).takeIf { power },
     )
-}
 
 /** SPEC 10.11 loading: a still skeleton in the hero's, scale's and strip's shape. */
 @Composable

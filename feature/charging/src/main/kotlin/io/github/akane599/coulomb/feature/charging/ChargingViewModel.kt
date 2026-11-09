@@ -59,7 +59,12 @@ public class ChargingViewModel
                     charging.now
                         .map { now -> now?.let(ChargingUiState::Ready) ?: ChargingUiState.Unplugged }
                         .catch { emit(ChargingUiState.Error) }
-                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ChargingUiState.Loading)
+                    // Back to Loading once stopped, so a later charge never opens on this one's figures.
+                }.stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS, replayExpirationMillis = 0),
+                    ChargingUiState.Loading,
+                )
 
         /** After [ChargingUiState.Error]: reads everything again. */
         internal fun retry() {

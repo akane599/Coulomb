@@ -139,6 +139,12 @@ public class Formats(
     /** A power to 0.1 W (SPEC 6.7). */
     public fun watts(value: Double): Figure = Figure(oneDecimal.format(value), resources.getString(R.string.unit_w))
 
+    /** Net power with a true minus sign when it leaves the battery: "−1.2 W" (Charging while drawing). */
+    public fun signedWatts(value: Double): Figure {
+        val size = watts(abs(value))
+        return if (value < 0 && size.number != oneDecimal.format(0.0)) size.copy(number = isolated("$MINUS${size.number}")) else size
+    }
+
     /** A voltage to the hundredth of a volt: "4.02 V". */
     public fun volts(millivolts: Int): Figure = Figure(twoDecimals.format(millivolts / MV_PER_V), resources.getString(R.string.unit_v))
 

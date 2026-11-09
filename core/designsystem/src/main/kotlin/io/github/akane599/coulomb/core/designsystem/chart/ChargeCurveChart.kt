@@ -51,6 +51,19 @@ public data class CurveLabels(
     val fullSpeed: String?,
 )
 
+/**
+ * Where a charge in progress reaches [targetPct] (SPEC 10.9, ADR-0046 §6): between [earliestMs] and
+ * [latestMs], drawn as the copper cone and bracket of DESIGN.md's signature, labelled [label]
+ * ("19:06–19:10"). The target is a marker rule with its value at the end, as [CurveLabels.percent].
+ */
+@Immutable
+public data class CurveProjection(
+    val targetPct: Int,
+    val earliestMs: Long,
+    val latestMs: Long,
+    val label: String,
+)
+
 private val LevelHeight = 96.dp
 private val PowerHeight = 72.dp
 private val PanelGap = 16.dp
@@ -65,14 +78,20 @@ private const val HALF = 50
 private val WATT_STEPS = listOf(1.0, 2.0, 5.0, 10.0, 20.0, 25.0, 50.0, 100.0)
 private const val POWER_LINES = 2
 private const val MAX_POINTS = 800
+private val BracketWidth = 3.dp
+private val BracketStop = 7.dp
+private val EdgeWidth = 1.dp
+private val DotRadius = 4.dp
+private const val TINT = 0.14f
 
 /**
  * A charge session's curve (SPEC 10.8 item 6): the level from 0 to 100% over the session, and
  * under it the power into the battery, sharing the time axis. Where the current tapered, the
  * level panel has a dashed rule at [taperLevel]; the power panel one at [fullSpeedW]. Readings
  * without power leave the power line broken there, so a gap never reads as zero. Values on the
- * right in Caption, the session's start and end clock under the axis. Draws in once; TalkBack
- * reads [summary] and offers "View as table".
+ * right in Caption, the session's start and end clock under the axis. A [projection] runs the time
+ * axis on to its latest end and draws the cone from the present reading to the target. Draws in
+ * once; TalkBack reads [summary] and offers "View as table".
  */
 @Composable
 @Suppress("LongParameterList") // One chart's data, labels and accessibility.
@@ -85,10 +104,12 @@ public fun ChargeCurveChart(
     viewTableLabel: String,
     onViewTable: () -> Unit,
     modifier: Modifier = Modifier,
+    projection: CurveProjection? = null,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     val style = remember(type, colors) { type.caption.copy(color = colors.textSecondary) }
+    val strongStyle = remember(type, colors) { type.captionEmphasis.copy(color = colors.textPrimary) }
     // Room for every label the chart draws, so a draw-in frame lays out none again.
     val measurer = rememberTextMeasurer(cacheSize = LABEL_CACHE)
     val labelHeight = remember(measurer, style) { measurer.measure("0", style).size.height }
@@ -111,22 +132,16 @@ public fun ChargeCurveChart(
         if (readings.size < 2) return@Canvas
         val text = ChartText(measurer, style)
         val wattTop = wattTop(readings)
-        val valueWidth =
-            maxOf(
-                text.measure(labels.percent(FULL)).size.width,
-                if (hasPower) text.measure(labels.watts(wattTop)).size.width else 0,
-            ) + ValueGap.toPx()
-        val width = size.width - valueWidth
+        val width = size.width - valueWidth(text, labels, wattTop.takeIf { hasPower })
         val start = readings.first().wallMs
-        val end = readings.last().wallMs.coerceAtLeast(start + 1)
+        val end = maxOf(readings.last().wallMs, projection?.latestMs ?: 0L).coerceAtLeast(start + 1)
 
         fun x(ms: Long) = (ms - start).toFloat() / (end - start) * width
         val levelTop = labelHeight + LabelGap.toPx()
         val levelBottom = levelTop + LevelHeight.toPx()
         val level = Panel(levelTop, levelBottom, FULL.toDouble())
-        listOf(0, HALF, FULL).forEach { pct ->
-            gridLine(level.y(pct.toDouble()), width, ink, text, labels.percent(pct))
-        }
+        val strong = ChartText(measurer, strongStyle)
+        levelGrid(level, width, ink, text, strong, labels, projection?.targetPct)
         taperLevel?.let { rule(level.y(it.toDouble()), width, ink, text, labels.taper) }
         var axis = levelBottom
         val power =
@@ -145,6 +160,19 @@ public fun ChargeCurveChart(
             revealed {
                 series(readings.map { Offset(x(it.wallMs), level.y(it.levelPct.toDouble())) }, ink)
                 power?.let { panel -> powerRuns(readings, panel, ::x).forEach { series(it, ink) } }
+            }
+            projection?.let { p ->
+                val last = readings.last()
+                drawProjection(
+                    p,
+                    Offset(x(last.wallMs), level.y(last.levelPct.toDouble())),
+                    x(p.earliestMs),
+                    x(p.latestMs),
+                    level,
+                    ink,
+                    strong,
+                    width,
+                )
             }
         }
     }
@@ -278,4 +306,103 @@ private fun DrawScope.series(
             points.drop(1).forEach { lineTo(it.x, it.y) }
         }
     drawPath(path, ink.line, style = Stroke(InkWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+}
+
+/** The values column's width: the widest of 100% and, with power, the power axis's top. */
+private fun DrawScope.valueWidth(
+    text: ChartText,
+    labels: CurveLabels,
+    wattTop: Double?,
+): Float =
+    maxOf(text.measure(labels.percent(FULL)).size.width, wattTop?.let { text.measure(labels.watts(it)).size.width } ?: 0) + ValueGap.toPx()
+
+/** The level panel's 0, 50 and 100% lines, and the target's marker in place of the line it falls on. */
+@Suppress("LongParameterList") // One panel's scale, ink and words.
+private fun DrawScope.levelGrid(
+    level: Panel,
+    width: Float,
+    ink: ChartInk,
+    text: ChartText,
+    strong: ChartText,
+    labels: CurveLabels,
+    targetPct: Int?,
+) {
+    listOf(0, HALF, FULL).filter { it != targetPct }.forEach { pct ->
+        gridLine(level.y(pct.toDouble()), width, ink, text, labels.percent(pct))
+    }
+    targetPct?.let { marker(level.y(it.toDouble()), width, ink, strong, labels.percent(it)) }
+}
+
+/** The cone from the present reading at [apex] to the target between [from] and [to], its bracket and words, and the reading's dot. */
+@Suppress("LongParameterList") // The estimate, where it sits and how it is drawn.
+private fun DrawScope.drawProjection(
+    projection: CurveProjection,
+    apex: Offset,
+    from: Float,
+    to: Float,
+    level: Panel,
+    ink: ChartInk,
+    strong: ChartText,
+    width: Float,
+) {
+    val y = level.y(projection.targetPct.toDouble())
+    cone(apex, from, to, y, ink)
+    bracketLabel(strong.measure(projection.label), from, to, y, width)
+    drawCircle(ink.line, DotRadius.toPx(), apex)
+}
+
+/** The target's marker: a solid rule in `text-secondary` with its value, emphasised, at the end. */
+private fun DrawScope.marker(
+    y: Float,
+    width: Float,
+    ink: ChartInk,
+    strong: ChartText,
+    label: String,
+) {
+    drawLine(ink.axis, Offset(0f, y), Offset(width, y), 1.dp.toPx())
+    val layout = strong.measure(label)
+    drawText(layout, topLeft = Offset(size.width - layout.size.width, y - layout.size.height / 2))
+}
+
+/** A 14% copper cone with dashed 1 dp edges from [apex] to the target, and the bracket over its span. */
+@Suppress("LongParameterList") // The apex, the span and the rule it closes on.
+private fun DrawScope.cone(
+    apex: Offset,
+    from: Float,
+    to: Float,
+    y: Float,
+    ink: ChartInk,
+) {
+    val cone =
+        Path().apply {
+            moveTo(apex.x, apex.y)
+            lineTo(from, y)
+            lineTo(to, y)
+            close()
+        }
+    drawPath(cone, ink.accent.copy(alpha = TINT))
+    val dashed = PathEffect.dashPathEffect(floatArrayOf(Dash.toPx(), DashGap.toPx()))
+    drawLine(ink.accent, apex, Offset(from, y), EdgeWidth.toPx(), pathEffect = dashed)
+    drawLine(ink.accent, apex, Offset(to, y), EdgeWidth.toPx(), pathEffect = dashed)
+    val stop = BracketStop.toPx()
+    val bracket =
+        Path().apply {
+            moveTo(from, y - stop)
+            lineTo(from, y)
+            lineTo(to, y)
+            lineTo(to, y - stop)
+        }
+    drawPath(bracket, ink.accent, style = Stroke(BracketWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+}
+
+/** The bracket's words centred over it, kept inside the plot. */
+private fun DrawScope.bracketLabel(
+    layout: TextLayoutResult,
+    from: Float,
+    to: Float,
+    y: Float,
+    width: Float,
+) {
+    val left = ((from + to) / 2 - layout.size.width / 2f).coerceIn(0f, (width - layout.size.width).coerceAtLeast(0f))
+    drawText(layout, topLeft = Offset(left, y - BracketStop.toPx() - LabelGap.toPx() - layout.size.height))
 }

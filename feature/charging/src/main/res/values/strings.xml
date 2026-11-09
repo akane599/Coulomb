@@ -3,9 +3,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
     <string name="charging_title">Charging</string>
-    <string name="charging_loading">Loading the charge</string>
+    <string name="charging_loading">Reading the charge</string>
     <string name="charging_error_title">Couldn’t read the charge</string>
-    <string name="charging_error_body">Coulomb’s records could not be read just now. Nothing was lost.</string>
+    <string name="charging_error_body">Coulomb couldn’t read its records just now. Your history stays on this phone.</string>
     <string name="charging_error_action">Try again</string>
     <string name="charging_unplugged">Unplugged.</string>
     <string name="charging_power_calibrating">Power shows once Coulomb has calibrated this phone’s current reading.</string>
@@ -16,16 +16,15 @@
     <string name="charging_phase_full_speed_def">The charger’s full current goes in. Engineers call this constant current.</string>
     <string name="charging_phase_slowing_def">The current falls as the battery nears full, which protects it. Engineers call this constant voltage.</string>
     <string name="charging_phase_holding_def">The level has not risen for 10 minutes and almost no current goes in, as when a charge limit is on.</string>
-    <string name="charging_phase_full_def">The battery reports 100%. It may take a little current to stay there.</string>
+    <string name="charging_phase_full_def" formatted="false">The battery reports 100%. It may take a little current to stay there.</string>
     <string name="charging_charger_known">%1$s · %2$s of its baseline</string>
-    <string name="charging_charger_new">A charger Coulomb hasn’t seen. It is saved when this charge ends.</string>
-    <string name="charging_charger_learning">Coulomb tells the charger after a few minutes of charging.</string>
-    <string name="charging_charger_high">Too few readings below 50% to tell which charger this is.</string>
+    <string name="charging_charger_new">%1$s · new, saved when this charge ends</string>
+    <string name="charging_charger_learning" formatted="false">Coulomb tells which charger this is after 2 minutes of charging below 50%.</string>
+    <string name="charging_charger_high" formatted="false">Too few readings below 50% to tell which charger this is.</string>
     <string name="charging_target_at">%1$s at %2$s</string>
     <string name="charging_target_plain">Target %1$s</string>
     <string name="charging_to_level">%1$s in %2$s</string>
     <string name="charging_full_in">Full in %1$s</string>
-    <string name="charging_times_need">Times show after three charges that went past this level.</string>
     <string name="charging_times_holding">The level is holding, so there is no time to give. Times return when it rises.</string>
     <string name="charging_readings">Live readings</string>
     <string name="charging_current">Current</string>
@@ -47,9 +46,19 @@
     <string name="charging_column_level">Level</string>
     <string name="charging_column_power">Power</string>
     <string name="charging_target">Target</string>
-    <string name="charging_target_note">Sets the tick and the time to target. The alert comes with notifications.</string>
+    <string name="charging_target_note">Sets the tick and the time to the target. There is no alert at the target yet.</string>
     <string name="charging_scale_description">Level %1$s, target %2$s.</string>
-    <string name="charging_scale_description_time">Level %1$s, target %2$s, reached at %3$s.</string>
+    <string name="charging_scale_description_time">Level %1$s, target %2$s, estimated to be reached at %3$s.</string>
     <string name="charging_phase_drawing">drawing from the battery</string>
     <string name="charging_phase_drawing_def">The phone uses more than the charger gives, so the level falls.</string>
+    <string name="charging_calibrating">Calibrating</string>
+    <string name="charging_times_need_target">Time to %1$s shows after three past charges that started below this level and reached %1$s.</string>
+    <string name="charging_times_need_full" formatted="false">Time to full shows after three past charges that started below this level and reached 100%.</string>
+    <string name="charging_times_falling">No time while the level is below its highest this charge.</string>
+    <string name="charging_table_scale">Level and target</string>
+    <string name="charging_column_reading">Reading</string>
+    <string name="charging_column_value">Value</string>
+    <string name="charging_row_level">Level</string>
+    <string name="charging_row_reaches">Reaches %1$s</string>
+    <string name="charging_row_full">Reaches full</string>
 </resources>

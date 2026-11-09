@@ -5,7 +5,6 @@ package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.analytics.ChargeLevel
 import io.github.akane599.coulomb.core.common.AppDispatchers
-import io.github.akane599.coulomb.core.common.AppScope
 import io.github.akane599.coulomb.core.database.dao.LevelStep
 import io.github.akane599.coulomb.core.database.dao.SampleDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
@@ -16,21 +15,21 @@ import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.model.SessionKind
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * The Charging screen's side (SPEC 10.9, ADR-0046): the charge in progress, read again at each
- * sample, which comes every second while the screen shows (SPEC 7.3). Each sample costs one short
- * query for the samples since the last; the past charges are read again only when one closes.
+ * sample, which comes every second while the screen shows (SPEC 7.3). Each sample costs two short
+ * queries, the open session and the samples since the last; the past charges are read again only
+ * when one closes.
  */
 @Singleton
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -41,39 +40,44 @@ public class ChargingRepository
         private val sessions: SessionDao,
         private val settings: SettingsStore,
         dispatchers: AppDispatchers,
-        scope: AppScope,
     ) {
         private val latest: Flow<BatterySampleEntity?> = samples.observeLatest().distinctUntilChanged()
-
-        private val live = LiveChargeCache()
-        private val pastLines = PastLineCache()
 
         /** Whether the phone is plugged in, for showing Charging in place of Now (SPEC 10.9). */
         public val plugged: Flow<Boolean> = latest.map { it != null && it.plugType != 0 }.distinctUntilChanged()
 
-        /** The latest closed charges, newest first, with their level lines. */
-        private val history: Flow<List<PastChargeRow>> =
-            sessions
-                .observeClosed(SessionKind.CHARGE, HISTORY)
-                .distinctUntilChanged()
-                .mapLatest(::readHistory)
-
-        /** The charge in progress; null while unplugged. */
-        public val now: StateFlow<ChargingNow?> =
-            combine(
-                latest,
-                history,
-                sessions.observeChargerProfiles(),
-                settings.settings.map { it.chargeTargetPct }.distinctUntilChanged(),
-            ) { sample, past, profiles, target -> Inputs(sample, past, profiles, target) }
-                .mapLatest(::read)
-                .flowOn(dispatchers.io)
-                .stateIn(scope, SharingStarted.WhileSubscribed(BatteryRepository.STOP_TIMEOUT_MS), null)
+        /**
+         * The charge in progress, null while unplugged. Cold: each collector has its own caches and
+         * sees a failed read as an exception, so the screen can show its error and read again
+         * (gate audit). The screen's model shares it.
+         */
+        public val now: Flow<ChargingNow?> =
+            flow {
+                val live = LiveChargeCache()
+                val pastLines = PastLineCache()
+                val history =
+                    sessions
+                        .observeClosed(SessionKind.CHARGE, HISTORY)
+                        .distinctUntilChanged()
+                        .mapLatest { readHistory(it, pastLines) }
+                emitAll(
+                    combine(
+                        latest,
+                        history,
+                        sessions.observeChargerProfiles(),
+                        settings.settings.map { it.chargeTargetPct }.distinctUntilChanged(),
+                    ) { sample, past, profiles, target -> Inputs(sample, past, profiles, target) }
+                        .mapLatest { read(it, live) },
+                )
+            }.flowOn(dispatchers.io)
 
         /** The charge target, held to SPEC 14.4's range. */
         public suspend fun setTarget(pct: Int): Unit = settings.chargeTarget(pct)
 
-        private suspend fun read(inputs: Inputs): ChargingNow? {
+        private suspend fun read(
+            inputs: Inputs,
+            live: LiveChargeCache,
+        ): ChargingNow? {
             val sample = inputs.sample
             if (sample == null || sample.plugType == 0) {
                 live.clear()
@@ -87,7 +91,10 @@ public class ChargingRepository
             return ChargingReader.now(charge, session?.startWall ?: sample.wallMs, inputs.history, inputs.profiles, inputs.target)
         }
 
-        private suspend fun readHistory(rows: List<SessionEntity>): List<PastChargeRow> {
+        private suspend fun readHistory(
+            rows: List<SessionEntity>,
+            pastLines: PastLineCache,
+        ): List<PastChargeRow> {
             val details = sessions.chargeDetails(rows.map { it.id }).associateBy { it.sessionId }
             val lines = pastLines.read(rows, samples::levelSteps)
             return rows.mapNotNull { row ->

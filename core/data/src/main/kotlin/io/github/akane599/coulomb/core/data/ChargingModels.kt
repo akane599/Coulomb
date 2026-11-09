@@ -15,7 +15,7 @@ public data class ChargingNow(
     val levelPct: Int,
     /** `BatteryManager.BATTERY_PLUGGED_*` of the latest sample. */
     val plugType: Int,
-    /** Into the battery; null before calibration. */
+    /** Into the battery, negative while the phone draws on it (DRAWING); null before calibration. */
     val watts: Double?,
     /** Positive into the battery; null before calibration. */
     val currentMa: Double?,
@@ -28,6 +28,8 @@ public data class ChargingNow(
     val charger: LiveCharger,
     /** The owner's charge target (SPEC 14.4). */
     val targetPct: Int,
+    /** The level has fallen below this charge's highest, so no time to a level is given (ADR-0046 §3). */
+    val belowHighest: Boolean,
     /** Null at or above the target, or with too few past charges to it. */
     val toTarget: ChargeTime?,
     /** Null at 100%, or with too few past charges to full. */

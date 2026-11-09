@@ -16,8 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -26,6 +28,7 @@ import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.then
 import androidx.compose.ui.unit.Dp
@@ -33,6 +36,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.analytics.ChargeTime
+import io.github.akane599.coulomb.core.analytics.ChargeTimeBasis
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import org.junit.Rule
@@ -153,6 +158,24 @@ class ChargingScreenshotTest {
         compose.onAllNodesWithText("View as table").onLast().performClick()
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("src/test/screenshots/charging-curve-table.png")
+    }
+
+    /** A 70% target set elsewhere (SPEC 14.4 allows 50–100%) joins the group, selected. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun targetOutsideTheGroup() =
+        shoot("target-70") {
+            Charging(labNow().copy(targetPct = 70, toTarget = ChargeTime(10.2, 13.1, ChargeTimeBasis.SAME_CHARGER, 7)))
+        }
+
+    /** The level scale's table, from its TalkBack action (SPEC 11.8: hero scales too). */
+    @Test
+    @OptIn(ExperimentalTestApi::class) // Custom accessibility actions.
+    fun scaleTable() {
+        shoot("scale-table", capture = false) { Charging(labNow()) }
+        compose.onNode(hasContentDescription("Level 52%", substring = true)).performCustomAccessibilityActionWithLabel("View as table")
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/charging-scale-table.png")
     }
 
     /** The target group moves the tick: 85% is passed on and becomes the selected choice. */

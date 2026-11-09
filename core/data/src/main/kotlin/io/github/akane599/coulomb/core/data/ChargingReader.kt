@@ -51,7 +51,7 @@ internal object ChargingReader {
         return ChargingNow(
             levelPct = level,
             plugType = last.plugType,
-            watts = last.currentUa?.let { (it.coerceAtLeast(0) * last.voltageMv.toDouble()) / NW_PER_W },
+            watts = last.currentUa?.let { (it * last.voltageMv.toDouble()) / NW_PER_W },
             currentMa = last.currentUa?.let { it / UA_PER_MA },
             voltageMv = last.voltageMv,
             tempDeciC = last.tempDeciC,
@@ -59,6 +59,7 @@ internal object ChargingReader {
             phase = phase,
             charger = charger,
             targetPct = targetPct,
+            belowHighest = level < samples.maxOf { it.levelPct },
             toTarget = if (timed && level < targetPct) ChargeTimes.toLevel(levels, past, targetPct) else null,
             toFull = if (timed && level < FULL) ChargeTimes.toLevel(levels, past, FULL) else null,
             startWallMs = startWallMs,

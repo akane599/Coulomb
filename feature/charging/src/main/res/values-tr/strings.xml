@@ -3,9 +3,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
     <string name="charging_title">Şarj</string>
-    <string name="charging_loading">Şarj yükleniyor</string>
+    <string name="charging_loading">Şarj okunuyor</string>
     <string name="charging_error_title">Şarj okunamadı</string>
-    <string name="charging_error_body">Coulomb’un kayıtları şu an okunamadı. Hiçbir şey kaybolmadı.</string>
+    <string name="charging_error_body">Coulomb kayıtlarını şu an okuyamadı. Geçmişiniz bu telefonda duruyor.</string>
     <string name="charging_error_action">Yeniden dene</string>
     <string name="charging_unplugged">Şarjdan çıkarıldı.</string>
     <string name="charging_power_calibrating">Güç, Coulomb bu telefonun akım okumasını kalibre edince görünür.</string>
@@ -16,16 +16,15 @@
     <string name="charging_phase_full_speed_def">Şarj cihazının tam akımı giriyor. Mühendisler buna sabit akım der.</string>
     <string name="charging_phase_slowing_def">Pil dolmaya yaklaştıkça akım düşer; bu pili korur. Mühendisler buna sabit gerilim der.</string>
     <string name="charging_phase_holding_def">Seviye 10 dakikadır yükselmedi ve neredeyse hiç akım girmiyor; şarj sınırı açıkken olduğu gibi.</string>
-    <string name="charging_phase_full_def">Pil %100 bildiriyor. Orada kalmak için biraz akım alabilir.</string>
-    <string name="charging_charger_known">%1$s · temel değerinin %2$s kadarı</string>
-    <string name="charging_charger_new">Coulomb’un görmediği bir şarj cihazı. Bu şarj bitince kaydedilir.</string>
-    <string name="charging_charger_learning">Coulomb şarj cihazını birkaç dakikalık şarjdan sonra tanır.</string>
-    <string name="charging_charger_high">Hangi şarj cihazı olduğunu söylemek için %50’nin altında yeterli ölçüm yok.</string>
-    <string name="charging_target_at">%2$s’te %1$s</string>
+    <string name="charging_phase_full_def" formatted="false">Pil %100 bildiriyor. Orada kalmak için biraz akım alabilir.</string>
+    <string name="charging_charger_known">%1$s · temel değere göre %2$s</string>
+    <string name="charging_charger_new">%1$s · yeni, bu şarj bitince kaydedilir</string>
+    <string name="charging_charger_learning" formatted="false">Coulomb, %50’nin altında 2 dakikalık şarjdan sonra şarj cihazını tanır.</string>
+    <string name="charging_charger_high" formatted="false">Hangi şarj cihazı olduğunu söylemek için %50’nin altında yeterli ölçüm yok.</string>
+    <string name="charging_target_at">%1$s, tahmini %2$s</string>
     <string name="charging_target_plain">Hedef %1$s</string>
     <string name="charging_to_level">%2$s içinde %1$s</string>
     <string name="charging_full_in">%1$s içinde dolu</string>
-    <string name="charging_times_need">Süreler, bu seviyeyi geçen üç şarjdan sonra görünür.</string>
     <string name="charging_times_holding">Seviye sabit, bu yüzden süre verilemiyor. Yükselince süreler döner.</string>
     <string name="charging_readings">Canlı ölçümler</string>
     <string name="charging_current">Akım</string>
@@ -38,18 +37,28 @@
     <string name="charging_temp_down">%1$s azaldı</string>
     <string name="charging_temp_steady">sabit</string>
     <string name="charging_session">Bu şarj</string>
-    <string name="charging_since">%1$s’ten beri</string>
-    <string name="charging_curve_summary">%3$s’ten beri seviye %1$s’ten %2$s’e.</string>
-    <string name="charging_curve_summary_power">%3$s’ten beri seviye %1$s’ten %2$s’e; güç şu an %4$s.</string>
+    <string name="charging_since">Başlangıç %1$s</string>
+    <string name="charging_curve_summary">Seviye %1$s → %2$s, başlangıç %3$s.</string>
+    <string name="charging_curve_summary_power">Seviye %1$s → %2$s, başlangıç %3$s; güç şu an %4$s.</string>
     <string name="charging_no_curve">Eğri bir sonraki ölçümle başlar.</string>
     <string name="charging_table_curve">Şarj ölçümleri</string>
     <string name="charging_column_time">Saat</string>
     <string name="charging_column_level">Seviye</string>
     <string name="charging_column_power">Güç</string>
     <string name="charging_target">Hedef</string>
-    <string name="charging_target_note">İşareti ve hedefe kalan süreyi belirler. Uyarı bildirimlerle gelir.</string>
+    <string name="charging_target_note">İşareti ve hedefe kalan süreyi belirler. Hedefte uyarı henüz yok.</string>
     <string name="charging_scale_description">Seviye %1$s, hedef %2$s.</string>
-    <string name="charging_scale_description_time">Seviye %1$s, hedef %2$s, %3$s’te ulaşılır.</string>
-    <string name="charging_phase_drawing">pilden çekiyor</string>
+    <string name="charging_scale_description_time">Seviye %1$s, hedef %2$s, tahmini ulaşma %3$s.</string>
+    <string name="charging_phase_drawing">pilden besleniyor</string>
     <string name="charging_phase_drawing_def">Telefon şarj cihazının verdiğinden fazlasını kullanıyor, bu yüzden seviye düşüyor.</string>
+    <string name="charging_calibrating">Kalibre ediliyor</string>
+    <string name="charging_times_need_target">%1$s seviyesine kalan süre, bu seviyenin altında başlayıp %1$s seviyesine ulaşan üç geçmiş şarjdan sonra görünür.</string>
+    <string name="charging_times_need_full" formatted="false">Dolmaya kalan süre, bu seviyenin altında başlayıp %100’e ulaşan üç geçmiş şarjdan sonra görünür.</string>
+    <string name="charging_times_falling">Seviye bu şarjın en yüksek değerinin altındayken süre verilmez.</string>
+    <string name="charging_table_scale">Seviye ve hedef</string>
+    <string name="charging_column_reading">Ölçüm</string>
+    <string name="charging_column_value">Değer</string>
+    <string name="charging_row_level">Seviye</string>
+    <string name="charging_row_reaches">Ulaşma (%1$s)</string>
+    <string name="charging_row_full">Dolma</string>
 </resources>

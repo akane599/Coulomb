@@ -41,25 +41,45 @@ internal val DESK =
         lastSeenWallMs = START_MS,
     )
 
-/** A sample every five seconds: a short ramp, then full speed with a little ripple; level and temperature climb. */
-private fun labCurve(
-    to: Int = LAB_LEVEL,
-    calibrated: Boolean = true,
+/**
+ * A sample every five seconds from 18:31 to 18:50, the level going [from] to [to] and the power as
+ * [watts] gives it at each share of the way (null before calibration), warming as it goes.
+ */
+private fun curve(
+    from: Int,
+    to: Int,
+    watts: (share: Double, i: Int) -> Double?,
 ): List<ChargeCurvePoint> {
     val span = NOW_MS - START_MS
     return (0..span / STEP_MS).map { i ->
         val t = i * STEP_MS
         val share = t.toDouble() / span
-        val ramp = (t.toDouble() / RAMP_MS).coerceAtMost(1.0)
-        val watts = FULL_SPEED_W * (0.3 + 0.7 * ramp) + 0.35 * sin(i / 7.0)
         ChargeCurvePoint(
             wallMs = START_MS + t,
-            levelPct = (START_LEVEL + (to - START_LEVEL) * share).toInt(),
-            watts = if (calibrated) (watts * 10).roundToInt() / 10.0 else null,
+            levelPct = (from + (to - from) * share).roundToInt(),
+            watts = watts(share, i.toInt())?.let { (it * 10).roundToInt() / 10.0 },
             tempDeciC = (START_TEMP + (LAB_TEMP - START_TEMP) * share).roundToInt(),
         )
     }
 }
+
+/** A short ramp, then full speed with a little ripple, ending at [last]. */
+private fun fullSpeed(
+    speed: Double,
+    last: Double,
+): (Double, Int) -> Double =
+    { share, i ->
+        val ramp = (share * (NOW_MS - START_MS) / RAMP_MS).coerceAtMost(1.0)
+        if (share >= 1.0) last else speed * (0.3 + 0.7 * ramp) + 0.35 * sin(i / 7.0)
+    }
+
+/** From [high] down to [low] along the charge, as the current tapers. */
+private fun tapering(
+    high: Double,
+    low: Double,
+): (Double, Int) -> Double = { share, _ -> high + (low - high) * share }
+
+private fun labCurve(): List<ChargeCurvePoint> = curve(START_LEVEL, LAB_LEVEL, fullSpeed(FULL_SPEED_W, 18.4))
 
 internal fun labNow(): ChargingNow =
     ChargingNow(
@@ -73,6 +93,7 @@ internal fun labNow(): ChargingNow =
         phase = ChargePhase.FULL_SPEED,
         charger = LiveCharger.Known(DESK, shareOfBaseline = 0.96),
         targetPct = 80,
+        belowHighest = false,
         toTarget = ChargeTime(16.3, 19.6, ChargeTimeBasis.SAME_CHARGER, charges = 7),
         toFull = ChargeTime(44.2, 52.6, ChargeTimeBasis.SAME_CHARGER, charges = 7),
         startWallMs = START_MS,
@@ -90,7 +111,7 @@ internal fun uncalibratedNow(): ChargingNow =
         charger = LiveCharger.Learning(BatteryManager.BATTERY_PLUGGED_AC),
         toTarget = null,
         toFull = null,
-        curve = labCurve(calibrated = false),
+        curve = curve(START_LEVEL, LAB_LEVEL) { _, _ -> null },
     )
 
 /** A first charge on a new charger: no past charges, so no times yet. */
@@ -102,6 +123,7 @@ internal fun newChargerNow(): ChargingNow =
         currentMa = 2_390.0,
         toTarget = null,
         toFull = null,
+        curve = curve(START_LEVEL, LAB_LEVEL, fullSpeed(9.8, 9.6)),
     )
 
 /** Two minutes in: still learning the charger, one sample of curve too few for a line. */
@@ -128,7 +150,7 @@ internal fun startedHighNow(): ChargingNow =
         toTarget = ChargeTime(13.6, 17.2, ChargeTimeBasis.SAME_CHARGER, charges = 5),
         toFull = ChargeTime(38.0, 46.4, ChargeTimeBasis.SAME_CHARGER, charges = 5),
         startLevelPct = 74,
-        curve = labCurve().map { it.copy(levelPct = 74 + (it.levelPct - START_LEVEL) * 7 / (LAB_LEVEL - START_LEVEL)) },
+        curve = curve(74, 81, tapering(12.4, 9.1)),
     )
 
 /** Held at the 80% target by the phone's charge limit. */
@@ -141,17 +163,25 @@ internal fun holdingNow(): ChargingNow =
         phase = ChargePhase.HOLDING,
         toTarget = null,
         toFull = null,
+        startLevelPct = 66,
+        // Up to the limit by 18:39, then held there on a trickle.
+        curve =
+            curve(66, 80) { share, _ -> if (share < 0.45) 14.0 - 10 * share else 0.3 }
+                .map { it.copy(levelPct = minOf(80, 66 + ((it.wallMs - START_MS) * 14 / (8 * MINUTE)).toInt())) },
     )
 
 /** A phone drawing more than a weak charger gives: the battery is going down while plugged in. */
 internal fun drawingNow(): ChargingNow =
     labNow().copy(
-        watts = 0.0,
+        watts = -1.3,
         currentMa = -320.0,
         phase = ChargePhase.DRAWING,
         charger = LiveCharger.New(BatteryManager.BATTERY_PLUGGED_USB, fullSpeedW = 2.4),
+        belowHighest = true,
         toTarget = null,
         toFull = null,
+        startLevelPct = 55,
+        curve = curve(55, LAB_LEVEL, tapering(2.4, -1.3)),
     )
 
 internal fun fullNow(): ChargingNow =
@@ -164,6 +194,8 @@ internal fun fullNow(): ChargingNow =
         targetPct = 100,
         toTarget = null,
         toFull = null,
+        startLevelPct = 86,
+        curve = curve(86, 100, tapering(8.6, 0.2)),
     )
 
 /** SPEC 11.12 harden: a long charger name, a 100% target, past charges on any charger, a fall in temperature. */

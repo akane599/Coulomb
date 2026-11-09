@@ -95,6 +95,31 @@ Noted, not changed:
 - `LiveChargeCache` assumes samples arrive in time order. The collector's single writer stores
   them that way.
 
+## Gate amendments (2026-11-09)
+
+After the SPEC 11.12 critique and audit (`docs/design-gates/2026-11-09-*-charging.md`):
+
+1. **Signed power.** While the phone draws on the battery, the hero shows the net power with a minus
+   sign, in ink rather than copper. Copper means charging, and a clamped "0.0 W" hid a real figure.
+   The curve's power panel still starts at zero, so a drawing stretch lies on its axis.
+2. **Estimated marks** on the phase and on a matched charger's share of its baseline.
+3. **Why a time is missing**, case by case:
+   - the level is below this charge's highest (`ChargingNow.belowHighest`);
+   - too few past charges that started below this level and reached the target;
+   - the same for full.
+4. **The projection on the curve.** While there is a time to the target, the session chart runs on
+   to its latest end. It draws the target as a marker, and the 14% copper cone and bracket from the
+   present reading to the target window, as on Now and in the lab (DESIGN.md's signature).
+5. **"Calibrating"** in place of power and current until calibration (SPEC 6.1).
+6. **The level scale's "View as table"** action opens a table of the level and when the target and
+   full are reached (SPEC 11.8: hero scales too). Both tables are snapshots taken when they open.
+7. **A target outside 80/85/90/100** joins the group, so one choice is always selected.
+8. **A cold flow.** `ChargingRepository.now` has its own caches per collector. A failed read reaches
+   the screen's error state, and "Try again" reads afresh. The model starts at Loading and returns
+   to it once stopped, so a later charge never opens on an earlier one's figures. Each sample costs
+   two short queries: the open session, and the samples since the last.
+9. **The power figure does not roll.** At 1 Hz a rolling figure would never rest (Still Screen Rule).
+
 ## Consequences
 
 - One query per second while Charging is visible and the phone is plugged in, which SPEC 7.3
