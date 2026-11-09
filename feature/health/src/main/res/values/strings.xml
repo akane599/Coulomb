@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Health (SPEC 10.8, ADR-0044). -->
+<resources>
+    <!-- The estimate (SPEC 10.8 item 1). -->
+    <string name="health_plus_minus">± %1$s</string>
+    <string name="health_of_design">%1$s of the %2$s design capacity</string>
+    <string name="health_design_unknown">Health % needs the battery’s design capacity, which this phone doesn’t report.</string>
+    <string name="health_scale_design">Design</string>
+    <string name="health_scale_summary">Capacity %1$s, likely between %2$s and %3$s.</string>
+    <string name="health_scale_summary_design">Capacity %1$s, likely between %2$s and %3$s; %4$s of the %5$s design capacity.</string>
+    <plurals name="health_estimated_from">
+        <item quantity="one">Estimated from %1$s charge or discharge window.</item>
+        <item quantity="other">Estimated from %1$s charge and discharge windows.</item>
+    </plurals>
+    <string name="health_design_from_power_profile">Design capacity from Android’s power profile.</string>
+    <string name="health_design_from_sysfs">Design capacity from the battery driver.</string>
+    <string name="health_design_from_user">Design capacity as you entered it.</string>
+    <string name="health_design_set">Enter design capacity</string>
+    <string name="health_design_change">Change design capacity</string>
+    <string name="health_change_lower_within">About %1$s lower than on %2$s, within the first estimate’s ±%3$s range.</string>
+    <string name="health_change_higher_within">About %1$s higher than on %2$s, within the first estimate’s ±%3$s range.</string>
+    <string name="health_change_lower">About %1$s lower than on %2$s, more than the first estimate’s ±%3$s range.</string>
+    <string name="health_change_higher">About %1$s higher than on %2$s, more than the first estimate’s ±%3$s range.</string>
+    <string name="health_change_same">About the same as on %1$s.</string>
+    <string name="health_no_estimate_title">No capacity estimate yet</string>
+    <string name="health_no_estimate">First capacity estimate after a charge from %1$s or less to %2$s or more.</string>
+    <string name="health_design_known">The design capacity is %1$s.</string>
+
+    <!-- The cross-check (SPEC 6.3). -->
+    <string name="health_cross_check">Cross-check</string>
+    <string name="health_column_source">Source</string>
+    <string name="health_column_health">Health</string>
+    <string name="health_source_coulomb">Coulomb</string>
+    <plurals name="health_source_coulomb_how">
+        <item quantity="one">Charge counter over %1$s window</item>
+        <item quantity="other">Charge counter over %1$s windows</item>
+    </plurals>
+    <string name="health_source_android">Android</string>
+    <string name="health_source_android_how">Battery state of health</string>
+    <string name="health_source_oem">Manufacturer</string>
+    <string name="health_agree">%1$s values from different methods; they agree within %2$s points.</string>
+    <string name="health_differ">%1$s values from different methods differ by up to %2$s points. Coulomb counts the charge going in and out; Android and the manufacturer report the fuel gauge’s own model.</string>
+    <string name="health_only_coulomb">Android and the manufacturer report no health value on this phone.</string>
+    <string name="health_no_values">No health values yet. Android’s needs the battery stats permission; Coulomb’s needs a long charge or discharge.</string>
+    <string name="health_coulomb_needs_design">Coulomb’s health % needs the design capacity.</string>
+
+    <!-- Cycles and age (SPEC 10.8 items 2 and 3). -->
+    <string name="health_cycles_age">Cycles and age</string>
+    <string name="health_cycle_count">Cycle count</string>
+    <string name="health_cycle_count_note">reported by Android</string>
+    <string name="health_counted">Counted by Coulomb</string>
+    <string name="health_counted_since">since %1$s</string>
+    <string name="health_counted_since_android">since %1$s; Android counted %2$s</string>
+    <string name="health_first_used">First used</string>
+    <string name="health_made">Made</string>
+    <string name="health_made_in">made in %1$s</string>
+    <string name="health_by_manufacturer">reported by the manufacturer</string>
+    <string name="health_by_battery">reported by the battery</string>
+    <string name="health_no_cycles">Android reports no cycle count on this phone, and Coulomb counts from the first charge it sees.</string>
+
+    <!-- Capacity over time (SPEC 10.8 item 4). -->
+    <string name="health_over_time">Capacity over time</string>
+    <string name="health_design_line">Design capacity</string>
+    <string name="health_trend_caption">Each cross is one qualifying window: a charge or discharge long and steady enough to measure capacity. The line is the estimate and the band its 95% interval.</string>
+    <string name="health_trend_summary">Capacity over time: %1$s estimates from %2$s to %3$s, latest %4$s.</string>
+    <string name="health_trend_empty">The chart starts with the first estimate.</string>
+    <string name="health_table_trend">Capacity by day</string>
+    <string name="health_column_day">Day</string>
+    <string name="health_column_estimate">Estimate</string>
+    <string name="health_column_interval">95% interval</string>
+    <string name="health_table_scale">Capacity estimate</string>
+    <string name="health_column_figure">Figure</string>
+    <string name="health_column_value">Value</string>
+    <string name="health_row_estimate">Estimate</string>
+    <string name="health_row_interval">95% interval</string>
+    <string name="health_row_design">Design capacity</string>
+    <string name="health_row_health">Health</string>
+
+    <!-- Charging habits (SPEC 10.8 item 5). -->
+    <string name="health_habits">Charging habits</string>
+    <string name="health_habits_window">Last 30 days</string>
+    <string name="health_depth">Depth of discharge</string>
+    <string name="health_depth_note">average per charge</string>
+    <string name="health_high">At %1$s or more</string>
+    <string name="health_high_note">a day</string>
+    <string name="health_high_unknown">needs a day of records</string>
+    <string name="health_charge_temp">While charging</string>
+    <string name="health_charge_temp_note">average</string>
+    <string name="health_stress">Wear stress by session</string>
+    <string name="health_stress_meaning">How hard a charge was on the battery, from its time at high charge, its temperature and its charging speed (SPEC 6.4).</string>
+    <string name="health_stress_low">Low</string>
+    <string name="health_stress_moderate">Moderate</string>
+    <string name="health_stress_high">High</string>
+    <plurals name="health_sessions_count">
+        <item quantity="one">%1$s session</item>
+        <item quantity="other">%1$s sessions</item>
+    </plurals>
+    <string name="health_no_habits">No charges in the last 30 days.</string>
+
+    <!-- Charge sessions (SPEC 10.8 item 6). -->
+    <string name="health_sessions">Charge sessions</string>
+    <string name="health_see_all">See all</string>
+    <string name="health_today_at">Today, %1$s</string>
+    <string name="health_yesterday_at">Yesterday, %1$s</string>
+    <string name="health_day_at">%1$s, %2$s</string>
+    <string name="health_session_line">%1$s to %2$s in %3$s</string>
+    <plurals name="health_cycles">
+        <item quantity="one">%1$s cycles</item>
+        <item quantity="other">%1$s cycles</item>
+    </plurals>
+    <string name="health_stress_low_inline">low stress</string>
+    <string name="health_stress_moderate_inline">moderate stress</string>
+    <string name="health_stress_high_inline">high stress</string>
+    <string name="health_no_sessions">No charge sessions yet. Each charge shows here once you unplug.</string>
+
+    <!-- Chargers (SPEC 10.8 item 7). -->
+    <string name="health_chargers">Chargers</string>
+    <string name="health_unnamed_ac">Unnamed wall charger</string>
+    <string name="health_unnamed_usb">Unnamed USB charger</string>
+    <string name="health_unnamed_wireless">Unnamed wireless charger</string>
+    <string name="health_unnamed_dock">Unnamed dock</string>
+    <string name="health_unnamed">Unnamed charger</string>
+    <string name="health_charger_line">Baseline · last seen %1$s</string>
+    <string name="health_today">today</string>
+    <string name="health_yesterday">yesterday</string>
+    <plurals name="health_days_ago">
+        <item quantity="one">%1$s day ago</item>
+        <item quantity="other">%1$s days ago</item>
+    </plurals>
+    <string name="health_rename">Rename</string>
+    <string name="health_rename_named">Rename %1$s</string>
+    <string name="health_rename_title">Rename charger</string>
+    <string name="health_rename_label">Name</string>
+    <string name="health_rename_hint">A blank name goes back to the plug type.</string>
+    <string name="health_save">Save</string>
+    <string name="health_cancel">Cancel</string>
+    <string name="health_no_chargers">Chargers appear after a charge with a calibrated current. Coulomb tells them apart by plug type and power.</string>
+
+    <!-- The design capacity dialog (SPEC 6.3, ADR-0044 §5). -->
+    <string name="health_design_title">Design capacity</string>
+    <string name="health_design_label">Capacity in mAh</string>
+    <string name="health_design_hint">The capacity printed on the battery or in the phone’s specifications, between 500 and 20,000 mAh.</string>
+    <string name="health_design_invalid">Enter a number between 500 and 20,000.</string>
+
+    <!-- States (SPEC 10.11). -->
+    <string name="health_loading">Loading</string>
+    <string name="health_error_title">Coulomb couldn’t read its battery records</string>
+    <string name="health_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
+    <string name="health_error_action">Try again</string>
+
+    <!-- A charge session (SPEC 10.8 item 6). -->
+    <string name="health_session_title">Charge session</string>
+    <string name="health_all_sessions_title">Charge sessions</string>
+    <string name="health_curve">Level and power</string>
+    <string name="health_curve_summary">Charged from %1$s to %2$s between %3$s and %4$s.</string>
+    <string name="health_curve_summary_power">Charged from %1$s to %2$s between %3$s and %4$s, at up to %5$s.</string>
+    <string name="health_taper_rule">Slowing down</string>
+    <string name="health_full_speed_rule">Full speed</string>
+    <string name="health_table_curve">Charge readings</string>
+    <string name="health_column_time">Time</string>
+    <string name="health_column_level">Level</string>
+    <string name="health_column_power">Power</string>
+    <string name="health_peak">Peak</string>
+    <string name="health_full_speed">Full speed</string>
+    <string name="health_full_speed_note">before slowing down</string>
+    <string name="health_slowed_from">Slowed from</string>
+    <string name="health_slowed_never">didn’t slow down</string>
+    <string name="health_heat">Heat and high charge</string>
+    <string name="health_temperature">Temperature</string>
+    <string name="health_temperature_note">average; highest %1$s</string>
+    <string name="health_time_high">At %1$s or more</string>
+    <string name="health_time_hot">Above 38 °C</string>
+    <string name="health_wear">Wear</string>
+    <string name="health_charger">Charger</string>
+    <string name="health_no_power">Power shows once Coulomb has calibrated this phone’s current reading.</string>
+    <string name="health_no_curve">The readings of this charge are no longer kept.</string>
+    <string name="health_session_gone">This charge session is no longer in Coulomb’s records.</string>
+</resources>

@@ -67,6 +67,10 @@ import io.github.akane599.coulomb.feature.appdetail.appDetailTitle
 import io.github.akane599.coulomb.feature.appdetail.appDetailViewModel
 import io.github.akane599.coulomb.feature.drain.CompareScreen
 import io.github.akane599.coulomb.feature.drain.DrainScreen
+import io.github.akane599.coulomb.feature.health.ChargeSessionScreen
+import io.github.akane599.coulomb.feature.health.ChargeSessionsScreen
+import io.github.akane599.coulomb.feature.health.HealthScreen
+import io.github.akane599.coulomb.feature.health.chargeSessionViewModel
 import io.github.akane599.coulomb.feature.now.NowScreen
 import io.github.akane599.coulomb.navigation.AppNavigator
 import io.github.akane599.coulomb.navigation.Destination
@@ -75,6 +79,7 @@ import io.github.akane599.coulomb.navigation.PaneMin
 import io.github.akane599.coulomb.navigation.Route
 import io.github.akane599.coulomb.navigation.rememberAppNavigator
 import io.github.akane599.coulomb.feature.drain.R as DrainR
+import io.github.akane599.coulomb.feature.health.R as HealthR
 
 /**
  * The shell of SPEC 10.1: the bottom bar on compact widths and the rail from medium up, laid out by
@@ -183,6 +188,7 @@ private fun Navigation(
 
 /** The built destination screens. Tests swap in stand-ins, so the shell renders without Hilt. */
 @Immutable
+@Suppress("LongParameterList") // One slot per built screen.
 class AppScreens(
     val now: @Composable (AppNavigator) -> Unit,
     val drain: @Composable (AppNavigator) -> Unit,
@@ -190,6 +196,9 @@ class AppScreens(
     /** App detail for a UID; its title slot reads the same entry's model. */
     val appDetail: @Composable (AppNavigator, uid: Int) -> Unit,
     val appDetailTitle: @Composable (uid: Int) -> String,
+    val health: @Composable (AppNavigator) -> Unit,
+    val chargeSessions: @Composable (AppNavigator) -> Unit,
+    val chargeSession: @Composable (AppNavigator, id: Long) -> Unit,
 ) {
     companion object {
         val Default: AppScreens =
@@ -213,6 +222,21 @@ class AppScreens(
                 // One model per entry: both calls get the entry's instance for the UID.
                 appDetail = { _, uid -> AppDetailScreen(appDetailViewModel(uid)) },
                 appDetailTitle = { uid -> appDetailTitle(appDetailViewModel(uid)) },
+                health = { navigator ->
+                    HealthScreen(
+                        onOpenSession = { navigator.openDetail(Route.ChargeSession(it)) },
+                        onSeeAll = { navigator.open(Route.ChargeSessions) },
+                        // Shown only while the session is beside the list.
+                        selectedSession = navigator.openSession(Destination.Health),
+                    )
+                },
+                chargeSessions = { navigator ->
+                    ChargeSessionsScreen(
+                        onOpenSession = { navigator.openDetail(Route.ChargeSession(it)) },
+                        selected = navigator.openSession(Destination.Health),
+                    )
+                },
+                chargeSession = { _, id -> ChargeSessionScreen(chargeSessionViewModel(id)) },
             )
     }
 }
@@ -233,7 +257,17 @@ private fun appEntries(
             InnerScreen(screens.appDetailTitle(key.uid), navigator::back, pane = true) { screens.appDetail(navigator, key.uid) }
         }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { NotBuilt() } }
-        entry<Route.Health> { DestinationScreen(Destination.Health, navigator::open) { NotBuilt() } }
+        entry<Route.Health>(metadata = ListDetailStrategy.list) {
+            DestinationScreen(Destination.Health, navigator::open) { screens.health(navigator) }
+        }
+        entry<Route.ChargeSessions>(metadata = ListDetailStrategy.list) {
+            InnerScreen(stringResource(HealthR.string.health_all_sessions_title), navigator::back) { screens.chargeSessions(navigator) }
+        }
+        entry<Route.ChargeSession>(metadata = ListDetailStrategy.detail) { key ->
+            InnerScreen(stringResource(HealthR.string.health_session_title), navigator::back, pane = true) {
+                screens.chargeSession(navigator, key.id)
+            }
+        }
         entry<Route.ActionCenter> { InnerScreen(stringResource(R.string.screen_action_center), navigator::back) { NotBuilt() } }
         entry<Route.Privileges> { InnerScreen(stringResource(R.string.screen_privileges), navigator::back) { NotBuilt() } }
         entry<Route.Settings> { InnerScreen(stringResource(R.string.screen_settings), navigator::back) { NotBuilt() } }

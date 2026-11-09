@@ -38,6 +38,16 @@ sealed interface Route : NavKey {
     @Serializable
     data object Health : Route
 
+    /** Every charge session, below Health (SPEC 10.8 item 6). */
+    @Serializable
+    data object ChargeSessions : Route
+
+    /** One charge session with its curve, below Health or the full list. */
+    @Serializable
+    data class ChargeSession(
+        val id: Long,
+    ) : Route
+
     @Serializable
     data object ActionCenter : Route
 

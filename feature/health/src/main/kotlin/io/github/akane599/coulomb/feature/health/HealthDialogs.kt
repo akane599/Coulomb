@@ -1,0 +1,147 @@
+// SPDX-FileCopyrightText: The Coulomb contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package io.github.akane599.coulomb.feature.health
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
+import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.model.DesignCapacity
+
+private val DialogShape = RoundedCornerShape(28.dp)
+private val FieldShape = RoundedCornerShape(12.dp)
+
+/** The longest name a charger keeps (ADR-0044 §6). */
+private const val MAX_NAME = 40
+
+/** Renames a charger; an empty name makes it unnamed again (ADR-0044 §6). */
+@Composable
+internal fun RenameDialog(
+    current: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(current, TextRange(current.length))) }
+    val save = { onSave(text.text.trim()) }
+    TextDialog(
+        title = stringResource(R.string.health_rename_title),
+        onConfirm = save,
+        confirmEnabled = true,
+        onDismiss = onDismiss,
+    ) { focus ->
+        OutlinedTextField(
+            value = text,
+            onValueChange = { if (it.text.length <= MAX_NAME) text = it },
+            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            label = { Text(stringResource(R.string.health_rename_label)) },
+            supportingText = { Text(stringResource(R.string.health_rename_hint)) },
+            singleLine = true,
+            shape = FieldShape,
+            colors = fieldColors(),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { save() }),
+        )
+    }
+}
+
+/** The owner's design capacity, in mAh within [DesignCapacity.PLAUSIBLE_MAH] (SPEC 6.3, ADR-0044 §5). */
+@Composable
+internal fun DesignDialog(
+    current: Int?,
+    onSave: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val start = current?.toString().orEmpty()
+    var text by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(start, TextRange(start.length))) }
+    val value = text.text.toIntOrNull()
+    val valid = value != null && value.toDouble() in DesignCapacity.PLAUSIBLE_MAH
+    // An error shows once the entry has the digits of a capacity, not while the first ones are typed.
+    val wrong = !valid && text.text.length >= MIN_DIGITS
+    val save = { if (valid) onSave(value) }
+    TextDialog(
+        title = stringResource(R.string.health_design_title),
+        onConfirm = save,
+        confirmEnabled = valid,
+        onDismiss = onDismiss,
+    ) { focus ->
+        OutlinedTextField(
+            value = text,
+            onValueChange = { entry -> if (entry.text.length <= MAX_DIGITS && entry.text.all { it in '0'..'9' }) text = entry },
+            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            label = { Text(stringResource(R.string.health_design_label)) },
+            supportingText = {
+                Text(stringResource(if (wrong) R.string.health_design_invalid else R.string.health_design_hint))
+            },
+            isError = wrong,
+            singleLine = true,
+            shape = FieldShape,
+            colors = fieldColors(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { save() }),
+        )
+    }
+}
+
+private const val MIN_DIGITS = 3
+private const val MAX_DIGITS = 5
+
+/** A dialog with one text field, which takes focus, and Cancel and Save. */
+@Composable
+private fun TextDialog(
+    title: String,
+    onConfirm: () -> Unit,
+    confirmEnabled: Boolean,
+    onDismiss: () -> Unit,
+    field: @Composable (FocusRequester) -> Unit,
+) {
+    val colors = CoulombTheme.colors
+    val focus = remember { FocusRequester() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { CoulombTextButton(stringResource(R.string.health_save), onConfirm, enabled = confirmEnabled) },
+        dismissButton = { CoulombTextButton(stringResource(R.string.health_cancel), onDismiss) },
+        title = { Text(title, color = colors.textPrimary, style = CoulombTheme.typography.headline) },
+        text = {
+            Column(Modifier.padding(top = CoulombSpacing.Space4)) { field(focus) }
+            // In the dialog's own composition, so the field is attached when it asks for focus.
+            LaunchedEffect(focus) { focus.requestFocus() }
+        },
+        shape = DialogShape,
+        containerColor = colors.surface,
+    )
+}
+
+@Composable
+private fun fieldColors() =
+    OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = CoulombTheme.colors.textPrimary,
+        focusedLabelColor = CoulombTheme.colors.textPrimary,
+        cursorColor = CoulombTheme.colors.textPrimary,
+    )

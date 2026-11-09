@@ -136,6 +136,9 @@ private val StandIns =
         compare = {},
         appDetail = { _, uid -> Text("Detail $uid") },
         appDetailTitle = { uid -> if (uid == 10_456) "Very Long Navigation And Offline Maps Application Name" else "Halcyon" },
+        health = {},
+        chargeSessions = {},
+        chargeSession = { _, _ -> },
     )
 
 private const val COMPACT_SIZE = "w412dp-h915dp"

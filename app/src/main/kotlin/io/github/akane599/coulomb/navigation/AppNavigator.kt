@@ -53,12 +53,15 @@ class AppNavigator internal constructor(
      * widths (SPEC 10.10), choosing another row swaps the detail instead of stacking it.
      */
     fun openDetail(route: Route) {
-        if (backStack.lastOrNull() is Route.AppDetail) backStack.removeAt(backStack.lastIndex)
+        if (backStack.lastOrNull().isDetail()) backStack.removeAt(backStack.lastIndex)
         backStack.add(route)
     }
 
     /** The UID of the App detail on top of [destination]'s stack, if one is. */
     fun openApp(destination: Destination): Int? = (stacks.getValue(destination).lastOrNull() as? Route.AppDetail)?.uid
+
+    /** The charge session on top of [destination]'s stack, if one is. */
+    fun openSession(destination: Destination): Long? = (stacks.getValue(destination).lastOrNull() as? Route.ChargeSession)?.id
 
     fun back() {
         when {
@@ -66,6 +69,9 @@ class AppNavigator internal constructor(
             current != Destination.Now -> current = Destination.Now
         }
     }
+
+    /** A screen that shows beside its list on expanded widths. */
+    private fun NavKey?.isDetail(): Boolean = this is Route.AppDetail || this is Route.ChargeSession
 
     private fun popToFirst(stack: NavBackStack<NavKey>) {
         while (stack.size > 1) stack.removeAt(stack.lastIndex)
