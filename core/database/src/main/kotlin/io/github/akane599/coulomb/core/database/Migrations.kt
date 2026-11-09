@@ -5,6 +5,8 @@ package io.github.akane599.coulomb.core.database
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import io.github.akane599.coulomb.core.database.entity.RecordCodes
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 
 /**
  * Schema migrations (SPEC 8). Each is tested against the exported schemas in `MigrationTest`. The
@@ -64,7 +66,25 @@ internal object Migrations {
             }
         }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    /**
+     * Version 5 (ADR-0040) narrows the records kept for good without losing a value, for the year's
+     * size budget:
+     * - the kinds of `session`, `snapshot` and `window_result` become [RecordCodes] codes;
+     * - `snapshot.sourceStatusJson` becomes `sourceStatus`, a [SourceStatusCodes] code.
+     *
+     * The three tables are rebuilt with their ids and `AUTOINCREMENT` counters, so every reference
+     * to them stays valid. Room runs a migration with foreign keys off, so dropping a parent table
+     * does not touch its children.
+     */
+    val MIGRATION_4_5: Migration =
+        object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                snapshotV5(db)
+                (sessionV5() + windowResultV5()).forEach(db::execSQL)
+            }
+        }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
     /** The 20 S4 columns of version 4 (`PowerColumns`), in their exported order. */
     private const val POWER_COLUMNS =
@@ -202,6 +222,114 @@ internal object Migrations {
                 "$POWER_COLUMNS, PRIMARY KEY(`windowId`, `uid`), FOREIGN KEY(`windowId`) REFERENCES `window_result`(`id`) " +
                 "ON UPDATE NO ACTION ON DELETE CASCADE )",
         )
+
+    /** `CASE column WHEN 'NAME' THEN code ...`: a name outside [entries] gives null, which a NOT NULL column refuses. */
+    private fun <T : Enum<T>> codeOf(
+        column: String,
+        entries: List<T>,
+    ) = entries.withIndex().joinToString(" ", "CASE `$column` ", " END") { (code, entry) -> "WHEN '${entry.name}' THEN $code" }
+
+    private fun snapshotV5(db: SupportSQLiteDatabase) {
+        listOf(
+            "CREATE TABLE IF NOT EXISTS `_new_snapshot` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`bootSeq` INTEGER NOT NULL, `elapsedNs` INTEGER NOT NULL, `wallMs` INTEGER NOT NULL, " +
+                "`trigger` INTEGER NOT NULL, `kind` INTEGER NOT NULL, `levelPct` INTEGER, `chargeUah` INTEGER, " +
+                "`currentRaw` INTEGER, `voltageMv` INTEGER, `tempDeciC` INTEGER, `plugType` INTEGER, `status` INTEGER, " +
+                "`statsStartWall` INTEGER, `statsRealtimeMs` INTEGER, `historyCursorMs` INTEGER, `historyEventId` INTEGER, " +
+                "`sourceStatus` INTEGER NOT NULL, `blobPath` TEXT, `partial` INTEGER NOT NULL, " +
+                "`countersPruned` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `uptimeMs` INTEGER, `privilegeMode` INTEGER)",
+            "INSERT INTO `_new_snapshot` (`id`, `bootSeq`, `elapsedNs`, `wallMs`, `trigger`, `kind`, `levelPct`, " +
+                "`chargeUah`, `currentRaw`, `voltageMv`, `tempDeciC`, `plugType`, `status`, `statsStartWall`, " +
+                "`statsRealtimeMs`, `historyCursorMs`, `historyEventId`, `sourceStatus`, `blobPath`, `partial`, " +
+                "`countersPruned`, `durationMs`, `uptimeMs`, `privilegeMode`) " +
+                "SELECT `id`, `bootSeq`, `elapsedNs`, `wallMs`, ${codeOf("trigger", RecordCodes.TRIGGERS)}, " +
+                "${codeOf("kind", RecordCodes.SNAPSHOT_KINDS)}, `levelPct`, `chargeUah`, `currentRaw`, `voltageMv`, " +
+                "`tempDeciC`, `plugType`, `status`, `statsStartWall`, `statsRealtimeMs`, `historyCursorMs`, " +
+                "`historyEventId`, 0, `blobPath`, `partial`, `countersPruned`, `durationMs`, `uptimeMs`, " +
+                "`privilegeMode` FROM `snapshot`",
+        ).forEach(db::execSQL)
+        // The JSON is parsed here rather than in SQL, by the same code the tests use.
+        db.compileStatement("UPDATE `_new_snapshot` SET `sourceStatus` = ? WHERE `id` = ?").use { update ->
+            db.query("SELECT `id`, `sourceStatusJson` FROM `snapshot` WHERE `sourceStatusJson` <> '{}'").use { rows ->
+                while (rows.moveToNext()) {
+                    update.bindLong(1, SourceStatusCodes.fromJson(rows.getString(1)))
+                    update.bindLong(2, rows.getLong(0))
+                    update.executeUpdateDelete()
+                }
+            }
+        }
+        (
+            carryCounter("snapshot") +
+                listOf(
+                    "DROP TABLE `snapshot`",
+                    "ALTER TABLE `_new_snapshot` RENAME TO `snapshot`",
+                    "CREATE INDEX IF NOT EXISTS `index_snapshot_bootSeq_elapsedNs` ON `snapshot` (`bootSeq`, `elapsedNs`)",
+                    "CREATE INDEX IF NOT EXISTS `index_snapshot_wallMs` ON `snapshot` (`wallMs`)",
+                )
+        ).forEach(db::execSQL)
+    }
+
+    private fun sessionV5() =
+        listOf(
+            "CREATE TABLE IF NOT EXISTS `_new_session` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`kind` INTEGER NOT NULL, `bootSeq` INTEGER NOT NULL, `startElapsedNs` INTEGER NOT NULL, " +
+                "`endElapsedNs` INTEGER, `startWall` INTEGER NOT NULL, `endWall` INTEGER, `startSnapshotId` INTEGER, " +
+                "`endSnapshotId` INTEGER, `startLevel` INTEGER NOT NULL, `endLevel` INTEGER, `startChargeUah` INTEGER, " +
+                "`endChargeUah` INTEGER, `chargeSource` INTEGER, `avgCurrentMa` REAL, `peakCurrentMa` REAL, " +
+                "`minTempDeciC` INTEGER, `meanTempDeciC` INTEGER, `maxTempDeciC` INTEGER NOT NULL, `awakeRatio` REAL, " +
+                "`deepIdleReached` INTEGER, `deepIdleReachedMs` INTEGER, `minutesAtOrAbove80` INTEGER, " +
+                "`minutesAt100` INTEGER, `stressIndex` REAL, `cycleEquivalents` REAL, `closeReason` INTEGER, " +
+                "`quality` REAL NOT NULL, FOREIGN KEY(`startSnapshotId`) REFERENCES `snapshot`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`endSnapshotId`) REFERENCES `snapshot`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE RESTRICT )",
+            "INSERT INTO `_new_session` (`id`, `kind`, `bootSeq`, `startElapsedNs`, `endElapsedNs`, `startWall`, " +
+                "`endWall`, `startSnapshotId`, `endSnapshotId`, `startLevel`, `endLevel`, `startChargeUah`, " +
+                "`endChargeUah`, `chargeSource`, `avgCurrentMa`, `peakCurrentMa`, `minTempDeciC`, `meanTempDeciC`, " +
+                "`maxTempDeciC`, `awakeRatio`, `deepIdleReached`, `deepIdleReachedMs`, `minutesAtOrAbove80`, " +
+                "`minutesAt100`, `stressIndex`, `cycleEquivalents`, `closeReason`, `quality`) " +
+                "SELECT `id`, ${codeOf("kind", RecordCodes.SESSION_KINDS)}, `bootSeq`, `startElapsedNs`, " +
+                "`endElapsedNs`, `startWall`, `endWall`, `startSnapshotId`, `endSnapshotId`, `startLevel`, `endLevel`, " +
+                "`startChargeUah`, `endChargeUah`, ${codeOf("chargeSource", RecordCodes.CHARGE_SOURCES)}, " +
+                "`avgCurrentMa`, `peakCurrentMa`, `minTempDeciC`, `meanTempDeciC`, `maxTempDeciC`, `awakeRatio`, " +
+                "`deepIdleReached`, `deepIdleReachedMs`, `minutesAtOrAbove80`, `minutesAt100`, `stressIndex`, " +
+                "`cycleEquivalents`, ${codeOf("closeReason", RecordCodes.CLOSE_REASONS)}, `quality` FROM `session`",
+        ) + carryCounter("session") +
+            listOf(
+                "DROP TABLE `session`",
+                "ALTER TABLE `_new_session` RENAME TO `session`",
+                "CREATE INDEX IF NOT EXISTS `index_session_kind_bootSeq_startElapsedNs` ON `session` " +
+                    "(`kind`, `bootSeq`, `startElapsedNs`)",
+                "CREATE INDEX IF NOT EXISTS `index_session_startSnapshotId` ON `session` (`startSnapshotId`)",
+                "CREATE INDEX IF NOT EXISTS `index_session_endSnapshotId` ON `session` (`endSnapshotId`)",
+            )
+
+    private fun windowResultV5() =
+        listOf(
+            "CREATE TABLE IF NOT EXISTS `_new_window_result` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`kind` INTEGER NOT NULL, `sessionId` INTEGER, `fromSnapshotId` INTEGER NOT NULL, " +
+                "`toSnapshotId` INTEGER NOT NULL, `measuredMah` REAL, `chargeSource` INTEGER, `modeledMah` REAL, " +
+                "`unattributedMah` REAL, `screenOnMs` INTEGER NOT NULL, `screenOffMs` INTEGER NOT NULL, " +
+                "`awakeMsScreenOff` INTEGER, `quality` REAL NOT NULL, `detailPruned` INTEGER NOT NULL, " +
+                "`kernelCoverage` INTEGER, `breakdown` INTEGER, FOREIGN KEY(`fromSnapshotId`) REFERENCES `snapshot`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`toSnapshotId`) REFERENCES `snapshot`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`sessionId`) REFERENCES `session`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE SET NULL )",
+            "INSERT INTO `_new_window_result` (`id`, `kind`, `sessionId`, `fromSnapshotId`, `toSnapshotId`, " +
+                "`measuredMah`, `chargeSource`, `modeledMah`, `unattributedMah`, `screenOnMs`, `screenOffMs`, " +
+                "`awakeMsScreenOff`, `quality`, `detailPruned`, `kernelCoverage`, `breakdown`) " +
+                "SELECT `id`, ${codeOf("kind", RecordCodes.WINDOW_KINDS)}, `sessionId`, `fromSnapshotId`, " +
+                "`toSnapshotId`, `measuredMah`, ${codeOf("chargeSource", RecordCodes.CHARGE_SOURCES)}, `modeledMah`, " +
+                "`unattributedMah`, `screenOnMs`, `screenOffMs`, `awakeMsScreenOff`, `quality`, `detailPruned`, " +
+                "`kernelCoverage`, `breakdown` FROM `window_result`",
+        ) + carryCounter("window_result") +
+            listOf(
+                "DROP TABLE `window_result`",
+                "ALTER TABLE `_new_window_result` RENAME TO `window_result`",
+                "CREATE INDEX IF NOT EXISTS `index_window_result_fromSnapshotId` ON `window_result` (`fromSnapshotId`)",
+                "CREATE INDEX IF NOT EXISTS `index_window_result_toSnapshotId` ON `window_result` (`toSnapshotId`)",
+                "CREATE INDEX IF NOT EXISTS `index_window_result_sessionId` ON `window_result` (`sessionId`)",
+                "CREATE INDEX IF NOT EXISTS `index_window_result_kind_toSnapshotId` ON `window_result` (`kind`, `toSnapshotId`)",
+            )
 
     /**
      * Gives `_new_<table>` the `AUTOINCREMENT` counter of [table] before [table] is dropped; the

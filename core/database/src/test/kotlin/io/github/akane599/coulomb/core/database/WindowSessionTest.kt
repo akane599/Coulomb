@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
 import io.github.akane599.coulomb.core.database.entity.ChargeDetailEntity
 import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
+import io.github.akane599.coulomb.core.database.entity.RecordCodes
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
@@ -180,7 +181,7 @@ class WindowSessionTest : DatabaseTest() {
             sessions.observeRecent(SessionKind.DISCHARGE, limit = 10).test {
                 assertThat(awaitItem().map { it.bootSeq }).containsExactly(2, 1).inOrder()
             }
-            assertThat(string("SELECT kind FROM session WHERE bootSeq = 3")).isEqualTo("CHARGE")
+            assertThat(string("SELECT kind FROM session WHERE bootSeq = 3")).isEqualTo("${RecordCodes.SESSION_CHARGE}")
         }
 
     private fun chargeDetail(

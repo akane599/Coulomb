@@ -3,7 +3,9 @@
 
 package io.github.akane599.coulomb.core.collect.snapshot
 
-/** How one source of a snapshot went, as stored in `Snapshot.sourceStatusJson`. */
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
+
+/** How one source of a snapshot went, as stored in `Snapshot.sourceStatus` ([SourceStatusCodes]). */
 internal enum class SourceStatus(
     val text: String,
 ) {
@@ -39,17 +41,16 @@ internal enum class SourceStatus(
  */
 internal fun counterSource(statuses: Map<String, SourceStatus>): String? = COUNTER_SOURCES.firstOrNull { statuses[it] == SourceStatus.OK }
 
-/** [counterSource] of a stored snapshot, from its `sourceStatusJson`. */
-internal fun counterSource(json: String): String? = COUNTER_SOURCES.firstOrNull { "\"$it\":\"${SourceStatus.OK.text}\"" in json }
+/** [counterSource] of a stored snapshot, from its `sourceStatus` code. */
+internal fun counterSource(stored: Long): String? = COUNTER_SOURCES.firstOrNull { sourceStatus(stored, it) == SourceStatus.OK }
 
 private val COUNTER_SOURCES = listOf(HeavyReader.S5, HeavyReader.S6)
 
-/** Source [id]'s status in a stored `sourceStatusJson`, or null when it has none. */
+/** Source [id]'s status in a stored `sourceStatus` code, or null when it has none. */
 internal fun sourceStatus(
-    json: String,
+    stored: Long,
     id: String,
-): SourceStatus? = SourceStatus.entries.firstOrNull { "\"$id\":\"${it.text}\"" in json }
+): SourceStatus? = SourceStatusCodes.status(stored, id)?.let { text -> SourceStatus.entries.first { it.text == text } }
 
-/** `{"S5":"ok","S7":"partial"}`: source ids and statuses only, never values (ADR-0015). */
-internal fun sourceStatusJson(statuses: Map<String, SourceStatus>): String =
-    statuses.entries.sortedBy { it.key }.joinToString(",", "{", "}") { (id, status) -> "\"$id\":\"${status.text}\"" }
+/** The stored code of [statuses]: source ids and statuses only, never values (ADR-0015, ADR-0040). */
+internal fun sourceStatusCode(statuses: Map<String, SourceStatus>): Long = SourceStatusCodes.encode(statuses.mapValues { it.value.text })

@@ -375,7 +375,7 @@ internal class SnapshotWriter(
     private fun sameSource(
         a: SnapshotEntity,
         b: SnapshotEntity,
-    ): Boolean = counterSource(a.sourceStatusJson).let { it != null && it == counterSource(b.sourceStatusJson) }
+    ): Boolean = counterSource(a.sourceStatus).let { it != null && it == counterSource(b.sourceStatus) }
 
     private suspend fun move(
         kind: AutoReference,
@@ -470,7 +470,7 @@ internal class SnapshotWriter(
         if (s9Usable(snapshot)) snapshots.wakeupSources(snapshot.id) else emptyList()
 
     private fun s9Usable(snapshot: SnapshotEntity) =
-        !snapshot.countersPruned && sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
+        !snapshot.countersPruned && sourceStatus(snapshot.sourceStatus, KernelReader.S9) == SourceStatus.OK
 
     private fun localDate(
         wallMs: Long,

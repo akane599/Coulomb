@@ -151,7 +151,7 @@ class ComponentCollectionTest {
 
             val latest = latest()
             assertThat(s4(latest)).isEqualTo(SourceStatus.SLEPT)
-            assertThat(sourceStatus(latest.sourceStatusJson, "S5")).isEqualTo(SourceStatus.OK)
+            assertThat(sourceStatus(latest.sourceStatus, "S5")).isEqualTo(SourceStatus.OK)
             assertThat(latest.partial).isFalse()
             assertThat(db.snapshotDao().rows(latest.id).componentPower).isEmpty()
             assertThat(consecutive().single().breakdown).isEqualTo(Breakdown.END_NOT_OK)
@@ -204,7 +204,7 @@ class ComponentCollectionTest {
 
     private suspend fun latest(): SnapshotEntity = checkNotNull(db.snapshotDao().latest())
 
-    private fun s4(snapshot: SnapshotEntity) = sourceStatus(snapshot.sourceStatusJson, "S4")
+    private fun s4(snapshot: SnapshotEntity) = sourceStatus(snapshot.sourceStatus, "S4")
 
     private suspend fun consecutive(): List<WindowResultEntity> = db.windowDao().ofKind(WindowKind.CONSECUTIVE).sortedBy { it.toSnapshotId }
 

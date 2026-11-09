@@ -32,7 +32,7 @@ class AwakeRatioTest {
         statsRealtimeMs = null,
         historyCursorMs = null,
         historyEventId = null,
-        sourceStatusJson = "{}",
+        sourceStatus = 0,
         blobPath = null,
         partial = false,
         countersPruned = false,

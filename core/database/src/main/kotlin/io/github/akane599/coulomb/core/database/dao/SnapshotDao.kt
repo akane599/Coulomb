@@ -17,6 +17,7 @@ import io.github.akane599.coulomb.core.database.entity.KernelLogEventEntity
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.NetStatEntity
 import io.github.akane599.coulomb.core.database.entity.RailEnergyEntity
+import io.github.akane599.coulomb.core.database.entity.RecordCodes
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
@@ -180,7 +181,7 @@ public abstract class SnapshotDao {
     public abstract suspend fun latest(): SnapshotEntity?
 
     /** The latest heavy snapshot: where the next consecutive window starts. */
-    @Query("SELECT * FROM snapshot WHERE kind = 'HEAVY' ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
+    @Query("SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
     public abstract suspend fun latestHeavy(): SnapshotEntity?
 
     /**
@@ -188,7 +189,7 @@ public abstract class SnapshotDao {
      * whose counters are still stored, in time order: the links of a window's chain (ADR-0018).
      */
     @Query(
-        "SELECT * FROM snapshot WHERE kind = 'HEAVY' AND countersPruned = 0 " +
+        "SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} AND countersPruned = 0 " +
             "AND (bootSeq > :fromBootSeq OR (bootSeq = :fromBootSeq AND elapsedNs > :fromElapsedNs)) " +
             "AND (bootSeq < :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs < :toElapsedNs)) " +
             "ORDER BY bootSeq, elapsedNs",
@@ -205,7 +206,7 @@ public abstract class SnapshotDao {
      * the S9 steps of a long window, which must see where its rows are gone (ADR-0029 §4).
      */
     @Query(
-        "SELECT * FROM snapshot WHERE kind = 'HEAVY' " +
+        "SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
             "AND (bootSeq > :fromBootSeq OR (bootSeq = :fromBootSeq AND elapsedNs > :fromElapsedNs)) " +
             "AND (bootSeq < :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs < :toElapsedNs)) " +
             "ORDER BY bootSeq, elapsedNs",
@@ -222,7 +223,7 @@ public abstract class SnapshotDao {
      * wall time can start (ADR-0036). Wall time only picks the start; order stays by boot and elapsed
      * time (SPEC 7.8).
      */
-    @Query("SELECT * FROM snapshot WHERE kind = 'HEAVY' AND wallMs >= :wallMs ORDER BY bootSeq, elapsedNs LIMIT 1")
+    @Query("SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} AND wallMs >= :wallMs ORDER BY bootSeq, elapsedNs LIMIT 1")
     public abstract suspend fun firstHeavyFrom(wallMs: Long): SnapshotEntity?
 
     /** The snapshot of [bootSeq] read at [elapsedNs]: the one a session opened at. */
@@ -237,7 +238,7 @@ public abstract class SnapshotDao {
     public abstract suspend fun latestInBoot(bootSeq: Int): SnapshotEntity?
 
     /** The latest heavy snapshot of [bootSeq]: where the window of a session closed by a reboot ends. */
-    @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq AND kind = 'HEAVY' ORDER BY elapsedNs DESC LIMIT 1")
+    @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq AND kind = ${RecordCodes.SNAPSHOT_HEAVY} ORDER BY elapsedNs DESC LIMIT 1")
     public abstract suspend fun latestHeavyInBoot(bootSeq: Int): SnapshotEntity?
 
     /** The latest snapshot whose history read set a cursor: where the next read starts (ADR-0014). */
@@ -246,7 +247,7 @@ public abstract class SnapshotDao {
 
     /**
      * The snapshot's counters. Lists are empty for a source that was not read (see
-     * [SnapshotEntity.sourceStatusJson]) or once [SnapshotEntity.countersPruned] is set.
+     * [SnapshotEntity.sourceStatus]) or once [SnapshotEntity.countersPruned] is set.
      */
     @Transaction
     public open suspend fun rows(snapshotId: Long): SnapshotRows =
@@ -351,14 +352,15 @@ public abstract class SnapshotDao {
      *   cuts the history at. Run this after that call, with the same cut.
      */
     @Query(
-        "DELETE FROM snapshot WHERE $BEFORE_CUT AND blobPath IS NULL AND (kind = 'LIGHT' OR countersPruned = 1) " +
+        "DELETE FROM snapshot WHERE $BEFORE_CUT AND blobPath IS NULL AND (kind = ${RecordCodes.SNAPSHOT_LIGHT} OR countersPruned = 1) " +
             "AND id NOT IN (SELECT startSnapshotId FROM session WHERE startSnapshotId IS NOT NULL) " +
             "AND id NOT IN (SELECT endSnapshotId FROM session WHERE endSnapshotId IS NOT NULL) " +
             "AND id NOT IN (SELECT snapshotId FROM reference) " +
             "AND id NOT IN (SELECT fromSnapshotId FROM window_result) " +
             "AND id NOT IN (SELECT toSnapshotId FROM window_result) " +
             "AND EXISTS (SELECT 1 FROM snapshot n WHERE n.bootSeq = snapshot.bootSeq AND n.elapsedNs > snapshot.elapsedNs) " +
-            "AND id NOT IN (SELECT id FROM snapshot WHERE kind = 'HEAVY' ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1) " +
+            "AND id NOT IN (SELECT id FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
+            "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1) " +
             "AND id NOT IN (SELECT id FROM snapshot WHERE historyCursorMs IS NOT NULL " +
             "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1) " +
             "AND id NOT IN (SELECT id FROM snapshot WHERE historyEventId IS NOT NULL AND (bootSeq < :cutBootSeq " +
@@ -487,11 +489,11 @@ public abstract class SnapshotDao {
     protected abstract suspend fun deviceStats(snapshotId: Long): List<DeviceStatEntity>
 
     @Query(
-        "SELECT id FROM snapshot WHERE kind = 'HEAVY' AND countersPruned = 0 AND $BEFORE_CUT " +
+        "SELECT id FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} AND countersPruned = 0 AND $BEFORE_CUT " +
             "AND id NOT IN (SELECT snapshotId FROM reference) " +
             "AND id NOT IN (SELECT startSnapshotId FROM session " +
             "WHERE closeReason IS NULL AND startSnapshotId IS NOT NULL) " +
-            "AND id NOT IN (SELECT id FROM snapshot WHERE kind = 'HEAVY' " +
+            "AND id NOT IN (SELECT id FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
             "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1)",
     )
     protected abstract suspend fun prunableCounters(

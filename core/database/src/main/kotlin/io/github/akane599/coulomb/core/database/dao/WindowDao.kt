@@ -13,6 +13,7 @@ import androidx.room.TypeConverters
 import io.github.akane599.coulomb.core.database.entity.DetailCodes
 import io.github.akane599.coulomb.core.database.entity.KernelCodes
 import io.github.akane599.coulomb.core.database.entity.PowerColumns
+import io.github.akane599.coulomb.core.database.entity.RecordCodes
 import io.github.akane599.coulomb.core.database.entity.StatKeyEntity
 import io.github.akane599.coulomb.core.database.entity.WakeTagEntity
 import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
@@ -254,7 +255,8 @@ public abstract class WindowDao {
         "SELECT COUNT(*) AS windows, " +
             "SUM(CASE WHEN f.plugType = 0 THEN w.measuredMah END) AS dischargeMah, " +
             "COALESCE(SUM(f.plugType = 0), 0) AS dischargeWindows, " +
-            "COALESCE(SUM(f.plugType = 0 AND w.measuredMah IS NOT NULL AND w.chargeSource = 'CHARGE_COUNTER'), 0) AS counterWindows, " +
+            "COALESCE(SUM(f.plugType = 0 AND w.measuredMah IS NOT NULL AND w.chargeSource = ${RecordCodes.CHARGE_COUNTER}), 0) " +
+            "AS counterWindows, " +
             "COALESCE(SUM(f.plugType = 0 AND w.measuredMah IS NULL), 0) AS unmeasuredWindows, " +
             "COALESCE(SUM(f.plugType <> 0), 0) AS pluggedWindows, " +
             "COALESCE(SUM(f.plugType IS NULL), 0) AS unknownWindows, " +
@@ -267,7 +269,7 @@ public abstract class WindowDao {
             "SUM(CASE WHEN w.breakdown = $BROKEN_DOWN THEN w.modeledMah END) AS coveredModeledMah, " +
             "COALESCE(SUM(w.breakdown = $S4_OFF), 0) AS offWindows " +
             "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
-            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN",
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN",
     )
     public abstract suspend fun chainTotals(
         fromBootSeq: Int,
@@ -281,7 +283,7 @@ public abstract class WindowDao {
         "SELECT w.chargeSource, w.measuredMah, f.plugType, f.levelPct AS fromLevel, s.levelPct AS toLevel, " +
             "w.detailPruned, w.modeledMah, w.kernelCoverage " +
             "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
-            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN ORDER BY s.bootSeq, s.elapsedNs",
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN ORDER BY s.bootSeq, s.elapsedNs",
     )
     public abstract suspend fun chainSteps(
         fromBootSeq: Int,
@@ -294,7 +296,7 @@ public abstract class WindowDao {
     @Query(
         "SELECT u.uid, c.name AS component, SUM(u.mAh) AS mAh FROM window_uid u JOIN stat_key c ON c.id = u.componentId " +
             "JOIN window_result w ON w.id = u.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
-            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY u.uid, u.componentId",
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN GROUP BY u.uid, u.componentId",
     )
     public abstract suspend fun chainUids(
         fromBootSeq: Int,
@@ -309,7 +311,7 @@ public abstract class WindowDao {
      */
     @Query(
         "SELECT c.uid, $SUM_POWER_COLUMNS FROM window_component c JOIN window_result w ON w.id = c.windowId " +
-            "JOIN snapshot s ON s.id = w.toSnapshotId WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY c.uid",
+            "JOIN snapshot s ON s.id = w.toSnapshotId WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN GROUP BY c.uid",
     )
     public abstract suspend fun chainComponents(
         fromBootSeq: Int,
@@ -325,7 +327,7 @@ public abstract class WindowDao {
             "SUM(CASE WHEN w.screenOffMs = 0 THEN k.totalMs ELSE 0 END) AS screenOnMs, " +
             "SUM(k.wakeups) AS wakeups FROM window_wake k JOIN wake_tag t ON t.id = k.tagId " +
             "JOIN window_result w ON w.id = k.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
-            "WHERE w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY k.uid, k.tagId, k.kind",
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN GROUP BY k.uid, k.tagId, k.kind",
     )
     public abstract suspend fun chainWakes(
         fromBootSeq: Int,
@@ -338,7 +340,7 @@ public abstract class WindowDao {
     @Query(
         "SELECT x.uid, SUM(x.value) AS value FROM window_stat x JOIN stat_key k ON k.id = x.keyId " +
             "JOIN window_result w ON w.id = x.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
-            "WHERE k.name = :key AND w.kind = 'CONSECUTIVE' AND $TO_IN_CHAIN GROUP BY x.uid",
+            "WHERE k.name = :key AND w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN GROUP BY x.uid",
     )
     public abstract suspend fun chainStat(
         key: String,
@@ -367,7 +369,7 @@ public abstract class WindowDao {
     @Query(
         "SELECT w.id FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId " +
             "JOIN session x ON x.id = w.sessionId " +
-            "WHERE w.detailPruned = 0 AND w.kind = 'SESSION' AND x.kind IN (:sessionKinds) AND $TO_BEFORE_CUT",
+            "WHERE w.detailPruned = 0 AND w.kind = ${RecordCodes.WINDOW_SESSION} AND x.kind IN (:sessionKinds) AND $TO_BEFORE_CUT",
     )
     public abstract suspend fun sessionDetailBefore(
         sessionKinds: List<SessionKind>,

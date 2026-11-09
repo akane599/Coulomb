@@ -76,7 +76,7 @@ class RetentionTest {
                 statsRealtimeMs = hour * hourNs / 1_000_000,
                 historyCursorMs = null,
                 historyEventId = historyEventId,
-                sourceStatusJson = "{}",
+                sourceStatus = 0,
                 blobPath = blob,
                 partial = false,
                 countersPruned = false,

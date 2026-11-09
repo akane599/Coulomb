@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.KmsgSpan
 import io.github.akane599.coulomb.core.database.entity.PowerColumns
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeupSourceStatEntity
@@ -275,7 +276,7 @@ class SizeBudgetTest : DatabaseTest() {
     private fun heavySnapshot(elapsedS: Long) =
         snapshot(
             elapsedS,
-        ).copy(sourceStatusJson = HEAVY_STATUS, uptimeMs = UPTIME_MS + elapsedS * 1_000, privilegeMode = PrivilegeMode.ROOT)
+        ).copy(sourceStatus = HEAVY_STATUS, uptimeMs = UPTIME_MS + elapsedS * 1_000, privilegeMode = PrivilegeMode.ROOT)
 
     /** S27 reads of mostly resume interrupts, one in ten an abort, each span with one gap. */
     private suspend fun insertKernelLogReads() {
@@ -338,12 +339,8 @@ class SizeBudgetTest : DatabaseTest() {
         val COMPONENTS = listOf("cpu", "screen", "wifi", "mobile_radio", "wakelock")
         val STAT_KEYS = listOf("alarm_wakeups", "job_runtime_ms")
 
-        /**
-         * A heavy snapshot's outcome for each source it read: 18 keys, an upper bound, since the
-         * engine writes at most 7 (S5, S6, S7 and root's S25, S26, S9 and S27).
-         */
-        val HEAVY_STATUS =
-            (listOf(1, 2) + (4..13) + listOf(15, 16, 17, 19, 21, 22)).joinToString(",", "{", "}") { "\"S$it\":\"ok\"" }
+        /** Every source with the highest outcome code: the largest code a snapshot can store (ADR-0040). */
+        val HEAVY_STATUS = SourceStatusCodes.encode(SourceStatusCodes.SOURCES.associateWith { SourceStatusCodes.STATUSES.last() })
 
         // ADR-0015 budget: rows kept after a year of use.
         const val HISTORY_EVENTS_KEPT = 1_400_000.0 // 30 days at about 1,950 stored events an hour

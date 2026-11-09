@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
 import io.github.akane599.coulomb.core.database.entity.PowerColumns
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity.Companion.DEVICE_UID
 import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
@@ -50,7 +51,7 @@ class ComponentWindowTest {
             statsRealtimeMs = realtimeMs,
             historyCursorMs = null,
             historyEventId = null,
-            sourceStatusJson = if (s4 == null) """{"S5":"ok"}""" else """{"S4":"$s4","S5":"ok"}""",
+            sourceStatus = SourceStatusCodes.fromJson(if (s4 == null) """{"S5":"ok"}""" else """{"S4":"$s4","S5":"ok"}"""),
             blobPath = null,
             partial = false,
             countersPruned = false,

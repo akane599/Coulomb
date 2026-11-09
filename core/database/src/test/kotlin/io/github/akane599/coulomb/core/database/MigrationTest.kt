@@ -19,14 +19,20 @@ import io.github.akane599.coulomb.core.database.entity.HistoryCodes
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.KmsgSpan
 import io.github.akane599.coulomb.core.database.entity.PowerColumns
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.model.Breakdown
+import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.SessionKind
+import io.github.akane599.coulomb.core.model.SnapshotKind
+import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.WindowKind
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage
@@ -225,6 +231,110 @@ class MigrationTest {
                 s4StorageWorks(db, window)
             }
         }
+
+    @Test
+    fun fourToFiveCodesTheKindsAndKeepsEveryRowAndCounter() =
+        runTest {
+            helper.createDatabase(NAME, 4).use { v4 -> recordsV4().forEach(v4::execSQL) }
+
+            helper.runMigrationsAndValidate(NAME, 5, true, *Migrations.ALL).close()
+
+            migrated { db ->
+                val snapshots = db.snapshotDao()
+                val root = checkNotNull(snapshots.snapshot(2))
+                assertThat(root.trigger).isEqualTo(SnapshotTrigger.SCREEN_ON)
+                assertThat(root.kind).isEqualTo(SnapshotKind.HEAVY)
+                assertThat(root.privilegeMode).isEqualTo(PrivilegeMode.ROOT)
+                assertThat(SourceStatusCodes.decode(root.sourceStatus))
+                    .containsExactly(
+                        "S25",
+                        "ok",
+                        "S26",
+                        "ok",
+                        "S27",
+                        "partial",
+                        "S4",
+                        "skipped",
+                        "S5",
+                        "slept",
+                        "S6",
+                        "ok",
+                        "S7",
+                        "ok",
+                        "S9",
+                        "ok",
+                    )
+                assertThat(SourceStatusCodes.decode(checkNotNull(snapshots.snapshot(1)).sourceStatus))
+                    .containsExactly("S4", "off", "S5", "ok", "S7", "failed")
+                val light = checkNotNull(snapshots.snapshot(3))
+                assertThat(light.kind).isEqualTo(SnapshotKind.LIGHT)
+                assertThat(light.trigger).isEqualTo(SnapshotTrigger.SERVICE_STARTED)
+                assertThat(light.sourceStatus).isEqualTo(0)
+                // An outcome the collector never wrote reads as not read; an unknown source goes.
+                assertThat(SourceStatusCodes.decode(checkNotNull(snapshots.snapshot(4)).sourceStatus))
+                    .containsExactly("S5", "failed")
+
+                assertThat(long(db, "SELECT kind * 100 + chargeSource * 10 + closeReason FROM session WHERE id = 5")).isEqualTo(100)
+                assertThat(db.sessionDao().cycleEquivalentsSum(SessionKind.CHARGE)).isEqualTo(0.25)
+                val open = db.sessionDao().open().single()
+                assertThat(open.kind).isEqualTo(SessionKind.SCREEN_OFF)
+                assertThat(open.chargeSource).isNull()
+                assertThat(open.closeReason).isNull()
+                assertThat(db.sessionDao().chargeDetail(5)).isNotNull()
+
+                assertThat(checkNotNull(db.windowDao().window(7)).kind).isEqualTo(WindowKind.CONSECUTIVE)
+                val session = checkNotNull(db.windowDao().window(8))
+                assertThat(session.kind).isEqualTo(WindowKind.SESSION)
+                assertThat(session.chargeSource).isEqualTo(ChargeSource.LEVEL_DELTA)
+                assertThat(session.sessionId).isEqualTo(5)
+                assertThat(db.windowDao().rows(7).stats).containsExactly(WindowStat(10123, "cpu", 900, Provenance.MEASURED))
+
+                assertThat(long(db, "SELECT COUNT(*) FROM pragma_foreign_key_check")).isEqualTo(0)
+                // The AUTOINCREMENT counters moved with the tables: deleted ids are not handed out again.
+                assertThat(snapshots.insert(root.copy(id = 0, elapsedNs = 90 * NS_PER_S))).isEqualTo(10)
+                assertThat(db.sessionDao().insert(open.copy(id = 0))).isEqualTo(10)
+                assertThat(db.windowDao().insert(session.copy(id = 0), WindowRows())).isEqualTo(10)
+            }
+        }
+
+    /** Version 4 records of every kind, with the highest id of each table deleted. */
+    private fun recordsV4() =
+        listOf(
+            "INSERT INTO snapshot (id, bootSeq, elapsedNs, wallMs, `trigger`, kind, sourceStatusJson, partial, countersPruned, " +
+                "durationMs) VALUES (1, 1, 10000000000, 1793491200000, 'SCREEN_OFF', 'HEAVY', " +
+                "'{\"S4\":\"off\",\"S5\":\"ok\",\"S7\":\"failed\"}', 0, 0, 0)",
+            "INSERT INTO snapshot (id, bootSeq, elapsedNs, wallMs, `trigger`, kind, sourceStatusJson, partial, countersPruned, " +
+                "durationMs, uptimeMs, privilegeMode) VALUES (2, 1, 20000000000, 1793491210000, 'SCREEN_ON', 'HEAVY', " +
+                "'{\"S25\":\"ok\",\"S26\":\"ok\",\"S27\":\"partial\",\"S4\":\"skipped\",\"S5\":\"slept\"," +
+                "\"S6\":\"ok\",\"S7\":\"ok\",\"S9\":\"ok\"}', 1, 0, 0, 15000, 2)",
+            "INSERT INTO snapshot (id, bootSeq, elapsedNs, wallMs, `trigger`, kind, sourceStatusJson, partial, countersPruned, " +
+                "durationMs) VALUES (3, 1, 25000000000, 1793491215000, 'SERVICE_STARTED', 'LIGHT', '{}', 0, 0, 0)",
+            "INSERT INTO snapshot (id, bootSeq, elapsedNs, wallMs, `trigger`, kind, sourceStatusJson, partial, countersPruned, " +
+                "durationMs) VALUES (4, 1, 26000000000, 1793491216000, 'LEVEL_CHANGED', 'HEAVY', " +
+                "'{\"S5\":\"weird\",\"S99\":\"ok\"}', 0, 0, 0)",
+            "INSERT INTO snapshot (id, bootSeq, elapsedNs, wallMs, `trigger`, kind, sourceStatusJson, partial, countersPruned, " +
+                "durationMs) VALUES (9, 1, 29000000000, 1793491219000, 'PERIODIC_GONE', 'LIGHT', '{}', 0, 0, 0)",
+            "DELETE FROM snapshot WHERE id = 9",
+            "INSERT INTO session (id, kind, bootSeq, startElapsedNs, endElapsedNs, startWall, endWall, startSnapshotId, " +
+                "endSnapshotId, startLevel, endLevel, chargeSource, maxTempDeciC, cycleEquivalents, closeReason, quality) " +
+                "VALUES (5, 'CHARGE', 1, 10000000000, 20000000000, 1793491200000, 1793491210000, 1, 2, 40, 41, " +
+                "'CHARGE_COUNTER', 310, 0.25, 'STATE_CHANGED', 1.0)",
+            "INSERT INTO session (id, kind, bootSeq, startElapsedNs, startWall, startSnapshotId, startLevel, maxTempDeciC, " +
+                "quality) VALUES (6, 'SCREEN_OFF', 1, 20000000000, 1793491210000, 2, 41, 300, 1.0)",
+            "INSERT INTO session (id, kind, bootSeq, startElapsedNs, startWall, startLevel, maxTempDeciC, quality) " +
+                "VALUES (9, 'DISCHARGE', 1, 0, 0, 50, 300, 1.0)",
+            "DELETE FROM session WHERE id = 9",
+            "INSERT INTO charge_detail (sessionId, plugType, minutesAbove80, minutesAbove38C) VALUES (5, 1, 0, 0)",
+            "INSERT INTO window_result (id, kind, fromSnapshotId, toSnapshotId, screenOnMs, screenOffMs, quality, detailPruned) " +
+                "VALUES (7, 'CONSECUTIVE', 1, 2, 0, 10000, 1.0, 0)",
+            "INSERT INTO window_result (id, kind, sessionId, fromSnapshotId, toSnapshotId, measuredMah, chargeSource, " +
+                "screenOnMs, screenOffMs, quality, detailPruned) VALUES (8, 'SESSION', 5, 1, 2, 12.5, 'LEVEL_DELTA', 0, 10000, 0.5, 0)",
+            "INSERT INTO window_result (id, kind, fromSnapshotId, toSnapshotId, screenOnMs, screenOffMs, quality, detailPruned) " +
+                "VALUES (9, 'REFERENCE', 1, 2, 0, 0, 1.0, 0)",
+            "DELETE FROM window_result WHERE id = 9",
+            "INSERT INTO stat_key VALUES (4, 'cpu')",
+            "INSERT INTO window_stat VALUES (7, 10123, 4, 900, 0)",
+        )
 
     /** Breakdowns, component rows and S4 snapshot rows store and read back on a migrated file. */
     private suspend fun s4StorageWorks(

@@ -51,7 +51,7 @@ class WindowBuilderTest {
         statsRealtimeMs = statsRealtimeMs,
         historyCursorMs = null,
         historyEventId = null,
-        sourceStatusJson = "{}",
+        sourceStatus = 0,
         blobPath = null,
         partial = false,
         countersPruned = false,

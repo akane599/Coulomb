@@ -27,10 +27,10 @@ internal data class KernelEnd(
 ) {
     /** Its S9 was read `ok` and the rows are still stored: they are pruned with its counters. */
     val sourcesOk: Boolean
-        get() = !snapshot.countersPruned && sourceStatus(snapshot.sourceStatusJson, KernelReader.S9) == SourceStatus.OK
+        get() = !snapshot.countersPruned && sourceStatus(snapshot.sourceStatus, KernelReader.S9) == SourceStatus.OK
 
     /** Its S27 read reached the ring's end, so its last record is where the log stood at this end. */
-    val logOk: Boolean get() = sourceStatus(snapshot.sourceStatusJson, KernelReader.S27) == SourceStatus.OK
+    val logOk: Boolean get() = sourceStatus(snapshot.sourceStatus, KernelReader.S27) == SourceStatus.OK
 }
 
 /**

@@ -237,7 +237,7 @@ class KernelWindowTest {
         s9: SourceStatus = SourceStatus.OK,
         s27: SourceStatus = SourceStatus.OK,
     ) = KernelEnd(
-        snapshot(id, sourceStatusJson(mapOf("S5" to SourceStatus.OK, KernelReader.S9 to s9, KernelReader.S27 to s27))),
+        snapshot(id, sourceStatusCode(mapOf("S5" to SourceStatus.OK, KernelReader.S9 to s9, KernelReader.S27 to s27))),
         read,
         sources.toList(),
     )
@@ -279,7 +279,7 @@ class KernelWindowTest {
 
     private fun snapshot(
         id: Long,
-        statuses: String,
+        statuses: Long,
     ) = SnapshotEntity(
         id = id,
         bootSeq = 1,
@@ -298,7 +298,7 @@ class KernelWindowTest {
         statsRealtimeMs = null,
         historyCursorMs = null,
         historyEventId = null,
-        sourceStatusJson = statuses,
+        sourceStatus = statuses,
         blobPath = null,
         partial = false,
         countersPruned = false,

@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.database.entity.NetStatEntity
 import io.github.akane599.coulomb.core.database.entity.RailEnergyEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
@@ -79,7 +80,7 @@ internal fun snapshot(
     statsRealtimeMs = null,
     historyCursorMs = 1_234,
     historyEventId = historyEventId,
-    sourceStatusJson = """{"S5":"ok"}""",
+    sourceStatus = SourceStatusCodes.fromJson("""{"S5":"ok"}"""),
     blobPath = blobPath,
     partial = false,
     countersPruned = false,

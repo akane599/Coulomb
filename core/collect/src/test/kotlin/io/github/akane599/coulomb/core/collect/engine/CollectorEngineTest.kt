@@ -18,6 +18,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.SessionCloseReason
@@ -251,7 +252,7 @@ class CollectorEngineTest {
             engine.privilegesChanged()
             val heavy = checkNotNull(db.snapshotDao().latestHeavy())
             assertThat(heavy.trigger).isEqualTo(SnapshotTrigger.BOOT_COMPLETED)
-            assertThat(heavy.sourceStatusJson).isEqualTo("""{"S4":"off","S5":"ok","S7":"failed"}""")
+            assertThat(heavy.sourceStatus).isEqualTo(SourceStatusCodes.fromJson("""{"S4":"off","S5":"ok","S7":"failed"}"""))
         }
 
     @Test
@@ -397,7 +398,7 @@ class CollectorEngineTest {
 
             val slept = checkNotNull(db.snapshotDao().latest())
             assertThat(slept.kind).isEqualTo(SnapshotKind.LIGHT)
-            assertThat(slept.sourceStatusJson).isEqualTo("""{"S4":"off","S5":"slept","S7":"failed"}""")
+            assertThat(slept.sourceStatus).isEqualTo(SourceStatusCodes.fromJson("""{"S4":"off","S5":"slept","S7":"failed"}"""))
             assertThat(count("SELECT COUNT(*) FROM uid_power WHERE snapshotId = ${slept.id}")).isEqualTo(0)
             assertThat(db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()).isEmpty()
             // The moment is still marked: the screen-off session and its reference start here.

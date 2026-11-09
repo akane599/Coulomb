@@ -293,6 +293,9 @@ measured:
 - If the projection still reaches 150 MB, component rows are kept 14 days, by ADR, with Drain saying
   when a span reaches past them.
 
+Measured (ADR-0040): schema 4 projected 154.7 MB with root. Schema 5's lossless integer codes bring it
+to 148.2 MB, so component rows keep the 30 days of their windows.
+
 ## Consequences
 
 - **Schema 4.** The migration adds the two tables and `window_result.breakdown`, and converts

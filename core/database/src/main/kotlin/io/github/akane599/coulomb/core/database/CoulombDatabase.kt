@@ -7,6 +7,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.HistoryDao
 import io.github.akane599.coulomb.core.database.dao.InsightDao
@@ -36,6 +37,7 @@ import io.github.akane599.coulomb.core.database.entity.KernelLogEventEntity
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.NetStatEntity
 import io.github.akane599.coulomb.core.database.entity.RailEnergyEntity
+import io.github.akane599.coulomb.core.database.entity.RecordCodes
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
 import io.github.akane599.coulomb.core.database.entity.SampleAggregateEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
@@ -56,13 +58,13 @@ import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 
 /**
- * The SPEC 8 schema (ADR-0015, ADR-0021, ADR-0029, ADR-0035). Schemas are exported to `core/database/schemas` and
- * committed; a version bump needs a migration and a migration test (SPEC 8). Enums are stored by
- * name, except the position codes of the history and window detail tables ([HistoryCodes],
- * [DetailCodes]).
+ * The SPEC 8 schema (ADR-0015, ADR-0021, ADR-0029, ADR-0035, ADR-0040). Schemas are exported to
+ * `core/database/schemas` and committed; a version bump needs a migration and a migration test
+ * (SPEC 8). Enums are stored by name, except the position codes of the history and window detail
+ * tables ([HistoryCodes], [DetailCodes]) and of the records kept for good ([RecordCodes]).
  */
 @Database(
-    version = 4,
+    version = 5,
     exportSchema = true,
     entities = [
         DeviceProfileEntity::class,
@@ -105,6 +107,7 @@ import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
         ActionLogEntity::class,
     ],
 )
+@TypeConverters(RecordCodes::class)
 public abstract class CoulombDatabase : RoomDatabase() {
     public abstract fun deviceDao(): DeviceDao
 

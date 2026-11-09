@@ -27,7 +27,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
 import io.github.akane599.coulomb.core.collect.snapshot.UsageRead
 import io.github.akane599.coulomb.core.collect.snapshot.counterSource
-import io.github.akane599.coulomb.core.collect.snapshot.sourceStatusJson
+import io.github.akane599.coulomb.core.collect.snapshot.sourceStatusCode
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
@@ -259,7 +259,7 @@ internal class CollectorEngine(
         val entity =
             entity(reading, boot, trigger, kind, dump).copy(
                 historyCursorMs = ingest?.nextCursorMs,
-                sourceStatusJson = sourceStatusJson(statuses),
+                sourceStatus = sourceStatusCode(statuses),
                 blobPath = blob,
                 partial = partial(statuses),
                 durationMs = (clock.elapsedNs() - startNs) / NS_PER_MS,
@@ -462,7 +462,7 @@ internal class CollectorEngine(
         statsRealtimeMs = dump?.device?.totalRealtimeMs,
         historyCursorMs = null,
         historyEventId = null,
-        sourceStatusJson = "{}",
+        sourceStatus = 0,
         blobPath = null,
         partial = false,
         countersPruned = false,

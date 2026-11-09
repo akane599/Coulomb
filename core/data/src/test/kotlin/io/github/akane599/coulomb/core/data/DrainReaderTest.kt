@@ -17,6 +17,7 @@ import io.github.akane599.coulomb.core.database.entity.PowerColumns
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
@@ -567,7 +568,7 @@ class DrainReaderTest {
                 statsRealtimeMs = null,
                 historyCursorMs = 0,
                 historyEventId = null,
-                sourceStatusJson = """{"S5":"ok"}""",
+                sourceStatus = SourceStatusCodes.fromJson("""{"S5":"ok"}"""),
                 blobPath = null,
                 partial = false,
                 countersPruned = false,

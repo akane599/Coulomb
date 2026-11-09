@@ -15,6 +15,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.sourceStatus
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
+import io.github.akane599.coulomb.core.database.entity.SourceStatusCodes
 import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.SnapshotKind
@@ -101,8 +102,8 @@ class KernelCollectionTest {
             assertThat(second.privilegeMode).isEqualTo(PrivilegeMode.ROOT)
             assertThat(second.uptimeMs).isNotNull()
             assertThat(
-                second.sourceStatusJson,
-            ).isEqualTo("""{"S25":"ok","S26":"ok","S27":"ok","S4":"off","S5":"ok","S7":"failed","S9":"ok"}""")
+                second.sourceStatus,
+            ).isEqualTo(SourceStatusCodes.fromJson("""{"S25":"ok","S26":"ok","S27":"ok","S4":"off","S5":"ok","S7":"failed","S9":"ok"}"""))
             val window = windows().single()
             assertThat(window.kernelCoverage).isEqualTo(WHOLE)
             val rows = rows(window)
@@ -136,7 +137,7 @@ class KernelCollectionTest {
             engine.heavy()
 
             assertThat(shell.privilegeMode).isEqualTo(PrivilegeMode.SHELL)
-            assertThat(shell.sourceStatusJson).isEqualTo("""{"S4":"off","S5":"ok","S7":"failed"}""")
+            assertThat(shell.sourceStatus).isEqualTo(SourceStatusCodes.fromJson("""{"S4":"off","S5":"ok","S7":"failed"}"""))
             assertThat(db.snapshotDao().kernelRead(shell.id)).isNull()
             assertThat(back.privilegeMode).isEqualTo(PrivilegeMode.ROOT)
 
@@ -200,8 +201,12 @@ class KernelCollectionTest {
             engine.heavy()
 
             assertThat(
-                split.sourceStatusJson,
-            ).isEqualTo("""{"S25":"failed","S26":"failed","S27":"failed","S4":"off","S5":"ok","S7":"failed","S9":"failed"}""")
+                split.sourceStatus,
+            ).isEqualTo(
+                SourceStatusCodes.fromJson(
+                    """{"S25":"failed","S26":"failed","S27":"failed","S4":"off","S5":"ok","S7":"failed","S9":"failed"}""",
+                ),
+            )
             assertThat(db.snapshotDao().kernelRead(split.id)).isNull()
             val (toSplit, fromSplit, after) = windows()
             assertThat(toSplit.kernelCoverage).isNull()
@@ -224,8 +229,10 @@ class KernelCollectionTest {
 
             assertThat(slept.kind).isEqualTo(SnapshotKind.HEAVY)
             assertThat(
-                slept.sourceStatusJson,
-            ).isEqualTo("""{"S25":"slept","S26":"slept","S27":"ok","S4":"off","S5":"ok","S7":"failed","S9":"slept"}""")
+                slept.sourceStatus,
+            ).isEqualTo(
+                SourceStatusCodes.fromJson("""{"S25":"slept","S26":"slept","S27":"ok","S4":"off","S5":"ok","S7":"failed","S9":"slept"}"""),
+            )
             val read = checkNotNull(db.snapshotDao().kernelRead(slept.id))
             assertThat(read.suspendStats).isNull()
             assertThat(db.snapshotDao().wakeupSources(slept.id)).isEmpty()
@@ -251,7 +258,7 @@ class KernelCollectionTest {
             kernel.suspend(1)
             engine.heavy()
 
-            assertThat(sourceStatus(cut.sourceStatusJson, KernelReader.S27)).isEqualTo(SourceStatus.PARTIAL)
+            assertThat(sourceStatus(cut.sourceStatus, KernelReader.S27)).isEqualTo(SourceStatus.PARTIAL)
             val (whole, toCut, fromCut) = windows()
             assertThat(rows(whole).kernelWakes(WakeKind.RESUME_CAUSE)).containsExactly(MODEM, 3L)
             // At least the one record the cut read kept; the other belongs here too but is not counted.
@@ -274,8 +281,12 @@ class KernelCollectionTest {
             val noFiles = engine.heavy()
 
             assertThat(
-                noFiles.sourceStatusJson,
-            ).isEqualTo("""{"S25":"failed","S26":"failed","S27":"ok","S4":"off","S5":"ok","S7":"failed","S9":"failed"}""")
+                noFiles.sourceStatus,
+            ).isEqualTo(
+                SourceStatusCodes.fromJson(
+                    """{"S25":"failed","S26":"failed","S27":"ok","S4":"off","S5":"ok","S7":"failed","S9":"failed"}""",
+                ),
+            )
             // The latest log read's boot gives the cursor, so the read does not start at the ring's oldest record.
             assertThat(stats.logCursors).containsExactly(-1L, 100L).inOrder()
             val window = windows().single()
@@ -291,7 +302,7 @@ class KernelCollectionTest {
             val snapshot = engine.heavy()
 
             assertThat(snapshot.privilegeMode).isNull()
-            assertThat(snapshot.sourceStatusJson).isEqualTo("""{"S4":"off","S5":"ok","S7":"failed"}""")
+            assertThat(snapshot.sourceStatus).isEqualTo(SourceStatusCodes.fromJson("""{"S4":"off","S5":"ok","S7":"failed"}"""))
         }
 
     private companion object {

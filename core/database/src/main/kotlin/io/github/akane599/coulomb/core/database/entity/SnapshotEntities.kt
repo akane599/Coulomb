@@ -57,13 +57,13 @@ public data class SnapshotEntity(
      */
     val historyEventId: Long?,
     /**
-     * Each source's outcome as a JSON object, such as `{"S5":"ok","S10":"failed"}`. A table
-     * without rows for a failed source means "not read", never "zero".
+     * Each source's outcome, as a [SourceStatusCodes] code (ADR-0040; version 4 kept it as JSON). A
+     * table without rows for a failed source means "not read", never "zero".
      */
-    val sourceStatusJson: String,
+    val sourceStatus: Long,
     /** Compressed raw dumps, relative to the app's files directory. */
     val blobPath: String?,
-    /** Some sources failed or were cut short; [sourceStatusJson] says which. */
+    /** Some sources failed or were cut short; [sourceStatus] says which. */
     val partial: Boolean,
     /** The per-UID and device counters were deleted once no window could start here any more. */
     val countersPruned: Boolean,

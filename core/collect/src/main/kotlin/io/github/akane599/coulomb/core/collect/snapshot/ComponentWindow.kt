@@ -84,14 +84,14 @@ internal object ComponentWindow {
 
     /** No S4 status, as on a snapshot from before S4 was read, counts as off. */
     private fun isOff(end: WindowEnd): Boolean =
-        sourceStatus(end.snapshot.sourceStatusJson, HeavyReader.S4).let { it == null || it == SourceStatus.OFF }
+        sourceStatus(end.snapshot.sourceStatus, HeavyReader.S4).let { it == null || it == SourceStatus.OFF }
 
     /** S4 `ok`, with its rows still stored: the device row is always among them (ADR-0035 §4). */
     private fun usable(
         end: WindowEnd,
         power: Map<Int, ComponentPower>,
     ): Boolean =
-        sourceStatus(end.snapshot.sourceStatusJson, HeavyReader.S4) == SourceStatus.OK &&
+        sourceStatus(end.snapshot.sourceStatus, HeavyReader.S4) == SourceStatus.OK &&
             UidPowerEntity.DEVICE_UID in power
 
     /**

@@ -537,7 +537,7 @@ entity ChargeDetail(sessionId PK/FK, plugType, chargerProfileId?, peakW?, avgW?,
 entity Snapshot(id PK, bootSeq, elapsedNs, wallMs, trigger, kind /*LIGHT|HEAVY*/,
   levelPct?, chargeUah?, currentRaw?, voltageMv?, tempDeciC?, plugType?, status?,
   statsStartWall?, statsRealtimeMs? /*ADR-0018*/, historyCursorMs? /*NEXT: value, ADR-0014*/, historyEventId?,
-  sourceStatusJson, blobPath?, partial, countersPruned, durationMs,
+  sourceStatus /*source outcomes as one code, ADR-0040*/, blobPath?, partial, countersPruned, durationMs,
   uptimeMs? /*ADR-0029*/, privilegeMode? /*null none|shell|root|other uid, ADR-0029*/)
 
 entity UidPower(snapshotId FK, uid, component, processState, mAh, provenance)
