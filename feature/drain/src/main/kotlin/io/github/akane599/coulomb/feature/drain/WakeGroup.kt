@@ -53,6 +53,7 @@ import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.rowMotion
 import io.github.akane599.coulomb.core.ui.tagLines
 
 /** The Wakeups lens's groups, in order (SPEC 10.3), each with its SPEC 19.3 glossary line. */

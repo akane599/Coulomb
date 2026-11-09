@@ -105,7 +105,8 @@ public fun IntervalTrendChart(
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     val style = remember(type, colors) { type.caption.copy(color = colors.textSecondary) }
-    val measurer = rememberTextMeasurer()
+    // Room for every label the chart draws, so a draw-in frame lays out none again.
+    val measurer = rememberTextMeasurer(cacheSize = LABEL_CACHE)
     val labelHeight = remember(measurer, style) { measurer.measure("0", style).size.height }
     val height = with(LocalDensity.current) { labelHeight.toDp() * 2 + LabelGap * 2 + PlotHeight }
     val ink = ChartInk(hairline = colors.hairline, axis = colors.textSecondary, line = colors.textPrimary, accent = colors.accent)

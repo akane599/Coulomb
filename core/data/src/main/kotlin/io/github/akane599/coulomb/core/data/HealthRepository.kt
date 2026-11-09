@@ -21,6 +21,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -66,14 +68,20 @@ public class HealthRepository
 
         /**
          * The closed charge sessions: the latest few for the list, and those of the habits'
-         * window, read again only when one closes (the open session changes with every sample).
+         * window, read again only when one closes (the open session changes with every sample). The
+         * window starts from each collection's own time, so a long-lived process does not keep
+         * reading back to its start; [read] trims it to the last 30 days at each read.
          */
         private val charges: Flow<Charges> =
-            combine(
-                sessions.observeClosed(SessionKind.CHARGE, RECENT_SESSIONS + 1),
-                sessions.observeClosedSince(SessionKind.CHARGE, System.currentTimeMillis() - HABITS_MS),
-                sessions.observeChargerProfiles(),
-            ) { recent, window, chargers -> Charges(recent, window, chargers) }.distinctUntilChanged()
+            flow {
+                emitAll(
+                    combine(
+                        sessions.observeClosed(SessionKind.CHARGE, RECENT_SESSIONS + 1),
+                        sessions.observeClosedSince(SessionKind.CHARGE, System.currentTimeMillis() - HABITS_MS),
+                        sessions.observeChargerProfiles(),
+                    ) { recent, window, chargers -> Charges(recent, window, chargers) },
+                )
+            }.distinctUntilChanged()
 
         /** The report, read again when its rows change; the screen holds it while it shows. */
         public val report: Flow<HealthReport> =

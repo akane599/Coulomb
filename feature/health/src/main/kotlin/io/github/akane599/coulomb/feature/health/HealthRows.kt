@@ -134,19 +134,15 @@ private const val DASH = "–"
 internal const val HIGH_LEVEL = 80
 
 /**
- * The latest charge sessions (SPEC 10.8 item 6): when each started, its levels, length, cycles
- * and stress, the points gained with a share bar; a tap opens the session. "See all" opens every
- * session where there are more.
+ * The latest charge sessions' head (SPEC 10.8 item 6), with "See all" where there are more, or the
+ * line for none. The rows ([SessionRow]) follow as list items of their own, so a new session
+ * slides the others down (SPEC 11.6): when each started, its levels, length, cycles and stress,
+ * the points gained with a share bar; a tap opens the session.
  */
 @Composable
-internal fun Sessions(
-    sessions: List<ChargeSessionRow>,
+internal fun SessionsHead(
+    empty: Boolean,
     more: Boolean,
-    selected: Long?,
-    nowMs: Long,
-    zone: ZoneId,
-    formats: Formats,
-    onOpen: (Long) -> Unit,
     onSeeAll: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
@@ -158,13 +154,7 @@ internal fun Sessions(
             }
         // Each row marks its own parts: the level Modeled, cycles and stress Estimated (SPEC 6.4, 10.1).
         SectionTitle(stringResource(R.string.health_sessions), provenance = null, action = action)
-        if (sessions.isEmpty()) {
-            StandIn(stringResource(R.string.health_no_sessions), top = 0.dp)
-            return@Column
-        }
-        sessions.forEachIndexed { index, row ->
-            SessionRow(row, index == 0, row.id == selected, nowMs, zone, formats) { onOpen(row.id) }
-        }
+        if (empty) StandIn(stringResource(R.string.health_no_sessions), top = 0.dp)
     }
 }
 
@@ -202,45 +192,47 @@ private fun gainedText(
 private const val FULL = 100.0
 
 /**
- * Chargers (SPEC 10.8 item 7): each profile's name, when it was last seen and its baseline power
- * with a bar against the strongest, and Rename.
+ * The chargers' head (SPEC 10.8 item 7), or the line for none. The rows ([ChargerRow]) follow as
+ * list items of their own, so a charger seen again slides to the top (SPEC 11.6).
  */
 @Composable
-internal fun Chargers(
-    chargers: List<Charger>,
+internal fun ChargersHead(empty: Boolean) {
+    Column(Modifier.fillMaxWidth()) {
+        SectionTitle(stringResource(R.string.health_chargers), provenance = null)
+        if (empty) StandIn(stringResource(R.string.health_no_chargers), top = 0.dp)
+    }
+}
+
+/** One charger profile: its name, when it was last seen, its baseline power with a bar against [strongestW], and Rename. */
+@Composable
+@Suppress("LongParameterList") // One row's data, its place and its action.
+internal fun ChargerRow(
+    charger: Charger,
+    first: Boolean,
+    strongestW: Double,
     nowMs: Long,
     zone: ZoneId,
     formats: Formats,
     onRename: (Charger) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        SectionTitle(stringResource(R.string.health_chargers), provenance = null)
-        if (chargers.isEmpty()) {
-            StandIn(stringResource(R.string.health_no_chargers), top = 0.dp)
-            return@Column
-        }
-        val strongest = chargers.maxOf { it.baselineW }.takeIf { it > 0 } ?: 1.0
-        chargers.forEachIndexed { index, charger ->
-            val name = chargerName(charger)
-            DataRow(
-                name = name,
-                detail = stringResource(R.string.health_charger_line, lastSeen(charger.lastSeenWallMs, nowMs, zone, formats)),
-                value = formats.watts(charger.baselineW).joined(),
-                mark = Provenance.DERIVED,
-                share = charger.baselineW / strongest,
-                first = index == 0,
-                action = {
-                    val spoken = stringResource(R.string.health_rename_named, name)
-                    CoulombTextButton(
-                        stringResource(R.string.health_rename),
-                        { onRename(charger) },
-                        Modifier.semantics { contentDescription = spoken },
-                        edge = ButtonEdge.End,
-                    )
-                },
+    val name = chargerName(charger)
+    DataRow(
+        name = name,
+        detail = stringResource(R.string.health_charger_line, lastSeen(charger.lastSeenWallMs, nowMs, zone, formats)),
+        value = formats.watts(charger.baselineW).joined(),
+        mark = Provenance.DERIVED,
+        share = charger.baselineW / strongestW.takeIf { it > 0 }.let { it ?: 1.0 },
+        first = first,
+        action = {
+            val spoken = stringResource(R.string.health_rename_named, name)
+            CoulombTextButton(
+                stringResource(R.string.health_rename),
+                { onRename(charger) },
+                Modifier.semantics { contentDescription = spoken },
+                edge = ButtonEdge.End,
             )
-        }
-    }
+        },
+    )
 }
 
 /**

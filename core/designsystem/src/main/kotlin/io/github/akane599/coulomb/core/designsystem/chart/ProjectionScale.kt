@@ -90,8 +90,6 @@ private val TICK_HOURS = listOf(1, 2, 3, 4, 6, 12, 24)
  *
  * TalkBack reads [summary], and the "View as table" action ([viewTableLabel]) opens the table.
  */
-private const val LABEL_CACHE = 24
-
 @Composable
 @Suppress("LongParameterList") // One chart's data, labels and accessibility; grouping them would only rename them.
 public fun ProjectionScale(

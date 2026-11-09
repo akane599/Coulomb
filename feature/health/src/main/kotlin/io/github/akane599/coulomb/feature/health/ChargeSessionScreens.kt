@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.health
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,10 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +58,8 @@ import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import io.github.akane599.coulomb.core.ui.page.StandIn
 import io.github.akane599.coulomb.core.ui.page.ViewTableButton
+import io.github.akane599.coulomb.core.ui.rowMotion
+import kotlinx.coroutines.delay
 import java.time.ZoneId
 import io.github.akane599.coulomb.core.ui.R as UiR
 
@@ -107,7 +112,7 @@ internal fun ChargeSessionsContent(
                 }
             } else {
                 LazyColumn(
-                    modifier.fillMaxSize(),
+                    modifier.fillMaxSize().readingWidth(),
                     contentPadding =
                         PaddingValues(
                             start = gutter,
@@ -117,7 +122,9 @@ internal fun ChargeSessionsContent(
                         ),
                 ) {
                     itemsIndexed(state.value, key = { _, row -> row.id }, contentType = { _, _ -> "session" }) { index, row ->
-                        SessionRow(row, index == 0, row.id == selected, nowMs, zone, formats) { onOpenSession(row.id) }
+                        Box(rowMotion()) {
+                            SessionRow(row, index == 0, row.id == selected, nowMs, zone, formats) { onOpenSession(row.id) }
+                        }
                     }
                 }
             }
@@ -146,7 +153,13 @@ internal fun ChargeSessionContent(
     val gutter = currentGutter()
     when (state) {
         Read.Loading -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ListSkeleton() }
+            // A session beside the list usually reads in well under this; only a slow read shows the skeleton.
+            var late by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                delay(SKELETON_DELAY_MS)
+                late = true
+            }
+            if (late) Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ListSkeleton() }
         }
 
         Read.Error -> {
@@ -166,6 +179,12 @@ internal fun ChargeSessionContent(
     }
 }
 
+/** A session's page stays a readable measure, centred, when it covers a wide window (SPEC 10.10). */
+private fun Modifier.readingWidth(): Modifier = wrapContentWidth().widthIn(max = MaxPageWidth).fillMaxWidth()
+
+private val MaxPageWidth = 840.dp
+private const val SKELETON_DELAY_MS = 150L
+
 @Composable
 private fun Session(
     detail: ChargeSessionDetail,
@@ -175,7 +194,10 @@ private fun Session(
     val formats = rememberFormats()
     val gutter = currentGutter()
     var table by rememberSaveable { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = gutter, end = gutter, bottom = CoulombSpacing.Space48)) {
+    LazyColumn(
+        Modifier.fillMaxSize().readingWidth(),
+        contentPadding = PaddingValues(start = gutter, end = gutter, bottom = CoulombSpacing.Space48),
+    ) {
         item(key = "head", contentType = "head") { SessionHead(detail, zone, nowMs, formats) }
         item(key = "curve", contentType = "curve") { Curve(detail, zone, formats) { table = true } }
         item(key = "heat", contentType = "heat") { Heat(detail, formats) }
@@ -301,11 +323,11 @@ private fun Curve(
         val summary =
             detail.peakW?.let { stringResource(R.string.health_curve_summary_power, from, to, start, end, formats.watts(it).joined()) }
                 ?: stringResource(R.string.health_curve_summary, from, to, start, end)
-        ChargeCurveChart(
-            readings = detail.curve.map { CurveReading(it.wallMs, it.levelPct.toFloat(), it.watts?.toFloat()) },
-            taperLevel = detail.ccToCvLevel,
-            fullSpeedW = detail.fullSpeedW,
-            labels =
+        val readings = remember(detail.curve) { detail.curve.map { CurveReading(it.wallMs, it.levelPct.toFloat(), it.watts?.toFloat()) } }
+        val taperRule = stringResource(R.string.health_taper_rule)
+        val fullSpeedRule = stringResource(R.string.health_full_speed_rule)
+        val labels =
+            remember(formats, zone, row.startWallMs, taperRule, fullSpeedRule) {
                 CurveLabels(
                     percent = formats::percent,
                     // Axis steps are whole watts or halves of them: "20 W", "2.5 W".
@@ -314,9 +336,15 @@ private fun Curve(
                         if (w % 1.0 == 0.0) figure.copy(number = formats.integer(w.toLong())).joined() else figure.joined()
                     },
                     time = { formats.clock(it, zone, row.startWallMs) },
-                    taper = stringResource(R.string.health_taper_rule),
-                    fullSpeed = stringResource(R.string.health_full_speed_rule),
-                ),
+                    taper = taperRule,
+                    fullSpeed = fullSpeedRule,
+                )
+            }
+        ChargeCurveChart(
+            readings = readings,
+            taperLevel = detail.ccToCvLevel,
+            fullSpeedW = detail.fullSpeedW,
+            labels = labels,
             summary = summary,
             viewTableLabel = stringResource(UiR.string.page_view_table),
             onViewTable = onViewTable,

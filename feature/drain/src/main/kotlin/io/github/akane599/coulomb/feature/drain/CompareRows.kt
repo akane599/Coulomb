@@ -55,6 +55,7 @@ import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
+import io.github.akane599.coulomb.core.ui.rowMotion
 import io.github.akane599.coulomb.core.ui.tagLines
 import kotlin.math.abs
 

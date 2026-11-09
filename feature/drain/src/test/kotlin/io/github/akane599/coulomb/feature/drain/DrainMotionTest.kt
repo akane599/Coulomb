@@ -24,6 +24,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.ui.rowMotion
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

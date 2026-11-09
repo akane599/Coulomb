@@ -6,6 +6,9 @@ package io.github.akane599.coulomb.core.designsystem.chart
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
+/** Text layouts a chart keeps: more than any chart draws, so a draw-in frame measures none again. */
+internal const val LABEL_CACHE = 24
+
 /** A label of [width] centred on [x], moved inside the plot at either end. */
 internal fun DrawScope.placeLabel(
     width: Float,

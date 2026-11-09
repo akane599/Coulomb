@@ -76,21 +76,21 @@ class HealthScreenshotTest {
     @Config(qualifiers = "w412dp-h6000dp-xhdpi")
     fun pageText200() = shoot("page-200", fontScale = 2f) { Health(ready()) }
 
-    /** A 700 dp window beside the rail: two columns of 280 dp fit. */
+    /** A 700 dp window beside the 80 dp rail: 620 dp is under two 280 dp columns, so one (ADR-0036 §23). */
     @Test
     @Config(qualifiers = "w700dp-h1600dp-xhdpi")
-    fun medium() = shoot("medium") { Health(ready()) }
+    fun medium() = shoot("medium", width = 620.dp) { Health(ready()) }
+
+    /** An 839 dp window beside the rail: two columns. */
+    @Test
+    @Config(qualifiers = "w839dp-h1600dp-xhdpi")
+    fun mediumWide() = shoot("medium-wide", width = 759.dp) { Health(ready()) }
 
     @Test
     @Config(qualifiers = "w1000dp-h1600dp-xhdpi")
-    fun expanded() = shoot("expanded") { Health(ready(), selected = LAB_SESSIONS.first().id) }
+    fun expanded() = shoot("expanded") { Health(ready()) }
 
-    /** Expanded before a session is chosen: nothing in the list is marked. */
-    @Test
-    @Config(qualifiers = "w1000dp-h1600dp-xhdpi")
-    fun expandedNoSelection() = shoot("expanded-none") { Health(ready()) }
-
-    /** The list pane beside an open session (SPEC 10.10): the chosen row is marked. */
+    /** The list pane beside an open session at 1000 dp (SPEC 10.10): the chosen row is marked and in view. */
     @Test
     @Config(qualifiers = "w1000dp-h3000dp-xhdpi")
     fun paneSelected() = shoot("pane", width = PANE) { Health(ready(), selected = LAB_SESSIONS.first().id) }
@@ -246,7 +246,7 @@ class HealthScreenshotTest {
 }
 
 private const val COMPACT = "w412dp-h915dp-xhdpi"
-private val PANE = 480.dp
+private val PANE = 368.dp
 private const val PAGE = "w412dp-h3000dp"
 private val ZONE = ZoneOffset.UTC
 private const val DIALOG_SETTLE_MS = 600L

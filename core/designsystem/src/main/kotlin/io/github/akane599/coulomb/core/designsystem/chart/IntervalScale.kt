@@ -65,7 +65,8 @@ public fun IntervalScale(
     val type = CoulombTheme.typography
     val style = remember(type, colors) { type.caption.copy(color = colors.textSecondary) }
     val strong = remember(type, colors) { type.captionEmphasis.copy(color = colors.textPrimary) }
-    val measurer = rememberTextMeasurer()
+    // Room for every label the chart draws, so a draw-in frame lays out none again.
+    val measurer = rememberTextMeasurer(cacheSize = LABEL_CACHE)
     val labelHeight = remember(measurer, style) { measurer.measure("0", style).size.height }
     val lines = if (labels.any { it.sub != null }) 2 else 1
     val height = with(LocalDensity.current) { labelHeight.toDp() * (1 + lines) + LabelGap * 2 + StopHeight + MajorTick }
@@ -90,6 +91,9 @@ public fun IntervalScale(
         minorTicks(from, to, minorStep, axis, colors.textSecondary, ::x)
         axisLabels(labels, axis, text, labelHeight, colors.textSecondary, ::x)
         val reserved = mutableListOf<ClosedFloatingPointRange<Float>>()
+        val range = emphasis.measure(rangeLabel)
+        val rangeSpan = placeLabel(range.size.width.toFloat(), (x(low) + x(high)) / 2)
+        reserved += rangeSpan
         with(drawIn) {
             revealed {
                 val start = x(low)
@@ -104,12 +108,10 @@ public fun IntervalScale(
                 drawPath(bracket, colors.accent, style = Stroke(BracketWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                 val tick = x(point)
                 drawLine(colors.textPrimary, Offset(tick, axis - PointTick.toPx()), Offset(tick, axis), BracketWidth.toPx() / 2)
+                // The range's words arrive with its bracket, as on Now's projection scale.
+                drawText(range, topLeft = Offset(rangeSpan.start, 0f))
             }
         }
-        val range = emphasis.measure(rangeLabel)
-        val rangeSpan = placeLabel(range.size.width.toFloat(), (x(low) + x(high)) / 2)
-        drawText(range, topLeft = Offset(rangeSpan.start, 0f))
-        reserved += rangeSpan
         endLabel?.let { label ->
             val end = text.measure(label)
             val endSpan = (size.width - end.size.width)..size.width

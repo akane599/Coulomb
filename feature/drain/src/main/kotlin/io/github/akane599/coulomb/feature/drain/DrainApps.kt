@@ -40,6 +40,7 @@ import io.github.akane599.coulomb.core.ui.IconStandIn
 import io.github.akane599.coulomb.core.ui.appIconKey
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
+import io.github.akane599.coulomb.core.ui.rowMotion
 
 /** One ranked row of the Apps lens: an app, or the power no app was charged for. */
 internal sealed interface AppsEntry {

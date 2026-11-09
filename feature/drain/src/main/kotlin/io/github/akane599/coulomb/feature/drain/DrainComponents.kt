@@ -59,6 +59,7 @@ import io.github.akane599.coulomb.core.ui.breakdown.chartSemantics
 import io.github.akane599.coulomb.core.ui.breakdown.hue
 import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.rowMotion
 import io.github.akane599.coulomb.core.ui.R as UiR
 
 /**

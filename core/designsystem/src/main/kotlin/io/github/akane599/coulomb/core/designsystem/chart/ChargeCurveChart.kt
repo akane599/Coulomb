@@ -64,6 +64,7 @@ private const val FULL = 100
 private const val HALF = 50
 private val WATT_STEPS = listOf(1.0, 2.0, 5.0, 10.0, 20.0, 25.0, 50.0, 100.0)
 private const val POWER_LINES = 2
+private const val MAX_POINTS = 800
 
 /**
  * A charge session's curve (SPEC 10.8 item 6): the level from 0 to 100% over the session, and
@@ -88,9 +89,12 @@ public fun ChargeCurveChart(
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     val style = remember(type, colors) { type.caption.copy(color = colors.textSecondary) }
-    val measurer = rememberTextMeasurer()
+    // Room for every label the chart draws, so a draw-in frame lays out none again.
+    val measurer = rememberTextMeasurer(cacheSize = LABEL_CACHE)
     val labelHeight = remember(measurer, style) { measurer.measure("0", style).size.height }
-    val hasPower = readings.any { it.watts != null }
+    // A long charge at 1 Hz has thousands of readings; a phone's width shows a few hundred.
+    val shown = remember(readings) { thinned(readings) }
+    val hasPower = shown.any { it.watts != null }
     val height = with(LocalDensity.current) { chartHeight(labelHeight.toDp(), hasPower) }
     val ink = ChartInk(hairline = colors.hairline, axis = colors.textSecondary, line = colors.textPrimary, accent = colors.accent)
     val drawIn = rememberDrawIn()
@@ -103,6 +107,7 @@ public fun ChargeCurveChart(
                 customActions = listOf(CustomAccessibilityAction(viewTableLabel) { onViewTable().let { true } })
             },
     ) {
+        val readings = shown
         if (readings.size < 2) return@Canvas
         val text = ChartText(measurer, style)
         val wattTop = wattTop(readings)
@@ -143,6 +148,27 @@ public fun ChargeCurveChart(
             }
         }
     }
+}
+
+/**
+ * At most about [MAX_POINTS] readings: in each run of readings, the ones with the lowest and the
+ * highest power, plus the first without power so a gap stays a gap. Ends kept as they are.
+ */
+internal fun thinned(readings: List<CurveReading>): List<CurveReading> {
+    if (readings.size <= MAX_POINTS) return readings
+    val run = ceil(readings.size / (MAX_POINTS / 2.0)).toInt()
+    val inner =
+        readings.drop(1).dropLast(1).chunked(run).flatMap { chunk ->
+            val powered = chunk.filter { it.watts != null }
+            val picks =
+                listOfNotNull(
+                    powered.minByOrNull { checkNotNull(it.watts) },
+                    powered.maxByOrNull { checkNotNull(it.watts) },
+                    chunk.firstOrNull { it.watts == null },
+                ).ifEmpty { listOf(chunk.first()) }
+            picks.distinct().sortedBy { it.wallMs }
+        }
+    return listOf(readings.first()) + inner + readings.last()
 }
 
 /** Two label lines and the level panel, and under them the power panel with its top label where there is power. */

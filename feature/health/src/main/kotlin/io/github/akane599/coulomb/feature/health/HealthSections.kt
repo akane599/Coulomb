@@ -54,6 +54,7 @@ import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import io.github.akane599.coulomb.core.ui.page.StandIn
 import io.github.akane599.coulomb.core.ui.page.TableRow
 import io.github.akane599.coulomb.core.ui.page.ViewTableButton
+import java.time.Instant
 import java.time.ZoneId
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -547,6 +548,8 @@ internal fun Trend(
         }
         val first = trend.days.first()
         val last = trend.days.last()
+        // The windows span from the first cross; the estimate's line starts at the third window.
+        val firstWindow = trend.points.minOfOrNull { it.wallMs }?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() } ?: first.day
         val days = remember(trend) { trend.days.map { IntervalDay(it.day, it.mah, it.lowMah, it.highMah) } }
         val crosses = remember(trend) { trend.points.map { TrendCross(it.wallMs, it.mah) } }
         val labels =
@@ -562,7 +565,7 @@ internal fun Trend(
                     R.plurals.health_trend_summary,
                     trend.points.size,
                     formats.integer(trend.points.size.toLong()),
-                    formats.day(first.day),
+                    formats.day(firstWindow),
                     formats.day(last.day),
                     formats.mah(first.mah).joined(),
                     formats.mah(last.mah).joined(),

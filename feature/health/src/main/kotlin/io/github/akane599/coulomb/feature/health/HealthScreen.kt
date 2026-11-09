@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.feature.health
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,11 +17,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +55,7 @@ import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.rowMotion
 import java.time.ZoneId
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -141,26 +147,38 @@ private fun Ready(
     var renaming by rememberSaveable { mutableStateOf<Long?>(null) }
     var design by rememberSaveable { mutableStateOf(false) }
     // Built once per input, so opening a sheet or dialog does not recompose every visible section.
+    // The selection is read through a state, so choosing a row recomposes the rows, not every section.
+    val selected = rememberUpdatedState(selectedSession)
     val sections =
-        remember(report, dates, formats, zone, nowMs, selectedSession, actions) {
+        remember(report, dates, formats, zone, nowMs, actions) {
             Sections(
                 report = report,
                 dates = dates,
                 formats = formats,
                 zone = zone,
                 nowMs = nowMs,
-                selected = selectedSession,
+                selected = { selected.value },
                 actions = actions,
                 events = SectionEvents(viewTable = { table = it }, rename = { renaming = it }, design = { design = true }),
             )
         }
+    // Held above the layouts, so each keeps its place when a session opens or closes beside the list.
+    val single = rememberLazyListState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val column = MinColumnWidth * LocalDensity.current.fontScale.coerceAtLeast(1f)
         val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= column * 2
+        // Beside an open session the list pane is one column: keep the chosen row in view (DESIGN.md, list-detail).
+        LaunchedEffect(selectedSession, twoColumns) {
+            val index = sections.selectedIndex()
+            if (index != null && !twoColumns && single.layoutInfo.visibleItemsInfo.none { it.key == sessionKey(selectedSession ?: 0) }) {
+                single.requestScrollToItem(index)
+            }
+        }
         if (!twoColumns) {
             // One column stays a readable measure on a wide window at large text (SPEC 10.10).
             LazyColumn(
                 Modifier.widthIn(max = MaxOneColumnWidth).fillMaxSize().align(Alignment.TopCenter),
+                state = single,
                 contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Bottom),
             ) {
                 sections.first(this)
@@ -168,7 +186,11 @@ private fun Ready(
             }
         } else {
             Row(
-                Modifier.widthIn(max = MaxTwoColumnWidth).fillMaxSize().padding(horizontal = gutter),
+                Modifier
+                    .widthIn(max = MaxTwoColumnWidth)
+                    .fillMaxSize()
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = gutter),
                 horizontalArrangement = Arrangement.spacedBy(gutter),
             ) {
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = PaddingValues(bottom = Bottom)) { sections.first(this) }
@@ -221,7 +243,7 @@ private class Sections(
     val formats: Formats,
     val zone: ZoneId,
     val nowMs: Long,
-    val selected: Long?,
+    val selected: () -> Long?,
     val actions: HealthActions,
     val events: SectionEvents,
 ) {
@@ -239,14 +261,35 @@ private class Sections(
         besideFirst: Boolean = false,
     ) {
         scope.item(key = "habits", contentType = "habits") { Habits(report.habits, formats, first = besideFirst) }
-        scope.item(key = "sessions", contentType = "sessions") {
-            Sessions(report.sessions, report.moreSessions, selected, nowMs, zone, formats, actions.openSession, actions.seeAll)
+        scope.item(key = "sessions", contentType = "sessions-head") {
+            SessionsHead(report.sessions.isEmpty(), report.moreSessions, actions.seeAll)
         }
-        scope.item(key = "chargers", contentType = "chargers") {
-            Chargers(report.chargers, nowMs, zone, formats) { events.rename(it.id) }
+        // Rows as items of their own, so a new one slides the others along (SPEC 11.6).
+        scope.itemsIndexed(report.sessions, key = { _, row -> sessionKey(row.id) }, contentType = { _, _ -> "session" }) { index, row ->
+            Box(rowMotion()) {
+                SessionRow(row, index == 0, row.id == selected(), nowMs, zone, formats) { actions.openSession(row.id) }
+            }
+        }
+        scope.item(key = "chargers", contentType = "chargers-head") { ChargersHead(report.chargers.isEmpty()) }
+        val strongest = report.chargers.maxOfOrNull { it.baselineW } ?: 0.0
+        scope.itemsIndexed(report.chargers, key = { _, c -> "charger-${c.id}" }, contentType = { _, _ -> "charger" }) { index, charger ->
+            Box(rowMotion()) { ChargerRow(charger, index == 0, strongest, nowMs, zone, formats) { events.rename(it.id) } }
         }
     }
+
+    /** In one column, the [selected] row's index: the four items of [first], habits and the sessions' head come first. */
+    fun selectedIndex(): Int? =
+        report.sessions
+            .indexOfFirst { it.id == selected() }
+            .takeIf { it >= 0 }
+            ?.plus(FIRST_ITEMS + 2)
+
+    private companion object {
+        const val FIRST_ITEMS = 4
+    }
 }
+
+private fun sessionKey(id: Long) = "session-$id"
 
 /** The table behind a chart; null when the chart has nothing to list. */
 @Composable
