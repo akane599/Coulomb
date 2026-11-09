@@ -2,6 +2,8 @@
 <!-- SPDX-FileCopyrightText: The Coulomb contributors -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
+    <string name="health_low_confidence_inline">düşük güvenilirlik</string>
+    <string name="health_gain_source">Pil yakıt göstergesi</string>
     <string name="health_plus_minus">± %1$s</string>
     <string name="health_of_design">%2$s tasarım kapasitesine göre %1$s</string>
     <string name="health_design_unknown">Sağlık yüzdesi için pilin tasarım kapasitesi gerekiyor; bu telefon onu bildirmiyor.</string>
@@ -17,10 +19,10 @@
     <string name="health_design_from_user">Tasarım kapasitesi senin girdiğin değer.</string>
     <string name="health_design_set">Tasarım kapasitesini gir</string>
     <string name="health_design_change">Tasarım kapasitesini değiştir</string>
-    <string name="health_change_lower_within">%2$s tarihindekinden yaklaşık %1$s düşük; iki tahminin ±%3$s hata payı içinde.</string>
-    <string name="health_change_higher_within">%2$s tarihindekinden yaklaşık %1$s yüksek; iki tahminin ±%3$s hata payı içinde.</string>
-    <string name="health_change_lower">%2$s tarihindekinden yaklaşık %1$s düşük; iki tahminin ±%3$s hata payından fazla.</string>
-    <string name="health_change_higher">%2$s tarihindekinden yaklaşık %1$s yüksek; iki tahminin ±%3$s hata payından fazla.</string>
+    <string name="health_change_lower_within">%2$s tarihindekinden yaklaşık %1$s düşük; iki tahminin ± %3$s hata payı içinde.</string>
+    <string name="health_change_higher_within">%2$s tarihindekinden yaklaşık %1$s yüksek; iki tahminin ± %3$s hata payı içinde.</string>
+    <string name="health_change_lower">%2$s tarihindekinden yaklaşık %1$s düşük; iki tahminin ± %3$s hata payından fazla.</string>
+    <string name="health_change_higher">%2$s tarihindekinden yaklaşık %1$s yüksek; iki tahminin ± %3$s hata payından fazla.</string>
     <string name="health_change_same">%1$s tarihindekiyle neredeyse aynı.</string>
     <string name="health_no_estimate_title">Henüz kapasite tahmini yok</string>
     <string name="health_no_estimate">İlk kapasite tahmini, %1$s veya altından %2$s veya üstüne bir şarjdan sonra gelir.</string>
@@ -52,7 +54,7 @@
     <string name="health_counted_since_android">%1$s tarihinden beri; Android %2$s saydı</string>
     <string name="health_first_used">İlk kullanım</string>
     <string name="health_made">Üretim</string>
-    <string name="health_made_in">üretim: %1$s · %2$s</string>
+    <string name="health_made_in">üretim: %1$s · %2$s</string>
     <string name="health_by_manufacturer">üreticinin bildirdiği</string>
     <string name="health_by_battery">pilin bildirdiği</string>
     <string name="health_no_cycles">Android’den henüz döngü sayısı yok. Coulomb gördüğü ilk şarjdan itibaren sayar.</string>
@@ -115,7 +117,7 @@
     <string name="health_unnamed_wireless">Adsız kablosuz şarj cihazı</string>
     <string name="health_unnamed_dock">Adsız yuva</string>
     <string name="health_unnamed">Adsız şarj cihazı</string>
-    <string name="health_charger_line">Olağan güç · son görülme %1$s</string>
+    <string name="health_charger_line">Olağan güç · son görülme %1$s</string>
     <string name="health_today">bugün</string>
     <string name="health_yesterday">dün</string>
     <plurals name="health_days_ago">
@@ -134,7 +136,7 @@
     <string name="health_design_title">Tasarım kapasitesi</string>
     <string name="health_design_label">mAh cinsinden kapasite</string>
     <string name="health_design_hint">Pilin üzerinde veya telefonun özelliklerinde yazan kapasite; 500 ile 20.000 mAh arasında.</string>
-    <string name="health_design_source">Şu an: %1$s</string>
+    <string name="health_design_source">Şu an: %1$s.</string>
     <string name="health_design_reported">Bildirilen değeri kullan</string>
     <string name="health_design_reported_note">Girdiğin değer silinir; telefonun bildirdiği değer bir sonraki okumada geri gelir.</string>
     <string name="health_design_invalid">500 ile 20.000 arasında bir sayı gir.</string>

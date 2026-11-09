@@ -4,6 +4,8 @@
 <!-- Health (SPEC 10.8, ADR-0044). -->
 <resources>
     <!-- The estimate (SPEC 10.8 item 1). -->
+    <string name="health_low_confidence_inline">low confidence</string>
+    <string name="health_gain_source">Battery fuel gauge</string>
     <string name="health_plus_minus">± %1$s</string>
     <string name="health_of_design">%1$s of the %2$s design capacity</string>
     <string name="health_design_unknown">Health % needs the battery’s design capacity, which this phone doesn’t report.</string>
@@ -19,10 +21,10 @@
     <string name="health_design_from_user">Design capacity as you entered it.</string>
     <string name="health_design_set">Enter design capacity</string>
     <string name="health_design_change">Change design capacity</string>
-    <string name="health_change_lower_within">About %1$s lower than on %2$s, within the ±%3$s the two estimates could be off by.</string>
-    <string name="health_change_higher_within">About %1$s higher than on %2$s, within the ±%3$s the two estimates could be off by.</string>
-    <string name="health_change_lower">About %1$s lower than on %2$s, more than the ±%3$s the two estimates could be off by.</string>
-    <string name="health_change_higher">About %1$s higher than on %2$s, more than the ±%3$s the two estimates could be off by.</string>
+    <string name="health_change_lower_within">About %1$s lower than on %2$s, within the ± %3$s the two estimates could be off by.</string>
+    <string name="health_change_higher_within">About %1$s higher than on %2$s, within the ± %3$s the two estimates could be off by.</string>
+    <string name="health_change_lower">About %1$s lower than on %2$s, more than the ± %3$s the two estimates could be off by.</string>
+    <string name="health_change_higher">About %1$s higher than on %2$s, more than the ± %3$s the two estimates could be off by.</string>
     <string name="health_change_same">About the same as on %1$s.</string>
     <string name="health_no_estimate_title">No capacity estimate yet</string>
     <string name="health_no_estimate">First capacity estimate after a charge from %1$s or less to %2$s or more.</string>
@@ -58,7 +60,7 @@
     <string name="health_counted_since_android">since %1$s; Android counted %2$s</string>
     <string name="health_first_used">First used</string>
     <string name="health_made">Made</string>
-    <string name="health_made_in">made in %1$s · %2$s</string>
+    <string name="health_made_in">made in %1$s · %2$s</string>
     <string name="health_by_manufacturer">reported by the manufacturer</string>
     <string name="health_by_battery">reported by the battery</string>
     <string name="health_no_cycles">No cycle count from Android yet. Coulomb counts from the first charge it sees.</string>
@@ -129,7 +131,7 @@
     <string name="health_unnamed_wireless">Unnamed wireless charger</string>
     <string name="health_unnamed_dock">Unnamed dock</string>
     <string name="health_unnamed">Unnamed charger</string>
-    <string name="health_charger_line">Usual power · last seen %1$s</string>
+    <string name="health_charger_line">Usual power · last seen %1$s</string>
     <string name="health_today">today</string>
     <string name="health_yesterday">yesterday</string>
     <plurals name="health_days_ago">
@@ -150,7 +152,7 @@
     <string name="health_design_title">Design capacity</string>
     <string name="health_design_label">Capacity in mAh</string>
     <string name="health_design_hint">The capacity printed on the battery or in the phone’s specifications, between 500 and 20,000 mAh.</string>
-    <string name="health_design_source">Now: %1$s</string>
+    <string name="health_design_source">Now: %1$s.</string>
     <string name="health_design_reported">Use the reported value</string>
     <string name="health_design_reported_note">Your entry is removed, and the value the phone reports comes back with its next reading.</string>
     <string name="health_design_invalid">Enter a number between 500 and 20,000.</string>

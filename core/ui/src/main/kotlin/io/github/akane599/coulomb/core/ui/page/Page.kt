@@ -33,13 +33,17 @@ import io.github.akane599.coulomb.core.ui.R
 
 // The text pieces of a detail page (App detail, Health), shared so each page reads alike.
 
-/** A section's heading with the provenance of all its figures (lab `.section-head` with its mark). */
+/**
+ * A section's heading with the provenance of all its figures (lab `.section-head` with its mark),
+ * and either a [caption] on its baseline or an [action] at its end.
+ */
 @Composable
 public fun SectionTitle(
     title: String,
     provenance: Provenance?,
     modifier: Modifier = Modifier,
     first: Boolean = false,
+    caption: String? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
     val colors = CoulombTheme.colors
@@ -53,6 +57,15 @@ public fun SectionTitle(
         } else {
             Text(title, head.semantics { heading() }, color = colors.textPrimary, style = type.title)
         }
+    }
+    if (caption != null) {
+        // A caption, such as the window a section covers, sits on the title's first baseline.
+        Row(block) {
+            text(Modifier.weight(1f).wrapContentWidth(Alignment.Start).alignByBaseline())
+            Spacer(Modifier.width(CoulombSpacing.Space16))
+            Text(caption, Modifier.alignByBaseline(), color = colors.textSecondary, style = type.caption)
+        }
+        return
     }
     if (action == null) {
         text(block)

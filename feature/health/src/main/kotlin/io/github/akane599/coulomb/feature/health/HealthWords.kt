@@ -16,7 +16,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
-import io.github.akane599.coulomb.core.ui.R as UiR
 
 /** Within this many days a day is named by its weekday or as days ago; further back, by its date. */
 private const val WEEK = 6L
@@ -96,7 +95,7 @@ internal fun sessionLine(
             ),
             row.cycles?.let { cycles(it, formats) },
             row.stress?.let { stringResource(inline(it)) },
-            stringResource(UiR.string.low_confidence).takeIf { row.quality < LOW_QUALITY },
+            stringResource(R.string.health_low_confidence_inline).takeIf { row.quality < LOW_QUALITY },
         )
     return parts.joinToString(SEPARATOR)
 }

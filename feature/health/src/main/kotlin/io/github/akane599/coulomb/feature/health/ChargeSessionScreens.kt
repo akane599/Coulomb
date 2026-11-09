@@ -50,8 +50,10 @@ import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.FigureText
+import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
+import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.page.Note
@@ -102,7 +104,7 @@ internal fun ChargeSessionsContent(
         }
 
         Read.Error -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { SessionError(retry) }
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(retry) }
         }
 
         is Read.Ready -> {
@@ -163,7 +165,7 @@ internal fun ChargeSessionContent(
         }
 
         Read.Error -> {
-            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { SessionError(retry) }
+            Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ErrorState(retry) }
         }
 
         is Read.Ready -> {
@@ -238,27 +240,28 @@ private fun SessionHead(
             color = colors.textPrimary,
             style = type.title,
         )
-        // The session's one primary figure (SPEC 10.1): the level it gained.
-        Row(
-            Modifier.padding(top = CoulombSpacing.Space8).semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                formats.signedShare((row.toPct - row.fromPct).coerceAtLeast(0) / PERCENT),
-                color = colors.textPrimary,
-                style = type.display,
-            )
-            ProvenanceMark(Provenance.MODELED, Modifier.padding(start = CoulombSpacing.Space4))
+        // The session's one primary figure (SPEC 10.1): the level it gained, from the fuel gauge, so
+        // Modeled with its source named (SPEC 6.7), set as Now sets the level.
+        Column(Modifier.padding(top = CoulombSpacing.Space8).semantics(mergeDescendants = true) {}) {
+            Row {
+                FigureText(gained(row.toPct - row.fromPct, formats), type.display, type.displayUnit, Modifier.alignByBaseline())
+                // The mark sits on the numeral's baseline, as on Now (lab `.hero-level .prov`).
+                Box(Modifier.alignBy { it.measuredHeight }.padding(start = MarkGap)) { ProvenanceMark(Provenance.MODELED) }
+            }
+            Text(stringResource(R.string.health_gain_source), color = colors.textSecondary, style = type.caption)
         }
-        Text(
-            sessionLine(row, formats),
-            Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space4),
-            color = colors.textSecondary,
-            style = type.body,
-        )
+        // Cycles and stress are Estimated, as in the session's row on Health.
+        val line = sessionLine(row, formats)
+        val lineModifier = Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8)
+        if (row.cycles != null || row.stress != null) {
+            MarkedText(line, Provenance.ESTIMATED, type.body, colors.textSecondary, lineModifier)
+        } else {
+            Text(line, lineModifier, color = colors.textSecondary, style = type.body)
+        }
         val peak = detail.peakW
         if (peak == null) {
-            Note(stringResource(R.string.health_no_power), top = CoulombSpacing.Space16)
+            // It stands in for the power figures, so Body, not a note (App detail's rule).
+            StandIn(stringResource(R.string.health_no_power), top = CoulombSpacing.Space24)
             return@Column
         }
         CoulombFigureStrip(Modifier.padding(top = CoulombSpacing.Space24)) {
@@ -282,8 +285,23 @@ private fun SessionHead(
     }
 }
 
-private const val DASH = "–"
-private const val PERCENT = 100.0
+private val MarkGap = 2.dp
+
+/**
+ * "+62%" split for [FigureText]: the sign stays with the digits, or before a leading percent sign
+ * (Turkish "+%62"), and no sign on no gain.
+ */
+private fun gained(
+    points: Int,
+    formats: Formats,
+): Affixed {
+    val parts = formats.percentParts(points.coerceAtLeast(0))
+    return when {
+        points <= 0 -> parts
+        parts.before.isEmpty() -> parts.copy(number = "+" + parts.number)
+        else -> parts.copy(before = "+" + parts.before)
+    }
+}
 
 @Composable
 private fun Watts(
@@ -436,28 +454,5 @@ private fun ListSkeleton() {
         SkeletonBlock(26.dp, Modifier.width(200.dp))
         SkeletonBlock(16.dp, Modifier.padding(top = CoulombSpacing.Space8).width(280.dp))
         SkeletonBlock(96.dp, Modifier.padding(top = currentSectionGap()).fillMaxWidth())
-    }
-}
-
-@Composable
-private fun SessionError(retry: () -> Unit) {
-    Column(Modifier.widthIn(max = 560.dp).padding(top = CoulombSpacing.Space24)) {
-        Text(
-            stringResource(R.string.health_error_title),
-            Modifier.fillMaxWidth().semantics { heading() },
-            color = CoulombTheme.colors.textPrimary,
-            style = CoulombTheme.typography.title,
-        )
-        Text(
-            stringResource(R.string.health_error_body),
-            Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8),
-            color = CoulombTheme.colors.textSecondary,
-            style = CoulombTheme.typography.body,
-        )
-        CoulombOutlinedButton(
-            text = stringResource(R.string.health_error_action),
-            onClick = retry,
-            modifier = Modifier.padding(top = CoulombSpacing.Space16),
-        )
     }
 }

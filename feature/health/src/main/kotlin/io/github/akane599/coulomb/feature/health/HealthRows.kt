@@ -65,9 +65,12 @@ internal fun Habits(
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     Column(Modifier.fillMaxWidth()) {
-        SectionTitle(stringResource(R.string.health_habits), provenance = null, first = first) {
-            Text(stringResource(R.string.health_habits_window), color = colors.textSecondary, style = type.caption)
-        }
+        SectionTitle(
+            stringResource(R.string.health_habits),
+            provenance = null,
+            first = first,
+            caption = stringResource(R.string.health_habits_window),
+        )
         if (habits == null) {
             StandIn(stringResource(R.string.health_no_habits), top = 0.dp)
             return@Column
@@ -128,7 +131,7 @@ private fun Figure(figure: Affixed) {
     ProvenanceMark(Provenance.DERIVED)
 }
 
-private const val DASH = "–"
+internal const val DASH = "–"
 
 /** The level the habits count time at or above (ADR-0044 §2). */
 internal const val HIGH_LEVEL = 80

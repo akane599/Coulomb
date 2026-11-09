@@ -190,7 +190,7 @@ private fun TextDialog(
         onDismissRequest = onDismiss,
         confirmButton = { CoulombTextButton(stringResource(R.string.health_save), onConfirm, enabled = confirmEnabled) },
         dismissButton = { CoulombTextButton(stringResource(R.string.health_cancel), onDismiss) },
-        title = { Text(title, color = colors.textPrimary, style = CoulombTheme.typography.headline) },
+        title = { Text(title, color = colors.textPrimary, style = CoulombTheme.typography.title) },
         text = {
             // Scrolls at large text with the keyboard up, where the text slot alone would squeeze the field.
             Column(Modifier.verticalScroll(rememberScrollState()).padding(top = CoulombSpacing.Space4)) { field(focus) }
@@ -198,7 +198,8 @@ private fun TextDialog(
             LaunchedEffect(focus) { focus.requestFocus() }
         },
         shape = DialogShape,
-        containerColor = colors.surface,
+        // Raised like the sheets and menus (DESIGN.md, Raised Slate).
+        containerColor = colors.surfaceRaised,
     )
 }
 
@@ -207,5 +208,6 @@ private fun fieldColors() =
     OutlinedTextFieldDefaults.colors(
         focusedBorderColor = CoulombTheme.colors.textPrimary,
         focusedLabelColor = CoulombTheme.colors.textPrimary,
-        cursorColor = CoulombTheme.colors.textPrimary,
+        // DESIGN.md gives copper to the text caret.
+        cursorColor = CoulombTheme.colors.accent,
     )

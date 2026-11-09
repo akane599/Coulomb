@@ -111,6 +111,41 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
   - Pending the emulator: the shared element, split-pane insets with 3-button navigation in
     landscape, the cut when the split detail swaps, a landscape split golden. Pending a device
     with TalkBack: the walk of the split.
+- Health (SPEC 10.8, ADR-0042 to ADR-0044):
+  - The capacity estimate on a graduated scale, with its interval and health % of design. Then:
+    - the change since the estimate settled;
+    - the three-source cross-check;
+    - cycles and age, with Coulomb's own count next to Android's;
+    - the capacity trend with its table;
+    - 30-day charging habits and stress by session;
+    - the latest charge sessions, opening a session screen (level and power curve, heat and high
+      charge, stress) and the full list;
+    - chargers, with Rename.
+  - The design capacity can be set by the owner, and undone back to the reported value.
+  - The estimators (session windows and minutes, the capacity window's direction, charge figures)
+    had their independent review, and its findings are fixed (ADR-0037 and ADR-0043 amendments).
+  - Gate runs (SPEC 11.12), in `docs/design-gates/2026-11-09-*-health.md`:
+    - critique: 27/40;
+    - audit, harden, clarify, animate, adapt, optimize and polish: no critical or major finding
+      left open, so all eight gates have run with none open;
+    - decisions in ADR-0044, "Amendments", and the gate records.
+  - Goldens:
+    - light, dark, black;
+    - 130% and 200% text;
+    - Turkish and Arabic (mirroring only);
+    - hardened data in RTL and at 200%;
+    - medium, medium-wide, expanded and the list-detail pane;
+    - the first week and every SPEC 10.11 state;
+    - the design dialog;
+    - the trend and scale tables;
+    - the session screen (dark, 200%, Arabic, uncalibrated) and the full list.
+  - Pending on the emulator:
+    - split-pane insets with 3-button navigation in landscape;
+    - the shared element;
+    - the power-profile read;
+    - the cadence of charging with the screen off.
+  - Pending on a device: the TalkBack walk, protocols B, C and D, and whether Samsung reports
+    `mSavedBatteryAsoc`.
 - S4, the per-component breakdown (ADR-0035), built in order:
   - parser, schema 4, collector (decision 5's checks per consecutive window), read layer and Drain
     UI (component rows with their top apps, an expandable breakdown per app row, a hollow "Not

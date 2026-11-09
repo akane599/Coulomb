@@ -61,8 +61,8 @@ private val SETTLED_DAY: LocalDate = LocalDate.of(2026, 8, 24)
  */
 internal fun labTrend(): CapacityTrend {
     val first = LocalDate.of(2026, 8, 10)
-    val estimates = listOf(4_720, 4_665, 4_680, 4_645, 4_650, 4_665, 4_650, 4_640, 4_650, 4_640, 4_625, 4_635, 4_625, 4_610)
-    val halves = listOf(150, 135, 125, 115, 100, 100, 90, 90, 85, 80, 80, 75, 70, 70)
+    val estimates = listOf(4_720, 4_670, 4_680, 4_650, 4_650, 4_670, 4_650, 4_640, 4_650, 4_640, 4_630, 4_640, 4_630, 4_610)
+    val halves = listOf(150, 140, 130, 120, 100, 100, 90, 90, 90, 80, 80, 80, 70, 70)
     val readings = listOf(4_750, 4_640, 4_710, 4_600, 4_680, 4_730, 4_620, 4_660, 4_690, 4_610, 4_650, 4_670, 4_630, 4_645)
     val days = estimates.indices.map { first.plusDays(it * 7L) }
     return CapacityTrend(

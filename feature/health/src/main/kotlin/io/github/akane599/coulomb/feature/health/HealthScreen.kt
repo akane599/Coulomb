@@ -58,7 +58,6 @@ import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.rowMotion
 import java.time.ZoneId
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 /**
  * Health (SPEC 10.8): the capacity estimate with its cross-check, cycles and age, capacity over
@@ -335,8 +334,8 @@ private fun tableOf(
                         days.asReversed().map { day ->
                             listOf(
                                 formats.day(day.day),
-                                formats.integer(day.mah.roundToLong()),
-                                formats.range(formats.integer(day.lowMah.roundToLong()), formats.integer(day.highMah.roundToLong())),
+                                formats.mah(day.mah).joined(),
+                                formats.range(formats.mah(day.lowMah).joined(), formats.mah(day.highMah).joined()),
                             )
                         },
                     provenance = Provenance.ESTIMATED,
@@ -368,9 +367,9 @@ private fun Skeleton() {
     }
 }
 
-/** SPEC 10.11 error: what happened and what to do. */
+/** SPEC 10.11 error: what happened and what to do; also the session screens'. */
 @Composable
-private fun ErrorState(retry: () -> Unit) {
+internal fun ErrorState(retry: () -> Unit) {
     Column(Modifier.widthIn(max = ReadingWidth).padding(top = CoulombSpacing.Space24)) {
         Text(
             stringResource(R.string.health_error_title),
