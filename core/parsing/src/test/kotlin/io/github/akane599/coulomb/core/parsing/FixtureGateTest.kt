@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.model.parse.ParseReport
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryHistoryParser
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryStatsCheckinParser
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryStatsProtoParser
+import io.github.akane599.coulomb.core.parsing.batterystats.UsageStatsProtoParser
 import io.github.akane599.coulomb.core.parsing.dumpsys.AlarmParser
 import io.github.akane599.coulomb.core.parsing.dumpsys.BatteryServiceParser
 import io.github.akane599.coulomb.core.parsing.dumpsys.DeviceIdleParser
@@ -60,16 +61,27 @@ class FixtureGateTest {
                     .sorted()
             for (path in files) {
                 when {
-                    path in parsers -> assertWhole(device, path, parsers.getValue(path))
+                    path in parsers -> {
+                        assertWhole(device, path, parsers.getValue(path))
+                    }
 
-                    path.startsWith("history-checkin/") && path.endsWith(".txt") -> assertWhole(device, path, history(set, path))
+                    path.startsWith("history-checkin/") && path.endsWith(".txt") -> {
+                        assertWhole(device, path, history(set, path))
+                    }
 
-                    path.startsWith("history-checkin/") && path.endsWith(".cursor") -> Unit
+                    path.startsWith("history-checkin/") && path.endsWith(".cursor") -> {}
 
-                    path.startsWith("probe/") -> Unit
+                    // S4 (ADR-0035): only the emulator has reads so far; the phone's is pending a real device.
+                    path.startsWith("usage/") && path.endsWith(".bin") -> {
+                        assertWhole(device, path) { UsageStatsProtoParser.parse(it).report }
+                    }
 
                     // capability probe inputs, read by tools/capabilities/report.py
-                    else -> assertWithMessage("$device/$path has no parser and no reason").that(notParserInputs).containsKey(path)
+                    path.startsWith("probe/") -> {}
+
+                    else -> {
+                        assertWithMessage("$device/$path has no parser and no reason").that(notParserInputs).containsKey(path)
+                    }
                 }
             }
         }

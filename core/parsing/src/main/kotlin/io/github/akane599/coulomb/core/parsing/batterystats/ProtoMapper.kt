@@ -3,9 +3,7 @@
 
 package io.github.akane599.coulomb.core.parsing.batterystats
 
-import com.squareup.wire.FieldEncoding
 import com.squareup.wire.Message
-import com.squareup.wire.ProtoReader
 import io.github.akane599.coulomb.core.model.stats.BinTime
 import io.github.akane599.coulomb.core.model.stats.BluetoothStat
 import io.github.akane599.coulomb.core.model.stats.DeviceMisc
@@ -33,8 +31,6 @@ import io.github.akane599.coulomb.core.parsing.aosp.job.InternalStopReasonEnum
 import io.github.akane599.coulomb.core.parsing.aosp.os.SystemProto
 import io.github.akane599.coulomb.core.parsing.aosp.os.TimerProto
 import io.github.akane599.coulomb.core.parsing.aosp.os.UidProto
-import okio.Buffer
-import okio.ByteString
 
 /**
  * Wire classes to the source-neutral model (ADR-0013).
@@ -343,47 +339,10 @@ internal class ProtoMapper(
             SystemProto.PowerUseItem.Sipper.UNKNOWN_SIPPER, null -> SipperKind.UNKNOWN
         }
 
-    /** Counts each unknown field of [message] as `name.tag`; tags only, never values. */
     private fun unknown(
         name: String,
         message: Message<*, *>,
-    ) {
-        val fields = message.unknownFields
-        if (fields.size == 0) return
-        forEachField(fields) { tag, _ -> ctx.unknown("$name.$tag") }
-    }
-
-    /** The raw value of an unknown varint field, e.g. an enum value the schema does not know. */
-    private fun unknownVarint(
-        message: Message<*, *>,
-        tag: Int,
-    ): Long? {
-        val fields = message.unknownFields
-        if (fields.size == 0) return null
-        var value: Long? = null
-        forEachField(fields) { t, v -> if (t == tag && v != null) value = v }
-        return value
-    }
-
-    /** Calls [onField] with each field's tag and, for varints, its value. */
-    private inline fun forEachField(
-        fields: ByteString,
-        onField: (Int, Long?) -> Unit,
-    ) {
-        val reader = ProtoReader(Buffer().write(fields))
-        val token = reader.beginMessage()
-        while (true) {
-            val tag = reader.nextTag()
-            if (tag == -1) break
-            if (reader.peekFieldEncoding() == FieldEncoding.VARINT) {
-                onField(tag, reader.readVarint64())
-            } else {
-                onField(tag, null)
-                reader.skip()
-            }
-        }
-        reader.endMessageAndGetUnknownFields(token)
-    }
+    ) = ctx.unknownFields(name, message)
 
     private companion object {
         /** The `name` field of ReasonCount, PhoneSignalStrength and ScreenBrightness. */

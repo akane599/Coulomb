@@ -43,6 +43,19 @@ same image (2026-11-06T09:00:13Z, read-only), to test the cursor:
 | `from-mid.txt` | the same with the cursor in `from-mid.cursor`, halfway through the first read | 20019 |
 | `from-next.txt` | the same from the first read's `NEXT:` value, in `from-next.cursor`, about 15 s later | 16210 |
 
+## Usage reads (S4, ADR-0035)
+
+`usage/` holds S4 reads from a later boot of the same image (2026-11-08), taken after the emulator
+was unplugged by `dumpsys battery unplug`, which started a new statistics session:
+
+| File | Command | Bytes |
+| --- | --- | --- |
+| `unplugged.bin` | `adb shell dumpsys batterystats --usage --proto`, 132 s into the session | 361 |
+
+The emulator has no power model, so every UID but Android System (1000) has time in state and no
+energy, and the device consumer is left out (its measured discharge rounds to 0). The proto holds
+UIDs and numbers only; nothing needed redacting.
+
 ## Redaction (ADR-0004)
 
 Same-length masks keep offsets and protobuf framing valid. Replacements made: wifi-ip: 1 (in-place pass), ssid: 1.

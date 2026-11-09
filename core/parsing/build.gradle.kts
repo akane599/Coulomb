@@ -6,10 +6,10 @@ plugins {
     alias(libs.plugins.wire)
 }
 
-// Kotlin classes for `dumpsys batterystats --proto` (S5) from the vendored AOSP protos (SPEC 5.1,
-// src/main/proto/README.md). Only what the root message reaches is generated.
+// Kotlin classes for `dumpsys batterystats --proto` (S5) and `--usage --proto` (S4, ADR-0035) from the
+// vendored AOSP protos (SPEC 5.1, src/main/proto/README.md). Only what the roots reach is generated.
 wire {
-    root("android.service.batterystats.BatteryStatsServiceDumpProto")
+    root("android.service.batterystats.BatteryStatsServiceDumpProto", "android.os.BatteryUsageStatsAtomsProto")
     kotlin {
         emitDeclaredOptions = false
         emitAppliedOptions = false
