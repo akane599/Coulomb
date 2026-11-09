@@ -9,6 +9,9 @@ import android.content.res.Resources
 import android.os.BatteryManager
 import io.github.akane599.coulomb.core.collect.engine.HealthReadings
 import io.github.akane599.coulomb.core.collect.engine.HealthSource
+import io.github.akane599.coulomb.core.model.BatteryDate
+import io.github.akane599.coulomb.core.model.BatteryDateSource
+import io.github.akane599.coulomb.core.model.BatteryDates
 import io.github.akane599.coulomb.core.model.DesignCapacity
 import io.github.akane599.coulomb.core.model.DesignCapacitySource
 import io.github.akane599.coulomb.core.model.dumpsys.OemBattery
@@ -20,6 +23,9 @@ import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
 import org.xmlpull.v1.XmlPullParser
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 /**
  * ADR-0042. The design capacity from the framework's power profile, read through the app's own
@@ -43,6 +49,36 @@ internal class AndroidHealthSource(
         val dump = (result as? DumpResult.Complete)?.value ?: return OemBattery.NONE
         // Values frozen by `dumpsys battery set` are not the hardware's.
         return if (dump.updatesStopped) OemBattery.NONE else OemBatteryReader.read(dump.extras)
+    }
+
+    /**
+     * S3's manufacture and first-use dates, the first-use date from S21 when S3 has none
+     * (ADR-0044 §4). S21 is read only then, and only when the worker is up.
+     */
+    suspend fun dates(today: LocalDate): BatteryDates {
+        val manufactured = systemDate(PROPERTY_MANUFACTURING_DATE, today)
+        val firstUsed =
+            systemDate(PROPERTY_FIRST_USAGE_DATE, today)
+                ?: oem().firstUseDate?.takeIf { it in BatteryDates.EARLIEST..today }?.let { BatteryDate(it, BatteryDateSource.OEM) }
+        return BatteryDates(manufactured, firstUsed)
+    }
+
+    /**
+     * S3 `BATTERY_PROPERTY_MANUFACTURING_DATE` = 7 and `BATTERY_PROPERTY_FIRST_USAGE_DATE` = 8,
+     * `@SystemApi`, BATTERY_STATS: seconds since the epoch in UTC, through `getLongProperty`
+     * (core/java/android/os/BatteryManager.java: android-16.0.0_r4 L454 and L469, android-17.0.0_r1
+     * L483 and L498, the unit in the KDoc above each). An unsupported property gives `Long.MIN_VALUE` or 0; a date before
+     * [BatteryDates.EARLIEST] or after [today] is a placeholder.
+     */
+    private fun systemDate(
+        property: Int,
+        today: LocalDate,
+    ): BatteryDate? {
+        if (!access.state.value.grants.batteryStats) return null
+        val manager = context.getSystemService(BatteryManager::class.java) ?: return null
+        val seconds = runCatching { manager.getLongProperty(property) }.getOrNull()?.takeIf { it > 0 } ?: return null
+        val date = Instant.ofEpochSecond(seconds).atOffset(ZoneOffset.UTC).toLocalDate()
+        return date.takeIf { it in BatteryDates.EARLIEST..today }?.let { BatteryDate(it, BatteryDateSource.SYSTEM) }
     }
 
     /**
@@ -107,6 +143,8 @@ internal class AndroidHealthSource(
         const val BATTERY_CAPACITY = "battery.capacity"
         const val CHARGE_FULL_DESIGN = "battery/charge_full_design"
         const val UAH_PER_MAH = 1000.0
+        const val PROPERTY_MANUFACTURING_DATE = 7
+        const val PROPERTY_FIRST_USAGE_DATE = 8
         const val PROPERTY_STATE_OF_HEALTH = 10
         const val MAX_SOH = 150
     }

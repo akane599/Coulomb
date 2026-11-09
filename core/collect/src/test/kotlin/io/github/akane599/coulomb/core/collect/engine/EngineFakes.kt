@@ -331,7 +331,7 @@ internal class FakeKernel {
 
 internal class FakeIdentity : DeviceIdentity {
     var bootCount = 7
-    override val fingerprint = "test/device:17/1"
+    override var fingerprint = "test/device:17/1"
     override val model = "test"
     override val oem = "test"
     override val sdkInt = 37

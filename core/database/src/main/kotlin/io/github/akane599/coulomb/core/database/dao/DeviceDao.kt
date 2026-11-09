@@ -29,6 +29,49 @@ public abstract class DeviceDao {
     public abstract fun observeProfile(fingerprint: String): Flow<DeviceProfileEntity?>
 
     /**
+     * The design capacity read from the device, written only while the build has none, so it never
+     * replaces a stored value, the owner's included (ADR-0042 §1). Only these columns are written.
+     */
+    @Query(
+        "UPDATE device_profile SET designCapacityMah = :mah, designCapacitySource = :source " +
+            "WHERE fingerprint = :fingerprint AND designCapacityMah IS NULL",
+    )
+    public abstract suspend fun fillDesignCapacity(
+        fingerprint: String,
+        mah: Int,
+        source: String,
+    )
+
+    /** The owner's design capacity (ADR-0044 §5): replaces whatever is stored for the build. */
+    @Query("UPDATE device_profile SET designCapacityMah = :mah, designCapacitySource = :source WHERE fingerprint = :fingerprint")
+    public abstract suspend fun setDesignCapacity(
+        fingerprint: String,
+        mah: Int,
+        source: String,
+    )
+
+    /** A design capacity the owner entered on any build, to carry to a new one (ADR-0044 §5). */
+    @Query("SELECT designCapacityMah FROM device_profile WHERE designCapacitySource = :source AND designCapacityMah IS NOT NULL LIMIT 1")
+    public abstract suspend fun designCapacityFrom(source: String): Int?
+
+    /**
+     * The calibration columns alone (SPEC 6.1), so a calibration result never writes back a design
+     * capacity the owner changed meanwhile.
+     */
+    @Query(
+        "UPDATE device_profile SET currentSign = :sign, currentScale = :scale, calibrationQuality = :quality, " +
+            "calibratedAtWall = :calibratedAtWall, chargeCounterReliable = :reliable WHERE fingerprint = :fingerprint",
+    )
+    public abstract suspend fun setCalibration(
+        fingerprint: String,
+        sign: Int?,
+        scale: Int?,
+        quality: Double?,
+        calibratedAtWall: Long?,
+        reliable: Boolean?,
+    )
+
+    /**
      * The boot Coulomb is running in, numbered on first sight (ADR-0015). It is the latest boot of
      * this device when [rawBootCount] matches it and elapsed time has not gone back; otherwise a
      * new boot numbered [rawBootCount], or one past the highest stored boot when that is not higher.

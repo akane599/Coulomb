@@ -34,6 +34,29 @@ class SampleDaoTest : DatabaseTest() {
         }
 
     @Test
+    fun timeAtOrAboveALevelHoldsEachLevelUntilTheNextSampleOfItsBoot() =
+        runTest {
+            val hour = 3_600_000L
+            // Boot 0, compacted: minute aggregates stand in at their last level (100, 82, 50).
+            for ((s, level) in listOf(0L to 100, 30L to 100, 60L to 82, 120L to 50)) {
+                dao.insert(sample(0, s * NS_PER_S, levelPct = level))
+            }
+            dao.compactSamples(cutBootSeq = 1, cutElapsedNs = 0, resolutionS = 60)
+            // Boot 1: three hours at 80% or more, then a nine-hour gap that counts as neither.
+            for ((h, level) in listOf(1L to 90, 2L to 85, 3L to 80, 4L to 79, 13L to 70)) {
+                dao.insert(sample(1, h * hour * 1_000_000, wallMs = h * hour, levelPct = level))
+            }
+            // Boot 2: an hour at 95%, then an hour below. Boot 1's last sample is not linked to it.
+            for ((h, level) in listOf(20L to 95, 21L to 60, 22L to 59)) {
+                dao.insert(sample(2, (h - 19) * hour * 1_000_000, wallMs = h * hour, levelPct = level))
+            }
+
+            val time = dao.timeAtOrAbove(level = 80, fromWall = 0, toWall = 23 * hour, maxGapMs = 6 * hour)
+            assertThat(time.atOrAboveMs).isEqualTo(120_000 + 3 * hour + hour)
+            assertThat(time.watchedMs).isEqualTo(120_000 + 3 * hour + 2 * hour)
+        }
+
+    @Test
     fun aRepeatedSampleIsIgnoredRatherThanAbortingItsTransaction() =
         runTest {
             assertThat(dao.insert(sample(bootSeq = 1, elapsedNs = 5))).isNotEqualTo(-1L)

@@ -111,4 +111,51 @@ public interface SessionDao {
 
     @Query("SELECT * FROM health_summary ORDER BY epochDay")
     public fun observeHealthSummaries(): Flow<List<HealthSummaryEntity>>
+
+    /** Every capacity estimate, oldest first, for the Health chart (SPEC 10.8). */
+    @Query("SELECT * FROM capacity_estimate ORDER BY id")
+    public fun observeCapacityEstimates(): Flow<List<CapacityEstimateEntity>>
+
+    /** The latest [limit] closed sessions of [kind], newest first. */
+    @Query(
+        "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL " +
+            "ORDER BY bootSeq DESC, startElapsedNs DESC LIMIT :limit",
+    )
+    public fun observeClosed(
+        kind: SessionKind,
+        limit: Int,
+    ): Flow<List<SessionEntity>>
+
+    /** Closed sessions of [kind] that ended at or after [fromWall], newest first. */
+    @Query(
+        "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL AND endWall >= :fromWall " +
+            "ORDER BY bootSeq DESC, startElapsedNs DESC",
+    )
+    public fun observeClosedSince(
+        kind: SessionKind,
+        fromWall: Long,
+    ): Flow<List<SessionEntity>>
+
+    /** The oldest session of [kind] in the running sum of cycle equivalents (ADR-0037 §4). */
+    @Query(
+        "SELECT * FROM session WHERE kind = :kind AND cycleEquivalents IS NOT NULL " +
+            "ORDER BY bootSeq, startElapsedNs LIMIT 1",
+    )
+    public suspend fun firstCounted(kind: SessionKind): SessionEntity?
+
+    @Query("SELECT * FROM session WHERE id = :id")
+    public fun observeSession(id: Long): Flow<SessionEntity?>
+
+    @Query("SELECT * FROM charge_detail WHERE sessionId = :sessionId")
+    public fun observeChargeDetail(sessionId: Long): Flow<ChargeDetailEntity?>
+
+    /**
+     * Names a charger. Only the name is written, so a session closing at the same time cannot
+     * write back the old one with its new baseline.
+     */
+    @Query("UPDATE charger_profile SET name = :name WHERE id = :id")
+    public suspend fun renameChargerProfile(
+        id: Long,
+        name: String,
+    )
 }

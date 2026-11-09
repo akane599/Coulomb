@@ -36,6 +36,7 @@ import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.model.AutoReference
+import io.github.akane599.coulomb.core.model.DesignCapacitySource
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.SnapshotKind
@@ -166,23 +167,27 @@ internal class CollectorEngine(
         val devices = db.deviceDao()
         val stored =
             devices.profile(identity.fingerprint)
-                ?: DeviceProfileEntity(
-                    fingerprint = identity.fingerprint,
-                    model = identity.model,
-                    oem = identity.oem,
-                    sdkInt = identity.sdkInt,
-                    sdkIntFull = identity.sdkIntFull,
-                    designCapacityMah = null,
-                    designCapacitySource = null,
-                    currentScale = null,
-                    currentSign = null,
-                    chargeCounterReliable = null,
-                    calibratedAtWall = null,
-                    calibrationQuality = null,
-                ).also { devices.upsertProfile(it) }
+                ?: newProfile(devices.designCapacityFrom(DesignCapacitySource.USER.code)).also { devices.upsertProfile(it) }
         profile = withDesignCapacity(stored)
         calibration = calibrator.stored(stored)
     }
+
+    /** A new build's profile; the owner's design capacity, [ownersMah], outlives an update (ADR-0044 §5). */
+    private fun newProfile(ownersMah: Int?) =
+        DeviceProfileEntity(
+            fingerprint = identity.fingerprint,
+            model = identity.model,
+            oem = identity.oem,
+            sdkInt = identity.sdkInt,
+            sdkIntFull = identity.sdkIntFull,
+            designCapacityMah = ownersMah,
+            designCapacitySource = ownersMah?.let { DesignCapacitySource.USER.code },
+            currentScale = null,
+            currentSign = null,
+            chargeCounterReliable = null,
+            calibratedAtWall = null,
+            calibrationQuality = null,
+        )
 
     /**
      * SPEC 6.3's design capacity, read once per process while the build has none stored
@@ -192,10 +197,22 @@ internal class CollectorEngine(
         if (stored.designCapacityMah != null || designTried) return stored
         designTried = true
         val design = health.designCapacity() ?: return stored
-        val updated = stored.copy(designCapacityMah = design.mah.roundToInt(), designCapacitySource = design.source.code)
-        db.deviceDao().upsertProfile(updated)
-        return updated
+        val devices = db.deviceDao()
+        // Written only while none is stored, so an entry the owner made meanwhile stands.
+        devices.fillDesignCapacity(stored.fingerprint, design.mah.roundToInt(), design.source.code)
+        return devices.profile(stored.fingerprint) ?: stored
     }
+
+    /**
+     * The design capacity as stored now, read at each snapshot: the owner can enter one on the
+     * Health screen while the collector runs (ADR-0044 §5).
+     */
+    private suspend fun storedDesignMah(): Double? =
+        db
+            .deviceDao()
+            .profile(identity.fingerprint)
+            ?.designCapacityMah
+            ?.toDouble()
 
     /** S3 and S21 at most once a day, at a heavy snapshot: one with [dump] (ADR-0042 §2). */
     private suspend fun refreshHealth(
@@ -299,7 +316,8 @@ internal class CollectorEngine(
                 uptimeMs = read.uptimeMs,
                 privilegeMode = kernel.mode,
             )
-        val context = writeContext(reading, previousHeavy, unseen).copy(references = trigger in REFERENCE_TRIGGERS)
+        val context =
+            writeContext(reading, previousHeavy, unseen).copy(references = trigger in REFERENCE_TRIGGERS, designMah = storedDesignMah())
         db
             .withTransaction {
                 // A read that set no cursor stored nothing: the events before this snapshot are not all in.

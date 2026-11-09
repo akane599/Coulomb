@@ -64,6 +64,31 @@ public abstract class SampleDao {
     ): List<SampleAggregateEntity>
 
     /**
+     * How long the level was at or above [level] in `[fromWall, toWall)`, and how long Coulomb
+     * watched, in ms (ADR-0044 §2). The level holds from each sample to the next of its boot:
+     * a level change is always sampled (ADR-0037 §1). Minute aggregates stand in for compacted
+     * samples, at their last level. A gap longer than [maxGapMs] counts as neither, as when the
+     * process was not running.
+     */
+    @Query(
+        "SELECT COALESCE(SUM(CASE WHEN level >= :level THEN span ELSE 0 END), 0) AS atOrAboveMs, " +
+            "COALESCE(SUM(span), 0) AS watchedMs FROM (" +
+            "SELECT level, nextWall - wallMs AS span FROM (" +
+            "SELECT level, wallMs, LEAD(wallMs) OVER (PARTITION BY bootSeq ORDER BY elapsedNs) AS nextWall FROM (" +
+            "SELECT bootSeq, elapsedNs, wallMs, levelPct AS level FROM battery_sample " +
+            "WHERE wallMs >= :fromWall AND wallMs < :toWall " +
+            "UNION ALL SELECT bootSeq, startElapsedNs AS elapsedNs, startWallMs AS wallMs, levelLastPct AS level " +
+            "FROM sample_aggregate WHERE resolutionS = $MINUTE_S AND startWallMs >= :fromWall AND startWallMs < :toWall)) " +
+            "WHERE nextWall IS NOT NULL AND nextWall > wallMs AND nextWall - wallMs <= :maxGapMs)",
+    )
+    public abstract suspend fun timeAtOrAbove(
+        level: Int,
+        fromWall: Long,
+        toWall: Long,
+        maxGapMs: Long,
+    ): LevelTime
+
+    /**
      * Replaces the raw samples before `(cutBootSeq, cutElapsedNs)` with [resolutionS] aggregates.
      * The cut is moved back to a bucket boundary, so a bucket is built once, from all its samples.
      * Works through at most [chunkRows] samples per transaction. Returns the samples removed.
@@ -195,5 +220,14 @@ public abstract class SampleDao {
 
     private companion object {
         const val CHUNK_ROWS = 5_000
+
+        /** The aggregates that replace raw samples after 14 days (SPEC 7.7). */
+        const val MINUTE_S = 60
     }
 }
+
+/** The result of [SampleDao.timeAtOrAbove]. */
+public data class LevelTime(
+    val atOrAboveMs: Long,
+    val watchedMs: Long,
+)

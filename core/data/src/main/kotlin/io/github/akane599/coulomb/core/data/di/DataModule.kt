@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.data.di
 
+import android.os.Build
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -10,6 +11,7 @@ import dagger.hilt.components.SingletonComponent
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.AppScope
 import io.github.akane599.coulomb.core.common.ZoneSource
+import io.github.akane599.coulomb.core.data.BuildFingerprint
 import java.time.ZoneId
 import javax.inject.Singleton
 
@@ -26,4 +28,7 @@ public object DataModule {
 
     @Provides
     public fun zone(): ZoneSource = ZoneSource { ZoneId.systemDefault() }
+
+    @Provides
+    public fun fingerprint(): BuildFingerprint = BuildFingerprint { Build.FINGERPRINT }
 }

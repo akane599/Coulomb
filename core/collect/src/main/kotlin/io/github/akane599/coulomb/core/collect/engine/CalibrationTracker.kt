@@ -56,7 +56,15 @@ internal class CalibrationTracker(
         val better = result?.takeIf { it.quality > (profile.calibrationQuality ?: -1.0) }
         if (better == null && reliable == profile.chargeCounterReliable) return profile
         val updated = (better?.let { profile.with(it, nowWallMs) } ?: profile).copy(chargeCounterReliable = reliable)
-        devices.upsertProfile(updated)
+        // Only the calibration columns: the owner may have set the design capacity meanwhile (ADR-0044 §5).
+        devices.setCalibration(
+            fingerprint = updated.fingerprint,
+            sign = updated.currentSign,
+            scale = updated.currentScale,
+            quality = updated.calibrationQuality,
+            calibratedAtWall = updated.calibratedAtWall,
+            reliable = updated.chargeCounterReliable,
+        )
         return updated
     }
 

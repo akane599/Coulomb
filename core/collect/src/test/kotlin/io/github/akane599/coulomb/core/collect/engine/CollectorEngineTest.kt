@@ -250,6 +250,37 @@ class CollectorEngineTest {
             assertThat(health.healthPct).isWithin(1e-9).of(100.0 * 4_930.0 / 4_800.0)
         }
 
+    @Test
+    fun theOwnersDesignCapacityReachesTheRunningCollectorAndOutlivesAnUpdate() =
+        runTest {
+            reliableCounter()
+            val source = FakeHealth(DesignCapacity(5_000.0, DesignCapacitySource.POWER_PROFILE))
+            // The owner enters a value on the Health screen while the collector runs.
+            chargeFromTwentyPercent(source) {
+                assertThat(db.deviceDao().profile(identity.fingerprint)?.designCapacityMah).isEqualTo(5_000)
+                db.deviceDao().setDesignCapacity(identity.fingerprint, 4_800, DesignCapacitySource.USER.code)
+            }
+            val profile = checkNotNull(db.deviceDao().profile(identity.fingerprint))
+            assertThat(profile.designCapacityMah).isEqualTo(4_800)
+            assertThat(profile.designCapacitySource).isEqualTo(DesignCapacitySource.USER.code)
+            val health =
+                db
+                    .sessionDao()
+                    .observeHealthSummaries()
+                    .first()
+                    .single()
+            assertThat(health.healthPct).isWithin(1e-9).of(100.0 * 4_930.0 / 4_800.0)
+
+            // An OS update starts a new profile; the owner's value comes along, a read one would not.
+            identity.fingerprint = "test/device:17/2"
+            device.set(hours = 13.0, level = 99, chargeMah = 4_950.0, screenOn = true)
+            engine(source).handle(SnapshotTrigger.SERVICE_STARTED)
+            val updated = checkNotNull(db.deviceDao().profile(identity.fingerprint))
+            assertThat(updated.designCapacityMah).isEqualTo(4_800)
+            assertThat(updated.designCapacitySource).isEqualTo(DesignCapacitySource.USER.code)
+            assertThat(source.designReads).isEqualTo(1)
+        }
+
     private class FakeHealth(
         private val design: DesignCapacity?,
     ) : HealthSource {
@@ -271,10 +302,14 @@ class CollectorEngineTest {
      * A charge from 20% to 100% in an hour, a sample a minute, then an unplug that resets the
      * statistics. Returns the plug-in snapshot.
      */
-    private suspend fun chargeFromTwentyPercent(health: HealthSource = HealthSource.None): SnapshotEntity {
+    private suspend fun chargeFromTwentyPercent(
+        health: HealthSource = HealthSource.None,
+        afterStart: suspend () -> Unit = {},
+    ): SnapshotEntity {
         val engine = engine(health)
         device.set(hours = 10.0, level = 25, chargeMah = 1_250.0, screenOn = true)
         engine.handle(SnapshotTrigger.SERVICE_STARTED)
+        afterStart()
         device.set(hours = 11.0, level = 20, chargeMah = 1_000.0, screenOn = true, plugged = true)
         engine.handle(SnapshotTrigger.POWER_CONNECTED)
         val plugIn = checkNotNull(db.snapshotDao().latestHeavy())
