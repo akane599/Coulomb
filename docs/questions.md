@@ -5,6 +5,10 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-09. One UI's "Never sleeping apps": no public intent opens that list. The keep-running
+  button opens `Intent.ACTION_POWER_USAGE_SUMMARY` (battery settings), falling back to the app's
+  details page; the Turkish copy calls the list "Hiç uyumayan uygulamalar". Default: as is until
+  checked on the phone; correct the Turkish name to One UI's own wording then (ADR-0047).
 - 2026-11-09. Samsung prints two health-like values in `dumpsys battery`: `mSavedBatteryAsoc` (100) and
   `mSavedBatteryBsoh` (96). Which one does Settings > Battery > Battery information show on the
   phone? Default: Health shows both, each named by its key, and neither stands for "the" OEM health

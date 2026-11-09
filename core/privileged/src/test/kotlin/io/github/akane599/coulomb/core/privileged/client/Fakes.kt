@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.privileged.client
 
+import android.content.Intent
 import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
@@ -248,6 +249,8 @@ internal class FakeShizukuApi(
     override fun serverDetails(): ServerDetails? = if (binderAlive) details else null
 
     override fun managerPackage(): ManagerPackage? = manager
+
+    override fun managerLaunchIntent(): Intent? = null
 
     override fun checkSelfPermission(): Boolean = permissionGranted
 

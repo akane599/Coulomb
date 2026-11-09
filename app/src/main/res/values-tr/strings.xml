@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="destination_now">Şimdi</string>
+    <string name="destination_drain">Tüketim</string>
+    <string name="destination_timeline">Zaman çizelgesi</string>
+    <string name="destination_health">Sağlık</string>
+    <string name="screen_action_center">Eylem Merkezi</string>
+    <string name="screen_privileges">Yetkiler</string>
+    <string name="screen_settings">Ayarlar</string>
+    <string name="screen_not_built">Henüz yapılmadı.</string>
+</resources>

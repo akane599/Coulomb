@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.privileged
 
+import android.content.Intent
 import io.github.akane599.coulomb.core.model.GrantStatus
 import io.github.akane599.coulomb.core.model.PrivilegeState
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,12 @@ public interface PrivilegedAccess {
 
     /** Opens the manager's authorization dialog. No-op without a binder or when already granted. */
     public fun requestManagerPermission()
+
+    /**
+     * Opens the Shizuku-compatible manager's app, so the user can start it or answer it. Null when
+     * no manager app is installed (none, or Sui).
+     */
+    public fun managerLaunchIntent(): Intent?
 
     /** Re-reads the T1 grants (cheap; call on resume). */
     public suspend fun refreshGrants(): GrantStatus

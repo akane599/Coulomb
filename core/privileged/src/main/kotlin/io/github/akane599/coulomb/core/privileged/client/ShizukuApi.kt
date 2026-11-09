@@ -3,13 +3,16 @@
 
 package io.github.akane599.coulomb.core.privileged.client
 
+import android.content.Intent
 import io.github.akane599.coulomb.core.privileged.ICoulombPrivileged
 
 /**
  * The slice of the Shizuku API Coulomb uses, behind an interface so the state machine is testable
  * without a device. The real implementation ([ShizukuApiImpl]) is the only code that touches
- * `rikka.shizuku.*`.
+ * `rikka.shizuku.*`. One seam on purpose (hence the suppression): splitting it would let a
+ * caller reach the library around the state machine.
  */
+@Suppress("TooManyFunctions")
 internal interface ShizukuApi {
     /** True when the binder came from Sui (`Sui.isSui()`), set up by ShizukuProvider before Application.onCreate. */
     fun isSui(): Boolean
@@ -21,6 +24,9 @@ internal interface ShizukuApi {
 
     /** Package that defines the Shizuku API permission, i.e. a Shizuku-compatible manager; null if none. */
     fun managerPackage(): ManagerPackage?
+
+    /** The installed manager's launcher activity; null without one (Sui has no app). */
+    fun managerLaunchIntent(): Intent?
 
     fun checkSelfPermission(): Boolean
 

@@ -14,4 +14,10 @@
 
     <string name="provenance_explain_action">Kaynağı açıkla</string>
     <string name="low_confidence">Düşük\u00A0güvenilirlik</string>
+
+    <string name="provenance_key_measured">donanım ya da sistem sayar</string>
+    <string name="provenance_key_modeled">Android’deki ya da pildeki bir modelden gelir</string>
+    <string name="provenance_key_estimated">Coulomb’un tahmini, aralığıyla birlikte</string>
+    <string name="provenance_key_derived">başka değerlerden hesaplanır</string>
+    <string name="provenance_key_line">%1$s: %2$s</string>
 </resources>

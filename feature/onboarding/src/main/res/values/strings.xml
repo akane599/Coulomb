@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Onboarding (SPEC 14.1, ADR-0047; the result step follows design-lab/onboarding.html). -->
+<resources>
+    <string name="onboarding_set_up">Set up</string>
+    <string name="onboarding_step">Step %1$d of %2$d</string>
+    <!-- The full stop after a sentence that ends on a provenance mark. -->
+    <string name="onboarding_full_stop">.</string>
+    <string name="onboarding_continue">Continue</string>
+
+    <!-- Step 1: one sentence of value and two choices. -->
+    <string name="onboarding_welcome_title">See where your battery goes</string>
+    <string name="onboarding_welcome_lede">Coulomb shows which apps and parts of your phone use the battery, and marks every figure with where it comes from.</string>
+    <string name="onboarding_welcome_shizuku_title">With Shizuku (recommended)</string>
+    <string name="onboarding_welcome_shizuku_body">Per-app drain, wakelocks and kernel wakeups. Needs Shizuku or Sui on this phone.</string>
+    <string name="onboarding_welcome_basic_title">In basic mode</string>
+    <string name="onboarding_welcome_basic_body">Battery level, current and temperature, and screen time per app. Works on any phone, and you can connect Shizuku later.</string>
+    <string name="onboarding_connect_shizuku">Connect Shizuku</string>
+    <string name="onboarding_start_basic">Start in basic mode</string>
+
+    <!-- Step 2: notifications, and usage access in basic mode. -->
+    <string name="onboarding_permissions_title_shizuku">Notifications</string>
+    <string name="onboarding_permissions_title_basic">Notifications and app usage</string>
+    <string name="onboarding_permissions_lede_shizuku">Optional. You can allow it later in Android’s settings.</string>
+    <string name="onboarding_permissions_lede_basic">Both are optional. You can allow them later in Android’s settings.</string>
+    <string name="onboarding_notifications_name">Notifications</string>
+    <string name="onboarding_notifications_why">Shows that the monitor is running, and the alerts you turn on.</string>
+    <string name="onboarding_notifications_settings">Open notification settings</string>
+    <string name="onboarding_usage_name">Usage access</string>
+    <string name="onboarding_usage_why">Shows how long each app was on screen, so its drain lines up with its use.</string>
+    <string name="onboarding_usage_open">Open usage access</string>
+    <string name="onboarding_usage_with_shizuku">App usage comes with Shizuku in the next step.</string>
+    <string name="onboarding_allow">Allow</string>
+    <string name="onboarding_allowed">Allowed</string>
+
+    <!-- Step 3: Shizuku, by what is found (SPEC 4.5). -->
+    <string name="onboarding_shizuku_title">Connect Shizuku</string>
+    <string name="onboarding_shizuku_lede">Shizuku lets Coulomb read battery details that Android keeps to itself. Coulomb never changes a setting without your tap.</string>
+    <string name="onboarding_shizuku_checking">Looking for Shizuku…</string>
+    <string name="onboarding_shizuku_missing_title">Shizuku isn’t installed</string>
+    <string name="onboarding_shizuku_missing_body">Install a Shizuku fork such as thedjchi’s, or Sui on a rooted phone. Start it, then come back here.</string>
+    <string name="onboarding_get_fork">Get thedjchi’s Shizuku</string>
+    <string name="onboarding_get_sui">Get Sui</string>
+    <string name="onboarding_hide_adb">Hide ADB commands</string>
+    <string name="onboarding_shizuku_ask_title">Shizuku is running</string>
+    <string name="onboarding_shizuku_ask_body">Allow Coulomb when Shizuku asks.</string>
+    <string name="onboarding_shizuku_allow">Allow Coulomb</string>
+    <string name="onboarding_shizuku_waiting">Waiting for your answer in Shizuku…</string>
+    <string name="onboarding_shizuku_granting">Granting Coulomb’s access…</string>
+    <string name="onboarding_shizuku_connected">Connected</string>
+    <string name="onboarding_mode_shell">Running with ADB (shell) rights.</string>
+    <string name="onboarding_mode_root">Running with root rights.</string>
+    <string name="onboarding_mode_sui">Running through Sui.</string>
+    <string name="onboarding_android17">On Android 17 the original Shizuku can’t authorize new apps. Use a fork or Sui.</string>
+    <string name="onboarding_skip_shizuku">Continue without Shizuku</string>
+
+    <!-- Step 4: the result (lab). -->
+    <string name="onboarding_result_checking_title">Checking what this phone shares</string>
+    <string name="onboarding_result_checking">This takes a few seconds.</string>
+    <string name="onboarding_result_failed">Coulomb couldn’t check this phone. It tries again the next time it starts.</string>
+    <string name="onboarding_result_deep_title">Coulomb can see where your battery goes</string>
+    <string name="onboarding_result_basic_title">Coulomb is in basic mode</string>
+    <string name="onboarding_result_basic_more">Connect Shizuku later in Privileges to add per-app drain and wakelocks.</string>
+    <string name="onboarding_keep_running_title">Keep the monitor running</string>
+    <string name="onboarding_keep_running_body">One UI may put Coulomb to sleep and leave gaps in its record. Add it to Never sleeping apps.</string>
+    <string name="onboarding_keep_running_action">Open battery settings</string>
+    <string name="onboarding_grants_shizuku">Granted through Shizuku</string>
+    <string name="onboarding_grants_basic">Deeper access</string>
+    <string name="onboarding_grants_durable">These stay granted if Shizuku stops or the phone restarts.</string>
+    <string name="onboarding_grants_missing">Grant the missing ones once over ADB, or connect Shizuku later. They stay granted after a restart.</string>
+    <string name="onboarding_usage_settings">Allow app usage in Settings</string>
+    <string name="onboarding_marks_title">How to read the marks</string>
+    <string name="onboarding_marks_note">Touch and hold any figure to see where its number comes from.</string>
+    <string name="onboarding_first_results">First results after 15 minutes with the screen off.</string>
+    <string name="onboarding_show_battery">Show my battery</string>
+</resources>

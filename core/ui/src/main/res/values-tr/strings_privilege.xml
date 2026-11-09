@@ -29,4 +29,30 @@
 
     <!-- SPEC 10.11: the way from a partial screen to Privileges. -->
     <string name="privilege_open">Yetkileri aç</string>
+
+    <string name="grant_battery_stats">Pil istatistikleri</string>
+    <string name="grant_dump">Sistem hizmeti raporları</string>
+    <string name="grant_usage">Uygulama kullanımı</string>
+    <string name="grant_history">Coulomb’un kendi sürecinde pil geçmişi</string>
+    <string name="grant_settings">Sistem ayarlarını değiştirme</string>
+    <string name="grant_settings_why">Yalnızca Eylem Merkezi’ni açtığınızda istenir</string>
+    <string name="grant_state_granted">Verildi</string>
+    <string name="grant_state_missing">Verilmedi</string>
+    <string name="grant_state_later">Sonra istenir</string>
+
+    <string name="adb_body">USB hata ayıklaması açık bir bilgisayardan bunları bir kez çalıştırın. Erişim yeniden başlatmadan sonra da kalır.</string>
+    <string name="adb_copy">Komutları kopyala</string>
+    <string name="adb_clip_label">Coulomb ADB komutları</string>
+
+    <string name="sight_sentence">%1$s görebilir.</string>
+    <string name="sight_list_separator">", "</string>
+    <string name="sight_list_last">%1$s ve %2$s</string>
+    <string name="sight_per_app_drain">uygulama başına tüketimi</string>
+    <string name="sight_wakelocks">uyanık tutma kilitlerini</string>
+    <string name="sight_kernel_wakeups">çekirdek uyanmalarını</string>
+    <string name="sight_screen_time">uygulama başına ekran süresini</string>
+    <string name="sight_level">pil seviyesini ve sıcaklığını</string>
+    <string name="sight_current">pile giren ve çıkan akımı</string>
+    <string name="sight_rails_measured">Bu telefon güç hatlarını gösteriyor, bu yüzden bileşen başına enerji ölçülüyor</string>
+    <string name="sight_rails_modeled">Bu telefon güç hatlarını göstermiyor, bu yüzden bileşen başına enerji Android’in güç modelinden geliyor</string>
 </resources>

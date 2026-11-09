@@ -58,6 +58,27 @@ The spec does not say:
    Component breakdown and the charge target (50–100%). The rest of SPEC 14.4 joins as each
    setting's feature lands.
 
+## Implementation notes (2026-11-09)
+
+Onboarding as built:
+- **One UI** is told by `Build.MANUFACTURER` ("samsung"). The keep-running button opens battery
+  settings (`Intent.ACTION_POWER_USAGE_SUMMARY`), or the app's details page where that is missing.
+  No public intent opens the Never sleeping list (`docs/questions.md`).
+- **Not installed** links to thedjchi's fork and to Sui on GitHub through the browser (no INTERNET
+  permission). "Show ADB commands" opens the copy-ready block in place.
+- **Step 3 moves on by itself** only at the moment it connects while open, not on a later visit.
+  If the automatic bootstrap was skipped (grants verified on an earlier install), the step runs it
+  once itself.
+- **The summary's list** is joined by the app's own strings, not ICU, whose English adds a serial
+  comma the rest of the copy does not use.
+- **The ADB block** wraps each command at its spaces, one paragraph per command, so no permission
+  name hides past the edge.
+- **New shared pieces:** the filled button and the stepper (`:core:designsystem`); the grants
+  checklist, the ADB block, the capability summary and the key to the marks (`:core:ui`), for
+  Privileges to reuse.
+- **App strings in Turkish:** the shell's own strings (destinations, top-bar screens) had none;
+  they are added.
+
 ## Consequences
 
 - One probe run at first start and after each OS update: a few seconds of work, then nothing.

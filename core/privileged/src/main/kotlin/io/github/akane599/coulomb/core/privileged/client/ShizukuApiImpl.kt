@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.privileged.client
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
@@ -55,6 +56,10 @@ internal class ShizukuApiImpl(
             val owner = pm.getPermissionInfo(ShizukuProvider.PERMISSION, 0).packageName ?: return null
             ManagerPackage(owner, runCatching { pm.getPackageInfo(owner, 0).versionName }.getOrNull())
         }.getOrElse { e -> if (e is PackageManager.NameNotFoundException) null else null }
+
+    // QUERY_ALL_PACKAGES makes every manager package visible to getLaunchIntentForPackage
+    // (PackageManager.java, public API since 3).
+    override fun managerLaunchIntent(): Intent? = managerPackage()?.let { context.packageManager.getLaunchIntentForPackage(it.packageName) }
 
     override fun checkSelfPermission(): Boolean =
         runCatching {

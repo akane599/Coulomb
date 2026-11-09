@@ -18,11 +18,15 @@ public object CoulombIcons {
 
     @DrawableRes public val BatteryFilled: Int = R.drawable.ic_battery_android_frame_5_fill1
 
+    @DrawableRes public val Cancel: Int = R.drawable.ic_cancel
+
     @DrawableRes public val Check: Int = R.drawable.ic_check
 
     @DrawableRes public val CheckCircle: Int = R.drawable.ic_check_circle
 
     @DrawableRes public val ChevronRight: Int = R.drawable.ic_chevron_right
+
+    @DrawableRes public val ContentCopy: Int = R.drawable.ic_content_copy
 
     @DrawableRes public val DataUsage: Int = R.drawable.ic_data_usage
 

@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.privileged.client
 
+import android.content.Intent
 import io.github.akane599.coulomb.core.model.GrantStatus
 import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
@@ -453,6 +454,8 @@ internal class PrivilegeController(
         applyGrants(grants)
         return grants
     }
+
+    override fun managerLaunchIntent(): Intent? = api.managerLaunchIntent()
 
     override fun adbBootstrapCommands(includeWriteSecureSettings: Boolean): List<String> =
         bootstrapKinds(includeWriteSecureSettings).map(::adbCommand)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -48,6 +50,7 @@ private val HeadActionHang = 11.dp
 private val OutlinedHeight = 40.dp
 private val OutlinedPadding = 20.dp
 private val OutlinedBorder = 1.dp
+private val HoverLift = 1.dp
 
 /**
  * A section's head (DESIGN.md, lab `.section-head`): the title in Title as a heading, and an
@@ -121,11 +124,7 @@ public fun CoulombTextButton(
                 disabledContentColor = colors.textPrimary.copy(alpha = DISABLED_ALPHA),
             ),
     ) {
-        Text(text = text, style = CoulombTheme.typography.labelButton)
-        if (trailingIcon != null) {
-            Spacer(Modifier.width(ButtonIconGap))
-            Icon(painter = painterResource(trailingIcon), contentDescription = null, modifier = Modifier.size(ButtonIcon))
-        }
+        ButtonLabel(text, trailingIcon)
     }
 }
 
@@ -139,6 +138,7 @@ public fun CoulombOutlinedButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    @DrawableRes trailingIcon: Int? = null,
 ) {
     val colors = CoulombTheme.colors
     OutlinedButton(
@@ -149,7 +149,51 @@ public fun CoulombOutlinedButton(
         contentPadding = PaddingValues(horizontal = OutlinedPadding),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
     ) {
-        Text(text = text, style = CoulombTheme.typography.labelButton)
+        ButtonLabel(text, trailingIcon)
+    }
+}
+
+/**
+ * The filled button of DESIGN.md, one per region: `accent-fill` with `on-accent-fill`, Label
+ * button, 40 dp tall with 20 dp side padding, fully round. A pointer over it lifts it a little
+ * (the hover lift). Material extends its touch target to 48 dp.
+ */
+@Composable
+public fun CoulombFilledButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    @DrawableRes trailingIcon: Int? = null,
+) {
+    val colors = CoulombTheme.colors
+    Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = OutlinedHeight),
+        shape = RoundedCornerShape(percent = 50),
+        contentPadding = PaddingValues(horizontal = OutlinedPadding),
+        colors = ButtonDefaults.buttonColors(containerColor = colors.accentFill, contentColor = colors.onAccentFill),
+        elevation =
+            ButtonDefaults.buttonElevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp,
+                focusedElevation = 0.dp,
+                hoveredElevation = HoverLift,
+                disabledElevation = 0.dp,
+            ),
+    ) {
+        ButtonLabel(text, trailingIcon)
+    }
+}
+
+@Composable
+private fun RowScope.ButtonLabel(
+    text: String,
+    @DrawableRes trailingIcon: Int?,
+) {
+    Text(text = text, style = CoulombTheme.typography.labelButton)
+    if (trailingIcon != null) {
+        Spacer(Modifier.width(ButtonIconGap))
+        Icon(painter = painterResource(trailingIcon), contentDescription = null, modifier = Modifier.size(ButtonIcon))
     }
 }
 

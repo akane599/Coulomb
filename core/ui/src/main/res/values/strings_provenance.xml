@@ -16,4 +16,11 @@
     <string name="provenance_explain_action">Explain provenance</string>
     <!-- SPEC 6.7: a metric with quality below 0.5. -->
     <string name="low_confidence">Low\u00A0confidence</string>
+
+    <!-- SPEC 14.1, 6.7: the key to the four marks on the last onboarding step, one line each. -->
+    <string name="provenance_key_measured">counted by the hardware or the system</string>
+    <string name="provenance_key_modeled">from a model in Android or the battery</string>
+    <string name="provenance_key_estimated">Coulomb’s estimate, with its range</string>
+    <string name="provenance_key_derived">worked out from other figures</string>
+    <string name="provenance_key_line">%1$s: %2$s</string>
 </resources>

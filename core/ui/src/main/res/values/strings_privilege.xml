@@ -31,4 +31,33 @@
     <!-- SPEC 4.5: a feature blocked by SELinux at T2. -->
     <!-- SPEC 10.11: the way from a partial screen to Privileges. -->
     <string name="privilege_open">Open Privileges</string>
+
+    <!-- SPEC 4.4 grants as a checklist (onboarding result step, Privileges; lab onboarding.html). -->
+    <string name="grant_battery_stats">Battery statistics</string>
+    <string name="grant_dump">System service reports</string>
+    <string name="grant_usage">App usage</string>
+    <string name="grant_history">Battery history in Coulomb’s own process</string>
+    <string name="grant_settings">Change system settings</string>
+    <string name="grant_settings_why">Asked only when you turn on the Action Center</string>
+    <string name="grant_state_granted">Granted</string>
+    <string name="grant_state_missing">Not granted</string>
+    <string name="grant_state_later">Asked later</string>
+
+    <!-- SPEC 4.4, 14.1: the copy-ready ADB block. -->
+    <string name="adb_body">Run these once from a computer with USB debugging on. The access stays after a restart.</string>
+    <string name="adb_copy">Copy commands</string>
+    <string name="adb_clip_label">Coulomb ADB commands</string>
+
+    <!-- SPEC 14.1: what Coulomb can see, from the Capability Matrix. Items fill sight_sentence. -->
+    <string name="sight_sentence">It can see %1$s.</string>
+    <string name="sight_list_separator">", "</string>
+    <string name="sight_list_last">%1$s and %2$s</string>
+    <string name="sight_per_app_drain">per-app drain</string>
+    <string name="sight_wakelocks">wakelocks</string>
+    <string name="sight_kernel_wakeups">kernel wakeups</string>
+    <string name="sight_screen_time">screen time per app</string>
+    <string name="sight_level">the battery level and temperature</string>
+    <string name="sight_current">the current in and out of the battery</string>
+    <string name="sight_rails_measured">This phone exposes its power rails, so energy per component is measured</string>
+    <string name="sight_rails_modeled">This phone does not expose its power rails, so energy per component comes from Android’s power model</string>
 </resources>

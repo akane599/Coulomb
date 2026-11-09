@@ -121,11 +121,15 @@ public fun MarkedText(
     style: TextStyle,
     color: Color,
     modifier: Modifier = Modifier,
+    suffix: String = "",
 ) {
-    MarkedText(AnnotatedString(text), provenance, style, color, modifier)
+    MarkedText(AnnotatedString(text), provenance, style, color, modifier, suffix)
 }
 
-/** [MarkedText] for text with spans, such as a figure set larger than the words around it. */
+/**
+ * [MarkedText] for text with spans, such as a figure set larger than the words around it. A
+ * [suffix], such as a sentence's full stop, follows the mark on the same line.
+ */
 @Composable
 public fun MarkedText(
     text: AnnotatedString,
@@ -133,6 +137,7 @@ public fun MarkedText(
     style: TextStyle,
     color: Color,
     modifier: Modifier = Modifier,
+    suffix: String = "",
 ) {
     val density = LocalDensity.current
     val placeholder =
@@ -149,6 +154,10 @@ public fun MarkedText(
                 append(text)
                 append(WORD_JOINER)
                 appendInlineContent(MARK, alternateText = WORD_JOINER.toString())
+                if (suffix.isNotEmpty()) {
+                    append(WORD_JOINER)
+                    append(suffix)
+                }
             },
         modifier = modifier,
         color = color,
