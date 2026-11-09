@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -84,6 +85,20 @@ class HealthScreenshotTest {
     @Config(qualifiers = "w1000dp-h1600dp-xhdpi")
     fun expanded() = shoot("expanded") { Health(ready(), selected = LAB_SESSIONS.first().id) }
 
+    /** Expanded before a session is chosen: nothing in the list is marked. */
+    @Test
+    @Config(qualifiers = "w1000dp-h1600dp-xhdpi")
+    fun expandedNoSelection() = shoot("expanded-none") { Health(ready()) }
+
+    /** The list pane beside an open session (SPEC 10.10): the chosen row is marked. */
+    @Test
+    @Config(qualifiers = "w1000dp-h3000dp-xhdpi")
+    fun paneSelected() = shoot("pane", width = PANE) { Health(ready(), selected = LAB_SESSIONS.first().id) }
+
+    @Test
+    @Config(qualifiers = "w1000dp-h3000dp-xhdpi")
+    fun paneSelectedDark() = shoot("pane-dark", dark = true, width = PANE) { Health(ready(), selected = LAB_SESSIONS.first().id) }
+
     @Test
     @Config(qualifiers = "tr-$PAGE-xhdpi")
     fun turkish() = shoot("tr") { Health(ready()) }
@@ -91,6 +106,15 @@ class HealthScreenshotTest {
     @Test
     @Config(qualifiers = "ar-$PAGE-xhdpi")
     fun arabic() = shoot("ar", rtl = true) { Health(ready()) }
+
+    /** A session row is one button that reads as a whole; a charger row's name and figure read apart from Rename. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun rowsReadAsUnits() {
+        shoot("rows", capture = false) { Health(ready()) }
+        compose.onNode(hasText("12:30", substring = true) and hasClickAction()).assertExists()
+        compose.onNode(hasText("Desk charger") and hasClickAction().not()).assertExists()
+    }
 
     /** A first week: what the first estimate needs, and a line for each empty section. */
     @Test
@@ -222,10 +246,12 @@ class HealthScreenshotTest {
 }
 
 private const val COMPACT = "w412dp-h915dp-xhdpi"
+private val PANE = 480.dp
 private const val PAGE = "w412dp-h3000dp"
 private val ZONE = ZoneOffset.UTC
 private const val DIALOG_SETTLE_MS = 600L
 
-private val NoActions = HealthActions(retry = {}, openSession = {}, seeAll = {}, rename = { _, _ -> }, setDesign = {})
+private val NoActions =
+    HealthActions(retry = {}, openSession = {}, seeAll = {}, rename = { _, _ -> }, setDesign = {}, useReportedDesign = {})
 
 private fun ready() = HealthUiState.Ready(labReport(), LAB_DATES)

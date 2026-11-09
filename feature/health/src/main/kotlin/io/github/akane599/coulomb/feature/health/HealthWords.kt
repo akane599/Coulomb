@@ -16,6 +16,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
+import io.github.akane599.coulomb.core.ui.R as UiR
 
 /** Within this many days a day is named by its weekday or as days ago; further back, by its date. */
 private const val WEEK = 6L
@@ -49,10 +50,14 @@ internal fun startedAt(
     val ago = ChronoUnit.DAYS.between(day, dayOf(nowMs, zone))
     val clock = formats.clock(wallMs, zone)
     return when {
-        ago == 0L -> stringResource(R.string.health_today_at, clock)
+        // A start after now (a clock set back, a trip west) reads as today, as lastSeen does.
+        ago <= 0L -> stringResource(R.string.health_today_at, clock)
+
         ago == 1L -> stringResource(R.string.health_yesterday_at, clock)
+
         ago in 2..WEEK -> stringResource(R.string.health_day_at, formats.weekday(day), clock)
-        else -> stringResource(R.string.health_day_at, formats.day(day), clock)
+
+        else -> stringResource(R.string.health_day_at, formats.day(day, dayOf(nowMs, zone)), clock)
     }
 }
 
@@ -70,7 +75,7 @@ internal fun lastSeen(
         ago <= 0L -> stringResource(R.string.health_today)
         ago == 1L -> stringResource(R.string.health_yesterday)
         ago <= WEEK -> pluralStringResource(R.plurals.health_days_ago, ago.toInt(), formats.integer(ago))
-        else -> formats.day(day)
+        else -> formats.day(day, dayOf(nowMs, zone))
     }
 }
 
@@ -91,6 +96,7 @@ internal fun sessionLine(
             ),
             row.cycles?.let { cycles(it, formats) },
             row.stress?.let { stringResource(inline(it)) },
+            stringResource(UiR.string.low_confidence).takeIf { row.quality < LOW_QUALITY },
         )
     return parts.joinToString(SEPARATOR)
 }
@@ -122,4 +128,4 @@ internal fun dayOf(
 ): LocalDate = Instant.ofEpochMilli(wallMs).atZone(zone).toLocalDate()
 
 private const val MS_PER_MINUTE = 60_000L
-private const val SEPARATOR = " · "
+private const val SEPARATOR = "\u00A0· "

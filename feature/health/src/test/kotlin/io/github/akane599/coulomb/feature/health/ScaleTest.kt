@@ -38,6 +38,18 @@ class ScaleTest {
         val step = scale.marks[1] - scale.marks[0]
         scale.marks.zipWithNext { a, b -> assertEquals(step, b - a, EPS) }
     }
+
+    @Test
+    fun aWideIntervalOnALargeBatteryStillTakesRoundSteps() {
+        val scale = Scale.of(low = 11_200.0, high = 13_480.0, design = null)
+
+        assertTrue(scale.from <= 11_200.0)
+        assertTrue(scale.to >= 13_480.0)
+        assertTrue(scale.marks.size in 2..MAX_MARKS)
+        val step = scale.marks[1] - scale.marks[0]
+        scale.marks.zipWithNext { a, b -> assertEquals(step, b - a, EPS) }
+        scale.marks.forEach { assertEquals(0.0, it % step, EPS) }
+    }
 }
 
 private const val EPS = 1e-6

@@ -84,6 +84,18 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun anotherListClosesTheDetailBesideTheFirst() {
+        navigator.select(Destination.Health)
+        navigator.openDetail(Route.ChargeSession(7))
+
+        navigator.openList(Route.ChargeSessions)
+
+        assertThat(navigator.backStack).containsExactly(Route.Health, Route.ChargeSessions).inOrder()
+        navigator.back()
+        assertThat(navigator.backStack).containsExactly(Route.Health)
+    }
+
+    @Test
     fun theOpenAppIsTheDetailOnTopOfItsStack() {
         navigator.select(Destination.Drain)
         assertThat(navigator.openApp(Destination.Drain)).isNull()

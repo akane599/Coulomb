@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -75,6 +76,7 @@ public fun HealthScreen(
                 seeAll = onSeeAll,
                 rename = viewModel::rename,
                 setDesign = viewModel::setDesignCapacity,
+                useReportedDesign = viewModel::useReportedDesignCapacity,
             )
         }
     HealthContent(state, actions, modifier, selectedSession)
@@ -87,6 +89,7 @@ internal class HealthActions(
     val seeAll: () -> Unit,
     val rename: (chargerId: Long, name: String) -> Unit,
     val setDesign: (mah: Int) -> Unit,
+    val useReportedDesign: () -> Unit,
 )
 
 /** The tables Health's charts open ("View as table", SPEC 11.8). */
@@ -137,22 +140,29 @@ private fun Ready(
     var table by rememberSaveable { mutableStateOf<HealthTable?>(null) }
     var renaming by rememberSaveable { mutableStateOf<Long?>(null) }
     var design by rememberSaveable { mutableStateOf(false) }
+    // Built once per input, so opening a sheet or dialog does not recompose every visible section.
     val sections =
-        Sections(
-            report = report,
-            dates = dates,
-            formats = formats,
-            zone = zone,
-            nowMs = nowMs,
-            selected = selectedSession,
-            actions = actions,
-            events = SectionEvents(viewTable = { table = it }, rename = { renaming = it }, design = { design = true }),
-        )
+        remember(report, dates, formats, zone, nowMs, selectedSession, actions) {
+            Sections(
+                report = report,
+                dates = dates,
+                formats = formats,
+                zone = zone,
+                nowMs = nowMs,
+                selected = selectedSession,
+                actions = actions,
+                events = SectionEvents(viewTable = { table = it }, rename = { renaming = it }, design = { design = true }),
+            )
+        }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val column = MinColumnWidth * LocalDensity.current.fontScale.coerceAtLeast(1f)
         val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= column * 2
         if (!twoColumns) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Bottom)) {
+            // One column stays a readable measure on a wide window at large text (SPEC 10.10).
+            LazyColumn(
+                Modifier.widthIn(max = MaxOneColumnWidth).fillMaxSize().align(Alignment.TopCenter),
+                contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Bottom),
+            ) {
                 sections.first(this)
                 sections.second(this)
             }
@@ -182,9 +192,13 @@ private fun Ready(
     }
     if (design) {
         DesignDialog(
-            current = report.design?.mah?.roundToInt(),
+            current = report.design,
             onSave = { mah ->
                 actions.setDesign(mah)
+                design = false
+            },
+            onUseReportedValue = {
+                actions.useReportedDesign()
                 design = false
             },
             onDismiss = { design = false },
@@ -294,6 +308,7 @@ private const val GUTTERS = 3
 /** Each column needs this much at 100% text; larger text needs it in proportion (as App detail). */
 private val MinColumnWidth = 280.dp
 private val MaxTwoColumnWidth = 1200.dp
+private val MaxOneColumnWidth = 840.dp
 private val Bottom: Dp = CoulombSpacing.Space48
 private val ReadingWidth = 560.dp
 

@@ -52,7 +52,7 @@ public class HealthViewModel
     @Inject
     constructor(
         private val health: HealthRepository,
-        facts: HealthFacts,
+        private val facts: HealthFacts,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
 
@@ -95,6 +95,26 @@ public class HealthViewModel
         /** The owner's design capacity (ADR-0044 §5); the report follows from the database. */
         internal fun setDesignCapacity(mah: Int) {
             viewModelScope.launch { health.setDesignCapacity(mah) }
+        }
+
+        /**
+         * Undoes the owner's design capacity: the value the phone reports, read now, takes its place, or
+         * none until the next reading where the read fails (ADR-0044 §5).
+         */
+        internal fun useReportedDesignCapacity() {
+            viewModelScope.launch {
+                val reported =
+                    try {
+                        facts.designCapacity()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (
+                        @Suppress("TooGenericExceptionCaught", "SwallowedException") e: Exception,
+                    ) {
+                        null
+                    }
+                health.useReportedDesignCapacity(reported)
+            }
         }
 
         private companion object {

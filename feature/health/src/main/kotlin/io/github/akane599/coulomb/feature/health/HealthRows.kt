@@ -39,6 +39,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.FigureText
+import io.github.akane599.coulomb.core.ui.MarkedText
 import io.github.akane599.coulomb.core.ui.NameBesideValue
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
@@ -72,7 +73,10 @@ internal fun Habits(
             return@Column
         }
         CoulombFigureStrip {
-            CoulombFigure(stringResource(R.string.health_depth), stringResource(R.string.health_depth_note)) {
+            CoulombFigure(
+                label = { FigureTerm(stringResource(R.string.health_depth), stringResource(R.string.health_depth_meaning)) },
+                caption = stringResource(R.string.health_depth_note),
+            ) {
                 Figure(formats.percentParts(habits.depthPct.roundToInt()))
             }
             val high = habits.highMinutesPerDay
@@ -95,7 +99,12 @@ internal fun Habits(
         }
         val counted = habits.stress.values.sum()
         if (counted > 0) {
-            Subhead(stringResource(R.string.health_stress), definition = stringResource(R.string.health_stress_meaning))
+            // SPEC 6.4: wear figures are Estimated.
+            Subhead(
+                stringResource(R.string.health_stress),
+                definition = stringResource(R.string.health_stress_meaning),
+                provenance = Provenance.ESTIMATED,
+            )
             StressLevel.entries.forEachIndexed { index, level ->
                 val count = habits.stress[level] ?: 0
                 DataRow(
@@ -147,7 +156,8 @@ internal fun Sessions(
             } else {
                 null
             }
-        SectionTitle(stringResource(R.string.health_sessions), Provenance.MODELED.takeIf { sessions.isNotEmpty() }, action = action)
+        // Each row marks its own parts: the level Modeled, cycles and stress Estimated (SPEC 6.4, 10.1).
+        SectionTitle(stringResource(R.string.health_sessions), provenance = null, action = action)
         if (sessions.isEmpty()) {
             StandIn(stringResource(R.string.health_no_sessions), top = 0.dp)
             return@Column
@@ -173,8 +183,9 @@ internal fun SessionRow(
     DataRow(
         name = startedAt(row.startWallMs, nowMs, zone, formats),
         detail = sessionLine(row, formats),
+        detailMark = Provenance.ESTIMATED.takeIf { row.cycles != null || row.stress != null },
         value = gainedText(gained, formats),
-        mark = null,
+        mark = Provenance.MODELED,
         share = gained / FULL,
         first = first,
         selected = selected,
@@ -236,7 +247,8 @@ internal fun Chargers(
  * A row with a share bar without an icon (DESIGN.md, Rows with share bars; lab `.data-row`): the
  * name in Body 500 with [detail] in Caption under it, the figure at the end with its mark, an
  * optional [action] under the figure, the 4 dp bar across where there is a [share]. Hairlines divide rows; the [first] row
- * draws one above itself too. A row with [onClick] opens something; TalkBack reads it as one item.
+ * draws one above itself too. A row without an [action] is one TalkBack item, and a button when it has [onClick];
+ * a row with one reads its name and its figure as two items beside the action.
  */
 @Composable
 @Suppress("LongParameterList") // One row's content.
@@ -248,6 +260,7 @@ internal fun DataRow(
     share: Double?,
     first: Boolean,
     modifier: Modifier = Modifier,
+    detailMark: Provenance? = null,
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
@@ -276,17 +289,25 @@ internal fun DataRow(
             .heightIn(min = RowMinHeight)
             .padding(vertical = CoulombSpacing.Space12),
     ) {
+        // A merging child is not merged into its parent, so the parts merge alone only beside an action.
+        val part = if (action != null) Modifier.semantics(mergeDescendants = true) {} else Modifier
         NameBesideValue(
             name = {
-                Column(Modifier.semantics(mergeDescendants = true) {}) {
+                Column(part) {
                     Text(name, color = colors.textPrimary, style = type.bodyName)
-                    detail?.let { Text(it, color = colors.textSecondary, style = type.caption) }
+                    detail?.let {
+                        if (detailMark != null) {
+                            MarkedText(it, detailMark, type.caption, colors.textSecondary)
+                        } else {
+                            Text(it, color = colors.textSecondary, style = type.caption)
+                        }
+                    }
                 }
             },
             value = {
                 Column(horizontalAlignment = Alignment.End) {
                     Row(
-                        Modifier.semantics(mergeDescendants = true) {},
+                        part,
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End,
                     ) {

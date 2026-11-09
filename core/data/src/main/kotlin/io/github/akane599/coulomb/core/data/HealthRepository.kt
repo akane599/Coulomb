@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.data
 
+import io.github.akane599.coulomb.core.analytics.Capacity
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.ZoneSource
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
@@ -28,6 +29,7 @@ import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.roundToInt
 
 /** `Build.FINGERPRINT`, the key of the device profile (SPEC 8). */
 public fun interface BuildFingerprint {
@@ -119,13 +121,25 @@ public class HealthRepository
 
         /**
          * The owner's design capacity (SPEC 6.3, ADR-0044 §5). Returns false, storing nothing, for
-         * a value outside [DesignCapacity.PLAUSIBLE_MAH].
+         * a value outside [DesignCapacity.PLAUSIBLE_MAH] or before the build has a profile.
          */
         public suspend fun setDesignCapacity(mah: Int): Boolean {
             if (mah.toDouble() !in DesignCapacity.PLAUSIBLE_MAH) return false
-            withContext(dispatchers.io) { devices.setDesignCapacity(fingerprint.value(), mah, DesignCapacitySource.USER.code) }
-            return true
+            return withContext(dispatchers.io) { devices.setDesignCapacity(fingerprint.value(), mah, DesignCapacitySource.USER.code) > 0 }
         }
+
+        /**
+         * Undoes the owner's design capacity on every build (ADR-0044 §5), then stores [reported], the
+         * value the phone reports, where there is one; without it the collector's next read fills it.
+         */
+        public suspend fun useReportedDesignCapacity(reported: DesignCapacity?): Unit =
+            withContext(dispatchers.io) {
+                // Clear first: should the app stop between the two, the collector's read fills the gap.
+                devices.clearDesignCapacityFrom(DesignCapacitySource.USER.code)
+                reported?.takeIf { it.source != DesignCapacitySource.USER && it.mah in DesignCapacity.PLAUSIBLE_MAH }?.let {
+                    devices.fillDesignCapacity(fingerprint.value(), it.mah.roundToInt(), it.source.code)
+                }
+            }
 
         private suspend fun read(
             stored: Stored,
@@ -134,15 +148,20 @@ public class HealthRepository
             val now = System.currentTimeMillis()
             val today = Instant.ofEpochMilli(now).atZone(zone.zone()).toLocalDate()
             val capacity = HealthReader.capacity(stored.estimates, stored.design, now)
+            // The day the estimate first had enough windows for an interval of its own (oldest first).
+            val settledDay =
+                stored.estimates.getOrNull(Capacity.SETTLED_WINDOWS - 1)?.let {
+                    Instant.ofEpochMilli(it.createdWall).atZone(zone.zone()).toLocalDate()
+                }
             val window = charges.window.filter { (it.endWall ?: 0) >= now - HABITS_MS }
             val highTime = samples.timeAtOrAbove(HIGH_LEVEL, now - HABITS_MS, now + 1, MAX_GAP_MS)
             return HealthReport(
                 capacity = capacity,
                 design = stored.design,
-                change = HealthReader.change(stored.summaries, capacity, today),
+                change = HealthReader.change(stored.summaries, capacity, today, settledDay),
                 crossCheck = HealthReader.crossCheck(stored.summaries),
                 cycles = HealthReader.cycles(stored.summaries, firstCountedDay()),
-                trend = HealthReader.trend(stored.estimates, stored.summaries),
+                trend = HealthReader.trend(stored.estimates, stored.summaries, settledDay),
                 habits = HealthReader.habits(window, highTime),
                 sessions = charges.recent.take(RECENT_SESSIONS).map(HealthReader::row),
                 moreSessions = charges.recent.size > RECENT_SESSIONS,

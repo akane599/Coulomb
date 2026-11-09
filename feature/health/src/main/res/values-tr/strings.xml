@@ -2,25 +2,25 @@
 <!-- SPDX-FileCopyrightText: The Coulomb contributors -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
-    <string name="health_plus_minus">± %1$s</string>
+    <string name="health_plus_minus">± %1$s</string>
     <string name="health_of_design">%2$s tasarım kapasitesine göre %1$s</string>
     <string name="health_design_unknown">Sağlık yüzdesi için pilin tasarım kapasitesi gerekiyor; bu telefon onu bildirmiyor.</string>
     <string name="health_scale_design">Tasarım</string>
     <string name="health_scale_summary">Kapasite %1$s, büyük olasılıkla %2$s ile %3$s arasında.</string>
     <string name="health_scale_summary_design">Kapasite %1$s, büyük olasılıkla %2$s ile %3$s arasında; %5$s tasarım kapasitesine göre %4$s.</string>
     <plurals name="health_estimated_from">
-        <item quantity="one">%1$s şarj veya deşarj penceresinden tahmin edildi.</item>
-        <item quantity="other">%1$s şarj ve deşarj penceresinden tahmin edildi.</item>
+        <item quantity="one">%1$s şarj veya deşarj ölçümünden tahmin edildi.</item>
+        <item quantity="other">%1$s şarj ve deşarj ölçümünden tahmin edildi.</item>
     </plurals>
     <string name="health_design_from_power_profile">Tasarım kapasitesi Android’in güç profilinden.</string>
     <string name="health_design_from_sysfs">Tasarım kapasitesi pil sürücüsünden.</string>
     <string name="health_design_from_user">Tasarım kapasitesi senin girdiğin değer.</string>
     <string name="health_design_set">Tasarım kapasitesini gir</string>
     <string name="health_design_change">Tasarım kapasitesini değiştir</string>
-    <string name="health_change_lower_within">%2$s tarihindekinden yaklaşık %1$s düşük; ilk tahminin ±%3$s aralığı içinde.</string>
-    <string name="health_change_higher_within">%2$s tarihindekinden yaklaşık %1$s yüksek; ilk tahminin ±%3$s aralığı içinde.</string>
-    <string name="health_change_lower">%2$s tarihindekinden yaklaşık %1$s düşük; ilk tahminin ±%3$s aralığından fazla.</string>
-    <string name="health_change_higher">%2$s tarihindekinden yaklaşık %1$s yüksek; ilk tahminin ±%3$s aralığından fazla.</string>
+    <string name="health_change_lower_within">%2$s tarihindekinden yaklaşık %1$s düşük; iki tahminin ±%3$s hata payı içinde.</string>
+    <string name="health_change_higher_within">%2$s tarihindekinden yaklaşık %1$s yüksek; iki tahminin ±%3$s hata payı içinde.</string>
+    <string name="health_change_lower">%2$s tarihindekinden yaklaşık %1$s düşük; iki tahminin ±%3$s hata payından fazla.</string>
+    <string name="health_change_higher">%2$s tarihindekinden yaklaşık %1$s yüksek; iki tahminin ±%3$s hata payından fazla.</string>
     <string name="health_change_same">%1$s tarihindekiyle neredeyse aynı.</string>
     <string name="health_no_estimate_title">Henüz kapasite tahmini yok</string>
     <string name="health_no_estimate">İlk kapasite tahmini, %1$s veya altından %2$s veya üstüne bir şarjdan sonra gelir.</string>
@@ -30,33 +30,39 @@
     <string name="health_column_health">Sağlık</string>
     <string name="health_source_coulomb">Coulomb</string>
     <plurals name="health_source_coulomb_how">
-        <item quantity="one">%1$s pencerede yük sayacı</item>
-        <item quantity="other">%1$s pencerede yük sayacı</item>
+        <item quantity="one">%1$s ölçümde yük sayacı</item>
+        <item quantity="other">%1$s ölçümde yük sayacı</item>
     </plurals>
     <string name="health_source_android">Android</string>
     <string name="health_source_android_how">Pil sağlık durumu</string>
     <string name="health_source_oem">Üretici</string>
     <string name="health_agree">Farklı yöntemlerden %1$s değer; aralarındaki fark en çok %2$s puan.</string>
-    <string name="health_differ">Farklı yöntemlerden %1$s değer arasında %2$s puana varan fark var. Coulomb giren ve çıkan yükü sayar; Android ve üretici yakıt göstergesinin kendi modelini bildirir.</string>
+    <string name="health_agree_same">Farklı yöntemlerden %1$s değer; hepsi aynı.</string>
+    <string name="health_differ_coulomb">Farklı yöntemlerden %1$s değer arasında %2$s puana varan fark var. Coulomb giren ve çıkan yükü sayar; diğerleri yakıt göstergesinin kendi tahmininden gelir.</string>
+    <string name="health_differ">%1$s değer arasında %2$s puana varan fark var. Android ve üretici sağlığı kendi yöntemleriyle hesaplar ve nasıl hesapladığını açıklamaz.</string>
     <string name="health_only_coulomb">Android ve üretici bu telefonda sağlık değeri bildirmiyor.</string>
-    <string name="health_no_values">Henüz sağlık değeri yok. Android’inki için pil istatistikleri izni, Coulomb’unki için uzun bir şarj veya deşarj gerekiyor.</string>
+    <string name="health_no_values">Henüz sağlık değeri yok. Coulomb’unki için uzun bir şarj veya deşarj gerekiyor; Android’inki için pil istatistikleri izni gerekiyor ve her telefon bu değeri bildirmiyor.</string>
     <string name="health_coulomb_needs_design">Coulomb’un sağlık yüzdesi için tasarım kapasitesi gerekiyor.</string>
     <string name="health_cycles_age">Döngüler ve yaş</string>
     <string name="health_cycle_count">Döngü sayısı</string>
     <string name="health_cycle_count_note">Android’in bildirdiği</string>
     <string name="health_counted">Coulomb’un saydığı</string>
+    <string name="health_counted_meaning">Döngü eşdeğeri: giren yükün pilin tahmini kapasitesine bölümü. Yarıdan tama iki şarj bir döngü eder.</string>
     <string name="health_counted_since">%1$s tarihinden beri</string>
     <string name="health_counted_since_android">%1$s tarihinden beri; Android %2$s saydı</string>
     <string name="health_first_used">İlk kullanım</string>
     <string name="health_made">Üretim</string>
-    <string name="health_made_in">üretim: %1$s</string>
+    <string name="health_made_in">üretim: %1$s · %2$s</string>
     <string name="health_by_manufacturer">üreticinin bildirdiği</string>
     <string name="health_by_battery">pilin bildirdiği</string>
-    <string name="health_no_cycles">Android bu telefonda döngü sayısı bildirmiyor; Coulomb gördüğü ilk şarjdan itibaren sayar.</string>
+    <string name="health_no_cycles">Android’den henüz döngü sayısı yok. Coulomb gördüğü ilk şarjdan itibaren sayar.</string>
     <string name="health_over_time">Zaman içinde kapasite</string>
     <string name="health_design_line">Tasarım kapasitesi</string>
-    <string name="health_trend_caption">Her çarpı uygun bir pencere: kapasiteyi ölçecek kadar uzun ve düzgün bir şarj veya deşarj. Çizgi tahmin, bant onun %95 aralığı.</string>
-    <string name="health_trend_summary">Zaman içinde kapasite: %2$s ile %3$s arasında %1$s tahmin, son değer %4$s.</string>
+    <string name="health_trend_caption">Her çarpı uygun bir ölçüm: kapasiteyi ölçecek kadar uzun ve düzgün bir şarj veya deşarj. Çizgi tahmin, bant onun %95 aralığı; üçüncü ölçümden itibaren.</string>
+    <plurals name="health_trend_summary">
+        <item quantity="one">Zaman içinde kapasite: %2$s ile %3$s arasında %1$s uygun ölçüm; tahmin %4$s değerinden %5$s değerine gitti.</item>
+        <item quantity="other">Zaman içinde kapasite: %2$s ile %3$s arasında %1$s uygun ölçüm; tahmin %4$s değerinden %5$s değerine gitti.</item>
+    </plurals>
     <string name="health_trend_empty">Grafik ilk tahminle başlar.</string>
     <string name="health_table_trend">Günlere göre kapasite</string>
     <string name="health_column_day">Gün</string>
@@ -73,13 +79,14 @@
     <string name="health_habits_window">Son 30 gün</string>
     <string name="health_depth">Deşarj derinliği</string>
     <string name="health_depth_note">şarj başına ortalama</string>
+    <string name="health_depth_meaning">Her şarj başlamadan önce doluluğun tam dolu seviyeden kaç puan düştüğü.</string>
     <string name="health_high">%1$s veya üstünde</string>
     <string name="health_high_note">günde</string>
     <string name="health_high_unknown">bir günlük kayıt gerekiyor</string>
     <string name="health_charge_temp">Şarj sırasında</string>
     <string name="health_charge_temp_note">ortalama</string>
     <string name="health_stress">Oturumlara göre aşınma stresi</string>
-    <string name="health_stress_meaning">Bir şarjın pili ne kadar yorduğu: yüksek doluluktaki süresinden, sıcaklığından ve şarj hızından (SPEC 6.4).</string>
+    <string name="health_stress_meaning">Bir şarjın pili ne kadar yorduğu; yüksek dolulukta geçen süreye, en yüksek sıcaklığa ve şarj hızına göre.</string>
     <string name="health_stress_low">Düşük</string>
     <string name="health_stress_moderate">Orta</string>
     <string name="health_stress_high">Yüksek</string>
@@ -95,12 +102,12 @@
     <string name="health_day_at">%1$s, %2$s</string>
     <string name="health_session_line">%3$s içinde %1$s → %2$s</string>
     <plurals name="health_cycles">
-        <item quantity="one">%1$s döngü</item>
-        <item quantity="other">%1$s döngü</item>
+        <item quantity="one">%1$s döngü</item>
+        <item quantity="other">%1$s döngü</item>
     </plurals>
-    <string name="health_stress_low_inline">düşük stres</string>
-    <string name="health_stress_moderate_inline">orta stres</string>
-    <string name="health_stress_high_inline">yüksek stres</string>
+    <string name="health_stress_low_inline">düşük stres</string>
+    <string name="health_stress_moderate_inline">orta stres</string>
+    <string name="health_stress_high_inline">yüksek stres</string>
     <string name="health_no_sessions">Henüz şarj oturumu yok. Her şarj, fişten çektiğinde burada görünür.</string>
     <string name="health_chargers">Şarj cihazları</string>
     <string name="health_unnamed_ac">Adsız duvar şarj cihazı</string>
@@ -108,7 +115,7 @@
     <string name="health_unnamed_wireless">Adsız kablosuz şarj cihazı</string>
     <string name="health_unnamed_dock">Adsız yuva</string>
     <string name="health_unnamed">Adsız şarj cihazı</string>
-    <string name="health_charger_line">Temel güç · son görülme %1$s</string>
+    <string name="health_charger_line">Olağan güç · son görülme %1$s</string>
     <string name="health_today">bugün</string>
     <string name="health_yesterday">dün</string>
     <plurals name="health_days_ago">
@@ -119,13 +126,17 @@
     <string name="health_rename_named">Yeniden adlandır: %1$s</string>
     <string name="health_rename_title">Şarj cihazını yeniden adlandır</string>
     <string name="health_rename_label">Ad</string>
-    <string name="health_rename_hint">Boş bırakılan ad, fiş türüne geri döner.</string>
+    <string name="health_rename_hint">Boş bırakırsan fiş türüyle adlandırılır.</string>
+    <string name="health_rename_count">%1$s/%2$s</string>
     <string name="health_save">Kaydet</string>
     <string name="health_cancel">İptal</string>
     <string name="health_no_chargers">Şarj cihazları, akımı kalibre edilmiş bir şarjdan sonra görünür. Coulomb onları fiş türü ve güce göre ayırır.</string>
     <string name="health_design_title">Tasarım kapasitesi</string>
     <string name="health_design_label">mAh cinsinden kapasite</string>
     <string name="health_design_hint">Pilin üzerinde veya telefonun özelliklerinde yazan kapasite; 500 ile 20.000 mAh arasında.</string>
+    <string name="health_design_source">Şu an: %1$s</string>
+    <string name="health_design_reported">Bildirilen değeri kullan</string>
+    <string name="health_design_reported_note">Girdiğin değer silinir; telefonun bildirdiği değer bir sonraki okumada geri gelir.</string>
     <string name="health_design_invalid">500 ile 20.000 arasında bir sayı gir.</string>
     <string name="health_loading">Yükleniyor</string>
     <string name="health_error_title">Coulomb pil kayıtlarını okuyamadı</string>
@@ -134,6 +145,7 @@
     <string name="health_session_title">Şarj oturumu</string>
     <string name="health_all_sessions_title">Şarj oturumları</string>
     <string name="health_curve">Doluluk ve güç</string>
+    <string name="health_curve_level">Doluluk</string>
     <string name="health_curve_summary">%3$s ile %4$s arasında şarj: %1$s → %2$s.</string>
     <string name="health_curve_summary_power">%3$s ile %4$s arasında şarj: %1$s → %2$s, en çok %5$s.</string>
     <string name="health_taper_rule">Yavaşlıyor</string>
@@ -150,11 +162,12 @@
     <string name="health_heat">Isı ve yüksek doluluk</string>
     <string name="health_temperature">Sıcaklık</string>
     <string name="health_temperature_note">ortalama; en yüksek %1$s</string>
+    <string name="health_temperature_highest">En yüksek sıcaklık</string>
     <string name="health_time_high">%1$s veya üstünde</string>
     <string name="health_time_hot">38 °C üstünde</string>
-    <string name="health_wear">Aşınma</string>
+    <string name="health_wear">Aşınma stresi</string>
     <string name="health_charger">Şarj cihazı</string>
-    <string name="health_no_power">Güç, Coulomb bu telefonun akım okumasını kalibre edince görünür.</string>
+    <string name="health_no_power">Bu şarj için güç değeri yok: şarj çok kısaydı ya da Coulomb bu telefonun akım okumasını henüz kalibre etmemişti.</string>
     <string name="health_no_curve">Bu şarjın okumaları artık tutulmuyor.</string>
     <string name="health_session_gone">Bu şarj oturumu artık Coulomb’un kayıtlarında yok.</string>
 </resources>

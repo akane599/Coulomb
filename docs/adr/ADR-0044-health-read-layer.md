@@ -68,3 +68,31 @@ away from `:core:privileged`, while S3 is read "daily and on Health screen open"
   `CollectorEngineTest` (an owner's entry while running and across an update).
 - The habits and the cycle comparison are estimators: they join the independent review before the
   P4 gate with ADR-0037, ADR-0042 and ADR-0043.
+
+## Amendments after the estimator review (2026-11-09)
+
+The independent review of ADR-0037, ADR-0042, ADR-0043 and this ADR changed these points:
+
+1. **The change line and the band start at the settled day** (§1): the local day of the third stored
+   window (`Capacity.SETTLED_WINDOWS`), the first estimate that is more than the ±1% floor around a
+   single window. The change compares the estimate now with the first day from then on that had an
+   estimate. Its margin is both intervals together, √(then² + now²) of their half-widths. Before
+   three windows there is no change and no band; every window still shows as a cross.
+2. **Time at 80% or more runs on the elapsed clock** (§2). The wall clock only picks the window, so
+   a clock change cannot stretch or drop a span.
+3. **Cycles** (§3): a negative count is not a count. A platform count that never moves while
+   Coulomb counted at least one cycle, or that goes back, is left out of the comparison. The
+   platform's own number is still shown.
+4. **The day's health readings merge** (ADR-0037 §4): a summary rewritten later the same day keeps
+   the stored system state of health, OEM value and cycle count where the new reading lacks them.
+5. **The owner's entry can be undone** (§5): "Use the reported value" clears the `user` value and
+   reads the power profile or sysfs value again, which is written if it is plausible.
+
+Left as they are, with reasons:
+
+- Uncalibrated current on the session curve stays a gap rather than being converted at read time.
+  `:core:data` has no calibration, and a gap never reads as zero power (ADR-0043).
+- The minute aggregates for a compacted curve are matched by wall time and boot. At minute
+  granularity a minute at either end makes no visible difference.
+- `charge_detail.minutesAbove80` stays non-null, with 0 where a session had no samples. Making it
+  nullable is a schema change for a case the screen does not show.

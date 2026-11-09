@@ -225,7 +225,7 @@ class AppScreens(
                 health = { navigator ->
                     HealthScreen(
                         onOpenSession = { navigator.openDetail(Route.ChargeSession(it)) },
-                        onSeeAll = { navigator.open(Route.ChargeSessions) },
+                        onSeeAll = { navigator.openList(Route.ChargeSessions) },
                         // Shown only while the session is beside the list.
                         selectedSession = navigator.openSession(Destination.Health),
                     )

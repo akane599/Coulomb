@@ -3,13 +3,17 @@
 
 package io.github.akane599.coulomb.feature.health
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -28,6 +32,7 @@ import io.github.akane599.coulomb.core.designsystem.chart.TrendLabels
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFigure
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFigureStrip
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTerm
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
@@ -38,8 +43,10 @@ import io.github.akane599.coulomb.core.model.DesignCapacity
 import io.github.akane599.coulomb.core.model.DesignCapacitySource
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.FigureText
+import io.github.akane599.coulomb.core.ui.LowConfidence
 import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
+import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.page.InlineTable
 import io.github.akane599.coulomb.core.ui.page.Note
@@ -90,8 +97,8 @@ internal fun Estimate(
 
                     else -> {
                         val amount = formats.mah(size).joined()
-                        val range = formats.mah(change.firstHalfWidthMah).joined()
-                        val within = size <= change.firstHalfWidthMah
+                        val range = formats.mah(change.marginMah).joined()
+                        val within = size <= change.marginMah
                         val lower = change.deltaMah < 0
                         val id =
                             when {
@@ -125,9 +132,11 @@ private fun Hero(
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
-    val half = (capacity.ciHighMah - capacity.ciLowMah) / 2
+    // The wider side, so an interval the estimator widened on one side is never understated.
+    val half = maxOf(capacity.estimateMah - capacity.ciLowMah, capacity.ciHighMah - capacity.estimateMah)
     Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
-        Row {
+        // The ± and its mark wrap as one unit under the figure when the line runs out (200% text, six digits).
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8)) {
             FigureText(
                 formats.mah(capacity.estimateMah).affixed(),
                 numberStyle = type.display,
@@ -135,14 +144,18 @@ private fun Hero(
                 modifier = Modifier.alignByBaseline(),
                 rolling = true,
             )
-            Text(
-                stringResource(R.string.health_plus_minus, formats.integer(half.roundToLong())),
-                Modifier.alignByBaseline().padding(start = CoulombSpacing.Space8),
-                color = colors.textSecondary,
-                style = type.displayUnit,
-            )
-            Box(Modifier.alignBy { it.measuredHeight }.padding(start = CoulombSpacing.Space4)) { ProvenanceMark(Provenance.ESTIMATED) }
+            Row(Modifier.alignByBaseline(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    // Left to right, so the ± stays before its number in a right-to-left layout.
+                    LTR_ISOLATE + stringResource(R.string.health_plus_minus, formats.integer(half.roundToLong())) + POP_ISOLATE,
+                    color = colors.textSecondary,
+                    style = type.displayUnit,
+                )
+                ProvenanceMark(Provenance.ESTIMATED, Modifier.padding(start = CoulombSpacing.Space4))
+            }
         }
+        // It qualifies the figure, so it sits right under it, before the line about design capacity.
+        if (capacity.quality < LOW_QUALITY) LowConfidence()
         val health = capacity.healthPct
         Text(
             if (health != null && design != null) {
@@ -156,6 +169,9 @@ private fun Hero(
         )
     }
 }
+
+/** SPEC 6.7: below this quality a figure says it has low confidence. */
+internal const val LOW_QUALITY = 0.5
 
 /**
  * The interval on a graduated scale (DESIGN.md's signature). With a design capacity the scale
@@ -225,7 +241,8 @@ internal class Scale(
         private const val HIGH_PCT = 100.0
         private const val MARK_PCT = 10.0
         private const val MINOR_PCT = 2.0
-        private val STEPS = listOf(50.0, 100.0, 200.0, 250.0, 500.0, 1_000.0)
+        private val STEPS =
+            listOf(50.0, 100.0, 200.0, 250.0, 500.0, 1_000.0, 2_000.0, 2_500.0, 5_000.0, 10_000.0, 20_000.0, 25_000.0, 50_000.0)
         private const val MAX_MARKS = 4
 
         fun of(
@@ -303,7 +320,7 @@ private fun DesignButton(
     )
 }
 
-private fun designSource(source: DesignCapacitySource): Int =
+internal fun designSource(source: DesignCapacitySource): Int =
     when (source) {
         DesignCapacitySource.POWER_PROFILE -> R.string.health_design_from_power_profile
         DesignCapacitySource.SYSFS -> R.string.health_design_from_sysfs
@@ -323,67 +340,92 @@ internal fun CrossCheck(
     formats: Formats,
 ) {
     val coulomb = report.capacity?.healthPct?.roundToInt()
-    val windows = report.capacity?.windows ?: 0
-    val rows =
-        buildList {
-            coulomb?.let {
-                add(
-                    Value(
-                        stringResource(R.string.health_source_coulomb),
-                        pluralStringResource(R.plurals.health_source_coulomb_how, windows, formats.integer(windows.toLong())),
-                        it,
-                        Provenance.ESTIMATED,
-                    ),
-                )
-            }
-            report.crossCheck.systemSohPct?.let {
-                add(
-                    Value(
-                        stringResource(R.string.health_source_android),
-                        stringResource(R.string.health_source_android_how),
-                        it,
-                        Provenance.MODELED,
-                    ),
-                )
-            }
-            report.crossCheck.oemHealth.forEach {
-                add(Value(stringResource(R.string.health_source_oem), it.key, it.percent, Provenance.MODELED, mono = true))
-            }
-        }
+    val rows = crossCheckRows(report, coulomb, formats)
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.health_cross_check), provenance = null)
+        // An estimate without a design capacity has no health %: say so rather than leave Coulomb out silently.
+        val needsDesign = report.capacity != null && coulomb == null
         if (rows.isEmpty()) {
-            StandIn(stringResource(R.string.health_no_values), top = 0.dp)
+            StandIn(stringResource(if (needsDesign) R.string.health_coulomb_needs_design else R.string.health_no_values), top = 0.dp)
             return@Column
         }
         InlineTable(
             columns = listOf(stringResource(R.string.health_column_source), stringResource(R.string.health_column_health)),
             rows = rows.map { TableRow(it.name, listOf(formats.percent(it.percent)), note = it.how, mark = it.mark, mono = false) },
         )
-        val spread = rows.maxOf { it.percent } - rows.minOf { it.percent }
-        val note =
-            when {
-                rows.size == 1 && coulomb != null -> {
-                    stringResource(R.string.health_only_coulomb)
-                }
+        agreement(rows, coulomb, formats)?.let { Note(it) }
+        if (needsDesign) Note(stringResource(R.string.health_coulomb_needs_design))
+    }
+}
 
-                rows.size == 1 -> {
-                    stringResource(R.string.health_coulomb_needs_design).takeIf { report.capacity != null }
-                }
+/** Coulomb's value where it has one, Android's, then each the OEM prints, in that order. */
+@Composable
+private fun crossCheckRows(
+    report: HealthReport,
+    coulomb: Int?,
+    formats: Formats,
+): List<Value> {
+    val windows = report.capacity?.windows ?: 0
+    return buildList {
+        coulomb?.let {
+            add(
+                Value(
+                    stringResource(R.string.health_source_coulomb),
+                    pluralStringResource(R.plurals.health_source_coulomb_how, windows, formats.integer(windows.toLong())),
+                    it,
+                    Provenance.ESTIMATED,
+                ),
+            )
+        }
+        report.crossCheck.systemSohPct?.let {
+            add(
+                Value(
+                    stringResource(R.string.health_source_android),
+                    stringResource(R.string.health_source_android_how),
+                    it,
+                    Provenance.MODELED,
+                ),
+            )
+        }
+        report.crossCheck.oemHealth.forEach {
+            add(Value(stringResource(R.string.health_source_oem), breakable(it.key), it.percent, Provenance.MODELED))
+        }
+    }
+}
 
-                spread <= AGREE_POINTS -> {
-                    stringResource(
-                        R.string.health_agree,
-                        formats.integer(rows.size.toLong()),
-                        formats.integer(spread.toLong()),
-                    )
-                }
+/** Whether the [rows] agree, and why they may not; null for one value that is not Coulomb's. */
+@Composable
+private fun agreement(
+    rows: List<Value>,
+    coulomb: Int?,
+    formats: Formats,
+): String? {
+    val spread = rows.maxOf { it.percent } - rows.minOf { it.percent }
+    val count = formats.integer(rows.size.toLong())
+    return when {
+        rows.size == 1 && coulomb != null -> {
+            stringResource(R.string.health_only_coulomb)
+        }
 
-                else -> {
-                    stringResource(R.string.health_differ, formats.integer(rows.size.toLong()), formats.integer(spread.toLong()))
-                }
-            }
-        note?.let { Note(it) }
+        rows.size == 1 -> {
+            null
+        }
+
+        spread == 0 -> {
+            stringResource(R.string.health_agree_same, count)
+        }
+
+        spread <= AGREE_POINTS -> {
+            stringResource(R.string.health_agree, count, formats.integer(spread.toLong()))
+        }
+
+        coulomb != null -> {
+            stringResource(R.string.health_differ_coulomb, count, formats.integer(spread.toLong()))
+        }
+
+        else -> {
+            stringResource(R.string.health_differ, count, formats.integer(spread.toLong()))
+        }
     }
 }
 
@@ -392,7 +434,6 @@ private class Value(
     val how: String,
     val percent: Int,
     val mark: Provenance,
-    val mono: Boolean = false,
 )
 
 /**
@@ -454,9 +495,12 @@ private fun CountedFigure(
                 null
             }
         }
-    CoulombFigure(stringResource(R.string.health_counted), caption) {
+    // SPEC 6.4: cycle equivalents divide by the estimated capacity, so they are Estimated.
+    CoulombFigure(label = {
+        FigureTerm(stringResource(R.string.health_counted), stringResource(R.string.health_counted_meaning))
+    }, caption = caption) {
         Text(formats.decimal(cycles.coulombCount), color = CoulombTheme.colors.textPrimary, style = CoulombTheme.typography.title)
-        ProvenanceMark(Provenance.DERIVED)
+        ProvenanceMark(Provenance.ESTIMATED)
     }
 }
 
@@ -469,7 +513,8 @@ private fun DateFigure(
 ) {
     val first = date == dates.firstUsed
     val made = dates.manufactured?.takeIf { first }
-    val caption = made?.let { stringResource(R.string.health_made_in, formats.monthYear(it.date)) } ?: stringResource(sourceNote(date))
+    val source = stringResource(sourceNote(date))
+    val caption = made?.let { stringResource(R.string.health_made_in, formats.monthYear(it.date), source) } ?: source
     CoulombFigure(stringResource(if (first) R.string.health_first_used else R.string.health_made), caption) {
         Text(formats.monthYear(date.date), color = CoulombTheme.colors.textPrimary, style = CoulombTheme.typography.title)
         ProvenanceMark(Provenance.MEASURED)
@@ -502,23 +547,24 @@ internal fun Trend(
         }
         val first = trend.days.first()
         val last = trend.days.last()
+        val days = remember(trend) { trend.days.map { IntervalDay(it.day, it.mah, it.lowMah, it.highMah) } }
+        val crosses = remember(trend) { trend.points.map { TrendCross(it.wallMs, it.mah) } }
+        val labels =
+            remember(formats) { TrendLabels(value = { formats.integer(it.roundToLong()) }, day = formats::day, month = formats::month) }
         IntervalTrendChart(
-            days = trend.days.map { IntervalDay(it.day, it.mah, it.lowMah, it.highMah) },
-            crosses = trend.points.map { TrendCross(it.wallMs, it.mah) },
+            days = days,
+            crosses = crosses,
             reference = report.design?.mah,
             referenceLabel = stringResource(R.string.health_design_line).takeIf { report.design != null },
-            labels =
-                TrendLabels(
-                    value = { formats.integer(it.roundToLong()) },
-                    day = formats::day,
-                    month = formats::month,
-                ),
+            labels = labels,
             summary =
-                stringResource(
-                    R.string.health_trend_summary,
+                pluralStringResource(
+                    R.plurals.health_trend_summary,
+                    trend.points.size,
                     formats.integer(trend.points.size.toLong()),
                     formats.day(first.day),
                     formats.day(last.day),
+                    formats.mah(first.mah).joined(),
                     formats.mah(last.mah).joined(),
                 ),
             viewTableLabel = stringResource(UiR.string.page_view_table),
@@ -528,4 +574,19 @@ internal fun Trend(
         Note(stringResource(R.string.health_trend_caption))
         ViewTableButton(onViewTable)
     }
+}
+
+/** A figure's label that opens its definition (SPEC 19.3; the lab's `.term`). */
+@Composable
+internal fun FigureTerm(
+    text: String,
+    definition: String,
+) {
+    CoulombTerm(
+        text = text,
+        definition = definition,
+        actionLabel = stringResource(UiR.string.page_term_action),
+        style = CoulombTheme.typography.label,
+        color = CoulombTheme.colors.textSecondary,
+    )
 }

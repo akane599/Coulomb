@@ -136,7 +136,10 @@ private fun DrawScope.minorTicks(
     }
 }
 
-/** Each label's tick, then its one or two lines under the axis where they do not run into an earlier label. */
+/**
+ * Each label's tick, then its one or two lines under the axis where they do not run into a label
+ * already placed. The two ends go first, so a crowded axis drops an interior label, never its range.
+ */
 @Suppress("LongParameterList") // The labels, where they go and how they look.
 private fun DrawScope.axisLabels(
     labels: List<AxisLabel>,
@@ -148,7 +151,15 @@ private fun DrawScope.axisLabels(
 ) {
     val stroke = 1.dp.toPx()
     val placed = mutableListOf<ClosedFloatingPointRange<Float>>()
-    labels.forEach { label ->
+    val ends = if (labels.size > 2) listOf(labels.first(), labels.last()) else labels
+    (
+        ends +
+            labels
+                .drop(1)
+                .dropLast(1)
+                .takeIf { labels.size > 2 }
+                .orEmpty()
+    ).forEach { label ->
         val px = x(label.value)
         drawLine(color, Offset(px, axis), Offset(px, axis + MajorTick.toPx()), stroke)
         val main = text.measure(label.text)

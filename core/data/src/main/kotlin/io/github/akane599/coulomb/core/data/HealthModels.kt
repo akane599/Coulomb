@@ -29,13 +29,14 @@ public data class HealthReport(
 )
 
 /**
- * The estimate now against the first one (ADR-0044 §1): [deltaMah] is now minus then, and
- * [firstHalfWidthMah] half the first interval's width, to say whether the change is inside it.
+ * The estimate now against the first settled one (ADR-0044 §1, gate review): [deltaMah] is now minus
+ * then, and [marginMah] how far the two estimates could be off together, √(h₁² + h₂²) of their
+ * half-widths, to say whether the change is more than that.
  */
 public data class CapacityChange(
     val firstDay: LocalDate,
     val deltaMah: Double,
-    val firstHalfWidthMah: Double,
+    val marginMah: Double,
 )
 
 /** The system's and the OEM's health values beside Coulomb's (SPEC 6.3), each from its latest day. */

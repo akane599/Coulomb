@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.feature.health
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -212,8 +214,20 @@ private fun SessionHead(
             startedAt(row.startWallMs, nowMs, zone, formats),
             Modifier.fillMaxWidth().semantics { heading() },
             color = colors.textPrimary,
-            style = type.headline,
+            style = type.title,
         )
+        // The session's one primary figure (SPEC 10.1): the level it gained.
+        Row(
+            Modifier.padding(top = CoulombSpacing.Space8).semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                formats.signedShare((row.toPct - row.fromPct).coerceAtLeast(0) / PERCENT),
+                color = colors.textPrimary,
+                style = type.display,
+            )
+            ProvenanceMark(Provenance.MODELED, Modifier.padding(start = CoulombSpacing.Space4))
+        }
         Text(
             sessionLine(row, formats),
             Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space4),
@@ -247,6 +261,7 @@ private fun SessionHead(
 }
 
 private const val DASH = "–"
+private const val PERCENT = 100.0
 
 @Composable
 private fun Watts(
@@ -268,13 +283,19 @@ private fun Curve(
 ) {
     val row = detail.row
     Column(Modifier.fillMaxWidth()) {
-        SectionTitle(stringResource(R.string.health_curve), Provenance.MODELED.takeIf { detail.curve.size >= 2 })
+        // Level alone is Modeled; with power beside it (Derived) the sources differ, so no heading mark (SPEC 10.1).
+        val power = detail.curve.any { it.watts != null }
+        SectionTitle(
+            stringResource(if (power) R.string.health_curve else R.string.health_curve_level),
+            Provenance.MODELED.takeIf { detail.curve.size >= 2 && !power },
+        )
         if (detail.curve.size < 2) {
             StandIn(stringResource(R.string.health_no_curve), top = 0.dp)
             return@Column
         }
         val start = formats.clock(row.startWallMs, zone)
-        val end = formats.clock(row.endWallMs, zone)
+        // The end names its weekday when the charge ran past midnight.
+        val end = formats.clock(row.endWallMs, zone, row.startWallMs)
         val from = formats.percent(row.fromPct)
         val to = formats.percent(row.toPct)
         val summary =
@@ -292,7 +313,7 @@ private fun Curve(
                         val figure = formats.watts(w)
                         if (w % 1.0 == 0.0) figure.copy(number = formats.integer(w.toLong())).joined() else figure.joined()
                     },
-                    time = { formats.clock(it, zone) },
+                    time = { formats.clock(it, zone, row.startWallMs) },
                     taper = stringResource(R.string.health_taper_rule),
                     fullSpeed = stringResource(R.string.health_full_speed_rule),
                 ),
@@ -315,16 +336,21 @@ private fun Heat(
         SectionTitle(stringResource(R.string.health_heat), provenance = null)
         CoulombFigureStrip {
             val mean = detail.meanTempDeciC
-            CoulombFigure(
-                stringResource(R.string.health_temperature),
-                stringResource(R.string.health_temperature_note, formats.celsius(detail.maxTempDeciC.toDouble()).joined()),
-            ) {
-                FigureText(
-                    formats.celsius((mean ?: detail.maxTempDeciC).toDouble()).affixed(),
-                    numberStyle = type.title,
-                    unitStyle = type.label,
-                )
-                ProvenanceMark(Provenance.MEASURED)
+            val highest = formats.celsius(detail.maxTempDeciC.toDouble())
+            if (mean != null) {
+                // An average of measured readings is Derived, as the habits' charge temperature is.
+                CoulombFigure(
+                    stringResource(R.string.health_temperature),
+                    stringResource(R.string.health_temperature_note, highest.joined()),
+                ) {
+                    FigureText(formats.celsius(mean.toDouble()).affixed(), numberStyle = type.title, unitStyle = type.label)
+                    ProvenanceMark(Provenance.DERIVED)
+                }
+            } else {
+                CoulombFigure(stringResource(R.string.health_temperature_highest), caption = null) {
+                    FigureText(highest.affixed(), numberStyle = type.title, unitStyle = type.label)
+                    ProvenanceMark(Provenance.MEASURED)
+                }
             }
             detail.minutesAtOrAbove80?.let { minutes ->
                 CoulombFigure(stringResource(R.string.health_time_high, formats.percent(HIGH_LEVEL)), caption = null) {
@@ -366,7 +392,7 @@ private fun curveTable(
         rows =
             detail.curve.map { point ->
                 listOf(
-                    formats.clock(point.wallMs, zone),
+                    formats.clock(point.wallMs, zone, detail.row.startWallMs),
                     formats.percent(point.levelPct),
                     point.watts?.let { formats.watts(it).joined() } ?: DASH,
                 )

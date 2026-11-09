@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.feature.health
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,10 +31,14 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.DesignCapacity
+import io.github.akane599.coulomb.core.model.DesignCapacitySource
+import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import kotlin.math.roundToInt
 
 private val DialogShape = RoundedCornerShape(28.dp)
 private val FieldShape = RoundedCornerShape(12.dp)
@@ -48,6 +53,7 @@ internal fun RenameDialog(
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val formats = rememberFormats()
     var text by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(current, TextRange(current.length))) }
     val save = { onSave(text.text.trim()) }
     TextDialog(
@@ -58,10 +64,26 @@ internal fun RenameDialog(
     ) { focus ->
         OutlinedTextField(
             value = text,
-            onValueChange = { if (it.text.length <= MAX_NAME) text = it },
+            // A longer paste is cut to the limit rather than dropped.
+            onValueChange = { entry ->
+                val cut = entry.text.take(MAX_NAME)
+                text = if (cut.length == entry.text.length) entry else TextFieldValue(cut, TextRange(cut.length))
+            },
             modifier = Modifier.fillMaxWidth().focusRequester(focus),
             label = { Text(stringResource(R.string.health_rename_label)) },
-            supportingText = { Text(stringResource(R.string.health_rename_hint)) },
+            supportingText = {
+                Row {
+                    Text(stringResource(R.string.health_rename_hint), Modifier.weight(1f))
+                    Text(
+                        stringResource(
+                            R.string.health_rename_count,
+                            formats.integer(text.text.length.toLong()),
+                            formats.integer(MAX_NAME.toLong()),
+                        ),
+                        Modifier.padding(start = CoulombSpacing.Space8),
+                    )
+                }
+            },
             singleLine = true,
             shape = FieldShape,
             colors = fieldColors(),
@@ -71,29 +93,55 @@ internal fun RenameDialog(
     }
 }
 
-/** The owner's design capacity, in mAh within [DesignCapacity.PLAUSIBLE_MAH] (SPEC 6.3, ADR-0044 §5). */
+/**
+ * The owner's design capacity, in mAh within [DesignCapacity.PLAUSIBLE_MAH] (SPEC 6.3, ADR-0044 §5),
+ * with where the current one comes from; an entry of the owner's can be undone ([onUseReportedValue]).
+ */
 @Composable
 internal fun DesignDialog(
-    current: Int?,
+    current: DesignCapacity?,
     onSave: (Int) -> Unit,
+    onUseReportedValue: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val start = current?.toString().orEmpty()
+    val formats = rememberFormats()
+    val colors = CoulombTheme.colors
+    val start =
+        current
+            ?.mah
+            ?.roundToInt()
+            ?.toString()
+            .orEmpty()
     var text by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(start, TextRange(start.length))) }
+    var tried by rememberSaveable { mutableStateOf(false) }
     val value = text.text.toIntOrNull()
     val valid = value != null && value.toDouble() in DesignCapacity.PLAUSIBLE_MAH
-    // An error shows once the entry has the digits of a capacity, not while the first ones are typed.
-    val wrong = !valid && text.text.length >= MIN_DIGITS
-    val save = { if (valid) onSave(value) }
+    // Too large shows at once; too small once the entry has a capacity's digits, or after Save, so
+    // typing 4,855 never flashes an error at "485".
+    val tooLarge = value != null && value > DesignCapacity.PLAUSIBLE_MAH.endInclusive
+    val wrong = !valid && text.text.isNotEmpty() && (tried || tooLarge || text.text.length >= MIN_DIGITS)
+    val save = { if (valid) onSave(value) else tried = true }
     TextDialog(
         title = stringResource(R.string.health_design_title),
         onConfirm = save,
-        confirmEnabled = valid,
+        confirmEnabled = text.text.isNotEmpty(),
         onDismiss = onDismiss,
     ) { focus ->
+        current?.let {
+            Text(
+                stringResource(R.string.health_design_source, formats.mah(it.mah).joined()) + " " + stringResource(designSource(it.source)),
+                Modifier.fillMaxWidth().padding(bottom = CoulombSpacing.Space12),
+                color = colors.textSecondary,
+                style = CoulombTheme.typography.caption,
+            )
+        }
         OutlinedTextField(
             value = text,
-            onValueChange = { entry -> if (entry.text.length <= MAX_DIGITS && entry.text.all { it in '0'..'9' }) text = entry },
+            // Digits only: a paste of "5,000" or "5000 mAh" keeps its number.
+            onValueChange = { entry ->
+                val digits = entry.text.filter(Char::isDigit).take(MAX_DIGITS)
+                text = if (digits == entry.text) entry else TextFieldValue(digits, TextRange(digits.length))
+            },
             modifier = Modifier.fillMaxWidth().focusRequester(focus),
             label = { Text(stringResource(R.string.health_design_label)) },
             supportingText = {
@@ -106,10 +154,23 @@ internal fun DesignDialog(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { save() }),
         )
+        if (current?.source == DesignCapacitySource.USER) {
+            CoulombTextButton(
+                stringResource(R.string.health_design_reported),
+                onUseReportedValue,
+                Modifier.padding(top = CoulombSpacing.Space8),
+                edge = ButtonEdge.Start,
+            )
+            Text(
+                stringResource(R.string.health_design_reported_note),
+                color = colors.textSecondary,
+                style = CoulombTheme.typography.caption,
+            )
+        }
     }
 }
 
-private const val MIN_DIGITS = 3
+private const val MIN_DIGITS = 4
 private const val MAX_DIGITS = 5
 
 /** A dialog with one text field, which takes focus, and Cancel and Save. */

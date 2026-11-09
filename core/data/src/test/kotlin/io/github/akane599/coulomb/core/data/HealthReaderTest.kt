@@ -28,7 +28,9 @@ class HealthReaderTest {
         oem: String? = null,
         cycles: Int? = null,
         sum: Double = 0.0,
-    ) = HealthSummaryEntity(epochDay, mah, mah?.minus(70), mah?.plus(70), null, soh, oem, cycles, sum)
+        low: Double? = mah?.minus(70),
+        high: Double? = mah?.plus(70),
+    ) = HealthSummaryEntity(epochDay, mah, low, high, null, soh, oem, cycles, sum)
 
     private fun charge(
         start: Int,
@@ -89,15 +91,31 @@ class HealthReaderTest {
     }
 
     @Test
-    fun theChangeIsAgainstTheFirstDayOnceThatDayHasPassed() {
+    fun theChangeIsAgainstTheFirstSettledDayOnceThatDayHasPassed() {
         val now = CapacityEstimate(4_500.0, 4_430.0, 4_570.0, null, 10, 1.0)
         val summaries = listOf(summary(100, mah = null), summary(101, mah = 4_610.0), summary(140, mah = 4_500.0))
-        val change = checkNotNull(HealthReader.change(summaries, now, LocalDate.ofEpochDay(140)))
+        val settled = LocalDate.ofEpochDay(101)
+        val change = checkNotNull(HealthReader.change(summaries, now, LocalDate.ofEpochDay(140), settled))
         assertThat(change.firstDay).isEqualTo(LocalDate.ofEpochDay(101))
         assertThat(change.deltaMah).isWithin(1e-9).of(-110.0)
-        assertThat(change.firstHalfWidthMah).isWithin(1e-9).of(70.0)
+        // Both half-widths are 70 mAh: together √(70² + 70²).
+        assertThat(change.marginMah).isWithin(1e-6).of(98.994949)
         // On the first estimate's own day there is nothing to compare.
-        assertThat(HealthReader.change(summaries.take(2), now, LocalDate.ofEpochDay(101))).isNull()
+        assertThat(HealthReader.change(summaries.take(2), now, LocalDate.ofEpochDay(101), settled)).isNull()
+        // Before three windows there is no settled day, so no change at all.
+        assertThat(HealthReader.change(summaries, now, LocalDate.ofEpochDay(140), settledDay = null)).isNull()
+    }
+
+    @Test
+    fun aFirstDayOnOneWindowIsNotTheAnchor() {
+        // Day 101 rests on one window, its interval only the ±1% floor; day 110 is the first with three.
+        val now = CapacityEstimate(4_650.0, 4_530.0, 4_770.0, 93.0, 10, 1.0)
+        val summaries = listOf(summary(101, mah = 4_800.0, low = 4_752.0, high = 4_848.0), summary(110, mah = 4_700.0), summary(140))
+        val change = checkNotNull(HealthReader.change(summaries, now, LocalDate.ofEpochDay(140), LocalDate.ofEpochDay(110)))
+        assertThat(change.firstDay).isEqualTo(LocalDate.ofEpochDay(110))
+        assertThat(change.deltaMah).isWithin(1e-9).of(-50.0)
+        val trend = HealthReader.trend(emptyList(), summaries, LocalDate.ofEpochDay(110))
+        assertThat(trend.days.map { it.day }).containsExactly(LocalDate.ofEpochDay(110), LocalDate.ofEpochDay(140)).inOrder()
     }
 
     @Test
@@ -126,6 +144,22 @@ class HealthReaderTest {
         assertThat(two.platformCounted).isEqualTo(30)
 
         assertThat(HealthReader.cycles(emptyList(), null)).isEqualTo(Cycles(null, 0.0, null, null))
+    }
+
+    @Test
+    fun aCountThatNeverMovesOrGoesBackIsNotCompared() {
+        val first = LocalDate.ofEpochDay(9)
+        // The phone fills the field with 0 while Coulomb counts 14 cycles: no platform count.
+        val stuck = HealthReader.cycles(listOf(summary(10, cycles = 0, sum = 0.4), summary(40, cycles = 0, sum = 14.6)), first)
+        assertThat(stuck).isEqualTo(Cycles(null, 14.6, first, null))
+        // A 0 before Coulomb has counted a cycle can still be a new battery's real count.
+        assertThat(HealthReader.cycles(listOf(summary(10, cycles = 0, sum = 0.3)), first).platformCount).isEqualTo(0)
+        // A negative count is a placeholder.
+        assertThat(HealthReader.cycles(listOf(summary(10, cycles = -1, sum = 3.0)), first)).isEqualTo(Cycles(null, 3.0, first, null))
+        // A count that went down (a new battery) is shown, but not compared.
+        val swapped = HealthReader.cycles(listOf(summary(10, cycles = 412, sum = 1.0), summary(40, cycles = 3, sum = 5.0)), first)
+        assertThat(swapped.platformCount).isEqualTo(3)
+        assertThat(swapped.platformCounted).isNull()
     }
 
     @Test

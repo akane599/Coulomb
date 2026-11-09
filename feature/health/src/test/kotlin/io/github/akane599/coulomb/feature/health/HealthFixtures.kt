@@ -49,20 +49,27 @@ internal fun labCapacity(
     high: Double = 4_680.0,
     health: Double? = 92.2,
     windows: Int = 14,
-) = CapacityEstimate(estimate, low, high, health, windows, quality = 0.8)
+    quality: Double = 0.8,
+) = CapacityEstimate(estimate, low, high, health, windows, quality)
 
-/** Fourteen windows from 12 August, the estimate settling from 4,720 to 4,610 mAh and narrowing. */
+/** The third window's day: the change and the trend's band start there (Capacity.SETTLED_WINDOWS). */
+private val SETTLED_DAY: LocalDate = LocalDate.of(2026, 8, 24)
+
+/**
+ * Fourteen weekly windows from 10 August to today, the estimate settling from 4,720 to 4,610 mAh
+ * and narrowing. Every window is a point; the band starts at the third (HealthReader.trend).
+ */
 internal fun labTrend(): CapacityTrend {
-    val first = LocalDate.of(2026, 8, 12)
+    val first = LocalDate.of(2026, 8, 10)
     val estimates = listOf(4_720, 4_665, 4_680, 4_645, 4_650, 4_665, 4_650, 4_640, 4_650, 4_640, 4_625, 4_635, 4_625, 4_610)
-    val halves = listOf(150, 135, 125, 115, 100, 100, 92, 88, 85, 80, 78, 75, 72, 70)
+    val halves = listOf(150, 135, 125, 115, 100, 100, 90, 90, 85, 80, 80, 75, 70, 70)
     val readings = listOf(4_750, 4_640, 4_710, 4_600, 4_680, 4_730, 4_620, 4_660, 4_690, 4_610, 4_650, 4_670, 4_630, 4_645)
     val days = estimates.indices.map { first.plusDays(it * 7L) }
     return CapacityTrend(
         points = days.mapIndexed { i, day -> EstimatePoint(at(day, 9, 0), readings[i].toDouble()) },
         days =
-            days.mapIndexed { i, day ->
-                EstimateDay(day, estimates[i].toDouble(), (estimates[i] - halves[i]).toDouble(), (estimates[i] + halves[i]).toDouble())
+            days.indices.filter { days[it] >= SETTLED_DAY }.map { i ->
+                EstimateDay(days[i], estimates[i].toDouble(), (estimates[i] - halves[i]).toDouble(), (estimates[i] + halves[i]).toDouble())
             },
     )
 }
@@ -94,9 +101,9 @@ internal fun labReport() =
     HealthReport(
         capacity = labCapacity(),
         design = LAB_DESIGN,
-        change = CapacityChange(LocalDate.of(2026, 8, 12), deltaMah = -110.0, firstHalfWidthMah = 150.0),
+        change = CapacityChange(SETTLED_DAY, deltaMah = -70.0, marginMah = 143.0),
         crossCheck = CrossCheck(systemSohPct = 93, oemHealth = listOf(OemHealthValue("mSavedBatteryAsoc", 91))),
-        cycles = Cycles(platformCount = 312, coulombCount = 61.4, since = LocalDate.of(2026, 8, 12), platformCounted = 63),
+        cycles = Cycles(platformCount = 312, coulombCount = 61.4, since = LocalDate.of(2026, 8, 10), platformCounted = 63),
         trend = labTrend(),
         habits = LAB_HABITS,
         sessions = LAB_SESSIONS,
@@ -126,14 +133,14 @@ internal fun newReport() =
     )
 
 /**
- * SPEC 11.12 harden: no design capacity, a wide interval, six-digit-ish figures, sources that
- * disagree, a long charger name, a session without cycles or stress.
+ * SPEC 11.12 harden: no design capacity, a wide, low-confidence interval on just three windows,
+ * six-digit figures, sources that disagree, a long charger name, a session without cycles or stress.
  */
 internal fun hardenedReport() =
     labReport().copy(
-        capacity = labCapacity(estimate = 12_340.0, low = 11_200.0, high = 13_480.0, health = null, windows = 1),
+        capacity = labCapacity(estimate = 123_450.0, low = 112_000.0, high = 134_800.0, health = null, windows = 3, quality = 0.3),
         design = null,
-        change = CapacityChange(LocalDate.of(2026, 8, 12), deltaMah = 1_820.0, firstHalfWidthMah = 400.0),
+        change = CapacityChange(SETTLED_DAY, deltaMah = 18_200.0, marginMah = 16_000.0),
         crossCheck =
             CrossCheck(
                 systemSohPct = 84,

@@ -57,6 +57,15 @@ class AppNavigator internal constructor(
         backStack.add(route)
     }
 
+    /**
+     * Opens another list [route], closing a detail open beside the current list first: the detail
+     * belongs to that list, so back from the new list returns to the list alone.
+     */
+    fun openList(route: Route) {
+        if (backStack.lastOrNull().isDetail()) backStack.removeAt(backStack.lastIndex)
+        backStack.add(route)
+    }
+
     /** The UID of the App detail on top of [destination]'s stack, if one is. */
     fun openApp(destination: Destination): Int? = (stacks.getValue(destination).lastOrNull() as? Route.AppDetail)?.uid
 

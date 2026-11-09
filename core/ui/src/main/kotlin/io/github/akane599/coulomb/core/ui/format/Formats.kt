@@ -57,6 +57,7 @@ public class Formats(
     dayClockPattern: String = "EEE $clockPattern",
     weekdayPattern: String = "EEE",
     dayPattern: String = "MMM d",
+    dayYearPattern: String = "MMM d, yyyy",
     monthPattern: String = "LLL",
     monthYearPattern: String = "MMM yyyy",
     fullWeekdayPattern: String = "EEEE",
@@ -80,6 +81,7 @@ public class Formats(
     private val dayClock = DateTimeFormatter.ofPattern(dayClockPattern, locale)
     private val weekday = DateTimeFormatter.ofPattern(weekdayPattern, locale)
     private val day = DateTimeFormatter.ofPattern(dayPattern, locale)
+    private val dayYear = DateTimeFormatter.ofPattern(dayYearPattern, locale)
     private val month = DateTimeFormatter.ofPattern(monthPattern, locale)
     private val monthYear = DateTimeFormatter.ofPattern(monthYearPattern, locale)
     private val fullWeekday = DateTimeFormatter.ofPattern(fullWeekdayPattern, locale)
@@ -142,6 +144,12 @@ public class Formats(
 
     /** A day without the year: "Nov 1"; Turkish "1 Kas". */
     public fun day(date: LocalDate): String = day.format(date)
+
+    /** A day, with its year when that is not [today]'s: "Oct 21", "Oct 21, 2025". */
+    public fun day(
+        date: LocalDate,
+        today: LocalDate,
+    ): String = if (date.year == today.year) day.format(date) else dayYear.format(date)
 
     /** A month alone, as on a chart's axis: "Sep". */
     public fun month(date: LocalDate): String = month.format(date)
@@ -394,6 +402,7 @@ public fun rememberFormats(): Formats {
             dayClockPattern = DateFormat.getBestDateTimePattern(locale, "EEE${hours}m"),
             weekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEE"),
             dayPattern = DateFormat.getBestDateTimePattern(locale, "MMMd"),
+            dayYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMdyyyy"),
             monthPattern = DateFormat.getBestDateTimePattern(locale, "LLL"),
             monthYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMyyyy"),
             fullWeekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEEE"),

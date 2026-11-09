@@ -28,6 +28,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.MarkedText
+import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.R
 
 // The text pieces of a detail page (App detail, Health), shared so each page reads alike.
@@ -75,16 +76,18 @@ public fun Subhead(
     text: String,
     modifier: Modifier = Modifier,
     definition: String? = null,
+    provenance: Provenance? = null,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     val head = modifier.fillMaxWidth().padding(top = CoulombSpacing.Space24, bottom = CoulombSpacing.Space4).semantics { heading() }
-    if (definition != null) {
-        Box(
-            head,
-        ) { CoulombTerm(text, definition, stringResource(R.string.page_term_action), type.bodySubhead, colors.textPrimary) }
-    } else {
-        Text(text, head, color = colors.textPrimary, style = type.bodySubhead)
+    Row(head, verticalAlignment = Alignment.CenterVertically) {
+        if (definition != null) {
+            CoulombTerm(text, definition, stringResource(R.string.page_term_action), type.bodySubhead, colors.textPrimary)
+        } else {
+            Text(text, color = colors.textPrimary, style = type.bodySubhead)
+        }
+        provenance?.let { ProvenanceMark(it, Modifier.padding(start = CoulombSpacing.Space4)) }
     }
 }
 
