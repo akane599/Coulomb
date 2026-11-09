@@ -35,6 +35,14 @@ public enum class BatteryStatsMode(
      * with `NEXT:` (S7, ADR-0014). The start value is the previous read's `NEXT:`.
      */
     CHECKIN_HISTORY(6),
+
+    /**
+     * `--usage --proto`: `BatteryUsageStats` as `BatteryUsageStatsAtomsProto` (S4, ADR-0035). Only
+     * the arguments after `--usage` are read, so the order matters (services/core/java/com/android/
+     * server/am/BatteryStatsService.java, android-16.0.0_r4 L3229-3243, android-17.0.0_r1
+     * L3277-3291). It returns before the branches that list every user's apps.
+     */
+    USAGE_PROTO(7),
     ;
 
     /**
@@ -56,6 +64,7 @@ public enum class BatteryStatsMode(
             HISTORY -> arrayOf("--history")
             HISTORY_START -> arrayOf("--history-start", historyStart.coerceAtLeast(0L).toString())
             CHECKIN_HISTORY -> arrayOf("-c", "--history-start", historyStart.coerceAtLeast(0L).toString())
+            USAGE_PROTO -> arrayOf("--usage", "--proto")
         }
 
     internal companion object {

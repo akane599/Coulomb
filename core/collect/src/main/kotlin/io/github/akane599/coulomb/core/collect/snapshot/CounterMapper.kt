@@ -8,12 +8,15 @@ import io.github.akane599.coulomb.core.database.entity.AlarmStatEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
 import io.github.akane599.coulomb.core.database.entity.JobStatEntity
 import io.github.akane599.coulomb.core.database.entity.NetStatEntity
+import io.github.akane599.coulomb.core.database.entity.PowerColumns
+import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidStatEntity
 import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
+import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.DeviceStats
 import io.github.akane599.coulomb.core.model.stats.NamedTimer
@@ -21,6 +24,7 @@ import io.github.akane599.coulomb.core.model.stats.SensorStat
 import io.github.akane599.coulomb.core.model.stats.SipperKind
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import io.github.akane599.coulomb.core.model.stats.UidStats
+import io.github.akane599.coulomb.core.model.stats.UsageStatsDump
 import kotlin.math.roundToLong
 
 /**
@@ -71,6 +75,18 @@ internal object CounterMapper {
             uidStats = uidStats,
             deviceStats = deviceStats,
         )
+    }
+
+    /**
+     * S4's cumulative columns as `uid_component_power` rows (ADR-0035 §6): one per consumer, the
+     * device under [UidPowerEntity.DEVICE_UID]. A consumer with nothing in any column has no row,
+     * as a zero counter has none above. Only for an S4 read that is `ok`.
+     */
+    fun componentRows(dump: UsageStatsDump): List<UidComponentPowerEntity> {
+        val consumers = dump.uids + listOfNotNull(dump.device?.let { UidPowerEntity.DEVICE_UID to it })
+        return consumers
+            .filter { (_, power) -> power != ComponentPower.ZERO }
+            .map { (uid, power) -> UidComponentPowerEntity(0, uid, PowerColumns.of(power)) }
     }
 
     /** UID to its packages, for `uid_package` (ADR-0015: UIDs are reused after uninstall). */

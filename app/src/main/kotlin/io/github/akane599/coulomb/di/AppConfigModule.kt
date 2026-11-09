@@ -11,7 +11,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.akane599.coulomb.BuildConfig
+import io.github.akane599.coulomb.core.collect.engine.CollectorSettings
+import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.privileged.PrivilegeConfig
+import kotlinx.coroutines.flow.first
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -28,4 +31,8 @@ object AppConfigModule {
             debuggable = BuildConfig.DEBUG,
             fingerprint = Build.FINGERPRINT,
         )
+
+    // ADR-0035 §2: the collector reads "Component breakdown" at each heavy snapshot.
+    @Provides
+    fun collectorSettings(store: SettingsStore): CollectorSettings = CollectorSettings { store.settings.first().componentBreakdown }
 }

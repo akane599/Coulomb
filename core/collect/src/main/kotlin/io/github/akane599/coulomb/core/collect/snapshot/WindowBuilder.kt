@@ -102,7 +102,18 @@ internal object WindowBuilder {
                 quality = quality(measured, source, from.snapshot, to.snapshot, power.partial || device.partial),
                 detailPruned = !withDetail,
             )
-        return window to if (withDetail) detail(chain, power, settings.ownUid) else WindowRows()
+        if (!withDetail) return window to WindowRows()
+        val kept = kept(power, settings.ownUid)
+        val rows = detail(chain, power, kept, settings.ownUid)
+        if (kind != WindowKind.CONSECUTIVE) return window to rows
+        // ADR-0035 §5: only a consecutive window is an S4 interval.
+        val uidMah =
+            rows.uids
+                .filter { it.uid != UidPowerEntity.DEVICE_UID }
+                .groupBy({ it.uid }, { it.mAh })
+                .mapValues { it.value.sum() }
+        val s4 = ComponentWindow.build(from, to, modeled, uidMah, kept)
+        return window.copy(breakdown = s4.breakdown) to rows.copy(components = s4.rows)
     }
 
     /**
@@ -247,23 +258,28 @@ internal object WindowBuilder {
         step: Double,
     ): Double = if (change <= 0) 0.0 else (1 - step / change).coerceIn(0.0, 1.0)
 
+    /** The UIDs a window keeps in its detail rows: the largest at or above [MIN_UID_MAH], and Coulomb's own. */
+    private fun kept(
+        power: CounterWindow<PowerKey>,
+        ownUid: Int,
+    ): Set<Int> =
+        power.values.entries
+            .filter { it.key.uid >= 0 }
+            .groupBy({ it.key.uid }, { it.value })
+            .mapValues { it.value.sum() }
+            .entries
+            .filter { it.value >= MIN_UID_MAH }
+            .sortedByDescending { it.value }
+            .take(MAX_UIDS)
+            .map { it.key }
+            .toSet() + ownUid
+
     private fun detail(
         chain: List<WindowEnd>,
         power: CounterWindow<PowerKey>,
+        kept: Set<Int>,
         ownUid: Int,
     ): WindowRows {
-        val perUid =
-            power.values.entries
-                .filter { it.key.uid >= 0 }
-                .groupBy({ it.key.uid }, { it.value })
-                .mapValues { it.value.sum() }
-        val kept =
-            perUid.entries
-                .filter { it.value >= MIN_UID_MAH }
-                .sortedByDescending { it.value }
-                .take(MAX_UIDS)
-                .map { it.key }
-                .toSet() + ownUid
         val uids = HashMap<PowerKey, Double>()
         for ((key, mah) in power.values) {
             val target = if (key.uid < 0 || key.uid in kept) key else key.copy(uid = WindowUidEntity.OTHER_UID)

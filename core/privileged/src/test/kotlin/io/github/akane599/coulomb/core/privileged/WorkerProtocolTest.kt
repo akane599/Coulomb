@@ -25,6 +25,8 @@ class WorkerProtocolTest {
                 listOf("--history-start", "1234"),
                 BatteryStatsMode.CHECKIN_HISTORY,
                 listOf("-c", "--history-start", "1234"),
+                BatteryStatsMode.USAGE_PROTO,
+                listOf("--usage", "--proto"),
             )
         // `--checkin` deletes the saved checkin file (ADR-0005).
         assertThat(args.values.flatten()).doesNotContain("--checkin")

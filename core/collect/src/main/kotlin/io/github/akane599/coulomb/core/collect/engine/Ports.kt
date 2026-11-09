@@ -7,6 +7,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.HistoryRead
 import io.github.akane599.coulomb.core.collect.snapshot.KernelFilesRead
 import io.github.akane599.coulomb.core.collect.snapshot.KernelLogResult
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
+import io.github.akane599.coulomb.core.collect.snapshot.UsageRead
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import java.time.ZoneId
 
@@ -16,6 +17,9 @@ internal interface HeavySource {
     fun available(): Boolean
 
     suspend fun stats(timeoutMs: Long): StatsRead
+
+    /** S4, `dumpsys batterystats --usage --proto` (ADR-0035 §1). */
+    suspend fun usage(timeoutMs: Long): UsageRead
 
     suspend fun history(
         cursorMs: Long,
@@ -37,6 +41,15 @@ internal interface HeavySource {
         afterSeq: Long,
         timeoutMs: Long,
     ): KernelLogResult
+}
+
+/**
+ * The settings the collector follows, read at each heavy snapshot. `:core:collect` may not depend
+ * on `:core:datastore` (SPEC 15.2), so the app binds this to the stored settings.
+ */
+public fun interface CollectorSettings {
+    /** "Component breakdown" (ADR-0035 §2): whether S4 is read. */
+    public suspend fun componentBreakdown(): Boolean
 }
 
 /** The device the collector runs on. */

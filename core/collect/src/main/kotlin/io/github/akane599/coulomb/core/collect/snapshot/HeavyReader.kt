@@ -11,9 +11,11 @@ import io.github.akane599.coulomb.core.model.history.BatteryHistory
 import io.github.akane599.coulomb.core.model.history.HistoryRecord
 import io.github.akane599.coulomb.core.model.parse.Parsed
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
+import io.github.akane599.coulomb.core.model.stats.UsageStatsDump
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryHistoryParser
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryStatsCheckinParser
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryStatsProtoParser
+import io.github.akane599.coulomb.core.parsing.batterystats.UsageStatsProtoParser
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DumpResult
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
@@ -31,6 +33,17 @@ internal data class StatsRead(
     val rawProto: ByteArray?,
     /** The raw text of an incomplete read, for diagnosis (ADR-0018). */
     val rawIncomplete: ByteArray?,
+)
+
+/**
+ * The S4 read (ADR-0035). [status] is [SourceStatus.OK] only for a whole dump that passed every
+ * check of ADR-0035 §4 the parser makes; the collector adds the session check. [raw] is the
+ * proto as read, for a blob.
+ */
+internal data class UsageRead(
+    val dump: UsageStatsDump?,
+    val status: SourceStatus,
+    val raw: ByteArray?,
 )
 
 /** The S7 read. [history] is null when the dump gave nothing parseable. */
@@ -106,6 +119,27 @@ internal class HeavyReader(
         )
     }
 
+    override suspend fun usage(timeoutMs: Long): UsageRead {
+        val copy = CappedCopy(MAX_RAW_BYTES)
+        val result =
+            access.dumpBatteryStats<Parsed<UsageStatsDump?>>(
+                BatteryStatsMode.USAGE_PROTO,
+                timeoutMs = timeoutMs,
+                isComplete = { it.report.complete },
+                route = RoutePreference.IN_APP_FIRST,
+            ) { UsageStatsProtoParser.parse(copy.wrap(it)) }
+        val parsed = result.parsed()
+        val dump = parsed?.value
+        // An unknown component id is a parse issue but not a failed check: it is mapped to `other`.
+        val status =
+            when {
+                dump == null -> SourceStatus.FAILED
+                result is DumpResult.Complete && parsed.report.complete && dump.failures.isEmpty() -> SourceStatus.OK
+                else -> SourceStatus.PARTIAL
+            }
+        return UsageRead(dump, status, copy.bytes())
+    }
+
     override suspend fun history(
         cursorMs: Long,
         timeoutMs: Long,
@@ -173,6 +207,7 @@ internal class HeavyReader(
     }
 
     companion object {
+        const val S4: String = "S4"
         const val S5: String = "S5"
         const val S6: String = "S6"
         const val S7: String = "S7"

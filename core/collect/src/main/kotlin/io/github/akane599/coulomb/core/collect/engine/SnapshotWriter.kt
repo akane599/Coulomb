@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.collect.engine
 
 import android.os.BatteryManager
+import android.util.Log
 import io.github.akane599.coulomb.core.analytics.Attribution
 import io.github.akane599.coulomb.core.analytics.Capacity
 import io.github.akane599.coulomb.core.analytics.CapacityEstimate
@@ -32,6 +33,7 @@ import io.github.akane599.coulomb.core.database.entity.HealthSummaryEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.model.AutoReference
+import io.github.akane599.coulomb.core.model.Breakdown
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.WindowKind
@@ -411,6 +413,8 @@ internal class SnapshotWriter(
     ) {
         val settings = WindowSettings(context.counterReliable, context.capacityMah, context.ownUid)
         val (window, rows) = WindowBuilder.build(kind, sessionId, chain, settings, detail)
+        // ADR-0035 §5: the window's reason is the record; the log names no values (ADR-0015).
+        if (window.breakdown == Breakdown.DISAGREES) Log.w(TAG, "S4 and S5 disagree; window not broken down")
         val kernel = if (detail) kernelRows(chain.first().snapshot, chain.last().snapshot) else null
         if (kernel == null) {
             windows.insert(window, rows)
@@ -492,6 +496,7 @@ internal class SnapshotWriter(
     private val thresholds by lazy { StressThresholds.bundled() }
 
     private companion object {
+        const val TAG = "Coulomb:windows"
         const val UAH_PER_MAH = 1_000.0
         const val MS_PER_DAY = 86_400_000.0
         const val FULL_LEVEL = 100

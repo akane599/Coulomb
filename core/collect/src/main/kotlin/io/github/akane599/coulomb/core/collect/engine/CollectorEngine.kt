@@ -19,11 +19,13 @@ import io.github.akane599.coulomb.core.collect.snapshot.HeavyReader
 import io.github.akane599.coulomb.core.collect.snapshot.HistoryRead
 import io.github.akane599.coulomb.core.collect.snapshot.KernelFilesRead
 import io.github.akane599.coulomb.core.collect.snapshot.KernelLogResult
+import io.github.akane599.coulomb.core.collect.snapshot.KernelOutcome
 import io.github.akane599.coulomb.core.collect.snapshot.KernelSnapshot
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.collect.snapshot.LightSource
 import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
+import io.github.akane599.coulomb.core.collect.snapshot.UsageRead
 import io.github.akane599.coulomb.core.collect.snapshot.counterSource
 import io.github.akane599.coulomb.core.collect.snapshot.sourceStatusJson
 import io.github.akane599.coulomb.core.database.CoulombDatabase
@@ -57,6 +59,7 @@ internal class CollectorEngine(
     private val clock: CollectorClock,
     private val blobs: BlobStore,
     private val labels: AppLabels,
+    private val settings: CollectorSettings = CollectorSettings { false },
 ) {
     private val writer = SnapshotWriter(db)
     private val retention = Retention(db, blobs)
@@ -225,7 +228,8 @@ internal class CollectorEngine(
      *
      * On a root server the kernel reads join in (ADR-0029 §5): S5, then S25, S26 and S9, then S7,
      * then S27, all inside the budget. On any other server they are not due, and the snapshot's
-     * mode says why.
+     * mode says why. S4 comes right after S5 when the setting turns it on ([usage]); however it
+     * goes, it never makes the snapshot partial (ADR-0035 §3).
      */
     private suspend fun snapshot(
         trigger: SnapshotTrigger,
@@ -236,6 +240,7 @@ internal class CollectorEngine(
         val reading = read.reading
         val startNs = clock.elapsedNs()
         val stats = if (wantHeavy) sleepChecked(heavy.stats(SOURCE_TIMEOUT_MS), read) else null
+        val usage = stats?.let { usage(trigger, read, it, startNs) }
         val dump = stats?.dump?.takeIf { counterSource(stats.statuses) != null }
         rememberCapacity(dump)
         val liveMode = heavy.liveMode()
@@ -245,18 +250,18 @@ internal class CollectorEngine(
         val log = kernelLog(kernelDue, files, startNs)
         val kernel = KernelSnapshot.combine(files, log, liveMode)
         val ingest = (history as? HistoryOutcome.Read)?.result
-        val statuses = stats?.statuses.orEmpty() + listOfNotNull(history?.let { HeavyReader.S7 to it.status }) + kernel.statuses
-        val rows = dump?.let(CounterMapper::rows) ?: SnapshotRows()
+        val statuses = statuses(stats, usage, history, kernel)
+        val rows = dump?.let { counterRows(it, usage) } ?: SnapshotRows()
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
-        val blob = stats?.let { writeBlob(trigger, reading, boot, it, kind == SnapshotKind.HEAVY) }
+        val blob = stats?.let { writeBlob(trigger, reading, boot, it, usage?.raw, kind == SnapshotKind.HEAVY) }
         val unseen = if (firstOfProcess) unseenKinds(ingest) + chargedUnseen(reading, boot) else emptySet()
         val entity =
             entity(reading, boot, trigger, kind, dump).copy(
                 historyCursorMs = ingest?.nextCursorMs,
                 sourceStatusJson = sourceStatusJson(statuses),
                 blobPath = blob,
-                partial = statuses.values.any { it != SourceStatus.OK },
+                partial = partial(statuses),
                 durationMs = (clock.elapsedNs() - startNs) / NS_PER_MS,
                 uptimeMs = read.uptimeMs,
                 privilegeMode = kernel.mode,
@@ -285,6 +290,61 @@ internal class CollectorEngine(
     ): StatsRead {
         val source = counterSource(stats.statuses) ?: return stats
         return if (!slept(read)) stats else stats.copy(statuses = stats.statuses + (source to SourceStatus.SLEPT))
+    }
+
+    /**
+     * S4, right after S5 (ADR-0035 §3): only with the setting on, S5 itself `ok`, S5 done within
+     * [USAGE_CUTOFF_MS] of the snapshot's start, and the snapshot unplugged, the plug-in one, or
+     * of unknown plug state. It is sleep-checked like S5, and its session must be S5's: otherwise
+     * its counters are not those of S5's instant. Its dump is kept only when it is `ok`.
+     */
+    private suspend fun usage(
+        trigger: SnapshotTrigger,
+        read: Read,
+        stats: StatsRead,
+        startNs: Long,
+    ): UsageRead {
+        if (!settings.componentBreakdown()) return UsageRead(null, SourceStatus.OFF, null)
+        val plugType = read.reading.plugType
+        val edge = plugType == null || plugType == 0 || trigger == SnapshotTrigger.POWER_CONNECTED
+        val lateMs = (clock.elapsedNs() - startNs) / NS_PER_MS
+        if (stats.statuses[HeavyReader.S5] != SourceStatus.OK || !edge || lateMs > USAGE_CUTOFF_MS) {
+            return UsageRead(null, SourceStatus.SKIPPED, null)
+        }
+        val usage = heavy.usage(USAGE_TIMEOUT_MS)
+        val status =
+            when {
+                usage.status != SourceStatus.OK -> usage.status
+                slept(read) -> SourceStatus.SLEPT
+                usage.dump?.sessionStartMillis != stats.dump?.device?.startClockTimeWallMs -> SourceStatus.PARTIAL
+                else -> SourceStatus.OK
+            }
+        return usage.copy(dump = usage.dump?.takeIf { status == SourceStatus.OK }, status = status)
+    }
+
+    /** Every source's status, in the order read. */
+    private fun statuses(
+        stats: StatsRead?,
+        usage: UsageRead?,
+        history: HistoryOutcome?,
+        kernel: KernelOutcome,
+    ): Map<String, SourceStatus> =
+        stats?.statuses.orEmpty() +
+            listOfNotNull(usage?.let { HeavyReader.S4 to it.status }, history?.let { HeavyReader.S7 to it.status }) +
+            kernel.statuses
+
+    /** A source not `ok` makes the snapshot partial, except S4: S5 still gives every total (ADR-0035 §3). */
+    private fun partial(statuses: Map<String, SourceStatus>): Boolean =
+        statuses.any { (id, status) -> id != HeavyReader.S4 && status != SourceStatus.OK }
+
+    /** S5's counter rows, with S4's columns when S4 was `ok` (ADR-0035 §6). */
+    private fun counterRows(
+        dump: BatteryStatsDump,
+        usage: UsageRead?,
+    ): SnapshotRows {
+        val rows = CounterMapper.rows(dump)
+        val s4 = usage?.dump ?: return rows
+        return rows.copy(componentPower = CounterMapper.componentRows(s4))
     }
 
     /** Whether the CPU slept for more than [MAX_SLEEP_MS] since the light read. */
@@ -510,13 +570,16 @@ internal class CollectorEngine(
 
     /**
      * The raw proto, kept for plug, boot and first-of-day heavy snapshots, and the raw text of an
-     * incomplete read for diagnosis (ADR-0018).
+     * incomplete read for diagnosis (ADR-0018). S4's raw proto goes in as its own part when the
+     * snapshot keeps a blob (ADR-0035, Consequences).
      */
+    @Suppress("LongParameterList")
     private suspend fun writeBlob(
         trigger: SnapshotTrigger,
         reading: LightReading,
         boot: BootEntity,
         stats: StatsRead,
+        usageRaw: ByteArray?,
         heavy: Boolean,
     ): String? {
         val proto = stats.rawProto
@@ -526,6 +589,7 @@ internal class CollectorEngine(
         val parts =
             buildMap {
                 proto?.let { put("s5.pb", it) }
+                usageRaw?.let { put("s4.pb", it) }
                 incomplete?.let { put("raw.txt", it) }
             }
         return blobs.write("snapshots/${boot.bootSeq}-${reading.elapsedNs}", parts)
@@ -637,6 +701,12 @@ internal class CollectorEngine(
         const val BUDGET_NS: Long = 4_000_000_000L
         const val RETENTION_EVERY_NS: Long = 24 * 3_600_000_000_000L
         const val COUNTER_PRUNE_EVERY_NS: Long = 3_600_000_000_000L
+
+        /** ADR-0035 §3: S4 is skipped when S5 finished later than this after the snapshot started. */
+        const val USAGE_CUTOFF_MS: Long = 1_000
+
+        /** ADR-0035 §3: S4's own timeout, below the 2 s per source, so a hang leaves the rest their share. */
+        const val USAGE_TIMEOUT_MS: Long = 1_000
 
         /** More sleep than this inside a read and its counters are not used (ADR-0018). */
         const val MAX_SLEEP_MS: Long = 1_000

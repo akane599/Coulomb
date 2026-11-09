@@ -5,13 +5,18 @@ package io.github.akane599.coulomb.core.collect.snapshot
 
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import io.github.akane599.coulomb.core.database.entity.PowerColumns
+import io.github.akane599.coulomb.core.database.entity.UidComponentPowerEntity
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
+import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
+import io.github.akane599.coulomb.core.model.stats.PowerColumn
 import io.github.akane599.coulomb.core.model.stats.TimerStat
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import io.github.akane599.coulomb.core.model.stats.UidStats
+import io.github.akane599.coulomb.core.model.stats.UsageStatsDump
 import io.github.akane599.coulomb.core.model.stats.WakelockStat
 import io.github.akane599.coulomb.core.parsing.batterystats.BatteryStatsProtoParser
 import org.junit.Test
@@ -110,5 +115,27 @@ class CounterMapperTest {
         val partial = rows.wakeStats.filter { it.kind == WakeKind.PARTIAL }
         assertThat(partial.map { listOf(it.tag, it.totalMs, it.count.toLong(), it.maxMs) })
             .containsExactly(listOf("sync", 800L, 3L, 400L))
+    }
+
+    /** ADR-0035 §6: one row per S4 consumer, the device under DEVICE_UID, none for an empty one. */
+    @Test
+    fun s4BecomesOneRowPerConsumer() {
+        val dump =
+            UsageStatsDump(
+                sessionStartMillis = 1,
+                sessionEndMillis = 2,
+                device = ComponentPower.of(mapOf(PowerColumn.SCREEN to 900, PowerColumn.CPU to 300)),
+                uids =
+                    mapOf(
+                        10_100 to ComponentPower.of(mapOf(PowerColumn.CPU to 200, PowerColumn.CACHED to 200)),
+                        10_200 to ComponentPower.ZERO,
+                    ),
+                failures = emptyMap(),
+            )
+        assertThat(CounterMapper.componentRows(dump))
+            .containsExactly(
+                UidComponentPowerEntity(0, 10_100, PowerColumns(cpu = 200, cached = 200)),
+                UidComponentPowerEntity(0, UidPowerEntity.DEVICE_UID, PowerColumns(screen = 900, cpu = 300)),
+            )
     }
 }

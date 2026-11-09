@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.collect.snapshot.LightSource
 import io.github.akane599.coulomb.core.collect.snapshot.SourceStatus
 import io.github.akane599.coulomb.core.collect.snapshot.StatsRead
+import io.github.akane599.coulomb.core.collect.snapshot.UsageRead
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.kernel.KernelLogEvent
 import io.github.akane599.coulomb.core.model.kernel.KernelLogRecord
@@ -24,14 +25,20 @@ import io.github.akane599.coulomb.core.model.kernel.WakeupIrq
 import io.github.akane599.coulomb.core.model.kernel.WakeupSourceInstance
 import io.github.akane599.coulomb.core.model.kernel.WakeupSourceStats
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
+import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceMisc
 import io.github.akane599.coulomb.core.model.stats.DeviceStats
+import io.github.akane599.coulomb.core.model.stats.PowerColumn
 import io.github.akane599.coulomb.core.model.stats.PowerSummary
+import io.github.akane599.coulomb.core.model.stats.SipperKind
+import io.github.akane599.coulomb.core.model.stats.SipperPower
 import io.github.akane599.coulomb.core.model.stats.UidStats
+import io.github.akane599.coulomb.core.model.stats.UsageStatsDump
 import io.github.akane599.coulomb.core.parsing.kernel.KernelLogRead
 import io.github.akane599.coulomb.core.privileged.WorkerOrigin
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlin.math.roundToLong
 
 // Fakes for the engine tests: the battery, the clock, the dumps and the kernel.
 
@@ -95,7 +102,10 @@ internal class FakeDevice(
     override fun read(): LightReading = checkNotNull(reading)
 }
 
-/** S5 as a growing app and screen total; a reset or reboot starts the counters again. */
+/**
+ * S5 as a growing app and screen total; a reset or reboot starts the counters again. S4 grows with
+ * it: the app's and the device's CPU energy, the same as S5's modeled totals.
+ */
 internal class FakeStats(
     private val clock: FakeClock,
 ) : HeavySource {
@@ -104,6 +114,17 @@ internal class FakeStats(
 
     /** How long the CPU sleeps inside the next dump. */
     var sleepMs = 0L
+
+    /** How long the next S5 dump takes awake. */
+    var statsTakesMs = 0L
+
+    /** Realtime not on battery since the counters started: S5's battery time trails its total by it. */
+    var notOnBatteryMs = 0L
+
+    /** S4 reads made, how long the CPU sleeps inside the next, and what it returns instead of the default. */
+    var usageReads = 0
+    var usageSleepMs = 0L
+    var usage: ((UsageRead) -> UsageRead)? = null
 
     /** The statuses the next dump reports; S5 whole by default. */
     var statuses = mapOf("S5" to SourceStatus.OK)
@@ -133,16 +154,39 @@ internal class FakeStats(
                     DeviceStats(
                         startClockTimeWallMs = startWallMs,
                         totalRealtimeMs = sinceMs,
+                        batteryRealtimeMs = sinceMs - notOnBatteryMs,
                         misc = DeviceMisc(screenOnMs = sinceMs / 4),
                         powerSummary = PowerSummary(capacityMah = 5_000.0),
+                        powerUse = listOf(SipperPower(SipperKind.UNKNOWN, uid = null, mah = mah(sinceMs))),
                     ),
-                uids = listOf(UidStats(10_100, packages = listOf("com.example.video"), powerMah = sinceMs / 60_000.0)),
+                uids = listOf(UidStats(10_100, packages = listOf("com.example.video"), powerMah = mah(sinceMs))),
                 uidsComplete = true,
             )
+        clock.elapsedNs += statsTakesMs * NS_PER_MS
         clock.sleep(sleepMs)
         val whole = statuses.values.all { it == SourceStatus.OK }
         return StatsRead(dump, statuses, rawProto = byteArrayOf(1), rawIncomplete = byteArrayOf(2).takeUnless { whole })
     }
+
+    override suspend fun usage(timeoutMs: Long): UsageRead {
+        usageReads++
+        val dc = (mah((clock.elapsedNs - countedFromNs) / NS_PER_MS) * 36).roundToLong()
+        val app = ComponentPower.of(mapOf(PowerColumn.CPU to dc, PowerColumn.BACKGROUND to dc))
+        val dump =
+            UsageStatsDump(
+                sessionStartMillis = startWallMs,
+                sessionEndMillis = clock.wallMs(),
+                device = ComponentPower.of(mapOf(PowerColumn.CPU to dc)),
+                uids = mapOf(10_100 to app),
+                failures = emptyMap(),
+            )
+        clock.sleep(usageSleepMs)
+        val read = UsageRead(dump, SourceStatus.OK, byteArrayOf(3))
+        return usage?.invoke(read) ?: read
+    }
+
+    /** The app's modeled energy after [sinceMs] of counting: 1 mAh a minute. */
+    private fun mah(sinceMs: Long) = sinceMs / 60_000.0
 
     override suspend fun history(
         cursorMs: Long,

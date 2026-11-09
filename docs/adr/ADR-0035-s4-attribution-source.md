@@ -330,6 +330,10 @@ measured:
   down" until they age out.
 - SPEC 4's S4 row ("via `BatteryStatsManager` / `IBatteryStats`") is read here as "via the dump of
   the same object"; SPEC.md is not edited.
+- **Worker allowlist.** SPEC 19.1's read row gains `dumpsys batterystats --usage --proto` through
+  this ADR: `BatteryStatsMode.USAGE_PROTO` (id 7) sends exactly those two flags. `--usage` returns
+  before the branches that list every user's apps, so the in-app route needs no
+  `INTERACT_ACROSS_USERS` for it.
 - **Rejected:**
   - per-window eligibility for every window kind (the second draft): long windows almost never
     qualify, and their rows would grow for good;

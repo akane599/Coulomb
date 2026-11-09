@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.collect.android.FileBlobStore
 import io.github.akane599.coulomb.core.collect.engine.CollectorActor
 import io.github.akane599.coulomb.core.collect.engine.CollectorEngine
 import io.github.akane599.coulomb.core.collect.engine.CollectorEvent
+import io.github.akane599.coulomb.core.collect.engine.CollectorSettings
 import io.github.akane599.coulomb.core.collect.engine.SamplerPolicy
 import io.github.akane599.coulomb.core.collect.engine.VisibleScreen
 import io.github.akane599.coulomb.core.collect.snapshot.HeavyReader
@@ -48,6 +49,7 @@ public class Collector
         @ApplicationContext private val context: Context,
         db: CoulombDatabase,
         private val access: PrivilegedAccess,
+        settings: CollectorSettings,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         private val light = AndroidLightSource(context, SystemCollectorClock)
@@ -60,6 +62,7 @@ public class Collector
                 clock = SystemCollectorClock,
                 blobs = FileBlobStore(context.filesDir),
                 labels = AndroidAppLabels(context),
+                settings = settings,
             )
         private val actor = CollectorActor(engine, scope)
         private val device = MutableStateFlow(DeviceFlags(plugged = false, screenOn = false))

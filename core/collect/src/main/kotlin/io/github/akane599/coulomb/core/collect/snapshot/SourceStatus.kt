@@ -16,8 +16,9 @@ internal enum class SourceStatus(
     FAILED("failed"),
 
     /**
-     * Not tried: the snapshot's time budget had run out (ADR-0018), or, for the kernel files, the
-     * snapshot had no counters for them to join (ADR-0029).
+     * Not tried: the snapshot's time budget had run out (ADR-0018); for the kernel files, the
+     * snapshot had no counters for them to join (ADR-0029); for S4, S5 was not `ok`, finished late,
+     * or the snapshot was plugged in and not the plug-in one (ADR-0035 §3).
      */
     SKIPPED("skipped"),
 
@@ -26,6 +27,9 @@ internal enum class SourceStatus(
      * unknown and they cannot end a window (ADR-0018).
      */
     SLEPT("slept"),
+
+    /** Not tried because a setting turns the source off: S4 while Component breakdown is Off (ADR-0035 §2). */
+    OFF("off"),
 }
 
 /**
