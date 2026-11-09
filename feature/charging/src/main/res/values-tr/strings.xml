@@ -5,7 +5,7 @@
     <string name="charging_title">Şarj</string>
     <string name="charging_loading">Şarj okunuyor</string>
     <string name="charging_error_title">Şarj okunamadı</string>
-    <string name="charging_error_body">Coulomb kayıtlarını şu an okuyamadı. Geçmişiniz bu telefonda duruyor.</string>
+    <string name="charging_error_body">Coulomb kayıtlarını şu an okuyamadı. Geçmişin bu telefonda duruyor. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="charging_error_action">Yeniden dene</string>
     <string name="charging_unplugged">Şarjdan çıkarıldı.</string>
     <string name="charging_power_calibrating">Güç, Coulomb bu telefonun akım okumasını kalibre edince görünür.</string>
@@ -19,7 +19,7 @@
     <string name="charging_phase_full_def" formatted="false">Pil %100 bildiriyor. Orada kalmak için biraz akım alabilir.</string>
     <string name="charging_charger_known">%1$s · olağan güce göre %2$s</string>
     <string name="charging_charger_new">%1$s · yeni, bu şarj bitince kaydedilir</string>
-    <string name="charging_charger_learning" formatted="false">Coulomb, %50’nin altında 2 dakikalık şarjdan sonra şarj cihazını tanır.</string>
+    <string name="charging_charger_learning" formatted="false">Coulomb, %50’nin altında 2 dakikalık şarjdan sonra şarj cihazını tanır.</string>
     <string name="charging_charger_high" formatted="false">Hangi şarj cihazı olduğunu söylemek için %50’nin altında yeterli ölçüm yok.</string>
     <string name="charging_target_at">%1$s, tahmini %2$s</string>
     <string name="charging_target_plain">Hedef %1$s</string>
@@ -48,8 +48,8 @@
     <string name="charging_column_power">Güç</string>
     <string name="charging_target">Hedef</string>
     <string name="charging_target_note">Seviye çubuğundaki işareti ve ona kalan süreyi belirler. Hedefte uyarı henüz yok.</string>
-    <string name="charging_scale_description">Seviye %1$s, hedef %2$s.</string>
-    <string name="charging_scale_description_time">Seviye %1$s, hedef %2$s, tahmini ulaşma %3$s.</string>
+    <string name="charging_scale_description">Pil yakıt göstergesine göre seviye %1$s, hedef %2$s.</string>
+    <string name="charging_scale_description_time">Pil yakıt göstergesine göre seviye %1$s, hedef %2$s, tahmini ulaşma %3$s.</string>
     <string name="charging_phase_drawing">pilden besleniyor</string>
     <string name="charging_phase_drawing_def">Telefon şarj cihazının verdiğinden fazlasını kullanıyor, bu yüzden seviye düşüyor.</string>
     <string name="charging_calibrating">Kalibre ediliyor</string>
@@ -59,7 +59,9 @@
     <string name="charging_table_scale">Seviye ve hedef</string>
     <string name="charging_column_reading">Ölçüm</string>
     <string name="charging_column_value">Değer</string>
-    <string name="charging_row_level">Seviye</string>
+    <string name="charging_row_level">Seviye (pil yakıt göstergesi)</string>
     <string name="charging_row_reaches">%1$s seviyesine ulaşma</string>
     <string name="charging_row_full">Dolma</string>
+    <string name="charging_times_need_both">%1$s seviyesine ve dolmaya kalan süreler, bu seviyenin altında başlayıp bunlara ara vermeden ulaşan üç geçmiş şarjdan sonra görünür.</string>
+    <string name="charging_times_drawing">Telefon pilden beslenirken süre verilmez.</string>
 </resources>

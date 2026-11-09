@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.analytics.ChargePhase
 import io.github.akane599.coulomb.core.analytics.ChargeTime
 import io.github.akane599.coulomb.core.analytics.ChargeTimeBasis
 import io.github.akane599.coulomb.core.data.ChargingNow
@@ -162,6 +163,12 @@ class ChargingScreenshotTest {
     @Test
     @Config(qualifiers = "w412dp-h3600dp-xhdpi")
     fun hardenedText200() = shoot("harden-200", fontScale = 2f) { Charging(hardenedNow()) }
+
+    /** Charging polish: the longest phase words at 200% in Turkish, so "·" never ends a line alone. */
+    @Test
+    @Config(qualifiers = "tr-w412dp-h3600dp-xhdpi")
+    fun slowingTurkishText200() =
+        shoot("slowing-tr-200", fontScale = 2f) { Charging(labNow().copy(levelPct = 81, phase = ChargePhase.SLOWING)) }
 
     /** The curve's "View as table" (SPEC 11.8). */
     @Test

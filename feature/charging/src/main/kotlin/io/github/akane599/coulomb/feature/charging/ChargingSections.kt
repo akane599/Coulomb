@@ -81,7 +81,9 @@ internal fun Hero(
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             val watts = now.watts
-            Row(Modifier.semantics(mergeDescendants = true) {}) {
+            // "Calibrating" and the level share a baseline; the Display figure keeps the level centred beside it.
+            val baseline = if (watts == null) Modifier.alignByBaseline() else Modifier
+            Row(baseline.semantics(mergeDescendants = true) {}) {
                 if (watts != null) {
                     // Copper means charging (DESIGN.md): net power out of the battery is signed, in ink.
                     val ink = if (watts < 0) colors.textPrimary else colors.accent
@@ -101,7 +103,7 @@ internal fun Hero(
                     Text(stringResource(R.string.charging_calibrating), color = colors.textSecondary, style = type.headline)
                 }
             }
-            Column {
+            Column(baseline) {
                 LevelAndPhase(now, formats)
                 // Before calibration no charger can be told; the calibrating line says why.
                 if (now.watts != null || now.charger is LiveCharger.Known) ChargerLine(now.charger, formats)
@@ -120,17 +122,27 @@ private fun LevelAndPhase(
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
+    val phase = now.phase
     FlowRow(itemVerticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-            FigureText(formats.percentParts(now.levelPct), numberStyle = type.title, unitStyle = type.label)
+        // The level, its mark and the separator stay together, so "·" never ends a line alone.
+        Row(Modifier.alignByBaseline().semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
+            FigureText(
+                formats.percentParts(now.levelPct),
+                numberStyle = type.title,
+                unitStyle = type.label,
+                modifier = Modifier.alignByBaseline(),
+            )
             ProvenanceMark(Provenance.MODELED, Modifier.padding(start = CoulombSpacing.Space4))
+            if (phase != null) {
+                Text(SEPARATOR, Modifier.alignByBaseline().clearAndSetSemantics {}, color = colors.textSecondary, style = type.body)
+            }
         }
-        val phase = now.phase ?: return@FlowRow
-        Text(SEPARATOR, Modifier.clearAndSetSemantics {}, color = colors.textSecondary, style = type.body)
+        if (phase == null) return@FlowRow
         CoulombTerm(
             text = stringResource(phaseWords(phase)),
             definition = stringResource(phaseDefinition(phase)),
             actionLabel = stringResource(UiR.string.page_term_action),
+            modifier = Modifier.alignByBaseline(),
             style = type.body,
             color = colors.textSecondary,
         )
@@ -263,7 +275,11 @@ internal fun Times(
 ) {
     val type = CoulombTheme.typography
     val colors = CoulombTheme.colors
-    if (now.phase == ChargePhase.FULL || now.phase == ChargePhase.DRAWING) return
+    if (now.phase == ChargePhase.FULL) return
+    if (now.phase == ChargePhase.DRAWING) {
+        StandIn(stringResource(R.string.charging_times_drawing), top = CoulombSpacing.Space16)
+        return
+    }
     if (now.phase == ChargePhase.HOLDING) {
         val held = if (now.levelPct >= now.targetPct) R.string.charging_times_held_target else R.string.charging_times_holding
         StandIn(stringResource(held), top = CoulombSpacing.Space16)
@@ -304,6 +320,10 @@ private fun missingWhy(
 ): String? {
     if (!noTarget && !noFull) return null
     if (now.belowHighest) return stringResource(R.string.charging_times_falling)
+    // Both missing: one sentence, not two near-identical ones (gate polish).
+    if (noTarget && noFull && now.targetPct < FULL) {
+        return stringResource(R.string.charging_times_need_both, formats.percent(now.targetPct))
+    }
     val target = stringResource(R.string.charging_times_need_target, formats.percent(now.targetPct))
     val full = stringResource(R.string.charging_times_need_full)
     return listOfNotNull(

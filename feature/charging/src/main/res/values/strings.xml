@@ -5,7 +5,7 @@
     <string name="charging_title">Charging</string>
     <string name="charging_loading">Reading the charge</string>
     <string name="charging_error_title">Couldn’t read the charge</string>
-    <string name="charging_error_body">Coulomb couldn’t read its records just now. Your history stays on this phone.</string>
+    <string name="charging_error_body">Coulomb couldn’t read its records just now. Your history stays on this phone. Try again; if it keeps happening, restart the app.</string>
     <string name="charging_error_action">Try again</string>
     <string name="charging_unplugged">Unplugged.</string>
     <string name="charging_power_calibrating">Power shows once Coulomb has calibrated this phone’s current reading.</string>
@@ -19,7 +19,7 @@
     <string name="charging_phase_full_def" formatted="false">The battery reports 100%. It may take a little current to stay there.</string>
     <string name="charging_charger_known">%1$s · %2$s of its usual power</string>
     <string name="charging_charger_new">%1$s · new, saved when this charge ends</string>
-    <string name="charging_charger_learning" formatted="false">Coulomb can tell which charger this is after 2 minutes of charging below 50%.</string>
+    <string name="charging_charger_learning" formatted="false">Coulomb can tell which charger this is after 2 minutes of charging below 50%.</string>
     <string name="charging_charger_high" formatted="false">Too few readings below 50% to tell which charger this is.</string>
     <string name="charging_target_at">%1$s at %2$s</string>
     <string name="charging_target_plain">Target %1$s</string>
@@ -48,8 +48,8 @@
     <string name="charging_column_power">Power</string>
     <string name="charging_target">Target</string>
     <string name="charging_target_note">Moves the mark on the level bar and the time to it. There is no alert at the target yet.</string>
-    <string name="charging_scale_description">Level %1$s, target %2$s.</string>
-    <string name="charging_scale_description_time">Level %1$s, target %2$s, estimated to be reached at %3$s.</string>
+    <string name="charging_scale_description">Level %1$s from the battery fuel gauge, target %2$s.</string>
+    <string name="charging_scale_description_time">Level %1$s from the battery fuel gauge, target %2$s, estimated to be reached at %3$s.</string>
     <string name="charging_phase_drawing">drawing from the battery</string>
     <string name="charging_phase_drawing_def">The phone uses more than the charger gives, so the level falls.</string>
     <string name="charging_calibrating">Calibrating</string>
@@ -59,7 +59,9 @@
     <string name="charging_table_scale">Level and target</string>
     <string name="charging_column_reading">Reading</string>
     <string name="charging_column_value">Value</string>
-    <string name="charging_row_level">Level</string>
+    <string name="charging_row_level">Level (battery fuel gauge)</string>
     <string name="charging_row_reaches">Reaches %1$s</string>
     <string name="charging_row_full">Reaches full</string>
+    <string name="charging_times_need_both">Times to %1$s and to full show after three past charges that started below this level and reached them without a pause.</string>
+    <string name="charging_times_drawing">No times while the phone draws on the battery.</string>
 </resources>

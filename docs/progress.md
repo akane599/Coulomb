@@ -146,6 +146,33 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
     - the cadence of charging with the screen off.
   - Pending on a device: the TalkBack walk, protocols B, C and D, and whether Samsung reports
     `mSavedBatteryAsoc`.
+- Charging (SPEC 10.9, ADR-0046), in place of Now while plugged in:
+  - power in W first (signed, in ink while drawing on the battery), the level and phase, the
+    charger against its usual power; the still copper level bar with the target tick and when it
+    is reached; time to the target and to full as Estimated ranges, or why each is missing;
+    current, voltage and temperature; the session's level and power curve with the cone to the
+    target; the 80/85/90/100% target group.
+  - While Charging is resumed the collector samples every second (SPEC 7.3). Each sample costs
+    three short queries.
+  - The phase and time estimators had their independent review; its findings are fixed
+    (ADR-0046, "Estimator review").
+  - Gate runs (SPEC 11.12), in `docs/design-gates/2026-11-09-*-charging.md`:
+    - critique: 28/40; audit: 16/20; all majors and P1s fixed;
+    - harden, clarify, animate, adapt, optimize and polish: no critical or major finding left
+      open, so all eight gates have run with none open (summary at the end of the polish doc);
+    - decisions in ADR-0046, "Gate amendments".
+  - Goldens: light, dark, black, 130% and 200% text, medium, expanded, Turkish, Arabic, hardened
+    data in RTL and at 200%, a right-to-left charger name, every SPEC 10.11 state, each charger
+    and phase state (uncalibrated, learning, started high, new, holding at and below the target,
+    drawing, full), a target outside the group, the slowing phase in Turkish at 200%, and both
+    table sheets.
+  - Pending on the emulator: the 1 Hz rate while resumed and its return on pause, and the
+    Now/Charging swap on a faked plug. Pending on a device: the phase and times on a real charge.
+- Whole-app follow-up from the Charging audit: `BatteryRepository` and `DrainRepository` share a
+  `stateIn`/`shareIn` flow in the app scope. A failed read ends that shared flow for every later
+  collector, so "Try again" cannot recover without a restart. Charging moved to a cold flow per
+  collector (ADR-0046 gate amendment 8); Now and Drain get the same change in the P4 accessibility
+  and robustness pass.
 - S4, the per-component breakdown (ADR-0035), built in order:
   - parser, schema 4, collector (decision 5's checks per consecutive window), read layer and Drain
     UI (component rows with their top apps, an expandable breakdown per app row, a hollow "Not

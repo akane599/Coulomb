@@ -101,19 +101,23 @@ private fun DrawScope.drawScale(
 ) {
     val rtl = layoutDirection == LayoutDirection.Rtl
 
-    fun x(pct: Float) = (pct / FULL * size.width).let { if (rtl) size.width - it else it }
+    // The round caps stay inside the gutter, ending where the strips' hairlines end.
+    val inset = TrackStroke.toPx() / 2
+    val span = size.width - 2 * inset
+
+    fun x(pct: Float) = (inset + pct / FULL * span).let { if (rtl) size.width - it else it }
     val mid = size.height / 2
     val level = levelPct.coerceIn(0, FULL.toInt()).toFloat()
     drawLine(track, Offset(x(level), mid), Offset(x(FULL), mid), TrackStroke.toPx(), StrokeCap.Round)
     if (level > 0f) {
         val path = Path()
-        val end = level / FULL * size.width
+        val end = level / FULL * span
         val step = WaveLength.toPx() / WAVE_STEPS_PER_LENGTH
         val steps = ceil(end / step).toInt()
         for (i in 0..steps) {
             val along = minOf(i * step, end)
             val y = mid + WaveAmplitude.toPx() * sin(2 * PI * along / WaveLength.toPx()).toFloat()
-            val px = if (rtl) size.width - along else along
+            val px = if (rtl) size.width - inset - along else inset + along
             if (i == 0) path.moveTo(px, y) else path.lineTo(px, y)
         }
         drawPath(path, wave, style = Stroke(WaveStroke.toPx(), cap = StrokeCap.Round))

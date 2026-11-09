@@ -11,6 +11,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -144,7 +146,9 @@ public fun ChargeCurveChart(
         val levelBottom = levelTop + LevelHeight.toPx()
         val level = Panel(levelTop, levelBottom, FULL.toDouble())
         val strong = ChartText(measurer, strongStyle)
-        levelGrid(level, width, ink, Values(text, strong, labels), projection?.targetPct)
+        // A grid line under the bracket's words breaks around them rather than striking them through.
+        val gap = labelBox(projection, strong, ::x, level, width)
+        levelGrid(level, width, ink, Values(text, strong, labels), projection?.targetPct, gap)
         taperLevel?.let { rule(level.y(it.toDouble()), width, ink, text, labels.taper) }
         var axis = levelBottom
         val power =
@@ -336,6 +340,7 @@ private fun DrawScope.levelGrid(
     ink: ChartInk,
     values: Values,
     targetPct: Int?,
+    gap: Rect?,
 ) {
     val targetY = targetPct?.let { level.y(it.toDouble()) }
     val clearance =
@@ -344,13 +349,44 @@ private fun DrawScope.levelGrid(
             .size.height + MarkerClearance.toPx()
     listOf(0, HALF, FULL).filter { it != targetPct }.forEach { pct ->
         val y = level.y(pct.toDouble())
-        if (targetY != null && abs(y - targetY) < clearance) {
-            drawLine(ink.hairline, Offset(0f, y), Offset(width, y), 1.dp.toPx())
-        } else {
-            gridLine(y, width, ink, values.text, values.labels.percent(pct))
+        hairline(y, width, ink, gap)
+        if (targetY == null || abs(y - targetY) >= clearance) {
+            val layout = values.text.measure(values.labels.percent(pct))
+            drawText(layout, topLeft = Offset(size.width - layout.size.width, y - layout.size.height / 2))
         }
     }
     targetPct?.let { marker(level.y(it.toDouble()), width, ink, values.strong, values.labels.percent(it)) }
+}
+
+/** A grid hairline at [y], broken around [gap] where it crosses it. */
+private fun DrawScope.hairline(
+    y: Float,
+    width: Float,
+    ink: ChartInk,
+    gap: Rect?,
+) {
+    val stroke = 1.dp.toPx()
+    if (gap == null || y < gap.top || y > gap.bottom) {
+        drawLine(ink.hairline, Offset(0f, y), Offset(width, y), stroke)
+        return
+    }
+    val margin = LabelGap.toPx()
+    if (gap.left - margin > 0f) drawLine(ink.hairline, Offset(0f, y), Offset(gap.left - margin, y), stroke)
+    if (gap.right + margin < width) drawLine(ink.hairline, Offset(gap.right + margin, y), Offset(width, y), stroke)
+}
+
+/** Where [bracketLabel] sets a projection's words, or null without one. */
+private fun DrawScope.labelBox(
+    projection: CurveProjection?,
+    strong: ChartText,
+    x: (Long) -> Float,
+    level: Panel,
+    width: Float,
+): Rect? {
+    val p = projection ?: return null
+    val label = strong.measure(p.label).size
+    val topLeft = bracketLabelTopLeft(label.width, label.height, x(p.earliestMs) to x(p.latestMs), level.y(p.targetPct.toDouble()), width)
+    return Rect(topLeft, Size(label.width.toFloat(), label.height.toFloat()))
 }
 
 /** The cone from the present reading at [apex] to the target across [span], with its bracket and words. */
@@ -422,6 +458,17 @@ private fun DrawScope.bracketLabel(
     y: Float,
     width: Float,
 ) {
-    val left = ((from + to) / 2 - layout.size.width / 2f).coerceIn(0f, (width - layout.size.width).coerceAtLeast(0f))
-    drawText(layout, topLeft = Offset(left, y - BracketStop.toPx() - LabelGap.toPx() - layout.size.height))
+    drawText(layout, topLeft = bracketLabelTopLeft(layout.size.width, layout.size.height, from to to, y, width))
+}
+
+/** The bracket's words centred over [span], kept inside the plot, above the bracket's stops at [y]. */
+private fun DrawScope.bracketLabelTopLeft(
+    labelWidth: Int,
+    labelHeight: Int,
+    span: Pair<Float, Float>,
+    y: Float,
+    width: Float,
+): Offset {
+    val left = ((span.first + span.second) / 2 - labelWidth / 2f).coerceIn(0f, (width - labelWidth).coerceAtLeast(0f))
+    return Offset(left, y - BracketStop.toPx() - LabelGap.toPx() - labelHeight)
 }

@@ -239,8 +239,10 @@ private fun sameDay(
 @Composable
 private fun Skeleton() {
     val loading = stringResource(R.string.charging_loading)
-    Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space16).semantics { contentDescription = loading }) {
+    Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8).semantics { contentDescription = loading }) {
         SkeletonBlock(60.dp, Modifier.width(160.dp))
+        SkeletonBlock(26.dp, Modifier.padding(top = CoulombSpacing.Space8).width(120.dp))
+        SkeletonBlock(24.dp, Modifier.padding(top = CoulombSpacing.Space8).width(260.dp))
         SkeletonBlock(24.dp, Modifier.padding(top = CoulombSpacing.Space24).fillMaxWidth())
         SkeletonBlock(20.dp, Modifier.padding(top = CoulombSpacing.Space16).width(240.dp))
         SkeletonBlock(80.dp, Modifier.padding(top = currentSectionGap()).fillMaxWidth())

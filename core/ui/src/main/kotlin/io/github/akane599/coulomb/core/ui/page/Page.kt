@@ -68,7 +68,8 @@ public fun SectionTitle(
         return
     }
     if (action == null) {
-        text(block)
+        // At the layout's start in either direction, whatever the title's script (Charging polish).
+        text(block.wrapContentWidth(Alignment.Start))
         return
     }
     Row(block, verticalAlignment = Alignment.CenterVertically) {
