@@ -42,7 +42,6 @@
     <string name="onboarding_shizuku_missing_body">Install a Shizuku fork such as thedjchi’s, or Sui on a rooted phone. Start it, then come back here.</string>
     <string name="onboarding_get_fork">Get thedjchi’s Shizuku</string>
     <string name="onboarding_get_sui">Get Sui</string>
-    <string name="onboarding_hide_adb">Hide ADB commands</string>
     <string name="onboarding_shizuku_ask_title">Shizuku is running</string>
     <string name="onboarding_shizuku_ask_body">Allow Coulomb when Shizuku asks.</string>
     <string name="onboarding_shizuku_allow">Allow Coulomb</string>

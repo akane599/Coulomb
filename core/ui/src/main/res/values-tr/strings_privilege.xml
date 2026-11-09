@@ -26,6 +26,7 @@
     <string name="privilege_revoked_action">Yeniden aç</string>
 
     <string name="privilege_show_adb">ADB komutlarını göster</string>
+    <string name="privilege_hide_adb">ADB komutlarını gizle</string>
 
     <!-- SPEC 10.11: the way from a partial screen to Privileges. -->
     <string name="privilege_open">Yetkileri aç</string>

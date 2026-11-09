@@ -13,7 +13,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -66,5 +70,22 @@ public fun AdbCommands(
             trailingIcon = CoulombIcons.ContentCopy,
             edge = ButtonEdge.Start,
         )
+    }
+}
+
+/** "Show ADB commands", which opens the copy-ready block in place. */
+@Composable
+public fun AdbCommandsToggle(
+    commands: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    var shown by rememberSaveable { mutableStateOf(false) }
+    Column(modifier.fillMaxWidth()) {
+        CoulombTextButton(
+            stringResource(if (shown) R.string.privilege_hide_adb else R.string.privilege_show_adb),
+            { shown = !shown },
+            edge = ButtonEdge.Start,
+        )
+        if (shown) AdbCommands(commands, Modifier.padding(top = CoulombSpacing.Space8))
     }
 }

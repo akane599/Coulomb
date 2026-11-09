@@ -48,7 +48,9 @@ import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import io.github.akane599.coulomb.core.ui.page.StandIn
 import io.github.akane599.coulomb.core.ui.privilege.AdbCommands
+import io.github.akane599.coulomb.core.ui.privilege.AdbCommandsToggle
 import io.github.akane599.coulomb.core.ui.privilege.GrantChecklist
+import io.github.akane599.coulomb.core.ui.privilege.SystemScreen
 import io.github.akane599.coulomb.core.ui.privilege.capabilitySummary
 import io.github.akane599.coulomb.core.ui.privilege.copy
 import io.github.akane599.coulomb.core.ui.privilege.grantRows
@@ -144,7 +146,7 @@ private fun ColumnScope.NotInstalled(
             actions.open(SystemScreen.SUI_PAGE)
         }, trailingIcon = CoulombIcons.OpenInNew)
     }
-    AdbToggle(commands, Modifier.padding(top = CoulombSpacing.Space8))
+    AdbCommandsToggle(commands, Modifier.padding(top = CoulombSpacing.Space8))
 }
 
 @Composable
@@ -314,24 +316,7 @@ private fun ColumnScope.Grants(
             edge = ButtonEdge.Start,
         )
     }
-    if (!grants.durableCore) AdbToggle(state.adbCommands)
-}
-
-/** "Show ADB commands", which opens the copy-ready block in place. */
-@Composable
-private fun AdbToggle(
-    commands: List<String>,
-    modifier: Modifier = Modifier,
-) {
-    var shown by rememberSaveable { mutableStateOf(false) }
-    Column(modifier.fillMaxWidth()) {
-        CoulombTextButton(
-            stringResource(if (shown) R.string.onboarding_hide_adb else UiR.string.privilege_show_adb),
-            { shown = !shown },
-            edge = ButtonEdge.Start,
-        )
-        if (shown) AdbCommands(commands, Modifier.padding(top = CoulombSpacing.Space8))
-    }
+    if (!grants.durableCore) AdbCommandsToggle(state.adbCommands)
 }
 
 /** Each step's buttons in the footer: one filled button, the way on. */

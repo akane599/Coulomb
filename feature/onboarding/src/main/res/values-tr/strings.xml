@@ -38,7 +38,6 @@
     <string name="onboarding_shizuku_missing_body">thedjchi’ninki gibi bir Shizuku çatalı ya da rootlu bir telefonda Sui yükleyin. Başlatın, sonra buraya dönün.</string>
     <string name="onboarding_get_fork">thedjchi’nin Shizuku’sunu edinin</string>
     <string name="onboarding_get_sui">Sui’yi edinin</string>
-    <string name="onboarding_hide_adb">ADB komutlarını gizle</string>
     <string name="onboarding_shizuku_ask_title">Shizuku çalışıyor</string>
     <string name="onboarding_shizuku_ask_body">Shizuku sorduğunda Coulomb’a izin verin.</string>
     <string name="onboarding_shizuku_allow">Coulomb’a izin ver</string>

@@ -27,6 +27,7 @@
     <string name="privilege_revoked_action">Re-enable</string>
 
     <string name="privilege_show_adb">Show ADB commands</string>
+    <string name="privilege_hide_adb">Hide ADB commands</string>
 
     <!-- SPEC 4.5: a feature blocked by SELinux at T2. -->
     <!-- SPEC 10.11: the way from a partial screen to Privileges. -->
