@@ -6,6 +6,17 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 
 Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the phone night (ADR-0019).
 
+Gate status (2026-11-09, SPEC 17):
+- Per-screen `/impeccable` gates: all eight have run on Now, Drain, App detail, Health, Charging,
+  Onboarding, Privileges and Settings with no critical or major finding open. A whole-app pass
+  followed (button padding at large text, the shared error state).
+- Mode-switch test on the API 37 emulator: passed (2026-11-08).
+- Macrobenchmark: indicative on the emulator (median 686 ms to verdict); the S25 Ultra run is
+  pending real device.
+- Protocols B, C and D: pending real device. B needs the overnight run shared with E (the P2
+  night); D needs three qualifying charge sessions.
+- P5 does not start while this gate is red (SPEC 17).
+
 - Working rules from 2026-11-08 (ADR-0027):
   - work the spec calls optional is listed in `BACKLOG.md` and not built;
   - second opinions are only for hard or costly-to-reverse decisions; other choices get a one-line ADR
