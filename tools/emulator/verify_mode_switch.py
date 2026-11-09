@@ -24,6 +24,10 @@ Reads the copy only. Exits 1 when a check fails.
 
 import sqlite3
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/, for the shared schema module
+from coulomb_schema import name_views  # noqa: E402
 
 ROOT, SHELL = 2, 1
 KERNEL_KINDS = ("WAKEUP_SOURCE", "RESUME_CAUSE", "SUSPEND_ABORT")
@@ -153,6 +157,7 @@ def check_markers(db, manifest, checks):
 def main(db_path, manifest_path):
     manifest = read_manifest(manifest_path)
     db = sqlite3.connect(db_path)
+    name_views(db)  # schema 5 codes read as names (ADR-0040)
     checks = Checks()
     check_modes(db, manifest, checks)
     windows = check_windows(db, manifest, checks)

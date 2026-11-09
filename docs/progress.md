@@ -90,6 +90,27 @@ Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the ph
       and the remainder row stay the same semantics node when they open, so TalkBack focus has
       nowhere to fall. The walk itself is pending a device with TalkBack.
   - Drain's gates are closed except that TalkBack walk.
+- S4, the per-component breakdown (ADR-0035), built in order:
+  - parser, schema 4, collector (decision 5's checks per consecutive window), read layer and Drain
+    UI (component rows with their top apps, an expandable breakdown per app row, a hollow "Not
+    broken down" remainder);
+  - the capability probe, the fixture capture and an emulator capture script that fakes the plug
+    state on emulators only (its plugged-in read joined the fixtures);
+  - the Component breakdown setting is Off by default (decision 2) until the phone shows S4's cost.
+  - The 30-day stress test on the API 37 emulator, with S4 on every heavy snapshot and root's
+    bound added, failed in schema 4: 154.7 MB projected after a year, against 150. A second
+    opinion chose lossless integer codes for the records kept for good over ADR-0035's 14-day
+    cut (ADR-0040). Schema 5 passes: day 31's file is 95.2 MB, and the year projects to 148.2 MB
+    with 3,770 of 4,274 windows broken down, at most 32 component rows a window, heap −6.4% and
+    3.0 minutes. The margin is 1.2% over three stacked upper bounds; the phone night's clean
+    history rate is still due.
+  - Independent review (parser, decision 5, read layer, schema 5 migration): all four clean. It
+    found that the validation and mode-switch tools still read schema 4's text columns; they now
+    read schema 5 files through name views (`tools/coulomb_schema.py`), checked on both schemas.
+    Noted, not changed: a window that contains a wall-clock change fails decision 5 as
+    `NOT_ON_BATTERY` (costs coverage, not honesty), and the emulator's S4 has no device consumer,
+    so `BROKEN_DOWN` is exercised end to end only by the stress test's synthetic dumps.
+  - Pending a real device: S4 on the phone, its cost against decision 2's bar, and coverage.
 
 ## P3 Design lab (gate passed 2026-11-07)
 

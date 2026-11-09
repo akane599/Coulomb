@@ -175,7 +175,7 @@ if awake; then key=KEYCODE_SLEEP; else key=KEYCODE_WAKEUP; fi
 as_root "input keyevent $key; kill $(server_pid)" > /dev/null
 row=$(wait_snapshot "$before")
 note "snap ${row%% *} -"
-log "snapshot $row as the server was killed: $(sql "select sourceStatusJson from snapshot where id = ${row%% *}")"
+log "snapshot $row as the server was killed: $(sql "select sourceStatus from snapshot where id = ${row%% *}") (SourceStatusCodes, ADR-0040)"
 wait_for 15 no_server || fail "the Shizuku server is still running"
 sleep 15
 no_server || fail "the Shizuku server came back on its own"

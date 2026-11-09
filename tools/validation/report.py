@@ -33,6 +33,9 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/, for the shared schema module
+from coulomb_schema import name_views  # noqa: E402
+
 PACKAGE = "io.github.akane599.coulomb"
 DAY_MS = 86_400_000
 NS_PER_MS = 1_000_000
@@ -74,6 +77,7 @@ def open_db(capture):
             shutil.copy(capture / name, tmp / name)
     db = sqlite3.connect(tmp / "coulomb.db")
     db.row_factory = sqlite3.Row
+    name_views(db)  # schema 5 codes read as names (ADR-0040)
     return db
 
 
