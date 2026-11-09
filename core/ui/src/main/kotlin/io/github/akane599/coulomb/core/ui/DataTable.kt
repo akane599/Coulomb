@@ -43,10 +43,15 @@ public data class DataTable(
     val provenance: Provenance?,
     /** Each row's source, marked after its last figure, where the rows differ. */
     val rowProvenance: List<Provenance>? = null,
+    /** Each column's source, marked on its header, where the columns differ; null for a label column. */
+    val columnProvenance: List<Provenance?>? = null,
 ) {
     init {
-        require((provenance == null) != (rowProvenance == null)) { "One source for the table, or one for each row" }
+        require(listOfNotNull(provenance, rowProvenance, columnProvenance).size == 1) {
+            "One source for the table, one for each row or one for each column"
+        }
         require(rowProvenance == null || rowProvenance.size == rows.size) { "One source for each row" }
+        require(columnProvenance == null || columnProvenance.size == columns.size) { "One source for each column" }
     }
 }
 
@@ -80,10 +85,10 @@ public fun DataTableSheet(
             Text(text = table.title, modifier = title, color = colors.textPrimary, style = type.title)
         }
         LazyColumn(Modifier.padding(top = CoulombSpacing.Space12, bottom = CoulombSpacing.Space24)) {
-            item { TableRow(table.columns, header = true, gutter = gutter, provenance = null) }
+            item { TableRow(table.columns, header = true, gutter = gutter, columnProvenance = table.columnProvenance) }
             // The table is a snapshot taken when the sheet opens, so a row's index is its key (SPEC 15.5).
             itemsIndexed(table.rows, key = { index, _ -> index }) { index, row ->
-                TableRow(row, header = false, gutter = gutter, provenance = table.rowProvenance?.get(index))
+                TableRow(row, header = false, gutter = gutter, rowProvenance = table.rowProvenance?.get(index))
             }
         }
     }
@@ -94,7 +99,8 @@ private fun TableRow(
     cells: List<String>,
     header: Boolean,
     gutter: Dp,
-    provenance: Provenance?,
+    rowProvenance: Provenance? = null,
+    columnProvenance: List<Provenance?>? = null,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -112,7 +118,8 @@ private fun TableRow(
         cells.forEachIndexed { index, cell ->
             val color = if (header) colors.textSecondary else colors.textPrimary
             val style = (if (header) type.label else type.data).copy(textAlign = if (index == 0) TextAlign.Start else TextAlign.End)
-            if (provenance != null && index == cells.lastIndex) {
+            val provenance = columnProvenance?.get(index) ?: rowProvenance?.takeIf { index == cells.lastIndex }
+            if (provenance != null) {
                 MarkedText(cell, provenance, style, color, Modifier.weight(1f))
             } else {
                 Text(text = cell, modifier = Modifier.weight(1f), color = color, style = style)

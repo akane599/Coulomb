@@ -208,6 +208,16 @@ class HealthScreenshotTest {
             )
         }
 
+    /** The session curve's "View as table": level and power each marked on their header. */
+    @Test
+    fun sessionTable() {
+        shoot("session-table", capture = false) { ChargeSessionContent(Read.Ready(labSession()), {}, zone = ZONE, nowMs = NOW_MS) }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("View as table"))
+        compose.onAllNodesWithText("View as table").onLast().performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/health-session-table.png")
+    }
+
     @Test
     fun sessionGone() = shoot("session-gone") { ChargeSessionContent(Read.Ready(null), {}, zone = ZONE, nowMs = NOW_MS) }
 

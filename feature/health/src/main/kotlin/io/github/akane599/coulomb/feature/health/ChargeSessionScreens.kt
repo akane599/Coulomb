@@ -443,7 +443,9 @@ private fun curveTable(
                     point.watts?.let { formats.watts(it).joined() } ?: DASH,
                 )
             },
+        // The level is the fuel gauge's, power is from current and voltage.
         provenance = null,
+        columnProvenance = listOf(null, Provenance.MODELED, Provenance.DERIVED),
     )
 
 /** SPEC 10.11 loading for a session or the list. */
