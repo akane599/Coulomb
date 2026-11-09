@@ -297,8 +297,14 @@ private fun appEntries(
             }
         }
         entry<Route.ActionCenter> { InnerScreen(stringResource(R.string.screen_action_center), navigator::back) { NotBuilt() } }
-        entry<Route.Privileges> { InnerScreen(stringResource(R.string.screen_privileges), navigator::back) { screens.privileges() } }
-        entry<Route.Settings> { InnerScreen(stringResource(R.string.screen_settings), navigator::back) { screens.settings() } }
+        entry<Route.Privileges> {
+            InnerScreen(
+                stringResource(R.string.screen_privileges),
+                navigator::back,
+                pane = true,
+            ) { screens.privileges() }
+        }
+        entry<Route.Settings> { InnerScreen(stringResource(R.string.screen_settings), navigator::back, pane = true) { screens.settings() } }
     }
 
 /** A destination's first screen: its name, then Action Center, Privileges and Settings (DESIGN.md, Navigation). */

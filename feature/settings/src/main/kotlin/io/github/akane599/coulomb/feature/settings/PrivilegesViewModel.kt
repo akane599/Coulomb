@@ -3,12 +3,15 @@
 
 package io.github.akane599.coulomb.feature.settings
 
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.akane599.coulomb.core.collect.CapabilityStore
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import io.github.akane599.coulomb.core.privileged.capability.CapabilityReport
@@ -23,7 +26,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.OutputStream
 import java.time.Instant
 import javax.inject.Inject
 
@@ -37,8 +39,12 @@ public class PrivilegesViewModel
     constructor(
         private val privileged: PrivilegedAccess,
         private val capabilityStore: CapabilityStore,
+        @ApplicationContext context: Context,
     ) : ViewModel() {
         private val local = MutableStateFlow(Local())
+
+        /** The application's resolver: an export outlives the activity that asked for it. */
+        private val resolver = context.contentResolver
 
         internal val state: StateFlow<PrivilegesUiState> =
             combine(
@@ -55,6 +61,7 @@ public class PrivilegesViewModel
                     probing = probing,
                     probeFailed = local.probeFailed,
                     granting = local.granting,
+                    grantFailed = local.grantFailed,
                     export = local.export,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PrivilegesUiState())
@@ -71,12 +78,14 @@ public class PrivilegesViewModel
         /** "Grant through Shizuku" and "Re-enable": the SPEC 4.4 bootstrap, then a fresh matrix. */
         internal fun grant() {
             if (local.value.granting) return
-            local.update { it.copy(granting = true) }
+            local.update { it.copy(granting = true, grantFailed = false) }
             viewModelScope.launch {
+                var granted = false
                 try {
-                    quietly("bootstrap") { privileged.bootstrap() }
+                    // A grant that did not go through counts as a failure, as a call that threw does.
+                    quietly("bootstrap") { granted = privileged.bootstrap().allGranted }
                 } finally {
-                    local.update { it.copy(granting = false) }
+                    local.update { it.copy(granting = false, grantFailed = !granted) }
                 }
                 rerun()
             }
@@ -93,9 +102,9 @@ public class PrivilegesViewModel
 
         /**
          * "Export capability report": writes the Markdown report ([CapabilityReport]) to the file the
-         * system's save dialog returned, which [open] opens.
+         * system's save dialog returned, through the application's resolver so no activity is held.
          */
-        internal fun export(open: () -> OutputStream?) {
+        internal fun export(uri: Uri) {
             viewModelScope.launch {
                 val saved =
                     quietly("export") {
@@ -107,7 +116,9 @@ public class PrivilegesViewModel
                                 "${Build.MANUFACTURER} ${Build.MODEL}",
                                 Instant.now().toString(),
                             )
-                        withContext(Dispatchers.IO) { checkNotNull(open()) { "no stream" }.use { it.write(report.toByteArray()) } }
+                        withContext(
+                            Dispatchers.IO,
+                        ) { checkNotNull(resolver.openOutputStream(uri)) { "no stream" }.use { it.write(report.toByteArray()) } }
                     }
                 local.update { it.copy(export = if (saved) ExportResult.SAVED else ExportResult.FAILED) }
             }
@@ -138,6 +149,7 @@ public class PrivilegesViewModel
         private data class Local(
             val probeFailed: Boolean = false,
             val granting: Boolean = false,
+            val grantFailed: Boolean = false,
             val export: ExportResult? = null,
         )
 

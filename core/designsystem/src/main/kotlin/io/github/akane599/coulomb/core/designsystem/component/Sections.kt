@@ -131,7 +131,8 @@ public fun CoulombTextButton(
 /**
  * The outlined button of DESIGN.md, the secondary action: a 1 dp `hairline` border, Label button
  * in `text-primary`, 40 dp tall with 20 dp side padding and a fully round shape. Material extends
- * its touch target to 48 dp.
+ * its touch target to 48 dp. While not [enabled], such as during the work it started, its label
+ * stays at Material's 38%.
  */
 @Composable
 public fun CoulombOutlinedButton(
@@ -139,15 +140,21 @@ public fun CoulombOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     @DrawableRes trailingIcon: Int? = null,
+    enabled: Boolean = true,
 ) {
     val colors = CoulombTheme.colors
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.heightIn(min = OutlinedHeight),
         shape = RoundedCornerShape(percent = 50),
         border = BorderStroke(OutlinedBorder, colors.hairline),
         contentPadding = PaddingValues(horizontal = OutlinedPadding),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+        colors =
+            ButtonDefaults.outlinedButtonColors(
+                contentColor = colors.textPrimary,
+                disabledContentColor = colors.textPrimary.copy(alpha = DISABLED_ALPHA),
+            ),
     ) {
         ButtonLabel(text, trailingIcon)
     }
@@ -164,14 +171,22 @@ public fun CoulombFilledButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     @DrawableRes trailingIcon: Int? = null,
+    enabled: Boolean = true,
 ) {
     val colors = CoulombTheme.colors
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.heightIn(min = OutlinedHeight),
         shape = RoundedCornerShape(percent = 50),
         contentPadding = PaddingValues(horizontal = OutlinedPadding),
-        colors = ButtonDefaults.buttonColors(containerColor = colors.accentFill, contentColor = colors.onAccentFill),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = colors.accentFill,
+                contentColor = colors.onAccentFill,
+                disabledContainerColor = colors.accentFill.copy(alpha = DISABLED_ALPHA),
+                disabledContentColor = colors.onAccentFill.copy(alpha = DISABLED_ALPHA),
+            ),
         elevation =
             ButtonDefaults.buttonElevation(
                 defaultElevation = 0.dp,

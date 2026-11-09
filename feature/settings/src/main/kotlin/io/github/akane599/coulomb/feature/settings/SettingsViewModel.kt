@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.settings
 
+import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.IOException
 import javax.inject.Inject
 
 /** The settings built so far (SPEC 14.4, ADR-0047 §8). */
@@ -34,12 +36,20 @@ public class SettingsViewModel
 
         internal fun chargeTarget(pct: Int) = write { store.chargeTarget(pct) }
 
+        /** A write that fails (a full disk) is logged; the switch shows the stored value again. */
         private fun write(block: suspend () -> Unit) {
-            viewModelScope.launch { block() }
+            viewModelScope.launch {
+                try {
+                    block()
+                } catch (e: IOException) {
+                    Log.w(TAG, "settings write failed", e)
+                }
+            }
         }
 
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
+            const val TAG = "Settings"
         }
     }
 

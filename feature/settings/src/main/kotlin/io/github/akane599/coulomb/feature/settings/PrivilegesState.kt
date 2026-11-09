@@ -24,6 +24,8 @@ internal data class PrivilegesUiState(
     /** The last "Re-run probes" failed; the matrix shown is the one stored before it. */
     val probeFailed: Boolean = false,
     val granting: Boolean = false,
+    /** The last "Grant through Shizuku" left a grant missing or failed outright. */
+    val grantFailed: Boolean = false,
     val export: ExportResult? = null,
 ) {
     /** When the stored matrix was probed: the latest of its rows, or null before the first run. */
@@ -46,6 +48,21 @@ internal data class PrivilegesUiState(
 }
 
 internal enum class ExportResult { SAVED, FAILED }
+
+/**
+ * Whether what [this] fix asks for is already true now. The matrix is stored, so a fix probed
+ * before Shizuku connected (or a grant came back) would otherwise contradict the facts above it.
+ */
+internal fun FixAction.doneIn(state: PrivilegeState): Boolean =
+    when (this) {
+        FixAction.CONNECT_SHIZUKU -> state.manager == ManagerStatus.RUNNING || state.manager == ManagerStatus.NOT_RUNNING
+        FixAction.START_SHIZUKU -> state.manager == ManagerStatus.RUNNING
+        FixAction.GRANT_SHIZUKU_PERMISSION -> state.permission == ManagerPermission.GRANTED
+        FixAction.RUN_BOOTSTRAP -> state.grants.durableCore
+        FixAction.GRANT_USAGE_ACCESS -> state.grants.usageStats
+        FixAction.NEEDS_ROOT -> state.workerUsable && state.server?.isRoot == true
+        FixAction.GRANT_NOTIFICATIONS, FixAction.NONE -> false
+    }
 
 /** The access tier in plain words. */
 @get:StringRes

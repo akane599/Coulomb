@@ -25,7 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -39,7 +41,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
-import io.github.akane599.coulomb.core.model.AccessTier
+import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.ServerInfo
 import io.github.akane599.coulomb.core.ui.MarkedText
@@ -110,7 +112,8 @@ internal fun ColumnScope.ShizukuStep(
     actions: OnboardingActions,
 ) {
     StepHead(stringResource(R.string.onboarding_shizuku_title), stringResource(R.string.onboarding_shizuku_lede))
-    Column(Modifier.padding(top = CoulombSpacing.Space8)) {
+    // Each stage replaces the last one in place, so TalkBack says what changed.
+    Column(Modifier.padding(top = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite }) {
         when (state.stage) {
             ShizukuStage.CHECKING -> StandIn(stringResource(R.string.onboarding_shizuku_checking), top = CoulombSpacing.Space16)
             ShizukuStage.NOT_INSTALLED -> NotInstalled(state.adbCommands, actions)
@@ -123,7 +126,7 @@ internal fun ColumnScope.ShizukuStep(
         }
     }
     // SPEC 3, ADR-0028: once, quietly, where the official build's hang is known.
-    if (device.sdkInt >= ANDROID_17 && state.stage != ShizukuStage.CONNECTED) {
+    if (device.sdkInt >= ANDROID_17 && state.stage in QuietNoteStages) {
         Note(stringResource(R.string.onboarding_android17), top = CoulombSpacing.Space24)
     }
 }
@@ -134,6 +137,13 @@ private fun ColumnScope.NotInstalled(
     actions: OnboardingActions,
 ) {
     Block(R.string.onboarding_shizuku_missing_title, R.string.onboarding_shizuku_missing_body)
+    ManagerLinks(actions)
+    AdbCommandsToggle(commands, Modifier.padding(top = CoulombSpacing.Space8))
+}
+
+/** The thedjchi fork and Sui on GitHub, opened in the browser (ADR-0047 implementation notes). */
+@Composable
+private fun ManagerLinks(actions: OnboardingActions) {
     FlowRow(
         Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space12),
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
@@ -146,7 +156,6 @@ private fun ColumnScope.NotInstalled(
             actions.open(SystemScreen.SUI_PAGE)
         }, trailingIcon = CoulombIcons.OpenInNew)
     }
-    AdbCommandsToggle(commands, Modifier.padding(top = CoulombSpacing.Space8))
 }
 
 @Composable
@@ -184,11 +193,14 @@ private fun ColumnScope.Problem(
     device: OnboardingDevice,
     actions: OnboardingActions,
 ) {
-    val copy = state.privilege.problem()?.copy(device.sdkInt) ?: return
+    val problem = state.privilege.problem() ?: return
+    val copy = problem.copy(device.sdkInt)
     Block(copy.title, copy.body)
     copy.action?.let {
         CoulombOutlinedButton(stringResource(it), actions.allowShizuku, Modifier.padding(top = CoulombSpacing.Space12))
     }
+    // SPEC 4.5: a manager that hangs or is too old is fixed by a compatible fork or Sui.
+    if (problem == PrivilegeIssue.AUTHORIZATION_HANG || problem == PrivilegeIssue.SERVER_TOO_OLD) ManagerLinks(actions)
     // SPEC 14.1: on a hang or a failure the commands show at once, copy-ready.
     AdbCommands(state.adbCommands, Modifier.padding(top = CoulombSpacing.Space24))
 }
@@ -236,9 +248,8 @@ private fun ColumnScope.ResultHead(state: OnboardingUiState) {
         }
 
         ResultState.Failed -> {
-            val deep = state.privilege.tier != AccessTier.T0_UNPRIVILEGED
             StepHead(
-                stringResource(if (deep) R.string.onboarding_result_deep_title else R.string.onboarding_result_basic_title),
+                stringResource(R.string.onboarding_result_failed_title),
                 stringResource(R.string.onboarding_result_failed),
             )
         }
@@ -446,6 +457,9 @@ private fun ServerInfo.mode(): Int =
     }
 
 private const val ANDROID_17 = 37
+
+/** Where the quiet Android 17 line adds something; a hang or the missing-manager copy already says it. */
+private val QuietNoteStages = setOf(ShizukuStage.CHECKING, ShizukuStage.ASK, ShizukuStage.WAITING, ShizukuStage.STOPPED)
 private val StateIcon = 24.dp
 private val AllowedIcon = 18.dp
 private val Hairline = 1.dp

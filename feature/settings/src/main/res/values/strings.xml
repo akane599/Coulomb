@@ -5,7 +5,7 @@
 <resources>
     <!-- Privileges: the manager. -->
     <string name="privileges_access">Access</string>
-    <string name="privileges_level">Level</string>
+    <string name="privileges_level">Access level</string>
     <string name="privileges_manager">Manager</string>
     <string name="privileges_version">Version</string>
     <string name="privileges_api">Shizuku API</string>
@@ -40,8 +40,10 @@
     <string name="privileges_grants">Grants</string>
     <string name="privileges_grants_durable">These stay granted if Shizuku stops or the phone restarts.</string>
     <string name="privileges_grants_missing">Grant the missing ones through Shizuku or once over ADB. They stay granted after a restart.</string>
+    <string name="privileges_grants_missing_adb">Grant the missing ones once over ADB. They stay granted after a restart.</string>
     <string name="privileges_grant_again">Grant through Shizuku</string>
     <string name="privileges_granting">Granting…</string>
+    <string name="privileges_grant_failed">Some grants didn’t go through. Use the ADB commands below.</string>
     <string name="privileges_usage_settings">Allow app usage in Settings</string>
 
     <!-- Privileges: the Capability Matrix (SPEC 4.6). -->
@@ -71,6 +73,7 @@
     <string name="fix_notifications">Needs notifications allowed.</string>
     <string name="fix_root">Needs root.</string>
     <string name="fix_none">This phone doesn’t expose it.</string>
+    <string name="privileges_fix_changed">Changed since this check. Re-run probes to update it.</string>
 
     <string name="capability_battery_changed">Battery level and temperature</string>
     <string name="capability_current_now">Battery current</string>
@@ -105,9 +108,9 @@
     <string name="settings_drain">Drain</string>
     <string name="settings_show_system">Show system apps</string>
     <string name="settings_scale">Scale attribution to measured</string>
-    <string name="settings_scale_note">Each app’s share of the measured drain; scaled figures are marked Derived.</string>
+    <string name="settings_scale_note">Scales each app’s modeled drain so the total matches the measured drop. Scaled figures are marked Derived.</string>
     <string name="settings_target">Charge target</string>
-    <string name="settings_target_note">Charging shows the time to this level. The alert comes with notifications.</string>
+    <string name="settings_target_note">Charging shows the time to this level. There is no alert at it yet.</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_breakdown">Component breakdown</string>
     <string name="settings_breakdown_note">Splits drain by component. It adds a system report at each snapshot, which costs a little battery.</string>

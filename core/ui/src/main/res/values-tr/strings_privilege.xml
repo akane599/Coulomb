@@ -3,8 +3,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
     <string name="privilege_basic_mode_title">Temel mod</string>
-    <string name="privilege_basic_mode_body">Coulomb şu an her uygulamanın okuyabildiği verileri kullanıyor. Uygulama bazında tüketim, uyanık tutma kilitleri ve pil sağlığı için Shizuku ya da Sui bağlayın.</string>
-    <string name="privilege_basic_mode_action">Shizuku ya da Sui edinin</string>
+    <string name="privilege_basic_mode_body">Coulomb şu an her uygulamanın okuyabildiği verileri kullanıyor. Uygulama başına tüketim, uyanık tutma kilitleri ve çekirdek uyanmaları için Shizuku ya da Sui bağlayın.</string>
+    <string name="privilege_basic_mode_action">Shizuku ya da Sui edin</string>
 
     <string name="privilege_stopped_title">Shizuku durdu</string>
     <string name="privilege_stopped_body">Shizuku uygulamasından başlatın, Coulomb kendiliğinden yeniden bağlanır. Daha önce verdiğiniz izinler çalışmaya devam eder.</string>
@@ -21,9 +21,9 @@
     <string name="privilege_too_old_title">Bu Shizuku sürümü çok eski</string>
     <string name="privilege_too_old_body">Coulomb’un yardımcı sürecini başlatamıyor. Shizuku’yu güncelleyin ya da erişimi bir kez ADB ile verin.</string>
 
-    <string name="privilege_revoked_title">Ayrıntılı istatistikleri yeniden aç</string>
-    <string name="privilege_revoked_body">Coulomb’un kayıtlı izinleri kaldırılmış; bu genellikle bir sistem güncellemesinden sonra olur. Yetkiler ekranı tek dokunuşla geri getirir.</string>
-    <string name="privilege_revoked_action">Yeniden aç</string>
+    <string name="privilege_revoked_title">Coulomb’un izinleri kaldırıldı</string>
+    <string name="privilege_revoked_body">Bu genellikle bir sistem güncellemesinden sonra olur. İzinleri Shizuku ile ya da bir kez ADB ile yeniden verin.</string>
+    <string name="privilege_revoked_action">Yeniden ver</string>
 
     <string name="privilege_show_adb">ADB komutlarını göster</string>
     <string name="privilege_hide_adb">ADB komutlarını gizle</string>
@@ -52,8 +52,8 @@
     <string name="sight_wakelocks">uyanık tutma kilitlerini</string>
     <string name="sight_kernel_wakeups">çekirdek uyanmalarını</string>
     <string name="sight_screen_time">uygulama başına ekran süresini</string>
-    <string name="sight_level">pil seviyesini ve sıcaklığını</string>
-    <string name="sight_current">pile giren ve çıkan akımı</string>
+    <string name="sight_level">pil seviyesini sıcaklığıyla birlikte</string>
+    <string name="sight_current">pil akımını</string>
     <string name="sight_rails_measured">Bu telefon güç hatlarını gösteriyor, bu yüzden bileşen başına enerji ölçülüyor</string>
     <string name="sight_rails_modeled">Bu telefon güç hatlarını göstermiyor, bu yüzden bileşen başına enerji Android’in güç modelinden geliyor</string>
 </resources>

@@ -126,6 +126,7 @@ class PrivilegesScreenshotTest {
                 capabilities = MATRIX,
                 adbCommands = ADB,
                 probeFailed = true,
+                grantFailed = true,
             ),
         )
 
@@ -275,7 +276,7 @@ private val MATRIX =
         cap(CapabilityId.POWER_SUPPLY_SYSFS, AccessTier.T2_PRIVILEGED_WORKER, CapabilityState.DEGRADED, "some files unreadable"),
         cap(
             CapabilityId.KERNEL_WAKELOCKS,
-            AccessTier.T2_PRIVILEGED_WORKER,
+            AccessTier.T3_ROOT,
             CapabilityState.UNAVAILABLE,
             "no source readable",
             FixAction.NEEDS_ROOT,

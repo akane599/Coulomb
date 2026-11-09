@@ -381,6 +381,9 @@ internal class PrivilegeController(
     private suspend fun onRequestPermission() {
         val c = core.value
         if (c.manager != ManagerStatus.RUNNING || c.permission == ManagerPermission.GRANTED) return
+        // A second tap within 5 s of the first asks nothing new; a retry after that may, hanging or not.
+        val justAsked = c.permission == ManagerPermission.PENDING && clock() - permissionRequestedAt < PERMISSION_HANG_MS
+        if (justAsked && !c.permissionHanging) return
         if (withContext(io) { api.permissionDeniedPermanently() }) {
             core.update { it.copy(permission = ManagerPermission.DENIED, permissionHanging = false) }
             return

@@ -46,12 +46,10 @@ public fun grantRows(grants: GrantStatus): List<GrantRow> {
     fun state(granted: Boolean) = if (granted) GrantRowState.GRANTED else GrantRowState.MISSING
     return listOf(
         GrantRow(R.string.grant_battery_stats, listOf("BATTERY_STATS"), state(grants.batteryStats)),
-        GrantRow(R.string.grant_dump, listOf("DUMP"), state(grants.dump)),
-        GrantRow(
-            R.string.grant_usage,
-            listOf("PACKAGE_USAGE_STATS", "GET_USAGE_STATS"),
-            state(grants.usageStats && grants.usageStatsPermission),
-        ),
+        // System reports need DUMP and the PACKAGE_USAGE_STATS permission (DumpUtils); app usage
+        // is the op alone, which the Settings screen for usage access turns on.
+        GrantRow(R.string.grant_dump, listOf("DUMP", "PACKAGE_USAGE_STATS"), state(grants.dump && grants.usageStatsPermission)),
+        GrantRow(R.string.grant_usage, listOf("GET_USAGE_STATS"), state(grants.usageStats)),
         GrantRow(R.string.grant_history, listOf("INTERACT_ACROSS_USERS"), state(grants.interactAcrossUsers)),
         GrantRow(
             R.string.grant_settings,

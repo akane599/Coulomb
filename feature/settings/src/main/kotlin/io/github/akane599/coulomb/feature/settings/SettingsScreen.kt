@@ -84,15 +84,14 @@ internal fun SettingsContent(
 }
 
 @Composable
-private fun ColumnScope.Setting(
+private fun Setting(
     text: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
     note: String? = null,
 ) {
-    CoulombSwitchRow(text, checked, onChange, Modifier.fillMaxWidth())
-    // The note sits under its switch, a little above the next row (DESIGN.md: Caption qualifies).
-    note?.let { Note(it, Modifier.padding(bottom = CoulombSpacing.Space8), top = 0.dp) }
+    // The note is part of the row, so TalkBack reads it with the switch it qualifies.
+    CoulombSwitchRow(text, checked, onChange, Modifier.fillMaxWidth(), note = note)
 }
 
 /** ADR-0046 §4's group; a target set elsewhere in 50–100% joins it, so one choice is selected. */

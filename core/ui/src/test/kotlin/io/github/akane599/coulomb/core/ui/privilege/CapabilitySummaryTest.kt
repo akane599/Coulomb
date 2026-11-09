@@ -47,11 +47,13 @@ class CapabilitySummaryTest {
     }
 
     @Test
-    fun theChecklistAsksForWriteSecureSettingsOnlyLaterAndNeedsBothUsageGrants() {
-        val rows = grantRows(GrantStatus(batteryStats = true, usageStats = true))
+    fun theChecklistAsksForWriteSecureSettingsOnlyLaterAndSplitsTheUsageGrants() {
+        // The usage op alone (the Settings route) is app usage; reports also need DUMP and the permission.
+        val rows = grantRows(GrantStatus(batteryStats = true, dump = true, usageStats = true))
         assertEquals(GrantRowState.GRANTED, rows[0].state)
         assertEquals(GrantRowState.MISSING, rows[1].state)
-        assertEquals(GrantRowState.MISSING, rows[2].state)
+        assertEquals(GrantRowState.GRANTED, rows[2].state)
+        assertEquals(GrantRowState.GRANTED, grantRows(GrantStatus(dump = true, usageStatsPermission = true))[1].state)
         assertEquals(GrantRowState.LATER, rows[4].state)
         assertEquals(GrantRowState.GRANTED, grantRows(GrantStatus(writeSecureSettings = true))[4].state)
     }

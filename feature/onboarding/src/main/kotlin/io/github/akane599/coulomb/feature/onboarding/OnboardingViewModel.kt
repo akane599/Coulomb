@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -85,10 +84,11 @@ public class OnboardingViewModel
             }
             viewModelScope.launch {
                 // The automatic bootstrap runs only on the first authorization (SPEC 4.4); one that
-                // was skipped (grants verified on an earlier install) runs here, once.
-                privileged.state
-                    .map { it.permission == ManagerPermission.GRANTED && !it.grants.durableCore }
-                    .distinctUntilChanged()
+                // was skipped (grants verified on an earlier install) runs here, once. This model
+                // outlives the screen in the activity, so it stops once onboarding is done.
+                combine(privileged.state, settings.settings) { state, stored ->
+                    !stored.onboarded && state.permission == ManagerPermission.GRANTED && !state.grants.durableCore
+                }.distinctUntilChanged()
                     .collect { missing ->
                         if (missing && privileged.lastBootstrap.value == null && !ownBootstrap) {
                             ownBootstrap = true

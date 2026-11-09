@@ -26,7 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,9 +38,9 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +59,7 @@ import io.github.akane599.coulomb.core.model.CapabilityState
 import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
+import io.github.akane599.coulomb.core.model.PrivilegeState
 import io.github.akane599.coulomb.core.model.ServerInfo
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.page.Note
@@ -104,14 +107,17 @@ public fun PrivilegesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // "Checked" names the day against now, read at each resume rather than at each recomposition.
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LifecycleResumeEffect(viewModel) {
+        nowMs = System.currentTimeMillis()
         viewModel.refresh()
         onPauseOrDispose {}
     }
     val title = stringResource(R.string.privileges_export_title)
     val save =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(MARKDOWN)) { uri ->
-            if (uri != null) viewModel.export { context.contentResolver.openOutputStream(uri) }
+            if (uri != null) viewModel.export(uri)
         }
     val manager = state.privilege.server?.managerPackage
     val label =
@@ -120,14 +126,11 @@ public fun PrivilegesScreen(
                 runCatching { context.packageManager.run { getApplicationLabel(getApplicationInfo(pkg, 0)).toString() } }.getOrNull()
             }
         }
+    val managerApp = remember(manager, state.privilege.manager) { viewModel.managerIntent() != null }
     val device =
-        PrivilegesDevice(
-            sdkInt = Build.VERSION.SDK_INT,
-            managerApp = remember(manager, state.privilege.manager) { viewModel.managerIntent() != null },
-            managerLabel = label,
-            nowMs = System.currentTimeMillis(),
-            zone = ZoneId.systemDefault(),
-        )
+        remember(managerApp, label, nowMs) {
+            PrivilegesDevice(Build.VERSION.SDK_INT, managerApp, label, nowMs, ZoneId.systemDefault())
+        }
     val actions =
         remember(viewModel) {
             PrivilegesActions(
@@ -154,7 +157,8 @@ internal fun PrivilegesContent(
     val gutter = currentGutter()
     BoxWithConstraints(modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
         val column = MinColumnWidth * LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= column * 2
+        // The row is capped, so the columns get the capped width, not the window's.
+        val twoColumns = currentWindowWidth() != WindowWidth.Compact && min(maxWidth, MaxTwoColumnWidth) - gutter * GUTTERS >= column * 2
         if (!twoColumns) {
             Column(
                 Modifier
@@ -240,7 +244,8 @@ private fun ColumnScope.Issue(
         verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
     ) {
         when (issue) {
-            PrivilegeIssue.MANAGER_NOT_INSTALLED -> {
+            PrivilegeIssue.MANAGER_NOT_INSTALLED, PrivilegeIssue.AUTHORIZATION_HANG, PrivilegeIssue.SERVER_TOO_OLD -> {
+                // SPEC 4.5: a compatible fork or Sui is the fix for a missing, hanging or old manager.
                 CoulombOutlinedButton(stringResource(R.string.privileges_get_fork), {
                     actions.open(SystemScreen.FORK_PAGE)
                 }, trailingIcon = CoulombIcons.OpenInNew)
@@ -264,10 +269,6 @@ private fun ColumnScope.Issue(
 
             PrivilegeIssue.GRANTS_REVOKED -> {
                 if (state.canBootstrap) GrantButton(state, actions, filled = true)
-            }
-
-            PrivilegeIssue.AUTHORIZATION_HANG, PrivilegeIssue.SERVER_TOO_OLD -> {
-                // The commands below are the fix.
             }
         }
     }
@@ -349,11 +350,20 @@ private fun ColumnScope.Grants(
     val grants = state.privilege.grants
     SectionTitle(stringResource(R.string.privileges_grants), provenance = null)
     Note(
-        stringResource(if (grants.durableCore) R.string.privileges_grants_durable else R.string.privileges_grants_missing),
+        stringResource(
+            when {
+                grants.durableCore -> R.string.privileges_grants_durable
+                state.canBootstrap -> R.string.privileges_grants_missing
+                else -> R.string.privileges_grants_missing_adb
+            },
+        ),
         Modifier.padding(bottom = CoulombSpacing.Space8),
         top = 0.dp,
     )
     GrantChecklist(grantRows(grants))
+    if (state.grantFailed) {
+        Note(stringResource(R.string.privileges_grant_failed), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    }
     // The issue block offers the bootstrap for revoked grants; one button for it is enough.
     if (!grants.durableCore && state.canBootstrap && state.privilege.issue != PrivilegeIssue.GRANTS_REVOKED) {
         GrantButton(state, actions, filled = false, Modifier.padding(top = CoulombSpacing.Space16))
@@ -378,8 +388,12 @@ private fun GrantButton(
     modifier: Modifier = Modifier,
 ) {
     val text = stringResource(if (state.granting) R.string.privileges_granting else R.string.privileges_grant_again)
-    val onClick = { if (!state.granting) actions.grant() }
-    if (filled) CoulombFilledButton(text, onClick, modifier) else CoulombOutlinedButton(text, onClick, modifier)
+    val enabled = !state.granting
+    if (filled) {
+        CoulombFilledButton(text, actions.grant, modifier, enabled = enabled)
+    } else {
+        CoulombOutlinedButton(text, actions.grant, modifier, enabled = enabled)
+    }
 }
 
 /** SPEC 4.6: the full matrix by tier, when it was checked, "Re-run probes" and the report. */
@@ -401,7 +415,7 @@ private fun ColumnScope.Matrix(
     if (state.probeFailed) {
         Note(
             stringResource(R.string.privileges_probe_failed),
-            Modifier.padding(bottom = CoulombSpacing.Space8),
+            Modifier.padding(bottom = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite },
             top = 0.dp,
         )
     }
@@ -413,7 +427,7 @@ private fun ColumnScope.Matrix(
         Column(Modifier.fillMaxWidth()) {
             rows.forEach { row ->
                 HorizontalDivider(thickness = Hairline, color = CoulombTheme.colors.hairline)
-                CapabilityRow(row)
+                CapabilityRow(row, state.privilege, stale = state.probeFailed)
             }
             HorizontalDivider(thickness = Hairline, color = CoulombTheme.colors.hairline)
         }
@@ -423,9 +437,11 @@ private fun ColumnScope.Matrix(
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
         verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
     ) {
-        CoulombOutlinedButton(stringResource(if (state.probing) R.string.privileges_probing else R.string.privileges_rerun), {
-            if (!state.probing) actions.rerun()
-        })
+        CoulombOutlinedButton(
+            stringResource(if (state.probing) R.string.privileges_probing else R.string.privileges_rerun),
+            actions.rerun,
+            enabled = !state.probing,
+        )
         if (state.capabilities.isNotEmpty()) CoulombOutlinedButton(stringResource(R.string.privileges_export), actions.export)
     }
     state.export?.let {
@@ -436,17 +452,24 @@ private fun ColumnScope.Matrix(
     }
 }
 
-/** One capability: its name and state, then what would fix it and the probe's own key and reason. */
+/**
+ * One capability: its name and state, then what would fix it and the probe's own key and reason.
+ * A fix the live [privilege] state has already met says the row is out of date instead; a [stale]
+ * matrix (the last run failed) shows every state in `text-secondary`.
+ */
 @Composable
-private fun CapabilityRow(row: Capability) {
+private fun CapabilityRow(
+    row: Capability,
+    privilege: PrivilegeState,
+    stale: Boolean,
+) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
-    val stateText = stringResource(row.state.label)
     Column(
         Modifier
             .fillMaxWidth()
             .padding(vertical = CoulombSpacing.Space12)
-            .semantics(mergeDescendants = true) { stateDescription = stateText },
+            .semantics(mergeDescendants = true) {},
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16)) {
             Text(
@@ -456,14 +479,16 @@ private fun CapabilityRow(row: Capability) {
                 style = type.data,
             )
             Text(
-                stateText,
+                stringResource(row.state.label),
                 Modifier.alignByBaseline(),
-                color = if (row.state == CapabilityState.AVAILABLE) colors.textPrimary else colors.textSecondary,
+                color = if (row.state == CapabilityState.AVAILABLE && !stale) colors.textPrimary else colors.textSecondary,
                 style = type.label,
             )
         }
-        if (row.state != CapabilityState.AVAILABLE) {
-            row.fixAction?.let { Text(stringResource(it.label), color = colors.textSecondary, style = type.caption) }
+        val fix = row.fixAction?.takeIf { row.state != CapabilityState.AVAILABLE }
+        if (fix != null) {
+            val text = if (fix.doneIn(privilege)) R.string.privileges_fix_changed else fix.label
+            Text(stringResource(text), color = colors.textSecondary, style = type.caption)
         }
         val evidence = listOfNotNull(row.id.key, row.reason).joinToString(EVIDENCE_SEPARATOR)
         Text(evidence, color = colors.textSecondary, style = type.mono.copy(textDirection = TextDirection.Ltr))

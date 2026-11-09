@@ -372,7 +372,8 @@ private fun tabShape(
 
 /**
  * A switch row of DESIGN.md: Body text and a neutral switch, never copper. The whole row toggles,
- * so its touch target is the row's 56 dp.
+ * so its touch target is the row's 56 dp. A [note] under the text, in Caption, says what the switch
+ * changes or costs; it is part of the row, so TalkBack reads it with the switch.
  */
 @Composable
 public fun CoulombSwitchRow(
@@ -380,16 +381,21 @@ public fun CoulombSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    note: String? = null,
 ) {
     val colors = CoulombTheme.colors
     Row(
         modifier
             .heightIn(min = SwitchRowHeight)
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange),
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(vertical = SwitchRowPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16),
     ) {
-        Text(text, Modifier.weight(1f), style = CoulombTheme.typography.body, color = colors.textPrimary)
+        Column(Modifier.weight(1f)) {
+            Text(text, style = CoulombTheme.typography.body, color = colors.textPrimary)
+            note?.let { Text(it, style = CoulombTheme.typography.caption, color = colors.textSecondary) }
+        }
         Switch(
             checked = checked,
             onCheckedChange = null,
@@ -417,3 +423,4 @@ private val IconSize = 18.dp
 private val IconGap = 6.dp
 private val HairlineWidth = 1.dp
 private val SwitchRowHeight = 56.dp
+private val SwitchRowPadding = 8.dp

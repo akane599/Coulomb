@@ -143,6 +143,26 @@ class PrivilegeControllerTest {
         }
 
     @Test
+    fun aSecondTapWithinFiveSecondsDoesNotAskAgainButALaterOneDoes() =
+        runTest {
+            api.binderAlive = true
+            val c = controller()
+            c.start()
+            runCurrent()
+            c.requestManagerPermission()
+            c.requestManagerPermission()
+            runCurrent()
+            assertThat(api.permissionRequests).isEqualTo(1)
+            // The dialog covered Coulomb, so no hang was flagged; a tap after 5 s asks again.
+            pausedAt = currentTime
+            advanceTimeBy(PrivilegeController.PERMISSION_HANG_MS + 1)
+            runCurrent()
+            c.requestManagerPermission()
+            runCurrent()
+            assertThat(api.permissionRequests).isEqualTo(2)
+        }
+
+    @Test
     fun aDialogTheUserIsStillReadingIsNotAHang() =
         runTest {
             api.binderAlive = true

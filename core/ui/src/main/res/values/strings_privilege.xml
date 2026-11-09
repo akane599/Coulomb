@@ -4,7 +4,7 @@
 <!-- SPEC 4.5 "User sees" copy. Sentence case (SPEC 11). -->
 <resources>
     <string name="privilege_basic_mode_title">Basic mode</string>
-    <string name="privilege_basic_mode_body">Coulomb is using what every app can read. Connect Shizuku or Sui to add per-app drain, wakelocks and battery health.</string>
+    <string name="privilege_basic_mode_body">Coulomb is using what every app can read. Connect Shizuku or Sui to add per-app drain, wakelocks and kernel wakeups.</string>
     <string name="privilege_basic_mode_action">Get Shizuku or Sui</string>
 
     <string name="privilege_stopped_title">Shizuku is stopped</string>
@@ -22,9 +22,9 @@
     <string name="privilege_too_old_title">This Shizuku version is too old</string>
     <string name="privilege_too_old_body">It can’t start Coulomb’s helper. Update Shizuku, or grant access once over ADB.</string>
 
-    <string name="privilege_revoked_title">Re-enable deep stats</string>
-    <string name="privilege_revoked_body">Coulomb’s saved permissions are gone, usually after a system update. Privileges restores them in one tap.</string>
-    <string name="privilege_revoked_action">Re-enable</string>
+    <string name="privilege_revoked_title">Coulomb’s permissions were removed</string>
+    <string name="privilege_revoked_body">This usually happens after a system update. Grant them again through Shizuku, or once over ADB.</string>
+    <string name="privilege_revoked_action">Grant again</string>
 
     <string name="privilege_show_adb">Show ADB commands</string>
     <string name="privilege_hide_adb">Hide ADB commands</string>
@@ -57,8 +57,8 @@
     <string name="sight_wakelocks">wakelocks</string>
     <string name="sight_kernel_wakeups">kernel wakeups</string>
     <string name="sight_screen_time">screen time per app</string>
-    <string name="sight_level">the battery level and temperature</string>
-    <string name="sight_current">the current in and out of the battery</string>
+    <string name="sight_level">the battery level with its temperature</string>
+    <string name="sight_current">the battery current</string>
     <string name="sight_rails_measured">This phone exposes its power rails, so energy per component is measured</string>
     <string name="sight_rails_modeled">This phone does not expose its power rails, so energy per component comes from Android’s power model</string>
 </resources>

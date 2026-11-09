@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.model.AccessTier
 import io.github.akane599.coulomb.core.model.Capability
 import io.github.akane599.coulomb.core.model.CapabilityId
 import io.github.akane599.coulomb.core.model.CapabilityState
+import io.github.akane599.coulomb.core.model.FixAction
 import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeState
@@ -52,6 +53,17 @@ class PrivilegesStateTest {
         assertThat(PrivilegesUiState(privilege = running).canBootstrap).isTrue()
         assertThat(PrivilegesUiState(privilege = running.copy(permission = ManagerPermission.DENIED)).canBootstrap).isFalse()
         assertThat(PrivilegesUiState(privilege = running.copy(manager = ManagerStatus.NOT_RUNNING)).canBootstrap).isFalse()
+    }
+
+    @Test
+    fun aFixTheLiveStateHasMetIsDone() {
+        val connected = PrivilegeState(manager = ManagerStatus.RUNNING, permission = ManagerPermission.GRANTED)
+        assertThat(FixAction.CONNECT_SHIZUKU.doneIn(connected)).isTrue()
+        assertThat(FixAction.GRANT_SHIZUKU_PERMISSION.doneIn(connected)).isTrue()
+        assertThat(FixAction.RUN_BOOTSTRAP.doneIn(connected)).isFalse()
+        assertThat(FixAction.NEEDS_ROOT.doneIn(connected)).isFalse()
+        assertThat(FixAction.CONNECT_SHIZUKU.doneIn(PrivilegeState(manager = ManagerStatus.NOT_INSTALLED))).isFalse()
+        assertThat(FixAction.NONE.doneIn(connected)).isFalse()
     }
 
     private fun cap(
