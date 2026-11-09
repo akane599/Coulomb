@@ -19,6 +19,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,11 +42,12 @@ public fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val saveFailed by viewModel.saveFailed.collectAsStateWithLifecycle()
     val actions =
         remember(viewModel) {
             SettingsActions(viewModel::showSystemApps, viewModel::scaleToMeasured, viewModel::componentBreakdown, viewModel::chargeTarget)
         }
-    SettingsContent(settings, actions, modifier)
+    SettingsContent(settings, actions, modifier, saveFailed)
 }
 
 @Composable
@@ -51,6 +55,7 @@ internal fun SettingsContent(
     settings: UserSettings?,
     actions: SettingsActions,
     modifier: Modifier = Modifier,
+    saveFailed: Boolean = false,
 ) {
     val gutter = currentGutter()
     Column(
@@ -64,7 +69,10 @@ internal fun SettingsContent(
     ) {
         // Read in a moment; until then nothing shows rather than a default that flips.
         settings ?: return@Column
-        SectionTitle(stringResource(R.string.settings_drain), provenance = null, first = true)
+        if (saveFailed) {
+            Note(stringResource(R.string.settings_save_failed), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        }
+        SectionTitle(stringResource(R.string.settings_drain), provenance = null, first = !saveFailed)
         Setting(stringResource(R.string.settings_show_system), settings.showSystemApps, actions.showSystemApps)
         Setting(
             stringResource(R.string.settings_scale),

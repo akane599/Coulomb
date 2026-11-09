@@ -80,6 +80,7 @@ internal class OnboardingActions
         val allowShizuku: () -> Unit,
         val open: (SystemScreen) -> Unit,
         val finish: () -> Unit,
+        val retryProbe: () -> Unit,
     )
 
 /**
@@ -125,6 +126,7 @@ public fun OnboardingScreen(
                 allowShizuku = viewModel::allowShizuku,
                 open = { screen -> context.open(screen, viewModel::managerIntent) },
                 finish = viewModel::finish,
+                retryProbe = viewModel::retryProbe,
             )
         }
     OnboardingContent(state, device, actions, modifier)

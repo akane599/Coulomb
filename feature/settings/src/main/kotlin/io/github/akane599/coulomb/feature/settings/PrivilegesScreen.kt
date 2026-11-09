@@ -222,7 +222,9 @@ private fun ColumnScope.Issue(
     device: PrivilegesDevice,
     actions: PrivilegesActions,
 ) {
-    val copy = issue.copy(device.sdkInt)
+    val privilege = state.privilege
+    val allowed = privilege.permission == ManagerPermission.GRANTED
+    val copy = issue.copy(device.sdkInt, allowed)
     val colors = CoulombTheme.colors
     Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space16)) {
         Text(
@@ -243,8 +245,15 @@ private fun ColumnScope.Issue(
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
         verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
     ) {
-        when (issue) {
-            PrivilegeIssue.MANAGER_NOT_INSTALLED, PrivilegeIssue.AUTHORIZATION_HANG, PrivilegeIssue.SERVER_TOO_OLD -> {
+        val retry = copy.action == UiR.string.privilege_try_again
+        when {
+            retry -> {
+                // A denial, or a hang below Android 17, where asking again can work.
+                CoulombOutlinedButton(stringResource(UiR.string.privilege_try_again), actions.allowShizuku)
+            }
+
+            issue == PrivilegeIssue.MANAGER_NOT_INSTALLED || issue == PrivilegeIssue.AUTHORIZATION_HANG ||
+                issue == PrivilegeIssue.SERVER_TOO_OLD -> {
                 // SPEC 4.5: a compatible fork or Sui is the fix for a missing, hanging or old manager.
                 CoulombOutlinedButton(stringResource(R.string.privileges_get_fork), {
                     actions.open(SystemScreen.FORK_PAGE)
@@ -254,30 +263,56 @@ private fun ColumnScope.Issue(
                 }, trailingIcon = CoulombIcons.OpenInNew)
             }
 
-            PrivilegeIssue.MANAGER_STOPPED -> {
-                if (device.managerApp) {
-                    CoulombFilledButton(
-                        stringResource(UiR.string.privilege_stopped_action),
-                        { actions.open(SystemScreen.SHIZUKU_APP) },
-                    )
-                }
-            }
-
-            PrivilegeIssue.PERMISSION_DENIED -> {
-                CoulombOutlinedButton(stringResource(UiR.string.privilege_denied_action), actions.allowShizuku)
-            }
-
-            PrivilegeIssue.GRANTS_REVOKED -> {
-                if (state.canBootstrap) GrantButton(state, actions, filled = true)
+            issue == PrivilegeIssue.MANAGER_STOPPED || issue == PrivilegeIssue.GRANTS_REVOKED -> {
+                NextShizukuStep(issue, state, device, actions)
             }
         }
     }
     // SPEC 4.5: where Shizuku can't help, the commands show at once, copy-ready.
-    if (issue.showsCommands) AdbCommands(state.adbCommands)
+    if (state.showsCommands) AdbCommands(state.adbCommands)
 }
 
-private val PrivilegeIssue.showsCommands: Boolean
-    get() = this == PrivilegeIssue.AUTHORIZATION_HANG || this == PrivilegeIssue.SERVER_TOO_OLD
+/**
+ * Shizuku stopped, or grants removed: revoked grants usually follow an update and a restart, which
+ * stop Shizuku in shell mode, so the fix is the step the bootstrap is waiting for.
+ */
+@Composable
+private fun NextShizukuStep(
+    issue: PrivilegeIssue,
+    state: PrivilegesUiState,
+    device: PrivilegesDevice,
+    actions: PrivilegesActions,
+) {
+    val privilege = state.privilege
+    when {
+        issue == PrivilegeIssue.GRANTS_REVOKED && state.canBootstrap -> {
+            GrantButton(state, actions, filled = true)
+        }
+
+        privilege.manager == ManagerStatus.NOT_RUNNING && device.managerApp -> {
+            CoulombFilledButton(stringResource(UiR.string.privilege_stopped_action), { actions.open(SystemScreen.SHIZUKU_APP) })
+        }
+
+        privilege.manager == ManagerStatus.RUNNING && privilege.permission.canAsk -> {
+            CoulombFilledButton(stringResource(R.string.privileges_allow), actions.allowShizuku)
+        }
+    }
+}
+
+private val ManagerPermission.canAsk: Boolean
+    get() = this != ManagerPermission.GRANTED && this != ManagerPermission.PENDING
+
+/**
+ * The issue's fix is the ADB commands, shown at once: a hang or a manager too old, unless Shizuku
+ * allowed Coulomb and every grant is in place, so only the helper is missing.
+ */
+private val PrivilegesUiState.showsCommands: Boolean
+    get() =
+        when (privilege.issue) {
+            PrivilegeIssue.SERVER_TOO_OLD -> true
+            PrivilegeIssue.AUTHORIZATION_HANG -> !privilege.grants.durableCore
+            else -> false
+        }
 
 /** The manager and the helper process (SPEC 14.3: Shizuku, Sui or a fork, version, uid). */
 @Composable
@@ -336,9 +371,9 @@ private fun managerName(
 @Composable
 private fun runsAs(server: ServerInfo): String =
     when {
-        server.isRoot -> stringResource(R.string.privileges_runs_root, server.uid)
-        server.isShell -> stringResource(R.string.privileges_runs_shell, server.uid)
-        else -> stringResource(R.string.privileges_runs_other, server.uid)
+        server.isRoot -> stringResource(R.string.privileges_runs_root, server.uid.toString())
+        server.isShell -> stringResource(R.string.privileges_runs_shell, server.uid.toString())
+        else -> stringResource(R.string.privileges_runs_other, server.uid.toString())
     }
 
 /** SPEC 14.3: each grant with its state and a repair button. */
@@ -361,7 +396,7 @@ private fun ColumnScope.Grants(
         top = 0.dp,
     )
     GrantChecklist(grantRows(grants))
-    if (state.grantFailed) {
+    if (state.grantFailed && !grants.durableCore) {
         Note(stringResource(R.string.privileges_grant_failed), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     }
     // The issue block offers the bootstrap for revoked grants; one button for it is enough.
@@ -377,7 +412,7 @@ private fun ColumnScope.Grants(
             edge = ButtonEdge.Start,
         )
     }
-    if (!grants.durableCore && state.privilege.issue?.showsCommands != true) AdbCommandsToggle(state.adbCommands)
+    if (!grants.durableCore && !state.showsCommands) AdbCommandsToggle(state.adbCommands)
 }
 
 @Composable
@@ -393,6 +428,22 @@ private fun GrantButton(
         CoulombFilledButton(text, actions.grant, modifier, enabled = enabled)
     } else {
         CoulombOutlinedButton(text, actions.grant, modifier, enabled = enabled)
+    }
+}
+
+/** A failed check, or no results yet: what stands above the matrix, or in its place. */
+@Composable
+private fun ColumnScope.MatrixStatus(state: PrivilegesUiState) {
+    val empty = state.capabilities.isEmpty()
+    if (state.probeFailed) {
+        Note(
+            stringResource(if (empty) R.string.privileges_probe_failed_first else R.string.privileges_probe_failed),
+            Modifier.padding(bottom = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite },
+            top = 0.dp,
+        )
+    }
+    if (empty && (state.probing || !state.probeFailed)) {
+        StandIn(stringResource(if (state.probing) R.string.privileges_probing else R.string.privileges_never_probed), top = 0.dp)
     }
 }
 
@@ -412,16 +463,7 @@ private fun ColumnScope.Matrix(
             stringResource(R.string.privileges_last_probe, if (day == today) formats.clock(at, device.zone) else formats.day(day, today))
         }
     SectionTitle(stringResource(R.string.privileges_matrix), provenance = null, first = besideFirst, caption = checked)
-    if (state.probeFailed) {
-        Note(
-            stringResource(R.string.privileges_probe_failed),
-            Modifier.padding(bottom = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite },
-            top = 0.dp,
-        )
-    }
-    if (state.capabilities.isEmpty()) {
-        StandIn(stringResource(if (state.probing) R.string.privileges_probing else R.string.privileges_never_probed), top = 0.dp)
-    }
+    MatrixStatus(state)
     state.groups.forEach { (tier, rows) ->
         Subhead(stringResource(tier.group))
         Column(Modifier.fillMaxWidth()) {

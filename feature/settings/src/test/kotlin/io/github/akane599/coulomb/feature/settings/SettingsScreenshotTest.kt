@@ -51,17 +51,21 @@ class SettingsScreenshotTest {
     @Test
     fun loading() = shoot("loading", null)
 
+    @Test
+    fun saveFailed() = shoot("save-failed", CHANGED, saveFailed = true)
+
     private fun shoot(
         name: String,
         settings: UserSettings?,
         dark: Boolean = false,
         fontScale: Float = 1f,
+        saveFailed: Boolean = false,
     ) {
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale)) {
                 CoulombTheme(darkTheme = dark) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
-                        SettingsContent(settings, NoActions)
+                        SettingsContent(settings, NoActions, saveFailed = saveFailed)
                     }
                 }
             }

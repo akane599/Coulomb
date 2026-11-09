@@ -12,11 +12,14 @@
 
     <string name="privilege_denied_title">Shizuku izni reddedildi</string>
     <string name="privilege_denied_body">Coulomb bu izinle sistemin kendine sakladığı pil ayrıntılarını okur. Siz dokunmadan hiçbir ayarı değiştirmez. Erişimi bir kez ADB ile de verebilirsiniz.</string>
-    <string name="privilege_denied_action">Tekrar dene</string>
 
     <string name="privilege_hang_title_android17">Shizuku sürümünüz Android 17’de uygulamalara yetki veremiyor</string>
     <string name="privilege_hang_title">Shizuku yanıt vermedi</string>
     <string name="privilege_hang_body">Bu Android sürümünü destekleyen bir Shizuku çatalı ya da Sui kullanın. O zamana kadar erişimi bir kez ADB ile verin, Coulomb çalışmaya devam eder.</string>
+    <string name="privilege_hang_body_retry">Shizuku’yu açıp çalıştığından emin olun, sonra yeniden deneyin. Erişimi bir kez ADB ile de verebilirsiniz.</string>
+    <string name="privilege_helper_hang_title">Shizuku, Coulomb’un yardımcı sürecini başlatamıyor</string>
+    <string name="privilege_helper_hang_body">Coulomb verilen izinlerle çalışmaya devam eder, ancak yardımcı sürecin ayrıntıları olmaz. Bu Android sürümünü destekleyen bir Shizuku çatalı ya da Sui bu süreci başlatabilir.</string>
+    <string name="privilege_try_again">Tekrar dene</string>
 
     <string name="privilege_too_old_title">Bu Shizuku sürümü çok eski</string>
     <string name="privilege_too_old_body">Coulomb’un yardımcı sürecini başlatamıyor. Shizuku’yu güncelleyin ya da erişimi bir kez ADB ile verin.</string>
@@ -33,7 +36,7 @@
 
     <string name="grant_battery_stats">Pil istatistikleri</string>
     <string name="grant_dump">Sistem hizmeti raporları</string>
-    <string name="grant_usage">Uygulama kullanımı</string>
+    <string name="grant_usage">Kullanım erişimi</string>
     <string name="grant_history">Coulomb’un kendi sürecinde pil geçmişi</string>
     <string name="grant_settings">Sistem ayarlarını değiştirme</string>
     <string name="grant_settings_why">Yalnızca Eylem Merkezi’ni açtığınızda istenir</string>

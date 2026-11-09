@@ -101,6 +101,19 @@ Privileges and Settings as built:
   (the Charging group), Advanced (component breakdown, with its cost). Nothing shows until the
   stored values are read, so no switch flips after it appears.
 
+## Gate amendments (2026-11-09)
+
+1. **A helper that hangs after Shizuku allowed Coulomb** has its own copy instead of SPEC 4.5's
+   "can't authorize apps on Android 17", which would be false there (measurement honesty outranks
+   the functional copy, SPEC 0.2): "Shizuku can't start Coulomb's helper", with the fork and Sui
+   links, and the ADB commands only while a grant is missing.
+2. **Below Android 17 a hang** offers "Try again" and says to check that Shizuku runs; the fork
+   advice is for Android 17, where the cause is known.
+3. **A failed check on the result step** always shows the failed head with "Try again": the stored
+   results may predate this run's grants.
+4. **Grants removed** offers the step the bootstrap is waiting for (Open Shizuku, or Allow Coulomb in
+   Shizuku) when it cannot run.
+
 ## Consequences
 
 - One probe run at first start and after each OS update: a few seconds of work, then nothing.

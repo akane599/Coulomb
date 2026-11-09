@@ -21,7 +21,7 @@
 
     <!-- Step 2: notifications, and usage access in basic mode. -->
     <string name="onboarding_permissions_title_shizuku">One permission first</string>
-    <string name="onboarding_permissions_title_basic">Notifications and app usage</string>
+    <string name="onboarding_permissions_title_basic">Notifications and usage access</string>
     <string name="onboarding_permissions_lede_shizuku">Optional. You can allow it later in Android’s settings.</string>
     <string name="onboarding_permissions_lede_basic">Both are optional. You can allow them later in Android’s settings.</string>
     <string name="onboarding_notifications_name">Notifications</string>
@@ -30,7 +30,7 @@
     <string name="onboarding_usage_name">Usage access</string>
     <string name="onboarding_usage_why">Shows how long each app was on screen, so its drain lines up with its use.</string>
     <string name="onboarding_usage_open">Open usage access</string>
-    <string name="onboarding_usage_with_shizuku">App usage comes with Shizuku in the next step.</string>
+    <string name="onboarding_usage_with_shizuku">Usage access comes with Shizuku in the next step.</string>
     <string name="onboarding_allow">Allow</string>
     <string name="onboarding_allowed">Allowed</string>
 
@@ -58,7 +58,7 @@
     <string name="onboarding_result_checking_title">Checking what this phone shares</string>
     <string name="onboarding_result_checking">This takes a few seconds.</string>
     <string name="onboarding_result_failed_title">Coulomb couldn’t check this phone yet</string>
-    <string name="onboarding_result_failed">It tries again the next time it starts, or when you re-run probes in Privileges.</string>
+    <string name="onboarding_result_failed">Coulomb tries again the next time it starts. You can also try now.</string>
     <string name="onboarding_result_deep_title">Coulomb can see where your battery goes</string>
     <string name="onboarding_result_basic_title">Coulomb is in basic mode</string>
     <string name="onboarding_result_basic_more">Connect Shizuku later in Privileges to add per-app drain and wakelocks.</string>
@@ -69,7 +69,7 @@
     <string name="onboarding_grants_basic">Deeper access</string>
     <string name="onboarding_grants_durable">These stay granted if Shizuku stops or the phone restarts.</string>
     <string name="onboarding_grants_missing">Grant the missing ones once over ADB, or connect Shizuku later. They stay granted after a restart.</string>
-    <string name="onboarding_usage_settings">Allow app usage in Settings</string>
+    <string name="onboarding_usage_settings">Allow usage access in Settings</string>
     <string name="onboarding_marks_title">How to read the marks</string>
     <string name="onboarding_marks_note">Touch and hold any figure to see where its number comes from.</string>
     <string name="onboarding_first_results">First results after 15 minutes with the screen off.</string>

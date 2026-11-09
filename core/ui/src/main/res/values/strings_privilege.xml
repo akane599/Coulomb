@@ -13,11 +13,14 @@
 
     <string name="privilege_denied_title">Shizuku permission was denied</string>
     <string name="privilege_denied_body">Coulomb uses it to read battery details the system keeps to itself. It never changes a setting without your tap. You can also grant access once over ADB.</string>
-    <string name="privilege_denied_action">Try again</string>
 
     <string name="privilege_hang_title_android17">Your Shizuku version can’t authorize apps on Android 17</string>
     <string name="privilege_hang_title">Shizuku didn’t answer</string>
     <string name="privilege_hang_body">Use a Shizuku fork that supports this Android version, or Sui. Until then, grant access once over ADB and Coulomb keeps working.</string>
+    <string name="privilege_hang_body_retry">Open Shizuku and check that it is running, then try again. You can also grant access once over ADB.</string>
+    <string name="privilege_helper_hang_title">Shizuku can’t start Coulomb’s helper</string>
+    <string name="privilege_helper_hang_body">Coulomb keeps working with the permissions it has, without the helper’s details. A Shizuku fork that supports this Android version, or Sui, can start it.</string>
+    <string name="privilege_try_again">Try again</string>
 
     <string name="privilege_too_old_title">This Shizuku version is too old</string>
     <string name="privilege_too_old_body">It can’t start Coulomb’s helper. Update Shizuku, or grant access once over ADB.</string>
@@ -36,7 +39,7 @@
     <!-- SPEC 4.4 grants as a checklist (onboarding result step, Privileges; lab onboarding.html). -->
     <string name="grant_battery_stats">Battery statistics</string>
     <string name="grant_dump">System service reports</string>
-    <string name="grant_usage">App usage</string>
+    <string name="grant_usage">Usage access</string>
     <string name="grant_history">Battery history in Coulomb’s own process</string>
     <string name="grant_settings">Change system settings</string>
     <string name="grant_settings_why">Asked only when you turn on the Action Center</string>

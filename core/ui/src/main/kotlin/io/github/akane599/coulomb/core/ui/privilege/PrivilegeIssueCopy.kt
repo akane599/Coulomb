@@ -23,9 +23,13 @@ private val SHOW_ADB = R.string.privilege_show_adb
 
 /**
  * The Android 17 wording only on Android 17 and later, where the official-Shizuku hang is known
- * (SPEC 3, 4.5); elsewhere a plain "didn't answer".
+ * (SPEC 3, 4.5); elsewhere a plain "didn't answer" with a retry. When Shizuku has allowed Coulomb
+ * ([allowed]) and only the helper did not start, the copy says that, not "can't authorize" (ADR-0047).
  */
-public fun PrivilegeIssue.copy(sdkInt: Int = Build.VERSION.SDK_INT): PrivilegeIssueCopy =
+public fun PrivilegeIssue.copy(
+    sdkInt: Int = Build.VERSION.SDK_INT,
+    allowed: Boolean = false,
+): PrivilegeIssueCopy =
     when (this) {
         PrivilegeIssue.MANAGER_NOT_INSTALLED -> {
             PrivilegeIssueCopy(
@@ -49,18 +53,30 @@ public fun PrivilegeIssue.copy(sdkInt: Int = Build.VERSION.SDK_INT): PrivilegeIs
             PrivilegeIssueCopy(
                 R.string.privilege_denied_title,
                 R.string.privilege_denied_body,
-                R.string.privilege_denied_action,
+                R.string.privilege_try_again,
                 adbAction = SHOW_ADB,
             )
         }
 
         PrivilegeIssue.AUTHORIZATION_HANG -> {
-            PrivilegeIssueCopy(
-                if (sdkInt >= Build.VERSION_CODES.CINNAMON_BUN) R.string.privilege_hang_title_android17 else R.string.privilege_hang_title,
-                R.string.privilege_hang_body,
-                null,
-                adbAction = SHOW_ADB,
-            )
+            when {
+                allowed -> {
+                    PrivilegeIssueCopy(R.string.privilege_helper_hang_title, R.string.privilege_helper_hang_body, null, null)
+                }
+
+                sdkInt >= Build.VERSION_CODES.CINNAMON_BUN -> {
+                    PrivilegeIssueCopy(R.string.privilege_hang_title_android17, R.string.privilege_hang_body, null, adbAction = SHOW_ADB)
+                }
+
+                else -> {
+                    PrivilegeIssueCopy(
+                        R.string.privilege_hang_title,
+                        R.string.privilege_hang_body_retry,
+                        R.string.privilege_try_again,
+                        adbAction = SHOW_ADB,
+                    )
+                }
+            }
         }
 
         PrivilegeIssue.SERVER_TOO_OLD -> {

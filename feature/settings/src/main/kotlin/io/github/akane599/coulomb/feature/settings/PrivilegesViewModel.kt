@@ -87,17 +87,21 @@ public class PrivilegesViewModel
                 } finally {
                     local.update { it.copy(granting = false, grantFailed = !granted) }
                 }
-                rerun()
+                // Not rerun(): a run already going started before the grant, so this one queues
+                // behind it on the store's lock.
+                probe()
             }
         }
 
         /** "Re-run probes" (SPEC 4.6). A failed run keeps the stored matrix and says so. */
         internal fun rerun() {
             if (capabilityStore.probing.value) return
-            viewModelScope.launch {
-                val failed = !quietly("probe") { capabilityStore.probe() }
-                local.update { it.copy(probeFailed = failed) }
-            }
+            viewModelScope.launch { probe() }
+        }
+
+        private suspend fun probe() {
+            val failed = !quietly("probe") { capabilityStore.probe() }
+            local.update { it.copy(probeFailed = failed) }
         }
 
         /**

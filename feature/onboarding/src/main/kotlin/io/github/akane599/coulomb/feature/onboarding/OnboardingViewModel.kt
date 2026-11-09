@@ -66,7 +66,10 @@ public class OnboardingViewModel
                     result =
                         when (run) {
                             ProbeRun.Running, ProbeRun.Idle -> ResultState.Checking
-                            ProbeRun.Failed -> if (stored.isEmpty()) ResultState.Failed else ResultState.Ready(stored)
+
+                            // Stored results may predate this run's grants, so a failure never shows them.
+                            ProbeRun.Failed -> ResultState.Failed
+
                             ProbeRun.Done -> ResultState.Ready(stored)
                         },
                 )
@@ -125,6 +128,9 @@ public class OnboardingViewModel
                 quietly("grant check") { privileged.refreshGrants() }
             }
         }
+
+        /** "Try again" after a failed check. */
+        internal fun retryProbe() = startProbe()
 
         /** "Show my battery": the shell replaces onboarding once the flag is stored (ADR-0047 §1). */
         internal fun finish() {

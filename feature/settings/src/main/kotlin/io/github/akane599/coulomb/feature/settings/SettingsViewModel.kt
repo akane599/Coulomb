@@ -10,8 +10,10 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.datastore.UserSettings
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -28,6 +30,11 @@ public class SettingsViewModel
         internal val settings: StateFlow<UserSettings?> =
             store.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
+        private val failed = MutableStateFlow(false)
+
+        /** True after a write failed, until the next one goes through. */
+        internal val saveFailed: StateFlow<Boolean> = failed.asStateFlow()
+
         internal fun showSystemApps(show: Boolean) = write { store.showSystemApps(show) }
 
         internal fun scaleToMeasured(scale: Boolean) = write { store.scaleToMeasured(scale) }
@@ -36,14 +43,17 @@ public class SettingsViewModel
 
         internal fun chargeTarget(pct: Int) = write { store.chargeTarget(pct) }
 
-        /** A write that fails (a full disk) is logged; the switch shows the stored value again. */
+        /** A write that fails (a full disk) is logged and said; the switch shows the stored value again. */
         private fun write(block: suspend () -> Unit) {
             viewModelScope.launch {
-                try {
-                    block()
-                } catch (e: IOException) {
-                    Log.w(TAG, "settings write failed", e)
-                }
+                failed.value =
+                    try {
+                        block()
+                        false
+                    } catch (e: IOException) {
+                        Log.w(TAG, "settings write failed", e)
+                        true
+                    }
             }
         }
 

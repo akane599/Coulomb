@@ -17,17 +17,17 @@
     <string name="privileges_manager_none">Yüklü değil</string>
     <string name="privileges_manager_stopped">Durdu</string>
     <string name="privileges_checking">Bakılıyor…</string>
-    <string name="privileges_runs_shell">shell (uid %1$d)</string>
-    <string name="privileges_runs_root">root (uid %1$d)</string>
-    <string name="privileges_runs_other">uid %1$d</string>
+    <string name="privileges_runs_shell">shell (uid %1$s)</string>
+    <string name="privileges_runs_root">root (uid %1$s)</string>
+    <string name="privileges_runs_other">uid %1$s</string>
     <string name="privileges_helper_ready">Hazır</string>
     <string name="privileges_helper_starting">Başlıyor</string>
     <string name="privileges_helper_unavailable">Kullanılamıyor</string>
     <string name="privileges_helper_off">Çalışmıyor</string>
     <string name="privileges_helper_timeout">Kullanılamıyor: Shizuku 5 sn içinde başlatmadı</string>
     <string name="privileges_helper_too_old">Kullanılamıyor: Shizuku çok eski</string>
-    <string name="privileges_helper_mismatch">Kullanılamıyor: sürüm uyuşmuyor</string>
-    <string name="privileges_helper_died">Kullanılamıyor: art arda durdu</string>
+    <string name="privileges_helper_mismatch">Coulomb yeniden başlayana kadar kullanılamıyor: sürüm uyuşmuyor</string>
+    <string name="privileges_helper_died">Coulomb yeniden başlayana kadar kullanılamıyor: art arda durdu</string>
     <string name="privileges_manager_shizuku">Shizuku</string>
     <string name="privileges_get_fork">thedjchi’nin Shizuku’sunu edin</string>
     <string name="privileges_get_sui">Sui’yi edin</string>
@@ -41,7 +41,7 @@
     <string name="privileges_grant_again">Shizuku ile ver</string>
     <string name="privileges_granting">Veriliyor…</string>
     <string name="privileges_grant_failed">Bazı izinler verilemedi. Aşağıdaki ADB komutlarını kullanın.</string>
-    <string name="privileges_usage_settings">Uygulama kullanımına Ayarlar’dan izin ver</string>
+    <string name="privileges_usage_settings">Ayarlar’dan kullanım erişimi ver</string>
 
     <string name="privileges_matrix">Yetenek Matrisi</string>
     <string name="privileges_last_probe">Denetlendi: %1$s</string>
@@ -49,6 +49,7 @@
     <string name="privileges_rerun">Denetimleri yeniden çalıştır</string>
     <string name="privileges_probing">Bakılıyor…</string>
     <string name="privileges_probe_failed">Son denetim başarısız oldu; aşağıdaki sonuçlar öncekiler.</string>
+    <string name="privileges_probe_failed_first">Denetim başarısız oldu. Yeniden denemek için denetimleri yeniden çalıştırın.</string>
     <string name="privileges_export">Yetenek raporunu dışa aktar</string>
     <string name="privileges_export_title">yetenek raporu</string>
     <string name="privileges_export_done">Rapor kaydedildi.</string>
@@ -64,8 +65,8 @@
     <string name="fix_connect_shizuku">Shizuku ya da Sui gerekir.</string>
     <string name="fix_start_shizuku">Shizuku’nun çalışması gerekir.</string>
     <string name="fix_grant_shizuku">Shizuku’da Coulomb’a izin verilmesi gerekir.</string>
-    <string name="fix_bootstrap">Yukarıdaki izinler gerekir.</string>
-    <string name="fix_usage_access">Uygulama kullanımı erişimi gerekir.</string>
+    <string name="fix_bootstrap">İzinler bölümündeki izinler gerekir.</string>
+    <string name="fix_usage_access">Kullanım erişimi gerekir.</string>
     <string name="fix_notifications">Bildirimlere izin verilmesi gerekir.</string>
     <string name="fix_root">Root gerekir.</string>
     <string name="fix_none">Bu telefon bunu sunmuyor.</string>
@@ -106,6 +107,7 @@
     <string name="settings_scale_note">Her uygulamanın modellenen tüketimini, toplam ölçülen düşüşe eşit olacak şekilde ölçekler. Ölçeklenen değerler Türetilen olarak işaretlenir.</string>
     <string name="settings_target">Şarj hedefi</string>
     <string name="settings_target_note">Şarj ekranı bu seviyeye kalan süreyi gösterir. Bu seviyede henüz uyarı yok.</string>
+    <string name="settings_save_failed">Bu değişiklik kaydedilemedi. Yeniden deneyin.</string>
     <string name="settings_advanced">Gelişmiş</string>
     <string name="settings_breakdown">Bileşen dağılımı</string>
     <string name="settings_breakdown_note">Tüketimi bileşenlere göre ayırır. Her anlık görüntüde bir sistem raporu ekler; bu biraz pil harcar.</string>

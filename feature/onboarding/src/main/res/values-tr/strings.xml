@@ -18,7 +18,7 @@
     <string name="onboarding_start_basic">Temel modda başla</string>
 
     <string name="onboarding_permissions_title_shizuku">Önce bir izin</string>
-    <string name="onboarding_permissions_title_basic">Bildirimler ve uygulama kullanımı</string>
+    <string name="onboarding_permissions_title_basic">Bildirimler ve kullanım erişimi</string>
     <string name="onboarding_permissions_lede_shizuku">İsteğe bağlı. Daha sonra Android ayarlarından da izin verebilirsiniz.</string>
     <string name="onboarding_permissions_lede_basic">İkisi de isteğe bağlı. Daha sonra Android ayarlarından da izin verebilirsiniz.</string>
     <string name="onboarding_notifications_name">Bildirimler</string>
@@ -27,7 +27,7 @@
     <string name="onboarding_usage_name">Kullanım erişimi</string>
     <string name="onboarding_usage_why">Her uygulamanın ekranda ne kadar kaldığını gösterir; böylece tüketimi kullanımıyla eşleşir.</string>
     <string name="onboarding_usage_open">Kullanım erişimini aç</string>
-    <string name="onboarding_usage_with_shizuku">Uygulama kullanımı bir sonraki adımda Shizuku ile gelir.</string>
+    <string name="onboarding_usage_with_shizuku">Kullanım erişimi bir sonraki adımda Shizuku ile gelir.</string>
     <string name="onboarding_allow">İzin ver</string>
     <string name="onboarding_allowed">İzin verildi</string>
 
@@ -53,7 +53,7 @@
     <string name="onboarding_result_checking_title">Bu telefonun neleri paylaştığına bakılıyor</string>
     <string name="onboarding_result_checking">Birkaç saniye sürer.</string>
     <string name="onboarding_result_failed_title">Coulomb bu telefonu henüz denetleyemedi</string>
-    <string name="onboarding_result_failed">Bir sonraki açılışta ya da Yetkiler’de denetimleri yeniden çalıştırdığınızda yeniden dener.</string>
+    <string name="onboarding_result_failed">Coulomb bir sonraki açılışta yeniden dener. Şimdi de deneyebilirsiniz.</string>
     <string name="onboarding_result_deep_title">Coulomb pilinizin nereye gittiğini görebiliyor</string>
     <string name="onboarding_result_basic_title">Coulomb temel modda</string>
     <string name="onboarding_result_basic_more">Uygulama başına tüketim ve uyanık tutma kilitleri için Shizuku’yu daha sonra Yetkiler’den bağlayın.</string>
@@ -64,7 +64,7 @@
     <string name="onboarding_grants_basic">Daha derin erişim</string>
     <string name="onboarding_grants_durable">Shizuku durursa ya da telefon yeniden başlarsa da verili kalırlar.</string>
     <string name="onboarding_grants_missing">Eksik olanları bir kez ADB ile verin ya da Shizuku’yu sonra bağlayın. Yeniden başlatmadan sonra da verili kalırlar.</string>
-    <string name="onboarding_usage_settings">Uygulama kullanımına Ayarlar’dan izin ver</string>
+    <string name="onboarding_usage_settings">Ayarlar’dan kullanım erişimi ver</string>
     <string name="onboarding_marks_title">İşaretler nasıl okunur</string>
     <string name="onboarding_marks_note">Bir değerin nereden geldiğini görmek için ona dokunup basılı tutun.</string>
     <string name="onboarding_first_results">İlk sonuçlar, ekran kapalıyken 15 dakika sonra.</string>

@@ -106,6 +106,11 @@ class OnboardingScreenshotTest {
 
     @Test
     @Config(qualifiers = TALL)
+    fun shizukuHangBelowAndroid17() =
+        shoot("shizuku-hang-16", shizuku(ManagerStatus.RUNNING, ManagerPermission.PENDING, PrivilegeIssue.AUTHORIZATION_HANG))
+
+    @Test
+    @Config(qualifiers = TALL)
     fun shizukuDenied() = shoot("shizuku-denied", shizuku(ManagerStatus.RUNNING, ManagerPermission.DENIED), OnboardingDevice(sdkInt = 36))
 
     @Test
@@ -244,4 +249,4 @@ private val DEEP =
 
 private val BASIC = listOf(CapabilityId.BATTERY_CHANGED, CapabilityId.CURRENT_NOW).map(::capability)
 
-private val NoActions = OnboardingActions({}, {}, {}, {}, {}, {}, {})
+private val NoActions = OnboardingActions({}, {}, {}, {}, {}, {}, {}, {})

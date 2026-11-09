@@ -160,8 +160,59 @@ class PrivilegesScreenshotTest {
         shoot(
             "helper-timeout",
             linked().let {
-                it.copy(privilege = it.privilege.copy(worker = WorkerStatus.UNAVAILABLE, workerFailure = WorkerFailure.BIND_TIMEOUT))
+                it.copy(
+                    privilege =
+                        it.privilege.copy(
+                            worker = WorkerStatus.UNAVAILABLE,
+                            workerFailure = WorkerFailure.BIND_TIMEOUT,
+                            issue = PrivilegeIssue.AUTHORIZATION_HANG,
+                        ),
+                )
             },
+            ANDROID_17,
+        )
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun hangBelowAndroid17() =
+        shoot(
+            "hang-16",
+            PrivilegesUiState(
+                privilege =
+                    PrivilegeState(
+                        manager = ManagerStatus.RUNNING,
+                        server = SHELL,
+                        permission = ManagerPermission.PENDING,
+                        issue = PrivilegeIssue.AUTHORIZATION_HANG,
+                    ),
+                capabilities = BASIC,
+                adbCommands = ADB,
+            ),
+        )
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun revokedWhileStopped() =
+        shoot(
+            "revoked-stopped",
+            PrivilegesUiState(
+                privilege =
+                    PrivilegeState(
+                        manager = ManagerStatus.NOT_RUNNING,
+                        grants = GrantStatus(batteryStats = true),
+                        issue = PrivilegeIssue.GRANTS_REVOKED,
+                    ),
+                capabilities = MATRIX,
+                adbCommands = ADB,
+            ),
+            DEVICE.copy(managerApp = true),
+        )
+
+    @Test
+    fun firstProbeFailed() =
+        shoot(
+            "first-probe-failed",
+            linked().copy(capabilities = emptyList(), probeFailed = true),
         )
 
     @Test

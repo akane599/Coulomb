@@ -199,8 +199,10 @@ private fun ColumnScope.Problem(
     copy.action?.let {
         CoulombOutlinedButton(stringResource(it), actions.allowShizuku, Modifier.padding(top = CoulombSpacing.Space12))
     }
-    // SPEC 4.5: a manager that hangs or is too old is fixed by a compatible fork or Sui.
-    if (problem == PrivilegeIssue.AUTHORIZATION_HANG || problem == PrivilegeIssue.SERVER_TOO_OLD) ManagerLinks(actions)
+    // SPEC 4.5: a manager that hangs or is too old is fixed by a compatible fork or Sui; below
+    // Android 17 a hang offers a retry instead.
+    val hangOrOld = problem == PrivilegeIssue.AUTHORIZATION_HANG || problem == PrivilegeIssue.SERVER_TOO_OLD
+    if (hangOrOld && copy.action == null) ManagerLinks(actions)
     // SPEC 14.1: on a hang or a failure the commands show at once, copy-ready.
     AdbCommands(state.adbCommands, Modifier.padding(top = CoulombSpacing.Space24))
 }
@@ -231,7 +233,7 @@ internal fun ColumnScope.ResultStep(
     device: OnboardingDevice,
     actions: OnboardingActions,
 ) {
-    ResultHead(state)
+    ResultHead(state, actions)
     if (device.oneUi) KeepRunning(actions)
     Grants(state, actions)
     SectionTitle(stringResource(R.string.onboarding_marks_title), provenance = null)
@@ -240,7 +242,10 @@ internal fun ColumnScope.ResultStep(
 }
 
 @Composable
-private fun ColumnScope.ResultHead(state: OnboardingUiState) {
+private fun ColumnScope.ResultHead(
+    state: OnboardingUiState,
+    actions: OnboardingActions,
+) {
     val colors = CoulombTheme.colors
     when (val result = state.result) {
         ResultState.Checking -> {
@@ -251,6 +256,11 @@ private fun ColumnScope.ResultHead(state: OnboardingUiState) {
             StepHead(
                 stringResource(R.string.onboarding_result_failed_title),
                 stringResource(R.string.onboarding_result_failed),
+            )
+            CoulombOutlinedButton(
+                stringResource(UiR.string.privilege_try_again),
+                actions.retryProbe,
+                Modifier.padding(top = CoulombSpacing.Space16),
             )
         }
 

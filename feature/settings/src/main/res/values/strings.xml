@@ -19,17 +19,17 @@
     <string name="privileges_manager_none">Not installed</string>
     <string name="privileges_manager_stopped">Stopped</string>
     <string name="privileges_checking">Checking…</string>
-    <string name="privileges_runs_shell">shell (uid %1$d)</string>
-    <string name="privileges_runs_root">root (uid %1$d)</string>
-    <string name="privileges_runs_other">uid %1$d</string>
+    <string name="privileges_runs_shell">shell (uid %1$s)</string>
+    <string name="privileges_runs_root">root (uid %1$s)</string>
+    <string name="privileges_runs_other">uid %1$s</string>
     <string name="privileges_helper_ready">Ready</string>
     <string name="privileges_helper_starting">Starting</string>
     <string name="privileges_helper_unavailable">Not available</string>
     <string name="privileges_helper_off">Not running</string>
     <string name="privileges_helper_timeout">Not available: Shizuku didn’t start it in 5 s</string>
     <string name="privileges_helper_too_old">Not available: Shizuku is too old</string>
-    <string name="privileges_helper_mismatch">Not available: version mismatch</string>
-    <string name="privileges_helper_died">Not available: it stopped repeatedly</string>
+    <string name="privileges_helper_mismatch">Not available until Coulomb restarts: version mismatch</string>
+    <string name="privileges_helper_died">Not available until Coulomb restarts: it stopped repeatedly</string>
     <string name="privileges_manager_shizuku">Shizuku</string>
     <string name="privileges_get_fork">Get thedjchi’s Shizuku</string>
     <string name="privileges_get_sui">Get Sui</string>
@@ -44,7 +44,7 @@
     <string name="privileges_grant_again">Grant through Shizuku</string>
     <string name="privileges_granting">Granting…</string>
     <string name="privileges_grant_failed">Some grants didn’t go through. Use the ADB commands below.</string>
-    <string name="privileges_usage_settings">Allow app usage in Settings</string>
+    <string name="privileges_usage_settings">Allow usage access in Settings</string>
 
     <!-- Privileges: the Capability Matrix (SPEC 4.6). -->
     <string name="privileges_matrix">Capability Matrix</string>
@@ -53,6 +53,7 @@
     <string name="privileges_rerun">Re-run probes</string>
     <string name="privileges_probing">Checking…</string>
     <string name="privileges_probe_failed">The last check failed; the results below are from before.</string>
+    <string name="privileges_probe_failed_first">The check failed. Re-run probes to try again.</string>
     <string name="privileges_export">Export capability report</string>
     <string name="privileges_export_title">capability report</string>
     <string name="privileges_export_done">Report saved.</string>
@@ -68,8 +69,8 @@
     <string name="fix_connect_shizuku">Needs Shizuku or Sui.</string>
     <string name="fix_start_shizuku">Needs Shizuku running.</string>
     <string name="fix_grant_shizuku">Needs Coulomb allowed in Shizuku.</string>
-    <string name="fix_bootstrap">Needs the grants above.</string>
-    <string name="fix_usage_access">Needs app usage access.</string>
+    <string name="fix_bootstrap">Needs the permissions under Grants.</string>
+    <string name="fix_usage_access">Needs usage access.</string>
     <string name="fix_notifications">Needs notifications allowed.</string>
     <string name="fix_root">Needs root.</string>
     <string name="fix_none">This phone doesn’t expose it.</string>
@@ -111,6 +112,7 @@
     <string name="settings_scale_note">Scales each app’s modeled drain so the total matches the measured drop. Scaled figures are marked Derived.</string>
     <string name="settings_target">Charge target</string>
     <string name="settings_target_note">Charging shows the time to this level. There is no alert at it yet.</string>
+    <string name="settings_save_failed">Couldn’t save that change. Try again.</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_breakdown">Component breakdown</string>
     <string name="settings_breakdown_note">Splits drain by component. It adds a system report at each snapshot, which costs a little battery.</string>
