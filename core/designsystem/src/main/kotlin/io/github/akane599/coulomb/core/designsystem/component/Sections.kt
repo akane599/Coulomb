@@ -154,7 +154,7 @@ public fun CoulombOutlinedButton(
 }
 
 /** Lets the element reach [by] above and below its slot, as a negative block margin does. */
-internal fun Modifier.hangVertically(by: Dp): Modifier =
+public fun Modifier.hangVertically(by: Dp): Modifier =
     layout { measurable, constraints ->
         val trim = by.roundToPx()
         val placeable = measurable.measure(constraints)

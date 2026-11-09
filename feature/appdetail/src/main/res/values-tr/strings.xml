@@ -31,7 +31,6 @@
     <string name="appdetail_state_cached">Önbellekte</string>
     <string name="appdetail_state_cached_definition">Bellekte tutuluyor ama çalışmıyor; Android onu hızlıca yeniden açabilir.</string>
     <string name="appdetail_state_not_split">Ayrılmadı</string>
-    <string name="appdetail_term_action">Anlamını göster</string>
 
     <plurals name="appdetail_woke">
         <item quantity="one">Telefonu bir kez uyandırdı</item>
@@ -60,10 +59,6 @@
         <item quantity="one">%1$s çalışma, toplam %2$s</item>
         <item quantity="other">%1$s çalışma, toplam %2$s</item>
     </plurals>
-    <string name="appdetail_show_all">Tümünü göster (%1$s)</string>
-    <string name="appdetail_show_fewer">Daha az göster</string>
-    <string name="appdetail_state_expanded">Genişletildi</string>
-    <string name="appdetail_state_collapsed">Daraltıldı</string>
     <string name="appdetail_jobs_none">Coulomb’un bu aralık için sakladığı en uzun çalışmalar arasında yok.</string>
 
     <string name="appdetail_network">Ağ ve ön plan süresi</string>
@@ -94,7 +89,6 @@
     <string name="appdetail_column_day">Gün</string>
     <string name="appdetail_column_mah">mAh</string>
     <string name="appdetail_no_records">Kayıt yok</string>
-    <string name="appdetail_view_table">Tablo olarak gör</string>
 
     <string name="appdetail_app_info">Uygulama bilgisi</string>
 

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- A detail page's shared controls (App detail, Health). -->
+<resources>
+    <string name="page_term_action">Anlamını göster</string>
+    <string name="page_view_table">Tablo olarak gör</string>
+    <string name="page_show_all">Tümünü göster (%1$s)</string>
+    <string name="page_show_fewer">Daha az göster</string>
+    <string name="page_state_expanded">Genişletildi</string>
+    <string name="page_state_collapsed">Daraltıldı</string>
+</resources>

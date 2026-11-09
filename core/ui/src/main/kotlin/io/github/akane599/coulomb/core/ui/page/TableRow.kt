@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: The Coulomb contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package io.github.akane599.coulomb.feature.appdetail
+package io.github.akane599.coulomb.core.ui.page
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,12 +45,16 @@ import io.github.akane599.coulomb.core.designsystem.component.CoulombTerm
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.ui.ProvenanceMark
+import io.github.akane599.coulomb.core.ui.R
 import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.label
 
 /** One row of an [InlineTable]: a name, its figures, and an optional note and definition. */
 @Immutable
-internal data class TableRow(
+public data class TableRow(
     val name: String,
     val values: List<String>,
     /** A record's tag: set in the mono face, breaking only at [breakable]'s points. */
@@ -59,6 +63,8 @@ internal data class TableRow(
     val note: String? = null,
     /** The name is a term with this definition (DESIGN.md, Terms). */
     val term: String? = null,
+    /** The provenance of the row's figures, marked after the last one, where rows differ in it. */
+    val mark: Provenance? = null,
 )
 
 /**
@@ -70,16 +76,17 @@ internal data class TableRow(
  * table longer than [shown] rows ends with "Show all".
  */
 @Composable
-internal fun InlineTable(
+public fun InlineTable(
     columns: List<String>,
     rows: List<TableRow>,
+    modifier: Modifier = Modifier,
     termAction: String? = null,
     shown: Int = Int.MAX_VALUE,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     var open by rememberSaveable { mutableStateOf(false) }
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
         // One em converted, then multiplied: Android's non-linear text scaling barely grows a size as
         // large as 120 sp, so converting the product would keep the threshold near 120 dp at any scale.
         val nameMin = with(LocalDensity.current) { EM.toDp() * NAME_MIN_EM }
@@ -102,13 +109,13 @@ internal fun InlineTable(
             val visible = if (open || rows.size <= shown) rows else rows.take(shown)
             visible.forEach { row -> TableLine(row, columns, stacked, valueWidth, termAction) }
             if (rows.size > shown) {
-                val state = stringResource(if (open) R.string.appdetail_state_expanded else R.string.appdetail_state_collapsed)
+                val state = stringResource(if (open) R.string.page_state_expanded else R.string.page_state_collapsed)
                 CoulombTextButton(
                     text =
                         if (open) {
-                            stringResource(R.string.appdetail_show_fewer)
+                            stringResource(R.string.page_show_fewer)
                         } else {
-                            stringResource(R.string.appdetail_show_all, rememberFormats().integer(rows.size.toLong()))
+                            stringResource(R.string.page_show_all, rememberFormats().integer(rows.size.toLong()))
                         },
                     onClick = { open = !open },
                     modifier = Modifier.padding(top = CoulombSpacing.Space4).semantics { stateDescription = state },
@@ -129,9 +136,13 @@ private fun FigureCell(
     width: Dp,
     color: Color,
     style: TextStyle,
+    mark: Provenance? = null,
 ) {
     Box(Modifier.padding(start = CoulombSpacing.Space12).width(width), contentAlignment = Alignment.TopEnd) {
-        Text(text, color = color, style = style)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text, color = color, style = style)
+            mark?.let { ProvenanceMark(it) }
+        }
     }
 }
 
@@ -149,7 +160,8 @@ private fun TableLine(
     val spoken =
         listOfNotNull(row.name, row.note).joinToString(". ") + ". " +
             labels.zip(row.values).joinToString(", ") { (column, value) -> "$column $value" } +
-            row.term?.let { ". $it" }.orEmpty()
+            row.term?.let { ". $it" }.orEmpty() +
+            row.mark?.let { ". " + stringResource(it.label) }.orEmpty()
     val rowModifier = Modifier.fillMaxWidth().hairline(colors.hairline).padding(vertical = CoulombSpacing.Space12)
     val name: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier) {
@@ -175,24 +187,40 @@ private fun TableLine(
                 Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space4),
                 horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16),
             ) {
-                labels.zip(row.values).forEach { (column, value) ->
-                    Text(
-                        buildAnnotatedString {
-                            withStyle(SpanStyle(color = colors.textSecondary)) { append(column) }
-                            append(' ')
-                            append(value)
-                        },
-                        color = colors.textPrimary,
-                        style = type.data,
-                    )
+                labels.zip(row.values).forEachIndexed { index, (column, value) ->
+                    MarkedFigure(row.mark.takeIf { index == labels.lastIndex }) {
+                        Text(
+                            buildAnnotatedString {
+                                withStyle(SpanStyle(color = colors.textSecondary)) { append(column) }
+                                append(' ')
+                                append(value)
+                            },
+                            color = colors.textPrimary,
+                            style = type.data,
+                        )
+                    }
                 }
             }
         }
     } else {
         Row(rowModifier.then(semantics)) {
             name(Modifier.weight(1f))
-            row.values.forEach { FigureCell(it, valueWidth, colors.textPrimary, type.data) }
+            row.values.forEachIndexed { index, value ->
+                FigureCell(value, valueWidth, colors.textPrimary, type.data, row.mark.takeIf { index == row.values.lastIndex })
+            }
         }
+    }
+}
+
+/** [content], then [mark] after it where there is one. */
+@Composable
+private fun MarkedFigure(
+    mark: Provenance?,
+    content: @Composable () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        content()
+        mark?.let { ProvenanceMark(it) }
     }
 }
 

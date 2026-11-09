@@ -60,6 +60,8 @@ import io.github.akane599.coulomb.core.ui.breakdown.chartSemantics
 import io.github.akane599.coulomb.core.ui.breakdown.hue
 import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.page.Note
+import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import io.github.akane599.coulomb.core.ui.R as UiR
 
 /**
@@ -151,77 +153,6 @@ internal fun windowName(
         is DrainSpan.Days -> stringResource(R.string.appdetail_window_days, formats.days(span.first, span.last))
     }
 
-/** A section's heading with the provenance of all its figures (lab `.section-head` with its mark). */
-@Composable
-internal fun SectionTitle(
-    title: String,
-    provenance: Provenance?,
-    modifier: Modifier = Modifier,
-    first: Boolean = false,
-) {
-    val colors = CoulombTheme.colors
-    val type = CoulombTheme.typography
-    // The first section of the wide layout's second column lines up with the header beside it.
-    val top = if (first) CoulombSpacing.Space8 else currentSectionGap()
-    val head = modifier.fillMaxWidth().padding(top = top, bottom = CoulombSpacing.Space12).semantics { heading() }
-    if (provenance != null) {
-        MarkedText(title, provenance, type.title, colors.textPrimary, head)
-    } else {
-        Text(title, head, color = colors.textPrimary, style = type.title)
-    }
-}
-
-/** A table's or group's sub-heading (lab `.subhead`); a glossary term when it has a [definition]. */
-@Composable
-internal fun Subhead(
-    text: String,
-    definition: String? = null,
-) {
-    val colors = CoulombTheme.colors
-    val type = CoulombTheme.typography
-    val modifier = Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space24, bottom = CoulombSpacing.Space4).semantics { heading() }
-    if (definition != null) {
-        Box(
-            modifier,
-        ) { CoulombTerm(text, definition, stringResource(R.string.appdetail_term_action), type.bodySubhead, colors.textPrimary) }
-    } else {
-        Text(text, modifier, color = colors.textPrimary, style = type.bodySubhead)
-    }
-}
-
-/** A line that qualifies a figure or table above it, in Caption, `text-secondary`. */
-@Composable
-internal fun Note(
-    text: String,
-    modifier: Modifier = Modifier,
-    top: Dp = CoulombSpacing.Space8,
-) {
-    Text(
-        text,
-        modifier.fillMaxWidth().padding(top = top),
-        color = CoulombTheme.colors.textSecondary,
-        style = CoulombTheme.typography.caption,
-    )
-}
-
-/**
- * A line that stands in for a missing table, list or chart, in Body, `text-secondary`, as on Drain
- * (DESIGN.md: a line standing in for content is Body; a note qualifying one is Caption).
- */
-@Composable
-internal fun StandIn(
-    text: String,
-    modifier: Modifier = Modifier,
-    top: Dp = CoulombSpacing.Space8,
-) {
-    Text(
-        text,
-        modifier.fillMaxWidth().padding(top = top),
-        color = CoulombTheme.colors.textSecondary,
-        style = CoulombTheme.typography.body,
-    )
-}
-
 /**
  * Where it went (SPEC 10.4 item 4): S4's components as one stacked bar with its parts listed under
  * it, then its process states as a table, each with what S4 did not split (ADR-0041 §2, §3).
@@ -276,7 +207,7 @@ internal fun WhereItWent(
             Modifier
                 .fillMaxWidth()
                 .height(BarShape.Box)
-                .chartSemantics(description, stringResource(R.string.appdetail_view_table), onViewTable),
+                .chartSemantics(description, stringResource(UiR.string.page_view_table), onViewTable),
         )
         FlowRow(
             Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8).clearAndSetSemantics {},
@@ -351,13 +282,3 @@ internal fun AppInfoRow(onClick: () -> Unit) {
 
 private val LinkRowHeight = 56.dp
 private val LinkIconSize = 20.dp
-
-/** "View as table" under an evidence chart (DESIGN.md, Charts). */
-@Composable
-internal fun ViewTableButton(onClick: () -> Unit) {
-    CoulombTextButton(
-        text = stringResource(R.string.appdetail_view_table),
-        onClick = onClick,
-        edge = ButtonEdge.Start,
-    )
-}

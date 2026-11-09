@@ -26,6 +26,13 @@ import io.github.akane599.coulomb.core.ui.FigureText
 import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.page.InlineTable
+import io.github.akane599.coulomb.core.ui.page.Note
+import io.github.akane599.coulomb.core.ui.page.SectionTitle
+import io.github.akane599.coulomb.core.ui.page.StandIn
+import io.github.akane599.coulomb.core.ui.page.Subhead
+import io.github.akane599.coulomb.core.ui.page.TableRow
+import io.github.akane599.coulomb.core.ui.page.ViewTableButton
 import java.time.Instant
 import java.time.ZoneId
 import io.github.akane599.coulomb.core.ui.R as UiR
@@ -51,7 +58,7 @@ internal fun ProcessStateTable(
     InlineTable(
         columns = listOf(stringResource(R.string.appdetail_state), stringResource(R.string.appdetail_column_mah)),
         rows = rows,
-        termAction = stringResource(R.string.appdetail_term_action),
+        termAction = stringResource(UiR.string.page_term_action),
     )
 }
 
@@ -85,7 +92,7 @@ internal fun Woke(
         }
         // Only beside a count: under "not collected" a partial note would contradict it.
         if (coverage == Coverage.PARTIAL && alarms != null) Note(stringResource(R.string.appdetail_alarms_partial))
-        Subhead(stringResource(R.string.appdetail_wakelocks), stringResource(R.string.appdetail_wakelocks_definition))
+        Subhead(stringResource(R.string.appdetail_wakelocks), definition = stringResource(R.string.appdetail_wakelocks_definition))
         when {
             coverage == Coverage.NONE -> StandIn(stringResource(R.string.appdetail_wakelocks_not_recorded))
 
@@ -95,7 +102,7 @@ internal fun Woke(
 
             else -> WakelockTable(view, formats)
         }
-        Subhead(stringResource(R.string.appdetail_jobs), stringResource(R.string.appdetail_jobs_definition))
+        Subhead(stringResource(R.string.appdetail_jobs), definition = stringResource(R.string.appdetail_jobs_definition))
         when {
             coverage == Coverage.NONE -> StandIn(stringResource(R.string.appdetail_jobs_not_recorded))
             view.jobs.isEmpty() -> StandIn(stringResource(R.string.appdetail_jobs_none))
@@ -319,7 +326,7 @@ internal fun Trend(
                     marker = stringResource(R.string.appdetail_trend_updated).takeIf { scale.updated != null },
                 ),
             summary = summary,
-            viewTableLabel = stringResource(R.string.appdetail_view_table),
+            viewTableLabel = stringResource(UiR.string.page_view_table),
             onViewTable = onViewTable,
             markerAt = scale.updated?.let { day -> days.indexOfFirst { it.day == day } },
         )
