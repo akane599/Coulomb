@@ -7,9 +7,10 @@ plugins {
 
 android {
     targetProjectPath = ":app"
-    // SPEC 0.4: the application id lives only in gradle.properties.
+    // SPEC 0.4: the application id lives only in gradle.properties. The app's benchmark build adds
+    // ".bench" (AndroidApplicationConventionPlugin, ADR-0050), so it installs beside a user's Coulomb.
     defaultConfig.testInstrumentationRunnerArguments["targetPackage"] =
-        providers.gradleProperty("coulomb.applicationId").get()
+        providers.gradleProperty("coulomb.applicationId").get() + ".bench"
     // Macrobenchmark runs against the app's `benchmark` build type (SPEC 15.6, 16.5).
     buildTypes {
         create("benchmark") {

@@ -53,6 +53,10 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                         initWith(getByName("release"))
                         signingConfig = signingConfigs.getByName("debug")
                         matchingFallbacks += "release"
+                        // Its own package beside an installed Coulomb, whose data a benchmark run must
+                        // never replace; removed on its own after the run (ADR-0050).
+                        applicationIdSuffix = BENCHMARK_SUFFIX
+                        resValue("string", "app_name", "$appName benchmark")
                     }
                 }
                 lint.checkDependencies = true
@@ -88,3 +92,9 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
 
 /** AGP's artifact-type attribute; "android-manifest" selects each dependency's AndroidManifest.xml. */
 private val ARTIFACT_TYPE: Attribute<String> = Attribute.of("artifactType", String::class.java)
+
+/**
+ * The benchmark build's package suffix; `:benchmark` targets the same package. Not ".benchmark":
+ * that is `:benchmark`'s own test package.
+ */
+private const val BENCHMARK_SUFFIX = ".bench"
