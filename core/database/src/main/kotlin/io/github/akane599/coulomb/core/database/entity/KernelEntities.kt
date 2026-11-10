@@ -228,7 +228,7 @@ public data class WakeupSourceStatEntity(
 /**
  * SPEC 8 `KernelLogEvent` (ADR-0029 §3): one S27 record. Unique per `(kernelBoot, seq)` and inserted
  * with `INSERT OR IGNORE`, so reading a record twice stores it once. [kind] is a [KernelCodes]
- * event code; [tagId] a `history_tag` id without a foreign key, like `history_event`'s, whose
+ * event code; [tagId] a `history_tag` id without a foreign key, like a history event's, whose
  * prune also checks this table. The row goes with the snapshot whose read first stored it, or at
  * the S27 ring's 7-day cut.
  */

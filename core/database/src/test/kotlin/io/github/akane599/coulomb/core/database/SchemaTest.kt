@@ -15,8 +15,8 @@ class SchemaTest : DatabaseTest() {
         // Changing a table changes this hash. Bump the version and add a tested migration instead
         // (SPEC 8, MigrationTest): version 1 is installed on a phone, so even the P2 schema freeze
         // (ADR-0021) migrates rather than edits.
-        assertThat(db.openHelper.readableDatabase.version).isEqualTo(6)
-        assertThat(string("SELECT identity_hash FROM room_master_table")).isEqualTo("657ecf02f10d6d502d9b844b3c797eb1")
+        assertThat(db.openHelper.readableDatabase.version).isEqualTo(7)
+        assertThat(string("SELECT identity_hash FROM room_master_table")).isEqualTo("cf6f69dbafd9bbb6c9f0e611c4415b0d")
     }
 
     @Test

@@ -94,7 +94,18 @@ internal object Migrations {
             override fun migrate(db: SupportSQLiteDatabase) = WithoutRowid.rebuild(db)
         }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    /**
+     * Version 7 (ADR-0051) packs the history ring: `history_event`'s rows become `history_chunk`'s
+     * byte strings, each event keeping its id, and `history_counter` and `history_tag.lastEventId`
+     * take over what `AUTOINCREMENT` and a scan of every event did ([HistoryChunksMigration]).
+     */
+    val MIGRATION_6_7: Migration =
+        object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) = HistoryChunksMigration.migrate(db)
+        }
+
+    val ALL: Array<Migration> =
+        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
     /** The 20 S4 columns of version 4 (`PowerColumns`), in their exported order. */
     private const val POWER_COLUMNS =

@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.data
 
+import android.util.Log
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.ZoneSource
 import io.github.akane599.coulomb.core.database.dao.HistoryDao
@@ -10,6 +11,7 @@ import io.github.akane599.coulomb.core.database.dao.SampleDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.StoredLevelChange
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
+import io.github.akane599.coulomb.core.database.entity.CorruptChunkException
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.model.SessionKind
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -99,11 +101,20 @@ public class BatteryRepository
             return sessions.filter { LevelDropsCache.timed(it) && (it.endWall ?: 0) > open.startWall }
         }
 
-        /** A session's stored level changes, or null until a history read past its end is stored. */
+        /**
+         * A session's stored level changes, or null until a history read past its end is stored. A
+         * chunk that does not decode gives none: the session counts from its ends, and the cache
+         * keeps that, so the log has one line per session rather than one per sample.
+         */
         private suspend fun levelChanges(session: SessionEntity): List<StoredLevelChange>? {
             val end = checkNotNull(session.endElapsedNs)
             if (!history.readAfter(session.bootSeq, end)) return null
-            return history.levelChanges(session.bootSeq, session.startElapsedNs, session.bootSeq, end)
+            return try {
+                history.levelChanges(session.bootSeq, session.startElapsedNs, session.bootSeq, end)
+            } catch (e: CorruptChunkException) {
+                Log.w(TAG, "history of session ${session.id} does not decode; timed by its ends", e)
+                emptyList()
+            }
         }
 
         private fun BatterySampleEntity.toBatteryNow() =
@@ -122,5 +133,6 @@ public class BatteryRepository
             /** SPEC 10.2: the live chart shows 10 minutes. */
             public const val LIVE_WINDOW_MS: Long = 10 * 60_000L
             private const val UA_PER_MA = 1_000.0
+            private const val TAG = "Coulomb:battery"
         }
     }

@@ -7,6 +7,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.database.dao.NewHistoryEvent
 import io.github.akane599.coulomb.core.database.dao.StoredLevelChange
+import io.github.akane599.coulomb.core.database.entity.CorruptChunkException
+import io.github.akane599.coulomb.core.database.entity.HistoryChunkCodec
 import io.github.akane599.coulomb.core.database.entity.HistoryGapEntity
 import io.github.akane599.coulomb.core.model.HistoryGapReason
 import io.github.akane599.coulomb.core.model.history.HistoryChange
@@ -140,10 +142,119 @@ class HistoryDaoTest : DatabaseTest() {
         }
 
     @Test
-    fun kindsAreStoredAsCodes() =
+    fun aReadIsPackedIntoChunksAndEveryEventKeepsAnId() =
         runTest {
-            dao.insertRead(listOf(event(1, 1, type = HistoryKind.BATTERY_TEMPERATURE, change = HistoryChange.STOP)), emptyList())
-            assertThat(string("SELECT type || ',' || change FROM history_event")).isEqualTo("9,1")
+            val many = List(HistoryChunkCodec.MAX_EVENTS + 904) { event(1, it.toLong(), tag = "t${it % 7}".takeIf { _ -> it % 3 == 0 }) }
+            assertThat(dao.insertRead(many, emptyList())).isEqualTo(5_000)
+            assertThat(dao.insertRead(listOf(event(2, 5)), emptyList())).isEqualTo(5_001)
+            // A read with no events stores nothing and marks the event before it.
+            assertThat(dao.insertRead(emptyList(), emptyList())).isEqualTo(5_001)
+
+            assertThat(string("SELECT group_concat(firstId || ':' || count, ' ') FROM (SELECT * FROM history_chunk ORDER BY firstId)"))
+                .isEqualTo("1:4096 4097:904 5001:1")
+            val events = dao.events(0, 0, 9, 0)
+            assertThat(events.map { it.event.id }).isEqualTo((1L..5_001L).toList())
+            assertThat(events.map { it.event.bootSeq to it.event.elapsedMs }).isEqualTo(many.map { it.bootSeq to it.elapsedMs } + (2 to 5L))
+            assertThat(events.map { it.tag }).isEqualTo(many.map { it.tag } + null)
+            assertThat(events.take(many.size).map { it.event.uid }).isEqualTo(many.map { it.uid })
+        }
+
+    @Test
+    fun aSpanReadsOnlyItsEventsFromTheChunksAroundIt() =
+        runTest {
+            val snapshots = db.snapshotDao()
+            // Three reads, each marked by a snapshot at its end; the reads take no time.
+            for (read in 0 until 3) {
+                val mark = dao.insertRead(List(10) { event(1, read * 1_000L + it * 100) }, emptyList())
+                snapshots.insert(snapshot(elapsedS = read + 1L, historyEventId = mark).copy(durationMs = 0))
+            }
+            // Inside the second read: the first read's chunk is before the span's snapshot mark.
+            assertThat(dao.events(1, 1_250 * MS, 1, 1_650 * MS).map { it.event.id }).containsExactly(14L, 15L, 16L, 17L).inOrder()
+            // Across two reads.
+            assertThat(
+                dao.events(1, 1_900 * MS, 1, 2_100 * MS + 1).map { it.event.elapsedMs },
+            ).containsExactly(1_900L, 2_000L, 2_100L).inOrder()
+        }
+
+    @Test
+    fun idsRunOnAfterTheRingHasEmptied() =
+        runTest {
+            val mark = dao.insertRead(listOf(event(1, 100), event(1, 200)), emptyList())
+            db.snapshotDao().insert(snapshot(elapsedS = 1, historyEventId = mark).copy(durationMs = 0))
+            dao.deleteBefore(bootSeq = 1, elapsedNs = 5 * NS_PER_S)
+            assertThat(long("SELECT COUNT(*) FROM history_chunk")).isEqualTo(0)
+            // An id at or below the snapshot's mark would read as already cut (ADR-0021).
+            assertThat(dao.insertRead(emptyList(), emptyList())).isEqualTo(2)
+            assertThat(dao.insertRead(listOf(event(1, 9_000)), emptyList())).isEqualTo(3)
+            assertThat(dao.events(1, 2 * NS_PER_S, 2, 0).map { it.event.id }).containsExactly(3L)
+        }
+
+    @Test
+    fun aTagStaysWhileAStoredEventUsesIt() =
+        runTest {
+            val snapshots = db.snapshotDao()
+            val first = dao.insertRead(listOf(event(1, 100, tag = "both"), event(1, 200, tag = "first only")), emptyList())
+            snapshots.insert(snapshot(elapsedS = 1, historyEventId = first).copy(durationMs = 0))
+            val second = dao.insertRead(listOf(event(1, 1_100, tag = "both"), event(1, 1_200, tag = "second only")), emptyList())
+            snapshots.insert(snapshot(elapsedS = 2, historyEventId = second).copy(durationMs = 0))
+
+            // Before any cut, nothing is unused.
+            dao.deleteUnusedTags()
+            assertThat(long("SELECT COUNT(*) FROM history_tag")).isEqualTo(3)
+
+            dao.deleteBefore(bootSeq = 1, elapsedNs = 1_500 * MS)
+            assertThat(
+                string("SELECT group_concat(tag, ',') FROM (SELECT tag FROM history_tag ORDER BY tag)"),
+            ).isEqualTo("both,second only")
+            assertThat(dao.events(0, 0, 9, 0).map { it.tag }).containsExactly("both", "second only").inOrder()
+
+            dao.deleteBefore(bootSeq = 1, elapsedNs = 5 * NS_PER_S)
+            assertThat(long("SELECT COUNT(*) FROM history_tag")).isEqualTo(0)
+        }
+
+    @Test
+    fun aMarkInsideAChunkBoundsTheReadsAndKeepsTheChunk() =
+        runTest {
+            val snapshots = db.snapshotDao()
+            // One read of ten events, ids 1 to 10, in one chunk. A snapshot marking id 4 cuts it in the
+            // middle; no version writes one, but the reads go by id and must not depend on that.
+            val mark = dao.insertRead(List(10) { level((it + 1) * 100L, 90L - it) }, emptyList())
+            snapshots.insert(snapshot(elapsedS = 0, historyEventId = 4).copy(elapsedNs = 450 * MS, durationMs = 0))
+            snapshots.insert(snapshot(elapsedS = 2, historyEventId = mark).copy(durationMs = 0))
+
+            assertThat(dao.events(1, 500 * MS, 1, 1_500 * MS).map { it.event.id }).isEqualTo((5L..10L).toList())
+            assertThat(dao.levelChanges(1, 500 * MS, 1, 750 * MS).map { it.elapsedMs }).containsExactly(500L, 600L, 700L).inOrder()
+            assertThat(dao.events(1, 300 * MS, 1, 1_500 * MS).map { it.event.id }).isEqualTo((3L..10L).toList())
+
+            // The cut keeps a chunk that reaches past the mark whole, the events below it too.
+            dao.deleteBefore(bootSeq = 1, elapsedNs = 500 * MS)
+            assertThat(string("SELECT group_concat(firstId || ':' || count) FROM history_chunk")).isEqualTo("1:10")
+            assertThat(dao.events(0, 0, 9, 0)).hasSize(10)
+            dao.deleteBefore(bootSeq = 1, elapsedNs = 3 * NS_PER_S)
+            assertThat(long("SELECT COUNT(*) FROM history_chunk")).isEqualTo(0)
+        }
+
+    @Test
+    fun aReadWithMoreTagsThanABatchStoresAndMarksEveryOne() =
+        runTest {
+            // 1,200 tags: more than one batch of ids for the lookup and for the marks.
+            val many = List(1_200) { event(1, it.toLong(), tag = "tag $it", type = HistoryKind.WAKE_LOCK, change = HistoryChange.START) }
+            val mark = dao.insertRead(many, emptyList())
+            assertThat(long("SELECT COUNT(*) FROM history_tag")).isEqualTo(1_200)
+            assertThat(long("SELECT COUNT(*) FROM history_tag WHERE lastEventId = $mark")).isEqualTo(1_200)
+            assertThat(dao.events(0, 0, 9, 0).map { it.tag }).isEqualTo(many.map { it.tag })
+
+            db.snapshotDao().insert(snapshot(elapsedS = 5, historyEventId = mark).copy(durationMs = 0))
+            dao.deleteBefore(bootSeq = 1, elapsedNs = 6 * NS_PER_S)
+            assertThat(long("SELECT COUNT(*) FROM history_tag")).isEqualTo(0)
+        }
+
+    @Test
+    fun aCorruptChunkFailsTheReadInsteadOfInventingEvents() =
+        runTest {
+            dao.insertRead(listOf(event(1, 100), event(1, 200)), emptyList())
+            sql("UPDATE history_chunk SET count = 3")
+            assertThat(failure { dao.events(0, 0, 9, 0) }).isInstanceOf(CorruptChunkException::class.java)
         }
 
     private companion object {

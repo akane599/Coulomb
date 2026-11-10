@@ -41,8 +41,10 @@ import kotlin.random.Random
  * dump at every heavy snapshot that S4 would read, so every window on battery stores component rows
  * (ADR-0035, Size): at most 33 a window.
  *
- * The synthetic phone follows the rates measured on the S25 Ultra at the 2026-11-07 checkpoint:
- * about 75 screen cycles, 160 heavy and 210 light snapshots and 66,000 stored history events a day.
+ * The synthetic phone follows the rates measured on the S25 Ultra over four days (capture of
+ * 2026-11-10, ADR-0051): about 96 screen cycles, 197 heavy and 210 light snapshots and 68,700
+ * stored history events a day. The phone's 238 heavy snapshots a day include 54 reboots in those
+ * days, which were development; the weekly reboot here stays.
  * Its days are a night on the charger (every third night on battery, 8 h with the screen off), a
  * short top-up, Coulomb opened once, package broadcasts in bursts, and a reboot every week.
  *
@@ -325,7 +327,7 @@ class CollectorStressTest {
         }
 
         private fun mark(day: Int) {
-            val history = long("SELECT COUNT(*) FROM history_event")
+            val history = long("SELECT IFNULL(SUM(count), 0) FROM history_chunk")
             val bytes = long("PRAGMA page_count") * long("PRAGMA page_size")
             log(
                 "day %2d: heavy %d, light %d, level samples %d, debounced %d, sampler %d; history rows %d, blobs %d, db %.1f MB"
@@ -484,7 +486,15 @@ class CollectorStressTest {
                 val all = long("SELECT COUNT(*) FROM $table")
                 if (all == 0L) 0.0 else long("SELECT COUNT(*) FROM $table x WHERE $capped").toDouble() / all
             }
-        val sizes = Sizes(long("PRAGMA page_count") * long("PRAGMA page_size"), bytes, cappedShare)
+        val rows = (DETAIL_TABLES + AGGREGATES).associateWith { long("SELECT COUNT(*) FROM $it") }
+        val sizes =
+            Sizes(
+                long("PRAGMA page_count") * long("PRAGMA page_size"),
+                bytes,
+                cappedShare,
+                rows,
+                long("SELECT IFNULL(MAX(id), 0) FROM window_result"),
+            )
         // Free pages count in the file, as on the phone: retention vacuums only above 10% (ADR-0018).
         log("free pages: %.2f MB".format(long("PRAGMA freelist_count") * long("PRAGMA page_size") / MB))
         log(
@@ -503,7 +513,10 @@ class CollectorStressTest {
      * - Capped whole: raw samples, history, and the snapshot counters (kept 2 h).
      * - Capped in part, a table's bytes split by row count ([CAPPED_ROWS]): consecutive windows,
      *   reference and charge-session detail, and the snapshots only those point to.
-     * - Aggregates grow for 180 days, then turn hourly: a sixtieth of the rate.
+     * - Aggregates: 180 days of one-minute rows, at the phone's rate when the run's is lower, and
+     *   [HOURLY_ROWS_PER_DAY] hourly rows for each older day.
+     * - Window ids pass 32,767 within the year and then take a byte more in every copy a detail row
+     *   holds ([WINDOW_ID_COPIES]); day [DAYS]'s rows are still below it (ADR-0051).
      */
     private fun projection(
         mid: Sizes,
@@ -517,13 +530,10 @@ class CollectorStressTest {
             val early = (mid.tableBytes[table] ?: 0) * (1 - (mid.cappedShare[table] ?: 0.0))
             if (late <= early) continue
             val perDay = (late - early) / days
-            growth[table] =
-                if (table == AGGREGATES) {
-                    perDay * (MINUTE_AGGREGATE_DAYS + (YEAR_DAYS - RAW_DAYS - MINUTE_AGGREGATE_DAYS) / 60.0) - late
-                } else {
-                    perDay * (YEAR_DAYS - DAYS)
-                }
+            if (table != AGGREGATES) growth[table] = perDay * (YEAR_DAYS - DAYS)
         }
+        growth[AGGREGATES] = aggregates(mid, end, days)
+        growth["wider window ids"] = widerWindowIds(mid, end, days)
         log(
             "growth to day 365: " +
                 growth.entries
@@ -532,6 +542,44 @@ class CollectorStressTest {
                     .joinToString { (name, b) -> "$name %.2f MB".format(b / MB) },
         )
         return end.fileBytes + growth.values.sum()
+    }
+
+    /** The aggregates' bytes at day 365, less what day [DAYS] already holds. */
+    private fun aggregates(
+        mid: Sizes,
+        end: Sizes,
+        days: Double,
+    ): Double {
+        val rows = end.rows.getValue(AGGREGATES)
+        if (rows == 0L) return 0.0
+        val bytes = (end.tableBytes[AGGREGATES] ?: 0).toDouble()
+        val rowBytes = bytes / rows
+        val perDay = maxOf((rows - mid.rows.getValue(AGGREGATES)) / days, PHONE_MINUTE_ROWS_PER_DAY)
+        val hourlyDays = YEAR_DAYS - RAW_DAYS - MINUTE_AGGREGATE_DAYS
+        log("aggregates: %.0f one-minute rows a day counted, %.1f bytes a row".format(perDay, rowBytes))
+        return (perDay * MINUTE_AGGREGATE_DAYS + HOURLY_ROWS_PER_DAY * hourlyDays) * rowBytes - bytes
+    }
+
+    /**
+     * A byte for each copy of a window id above [TWO_BYTE_IDS] in the detail rows of day 365: the
+     * rows the 30-day cut removes, all of them that late, and the kept rows written after the ids
+     * pass it.
+     */
+    private fun widerWindowIds(
+        mid: Sizes,
+        end: Sizes,
+        days: Double,
+    ): Double {
+        val idsPerDay = end.maxWindowId / DAYS.toDouble()
+        if (idsPerDay <= 0) return 0.0
+        val wideFrom = maxOf(TWO_BYTE_IDS / idsPerDay, DAYS.toDouble())
+        return WINDOW_ID_COPIES.entries.sumOf { (table, copies) ->
+            val capped = end.rows.getValue(table) * (end.cappedShare[table] ?: 0.0)
+            val keptEnd = end.rows.getValue(table) - capped
+            val keptMid = mid.rows.getValue(table) * (1 - (mid.cappedShare[table] ?: 0.0))
+            val keptPerDay = maxOf(keptEnd - keptMid, 0.0) / days
+            copies * (capped + keptPerDay * maxOf(YEAR_DAYS - wideFrom, 0.0))
+        }
     }
 
     private fun long(query: String): Long =
@@ -588,6 +636,9 @@ class CollectorStressTest {
         val fileBytes: Long,
         val tableBytes: Map<String, Long>,
         val cappedShare: Map<String, Double>,
+        /** Row counts of the detail tables and the aggregates. */
+        val rows: Map<String, Long>,
+        val maxWindowId: Long,
     )
 
     private companion object {
@@ -607,7 +658,7 @@ class CollectorStressTest {
         const val START_WALL_MS = 1_793_491_200_000L + 9 * 3_600_000L
         val ZONE: ZoneOffset = ZoneOffset.ofHours(3)
 
-        /** Stored history events a day at the 2026-11-07 checkpoint (an upper bound, docs/progress.md). */
+        /** Stored history events a day over the phone's four days (capture of 2026-11-10, ADR-0051). */
         const val HISTORY_PER_DAY = 68_702.0
         const val GAP_MIN_MS = 72_000L
         const val GAP_MAX_MS = 9 * MINUTE_MS
@@ -628,7 +679,8 @@ class CollectorStressTest {
         val CAPPED_TABLES =
             setOf(
                 "battery_sample",
-                "history_event",
+                "history_chunk",
+                "history_counter",
                 "history_gap",
                 "history_tag",
                 "uid_power",
@@ -674,8 +726,18 @@ class CollectorStressTest {
         const val BUDGET_MB = 150.0
         const val MAX_MINUTES = 10.0
 
-        /** 95% of the phone's 158 a day. */
-        const val MIN_HEAVY_PER_DAY = 150
+        /** 95% of the run's own 197 a day at the phone's screen cycles (ADR-0051). */
+        const val MIN_HEAVY_PER_DAY = 187
+
+        /** One-minute aggregate rows the phone stores a day (capture of 2026-11-10). */
+        const val PHONE_MINUTE_ROWS_PER_DAY = 1_144.0
+        const val HOURLY_ROWS_PER_DAY = 24
+
+        /** SQLite stores an integer up to 32,767 in two bytes and the next in three. */
+        const val TWO_BYTE_IDS = 32_767.0
+
+        /** How many times a row stores its window id: in the table, and in each index that holds it. */
+        val WINDOW_ID_COPIES = mapOf("window_stat" to 1, "window_uid" to 3, "window_wake" to 2, "window_component" to 2)
         const val MIN_HISTORY_ROWS = (0.8 * DAYS * HISTORY_PER_DAY).toLong()
 
         /** Root's kernel storage after a year, an upper bound (ADR-0029): the run is in shell mode. */

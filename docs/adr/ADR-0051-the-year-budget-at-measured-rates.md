@@ -120,7 +120,63 @@ Its recommendation, which this ADR takes:
 
 ## Results
 
-Pending: filled in when schema 7 has run on the emulator.
+**Stress test, API 37 emulator, 2026-11-10, schema 7, at the measured rates** (root's 5.5 MB added,
+S4 on, 4,836 of 5,455 consecutive windows broken down):
+
+| | Schema 5 | Schema 7 |
+| --- | --- | --- |
+| Day 31's file | 106.1 MB | 56.6 MB |
+| History, 2.14 million events | 53.0 MB | 16.3 MB (7.6 bytes an event) |
+| `window_stat` at day 31 | 25.5 MB | 12.5 MB |
+| `window_stat` growth to day 365 | 11.3 MB | 5.5 MB |
+| **Projected after a year** | 166.3 MB | **119.0 MB** |
+
+- The schema 7 figure is by the corrected projection, which the schema 5 one is not: it counts
+  21.1 MB of aggregates at the phone's 1,144 one-minute rows a day (14.7 MB before) and 1.6 MB for
+  wider window ids. The margin is 21%.
+- The run took 3.6 minutes, with a worst main-thread delay of 4 ms. Heap after GC went from 5.4 to
+  5.0 MB (−7.0%).
+- `SizeBudgetTest`: a history event takes 13.4 bytes with its tag and value (29.1 before) and a
+  window detail row 41.6 (50.7). Its thresholds tighten from 32 and 60 bytes to 16 and 46.
+
+**The phone's database** (copy of 2026-11-10, schema 5, 273,935 events), migrated on the JVM:
+- 21.3 MB → 14.8 MB; history 6.8 MB → 1.9 MB in 965 chunks (7.1 bytes an event); `window_stat`
+  3.3 MB → 1.7 MB.
+- `tools/validation/report.py`'s decoder, written apart from the app's, reads back every event
+  identical to the original rows.
+- Each tag's `lastEventId` is the last event that used it, every snapshot mark falls at a chunk's
+  end, and the next id is one above the last event.
+- `integrity_check` passes, the other tables keep their row counts, and protocols B and E read
+  the same as on schema 5.
+
+## Review
+
+One independent read-only review of the codec, the migration and the DAO found no way to lose or
+change an event. It found four robustness defects, all fixed before the commit:
+
+1. **The reads took the writer.** Room runs a DAO `@Transaction` method on the writer connection,
+   so Now's read of a session's level changes could wait for the collector, or hold it up.
+   `levelChanges` now reads the marks and the chunks in one query and needs no transaction.
+   `events` keeps its transaction for its tags; nothing in the app calls it yet.
+2. **A corrupt chunk broke Now.** The exception left the screen's read. `BatteryRepository` now
+   catches `CorruptChunkException`, logs it and times that session by its ends. The cache keeps
+   that result, so the log gets one line per session, not one per sample.
+3. **The migration read the whole table through one cursor.** It now reads 8,192 rows a page, by
+   key.
+4. **The migration read boots, codes and UIDs with `getInt`,** which turns an out-of-range number
+   into a different one. It now reads `Long`s and refuses a number that does not fit.
+
+The review also listed six missing tests. They now exist:
+- a mark inside a chunk, for the reads and the cut;
+- the Python decoder against the frozen chunk (`report.py --self-test`, in `check.sh`'s static
+  step);
+- the migration's counter with an empty ring and a mark above every id;
+- a refused row, which leaves the database at version 6;
+- every stored code fitting the format's bits;
+- a read with more tags than one batch of ids.
+
+The paged migration was rerun on the phone's copy. It wrote the same chunks byte for byte, the same
+tags and counter, and the same rates.
 
 ## Consequences
 

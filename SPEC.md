@@ -569,9 +569,12 @@ entity WakeTag(id PK, tag)
 entity StatKey(id PK, name)
   // interned tags and keys; detail provenance as codes (ADR-0021)
 
-entity HistoryEvent(id PK, bootSeq, elapsedMs, type, change, baseline, uid?, tagId?, value?)
-  // compact 30-day ring: codes, interned tags, no time index (ADR-0015); ms (ADR-0021)
-entity HistoryTag(id PK, tag)
+entity HistoryChunk(firstId PK, count, data)
+  // the 30-day ring: one read's events in order, packed (ADR-0051). Each event holds bootSeq,
+  // elapsedMs, type, change, baseline, uid?, tagId?, value? and has the id firstId + its index;
+  // codes, interned tags, no time index (ADR-0015); ms (ADR-0021)
+entity HistoryCounter(id PK, nextEventId)
+entity HistoryTag(id PK, tag, lastEventId)
 entity HistoryGap(id PK, startMonotonicMs, endMonotonicMs, startBootSeq, startElapsedNs,
   endBootSeq, endElapsedNs, reason)
 

@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.database
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -16,6 +17,7 @@ import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
+import io.github.akane599.coulomb.core.database.entity.HistoryChunkCodec
 import io.github.akane599.coulomb.core.database.entity.HistoryCodes
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.KmsgSpan
@@ -331,6 +333,183 @@ class MigrationTest {
                 assertThat(long(db, "SELECT COUNT(*) FROM window_stat")).isEqualTo(1)
             }
         }
+
+    @Test
+    fun sixToSevenPacksTheHistoryAndKeepsEveryEventItsIdAndItsTag() =
+        runTest {
+            helper.createDatabase(NAME, 4).use { v4 -> (recordsV4() + historyV4()).forEach(v4::execSQL) }
+            val before = helper.runMigrationsAndValidate(NAME, 6, true, *Migrations.ALL).use(::historyRows)
+            assertThat(before).hasSize(8)
+
+            helper.runMigrationsAndValidate(NAME, 7, true, *Migrations.ALL).use { v7 ->
+                assertThat(strings(v7, "SELECT name FROM sqlite_master WHERE name = 'history_event'")).isEmpty()
+                // A chunk ends at each snapshot's mark (3 and 9), at the break after id 4 and with the last event.
+                assertThat(strings(v7, "SELECT firstId || ':' || count FROM history_chunk ORDER BY firstId"))
+                    .containsExactly("2:2", "4:1", "7:3", "10:2")
+                    .inOrder()
+                // Above the highest id ever given, 20, though that event is gone.
+                assertThat(strings(v7, "SELECT id || ':' || nextEventId FROM history_counter")).containsExactly("0:21")
+                assertThat(strings(v7, "SELECT tag || ':' || lastEventId FROM history_tag ORDER BY id"))
+                    .containsExactly("*alarm*:4", "lock:11", "kernel only:0")
+                    .inOrder()
+            }
+
+            migrated { db ->
+                val events = db.historyDao().events(0, 0, 99, 0)
+                assertThat(
+                    events.map {
+                        val e = it.event
+                        listOf(
+                            e.id,
+                            e.bootSeq,
+                            e.elapsedMs,
+                            HistoryCodes.kindCode(e.type),
+                            HistoryCodes.changeCode(e.change),
+                            if (e.baseline) 1 else 0,
+                            e.uid ?: "-",
+                            e.tagId ?: "-",
+                            e.value ?: "-",
+                        ).joinToString("|")
+                    },
+                ).isEqualTo(before)
+                assertThat(events.map { it.tag }).containsExactly(null, "*alarm*", "*alarm*", null, "lock", null, null, "lock").inOrder()
+                // The span between the two marked snapshots still finds its events.
+                assertThat(db.historyDao().events(1, 10 * NS_PER_S, 1, 20 * NS_PER_S).map { it.event.id }).containsExactly(4L)
+                assertThat(db.historyDao().insertRead(listOf(event(3, 5)), emptyList())).isEqualTo(21)
+                db.historyDao().deleteUnusedTags()
+                assertThat(long(db, "SELECT COUNT(*) FROM history_tag")).isEqualTo(2)
+            }
+        }
+
+    @Test
+    fun sixToSevenSplitsALongRunOfEventsAcrossPages() =
+        runTest {
+            helper.createDatabase(NAME, 4).use { v4 ->
+                // A mark at 1000 moves the chunks off the pages' bounds: the read of 8,192 rows ends inside a chunk.
+                v4.execSQL(recordsV4().first())
+                v4.execSQL("UPDATE snapshot SET historyEventId = 1000 WHERE id = 1")
+                v4.execSQL(
+                    "WITH RECURSIVE n(i) AS (SELECT 100 UNION ALL SELECT i + 1 FROM n WHERE i < 20099) " +
+                        "INSERT INTO history_event SELECT i, 1 + i / 3000, i * 17, i % 60, i % 3, i % 2, " +
+                        "CASE WHEN i % 4 = 0 THEN 10000 + i END, NULL, CASE WHEN i % 5 = 0 THEN -i END FROM n",
+                )
+            }
+            val before = helper.runMigrationsAndValidate(NAME, 6, true, *Migrations.ALL).use(::historyRows)
+            assertThat(before).hasSize(20_000)
+
+            helper.runMigrationsAndValidate(NAME, 7, true, *Migrations.ALL).use { v7 ->
+                assertThat(strings(v7, "SELECT firstId || ':' || count FROM history_chunk ORDER BY firstId"))
+                    .containsExactly("100:901", "1001:4096", "5097:4096", "9193:4096", "13289:4096", "17385:2715")
+                    .inOrder()
+                assertThat(strings(v7, "SELECT nextEventId FROM history_counter")).containsExactly("20100")
+                val decoded =
+                    v7.query("SELECT firstId, count, data FROM history_chunk ORDER BY firstId").use { chunks ->
+                        buildList {
+                            while (chunks.moveToNext()) {
+                                HistoryChunkCodec.decode(chunks.getInt(1), chunks.getBlob(2)).forEachIndexed { index, e ->
+                                    add(
+                                        listOf(
+                                            chunks.getLong(0) + index,
+                                            e.bootSeq,
+                                            e.elapsedMs,
+                                            e.typeCode,
+                                            e.changeCode,
+                                            if (e.baseline) 1 else 0,
+                                            e.uid ?: "-",
+                                            e.tagId ?: "-",
+                                            e.value ?: "-",
+                                        ).joinToString("|"),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                assertThat(decoded).isEqualTo(before)
+            }
+        }
+
+    @Test
+    fun sixToSevenWithAnEmptyHistoryCountsOnAboveTheHighestMark() =
+        runTest {
+            helper.createDatabase(NAME, 4).use { v4 ->
+                v4.execSQL(recordsV4().first())
+                // The ring was cut empty after a snapshot that had marked id 50; no id was ever counted.
+                v4.execSQL("UPDATE snapshot SET historyEventId = 50 WHERE id = 1")
+            }
+            helper.runMigrationsAndValidate(NAME, 6, true, *Migrations.ALL).close()
+            helper.runMigrationsAndValidate(NAME, 7, true, *Migrations.ALL).use { v7 ->
+                assertThat(strings(v7, "SELECT COUNT(*) FROM history_chunk")).containsExactly("0")
+                assertThat(strings(v7, "SELECT nextEventId FROM history_counter")).containsExactly("51")
+            }
+            migrated { db -> assertThat(db.historyDao().insertRead(listOf(event(1, 5)), emptyList())).isEqualTo(51) }
+        }
+
+    @Test
+    fun sixToSevenRefusesARowItCannotHoldAndLeavesVersion6() =
+        runTest {
+            val refused =
+                listOf(
+                    // A change code above two bits.
+                    "INSERT INTO history_event VALUES (2, 1, 9500, $LEVEL, 4, 0, NULL, NULL, 80)" to "change code 4",
+                    // A UID beyond an Int, which a cut would turn into another app.
+                    "INSERT INTO history_event VALUES (2, 1, 9500, $WAKE_LOCK, $START, 0, 4294977419, NULL, NULL)" to "uid 4294977419",
+                )
+            refused.forEachIndexed { index, (row, reason) ->
+                val name = "$NAME-refused-$index"
+                helper.createDatabase(name, 4).use { v4 -> v4.execSQL(row) }
+                helper.runMigrationsAndValidate(name, 6, true, *Migrations.ALL).close()
+                val error = runCatching { helper.runMigrationsAndValidate(name, 7, true, *Migrations.ALL).close() }.exceptionOrNull()
+                assertThat(generateSequence(error) { it.cause }.mapNotNull { it.message }.joinToString(" / ")).contains(reason)
+                SQLiteDatabase
+                    .openDatabase(
+                        ApplicationProvider.getApplicationContext<Context>().getDatabasePath(name).path,
+                        null,
+                        SQLiteDatabase.OPEN_READONLY,
+                    ).use { file ->
+                        assertThat(file.version).isEqualTo(6)
+                        file.rawQuery("SELECT COUNT(*) FROM history_event", null).use {
+                            it.moveToFirst()
+                            assertThat(it.getLong(0)).isEqualTo(1)
+                        }
+                        file.rawQuery("SELECT COUNT(*) FROM sqlite_master WHERE name = 'history_chunk'", null).use {
+                            it.moveToFirst()
+                            assertThat(it.getLong(0)).isEqualTo(0)
+                        }
+                    }
+            }
+        }
+
+    /** Every `history_event` row as text, in id order, for a before-and-after comparison. */
+    private fun historyRows(db: SupportSQLiteDatabase): List<String> =
+        strings(
+            db,
+            "SELECT id || '|' || bootSeq || '|' || elapsedMs || '|' || type || '|' || change || '|' || baseline || '|' || " +
+                "IFNULL(uid, '-') || '|' || IFNULL(tagId, '-') || '|' || IFNULL(value, '-') FROM history_event ORDER BY id",
+        )
+
+    /**
+     * Version 4 history (the table is the same up to version 6): snapshots 1 and 2 mark ids 3 and
+     * 9, ids 5 and 6 are missing, time steps back and the boot changes inside a run, and the
+     * highest id ever given, 20, is deleted. One tag is used only by the kernel log.
+     */
+    private fun historyV4() =
+        listOf(
+            "UPDATE snapshot SET historyEventId = 3 WHERE id = 1",
+            "UPDATE snapshot SET historyEventId = 9 WHERE id = 2",
+            "INSERT INTO history_tag VALUES (5, '*alarm*')",
+            "INSERT INTO history_tag VALUES (6, 'lock')",
+            "INSERT INTO history_tag VALUES (7, 'kernel only')",
+            "INSERT INTO history_event VALUES (2, 1, 9500, $LEVEL, $SET, 0, NULL, NULL, 80)",
+            "INSERT INTO history_event VALUES (3, 1, 9900, $WAKE_LOCK, $START, 1, 10123, 5, NULL)",
+            "INSERT INTO history_event VALUES (4, 1, 15001, $WAKE_LOCK, ${HistoryCodes.changeCode(HistoryChange.STOP)}, 0, 10123, 5, NULL)",
+            "INSERT INTO history_event VALUES (7, 1, 21000, $LEVEL, $SET, 0, NULL, NULL, -3)",
+            "INSERT INTO history_event VALUES (8, 1, 20990, $WAKE_LOCK, $START, 0, -1, 6, 9223372036854775807)",
+            "INSERT INTO history_event VALUES (9, 2, 40, $LEVEL, $SET, 1, NULL, NULL, 79)",
+            "INSERT INTO history_event VALUES (10, 2, 86400000000, $LEVEL, $SET, 0, 0, NULL, 78)",
+            "INSERT INTO history_event VALUES (11, 2, 86400000001, $WAKE_LOCK, $START, 0, 10124, 6, NULL)",
+            "INSERT INTO history_event VALUES (20, 2, 86400000002, $LEVEL, $SET, 0, NULL, NULL, 77)",
+            "DELETE FROM history_event WHERE id = 20",
+        )
 
     /** Every `window_stat` and `window_uid` row as text, for a before-and-after comparison. */
     private fun detail(db: SupportSQLiteDatabase): List<String> =

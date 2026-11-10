@@ -633,19 +633,25 @@ night was needed. Nothing on the phone changed; it stayed on the screen the owne
 SPEC 17 as amended by ADR-0019 and ADR-0049: fixtures parse (done), the 30-day stress test (passed),
 protocols A and E on the phone (E passed on 2026-11-10). The P2 gate stays open on two items:
 - **Protocol A.** It needs the screen session.
-- **The year budget at the measured rates: fails, 166.3 MB against 150.**
+- **The year budget at the measured rates: fixed in schemas 6 and 7 (ADR-0051).**
   - The stress test's rates came from a 17 h checkpoint (ADR-0019): about 75 screen cycles,
     160 heavy snapshots and 65,800 history events a day, taken as an upper bound (ADR-0021).
   - Four days on the phone are busier: about 97 screen cycles, 238 heavy snapshots (some from
     54 reboots) and 68,702 history events a day.
-  - Rerun on the API 37 emulator on 2026-11-10 with 68,702 events and about 96 screen cycles a
-    day (197 heavy snapshots a day): day 31's file is 106.1 MB, and the year projects to
-    166.3 MB with root's 5.5 MB and S4 on. The run took 3.8 min; heap after GC −8.2%.
-  - The largest parts: `history_event` 53.0 MB (the 30-day ring); `window_stat` 25.5 MB at
-    day 31 and 11.3 MB more by day 365; `sample_aggregate` 14.7 MB and `session` 10.9 MB of
-    growth.
-  - ADR-0021's lossless step 1 is already in schema 5. What comes next is a schema decision,
-    so a second opinion is running; the ADR follows it.
+  - At those rates schema 5 failed: day 31's file 106.1 MB, the year 166.3 MB against 150, with
+    root's 5.5 MB and S4 on.
+  - A second opinion recommended two lossless changes, and the stress test now runs at the
+    measured rates with a corrected projection:
+    - schema 6 stores `window_stat` without a rowid, so its key is kept once (half its size);
+    - schema 7 packs the history ring into chunks, 7.6 bytes an event instead of 24.9. Every
+      event keeps its id.
+  - Result on the API 37 emulator, 2026-11-10: day 31's file 56.6 MB, the year **119.0 MB**
+    (21% under). The run took 3.6 min; heap after GC −7.0%.
+  - The phone's own database (a copy, 273,935 events) migrates from 21.3 MB to 14.8 MB. A second
+    decoder, in `report.py`, reads every event back identical to the original rows.
+  - An independent review found no way to lose an event. Its four robustness defects and six
+    missing tests are fixed (ADR-0051, Review).
+  - The phone still runs schema 5. Updating it again is the owner's call.
 - The gate review decides whether history tags from before an unclean boot are kept.
 
 ## P1 Privileged core (2026-11-06)

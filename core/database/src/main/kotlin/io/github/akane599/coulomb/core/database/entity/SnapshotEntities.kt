@@ -51,7 +51,7 @@ public data class SnapshotEntity(
     /** The history cursor after this snapshot's read: the `NEXT:` value (ADR-0014). */
     val historyCursorMs: Long?,
     /**
-     * The highest `history_event.id` once this snapshot's history read was stored, or null when
+     * The id of the last history event stored once this snapshot's history read was, or null when
      * the read failed. Every event before this snapshot has an id up to it; every later event, a
      * higher one (ADR-0015).
      */

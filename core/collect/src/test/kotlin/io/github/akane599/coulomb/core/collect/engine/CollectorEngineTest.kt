@@ -701,7 +701,7 @@ class CollectorEngineTest {
             device.set(hours = 5.0, level = 60, chargeMah = 3_000.0, screenOn = true)
             engine().handle(SnapshotTrigger.SERVICE_STARTED)
 
-            assertThat(count("SELECT COUNT(*) FROM history_event")).isGreaterThan(0)
+            assertThat(count("SELECT IFNULL(SUM(count), 0) FROM history_chunk")).isGreaterThan(0)
             assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)).isNull()
         }
 

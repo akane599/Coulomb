@@ -209,7 +209,7 @@ def rates(db, capture, days, out):
     for kind, count in db.execute("SELECT kind, COUNT(*) FROM snapshot GROUP BY kind ORDER BY kind"):
         row(f"{kind.lower()} snapshots", count)
     row("battery samples", db.execute("SELECT COUNT(*) FROM battery_sample").fetchone()[0])
-    row("history events", db.execute("SELECT COUNT(*) FROM history_event").fetchone()[0])
+    row("history events", history_event_count(db))
     for reason, count in db.execute("SELECT reason, COUNT(*) FROM history_gap GROUP BY reason ORDER BY reason"):
         row(f"history gaps: {reason}", count)
     for kind, count in db.execute("SELECT kind, COUNT(*) FROM window_result GROUP BY kind ORDER BY kind"):
@@ -363,6 +363,13 @@ def level_changes(db, boot, start_ns, end_ns):
     and elapsed time: (elapsed ns, level). Restated states after a read start are not changes
     (ADR-0014). The app reads them by snapshot id range instead (`HistoryDao.levelChanges`), and
     `CaptureRatesTest` gives its rates."""
+    if packed_history(db):
+        return [
+            (ms * 1_000_000, value)
+            for _, event_boot, ms, kind, _, baseline, _, _, value in packed_events(db)
+            if event_boot == boot and kind == BATTERY_LEVEL and not baseline and value is not None
+            and start_ns <= ms * 1_000_000 < end_ns
+        ]
     t = event_ns(db)
     rows = db.execute(
         f"""SELECT {t}, value FROM history_event
@@ -375,6 +382,73 @@ def level_changes(db, boot, start_ns, end_ns):
 def event_ns(db):
     """History time in nanoseconds: schema 1 stores nanoseconds, later schemas milliseconds (ADR-0021)."""
     return "elapsedMs * 1000000" if "elapsedMs" in columns(db, "history_event") else "elapsedNs"
+
+
+def packed_history(db):
+    """Schema 7 on: history events are packed into `history_chunk` (ADR-0051)."""
+    return bool(columns(db, "history_chunk"))
+
+
+def history_event_count(db):
+    if packed_history(db):
+        return db.execute("SELECT IFNULL(SUM(count), 0) FROM history_chunk").fetchone()[0]
+    return db.execute("SELECT COUNT(*) FROM history_event").fetchone()[0]
+
+
+_PACKED = {}
+
+
+def packed_events(db):
+    """Every packed history event, in id order, as
+    (id, bootSeq, elapsedMs, type, change, baseline, uid, tagId, value). Decoded once per database."""
+    if id(db) not in _PACKED:
+        events = []
+        for first_id, count, data in db.execute("SELECT firstId, count, data FROM history_chunk ORDER BY firstId"):
+            events.extend(decode_chunk(first_id, count, bytes(data)))
+        _PACKED[id(db)] = events
+    return _PACKED[id(db)]
+
+
+def decode_chunk(first_id, count, data):
+    """`HistoryChunkCodec` format 1: a format byte, then per event a head varint
+    (`type << 7 | change << 5 | flags`; flags 1 baseline, 2 uid, 4 tag, 8 value, 16 new boot), the
+    boot and time in full after a new boot or else the time since the event before, then the uid,
+    tag id and value its flags name. Varints are base 128, low bits first; signed ones are zigzag."""
+    if not data or data[0] != 1:
+        raise ValueError(f"history chunk {first_id}: unknown format")
+    pos, boot, ms, events = 1, 0, 0, []
+
+    def unsigned():
+        nonlocal pos
+        result, shift = 0, 0
+        while True:
+            byte = data[pos]
+            pos += 1
+            result |= (byte & 0x7F) << shift
+            if not byte & 0x80:
+                return result
+            shift += 7
+
+    def signed():
+        number = unsigned()
+        return (number >> 1) ^ -(number & 1)
+
+    for index in range(count):
+        head = unsigned()
+        flags = head & 31
+        if flags & 16:
+            boot = unsigned()
+            ms = signed()
+        else:
+            # The app adds in 64 bits, which wrap.
+            ms = (ms + signed() + 2**63) % 2**64 - 2**63
+        uid = signed() if flags & 2 else None
+        tag_id = unsigned() if flags & 4 else None
+        value = signed() if flags & 8 else None
+        events.append((first_id + index, boot, ms, head >> 7, (head >> 5) & 3, flags & 1, uid, tag_id, value))
+    if pos != len(data):
+        raise ValueError(f"history chunk {first_id}: {len(data) - pos} bytes after its last event")
+    return events
 
 
 def first_and_last_drop(start_level, changes):
@@ -696,13 +770,41 @@ def protocol_a(db, video_from, video_to, out):
     out.append("")
 
 
+# `HistoryChunkCodecTest.formatOneIsFrozen`'s chunk: a level of 80 at 100 ms, then a restated wakelock
+# 250 ms later with a UID and a tag.
+FROZEN_CHUNK = bytes.fromhex("01 D8 05 01 C8 01 A0 01 87 0D F4 03 96 9E 01 05")
+FROZEN_EVENTS = [(1, 1, 100, 5, 2, 0, None, None, 80), (2, 1, 350, 13, 0, 1, 10123, 5, None)]
+
+
+def self_test():
+    """Checks the decoder against the app's frozen chunk, so the two cannot drift apart (check.sh runs it)."""
+    failures = []
+    if decode_chunk(1, 2, FROZEN_CHUNK) != FROZEN_EVENTS:
+        failures.append(f"frozen chunk decodes as {decode_chunk(1, 2, FROZEN_CHUNK)}")
+    for name, data in (("a trailing byte", FROZEN_CHUNK + b"\x00"), ("format 2", b"\x02" + FROZEN_CHUNK[1:])):
+        try:
+            decode_chunk(1, 2, data)
+            failures.append(f"a chunk with {name} decodes")
+        except ValueError:
+            pass
+    if failures:
+        sys.exit("report.py self-test failed: " + "; ".join(failures))
+    print("report.py self-test: ok")
+
+
 def main():
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
-    parser.add_argument("capture", type=Path)
+    parser.add_argument("capture", type=Path, nargs="?")
+    parser.add_argument("--self-test", action="store_true", help="check the history decoder and exit")
     parser.add_argument("--coulomb-rates", type=Path, help="CaptureRatesTest's output for this capture (protocol B)")
     parser.add_argument("--video-from", type=parse_time)
     parser.add_argument("--video-to", type=parse_time)
     args = parser.parse_args()
+    if args.self_test:
+        self_test()
+        return
+    if args.capture is None:
+        parser.error("give the capture directory")
     if (args.video_from is None) != (args.video_to is None):
         parser.error("give both --video-from and --video-to, or neither")
 

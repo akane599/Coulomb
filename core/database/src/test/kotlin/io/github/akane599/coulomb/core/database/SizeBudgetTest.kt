@@ -191,8 +191,10 @@ class SizeBudgetTest : DatabaseTest() {
             println("projected after a year: %.1f MB".format(projectedMb))
 
             // Each row's size, with some room: a wider row here is a budget change (ADR-0021).
-            assertThat(history).isLessThan(32.0)
-            assertThat(detail).isLessThan(60.0)
+            // Packed history events and `window_stat` without a rowid (ADR-0051) measure 13.4 and
+            // 41.6 bytes here; they were 29.1 and 50.7.
+            assertThat(history).isLessThan(16.0)
+            assertThat(detail).isLessThan(46.0)
             assertThat(projectedMb).isLessThan(BUDGET_MB)
         }
 

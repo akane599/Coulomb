@@ -27,8 +27,9 @@ import io.github.akane599.coulomb.core.database.entity.DetailCodes
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
 import io.github.akane599.coulomb.core.database.entity.HealthSummaryEntity
+import io.github.akane599.coulomb.core.database.entity.HistoryChunkEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryCodes
-import io.github.akane599.coulomb.core.database.entity.HistoryEventEntity
+import io.github.akane599.coulomb.core.database.entity.HistoryCounterEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryGapEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryTagEntity
 import io.github.akane599.coulomb.core.database.entity.InsightEntity
@@ -64,7 +65,7 @@ import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
  * tables ([HistoryCodes], [DetailCodes]) and of the records kept for good ([RecordCodes]).
  */
 @Database(
-    version = 6,
+    version = 7,
     exportSchema = true,
     entities = [
         DeviceProfileEntity::class,
@@ -100,7 +101,8 @@ import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
         WindowComponentEntity::class,
         StatKeyEntity::class,
         WakeTagEntity::class,
-        HistoryEventEntity::class,
+        HistoryChunkEntity::class,
+        HistoryCounterEntity::class,
         HistoryTagEntity::class,
         HistoryGapEntity::class,
         InsightEntity::class,

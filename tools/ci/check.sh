@@ -13,6 +13,7 @@ run() { echo "> ./gradlew $*"; ./gradlew "$@"; }
 step() {
   case "$1" in
     static)   python3 -I tools/design/icons.py --check
+              python3 -I tools/validation/report.py --self-test
               run spotlessCheck detekt checkModuleBoundaries ;;
     unit)     run test :build-logic:convention:test ;;
     lint)     run :app:lintDebug ;;
