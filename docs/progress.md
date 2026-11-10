@@ -633,13 +633,19 @@ night was needed. Nothing on the phone changed; it stayed on the screen the owne
 SPEC 17 as amended by ADR-0019 and ADR-0049: fixtures parse (done), the 30-day stress test (passed),
 protocols A and E on the phone (E passed on 2026-11-10). The P2 gate stays open on two items:
 - **Protocol A.** It needs the screen session.
-- **The year budget at the measured history rate.**
-  - The stress test assumed 65,800 history events a day as an upper bound (ADR-0021). The phone
-    stored 68,702 a day over 4 days, and 111,000 a day in its longest clean boot. The clean rate is
-    not lower.
-  - At 68,702 a day the 30-day ring holds about 2.6 MB more, so the year projects to about
-    150.8 MB against 150.
-  - ADR-0021's next steps apply. This is a schema decision, so it gets a second opinion first.
+- **The year budget at the measured rates: fails, 166.3 MB against 150.**
+  - The stress test's rates came from a 17 h checkpoint (ADR-0019): about 75 screen cycles,
+    160 heavy snapshots and 65,800 history events a day, taken as an upper bound (ADR-0021).
+  - Four days on the phone are busier: about 97 screen cycles, 238 heavy snapshots (some from
+    54 reboots) and 68,702 history events a day.
+  - Rerun on the API 37 emulator on 2026-11-10 with 68,702 events and about 96 screen cycles a
+    day (197 heavy snapshots a day): day 31's file is 106.1 MB, and the year projects to
+    166.3 MB with root's 5.5 MB and S4 on. The run took 3.8 min; heap after GC −8.2%.
+  - The largest parts: `history_event` 53.0 MB (the 30-day ring); `window_stat` 25.5 MB at
+    day 31 and 11.3 MB more by day 365; `sample_aggregate` 14.7 MB and `session` 10.9 MB of
+    growth.
+  - ADR-0021's lossless step 1 is already in schema 5. What comes next is a schema decision,
+    so a second opinion is running; the ADR follows it.
 - The gate review decides whether history tags from before an unclean boot are kept.
 
 ## P1 Privileged core (2026-11-06)
