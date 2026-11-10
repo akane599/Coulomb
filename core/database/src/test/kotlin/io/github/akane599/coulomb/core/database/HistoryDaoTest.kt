@@ -5,6 +5,8 @@ package io.github.akane599.coulomb.core.database
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.database.dao.NewHistoryEvent
+import io.github.akane599.coulomb.core.database.dao.StoredLevelChange
 import io.github.akane599.coulomb.core.database.entity.HistoryGapEntity
 import io.github.akane599.coulomb.core.model.HistoryGapReason
 import io.github.akane599.coulomb.core.model.history.HistoryChange
@@ -95,6 +97,36 @@ class HistoryDaoTest : DatabaseTest() {
             assertThat(dao.events(0, 0, 9, 0)).hasSize(2)
             dao.deleteBefore(bootSeq = 2, elapsedNs = 801 * MS)
             assertThat(dao.events(0, 0, 9, 0)).isEmpty()
+        }
+
+    private fun level(
+        elapsedMs: Long,
+        value: Long,
+        baseline: Boolean = false,
+    ) = NewHistoryEvent(1, elapsedMs, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, baseline, uid = null, tag = null, value = value)
+
+    @Test
+    fun levelChangesAreTheSpansRecordedLevelsWithoutRestatedOnes() =
+        runTest {
+            val mark =
+                dao.insertRead(
+                    listOf(
+                        level(200, 80, baseline = true),
+                        level(300, 79),
+                        event(1, 350, tag = "lock", type = HistoryKind.WAKE_LOCK, change = HistoryChange.START),
+                        level(400, 78),
+                        level(900, 77),
+                    ),
+                    emptyList(),
+                )
+            db.snapshotDao().insert(snapshot(elapsedS = 1, historyEventId = mark).copy(durationMs = 0))
+
+            assertThat(dao.readAfter(1, 800 * MS)).isTrue()
+            assertThat(dao.readAfter(1, 2_000 * MS)).isFalse()
+            // The restated level, the wakelock and the change after the span are left out (ADR-0049).
+            assertThat(dao.levelChanges(1, 150 * MS, 1, 800 * MS))
+                .containsExactly(StoredLevelChange(1, 300, 79), StoredLevelChange(1, 400, 78))
+                .inOrder()
         }
 
     @Test

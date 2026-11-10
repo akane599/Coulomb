@@ -139,8 +139,8 @@ Coulomb answers one question within three seconds of opening: **what is draining
 | Time to verdict, cold start with cached data | p50 < 800 ms, p90 < 1.2 s on Galaxy S25 Ultra | Macrobenchmark (16.5) |
 | Capacity estimate accuracy | Within ±3% of reference after 3 qualifying charge sessions | Protocol D (16.6) |
 | Per-app attribution vs system | Within ±1 percentage point of `BatteryUsageStats` for the same window | Protocol C |
-| Screen-off drain rate | Within ±0.1 %/h of the level-delta method over ≥ 2 h | Protocol B |
-| Coulomb's own battery cost, Full mode | Over one 8 h screen-off night: 0 wakeups and 0 alarms from Coulomb, ≤ 0.1% of capacity, partial wakelocks < 30 s | Protocol E (ADR-0019) |
+| Screen-off drain rate | Within ±0.1 %/h of the platform's level changes (first to last drop) over screen-off sessions of ≥ 2 h, together ≥ 4 points | Protocol B (ADR-0049) |
+| Coulomb's own battery cost, Full mode | Over screen-off sessions on battery of ≥ 30 min, together ≥ 8 h: 0 wakeups and 0 alarms from Coulomb, ≤ 0.3% of capacity a day, partial wakelocks < 30 s per 8 h | Protocol E (ADR-0019, ADR-0049) |
 | Feature parity | 100% of the matrix in section 2 | Checklist (18) |
 | Design quality | All `/impeccable` gates pass (11.12) | Gate log |
 | Stability | 0 crashes and 0 ANRs over 30 simulated days; heap growth after GC < 10% | Stress test (16.3, ADR-0019) |
@@ -1164,10 +1164,10 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 | Protocol | Method | Pass |
 | --- | --- | --- |
 | A. Calibration | 30 min fixed load (video, fixed brightness). Compare integrated `CURRENT_NOW` with the `CHARGE_COUNTER` delta | Agree within 5% |
-| B. Screen-off drain | 8 h overnight, the same night as E. Coulomb's %/h vs (level delta ÷ hours) vs the system battery usage graph | Within ±0.1 %/h |
+| B. Screen-off drain | Stored screen-off sessions on battery of ≥ 2 h, none split by a reboot, together ≥ 4 points. Coulomb's %/h vs the platform's level changes: whole points from the first drop to the last ÷ the time between (ADR-0049) | Within ±0.1 %/h |
 | C. Attribution | 1 h script: 20 min video, 10 min navigation, idle remainder. Compare per-app share with the system Battery usage screen and raw `dumpsys batterystats` | Within ±1 percentage point |
 | D. Capacity | Three qualifying charge sessions. Compare with the system and OEM health values | Within ±3% |
-| E. Self-cost | One night in Full mode, the same night as B: ≥ 8 h with the screen off and unplugged. Read the system's mAh, partial wakelock, alarm and wakeup records for Coulomb's UID at the start and the end of the night (ADR-0019) | While the screen is off: 0 wakeups and 0 alarms from Coulomb; ≤ 0.1% of capacity for the night; Coulomb partial wakelocks < 30 s in total |
+| E. Self-cost | Full mode. Stored screen-off sessions on battery of ≥ 30 min, none split by a reboot, together ≥ 8 h; the system's mAh, partial wakelock, alarm and wakeup records for Coulomb's UID over those sessions (ADR-0019, ADR-0049) | While the screen is off: 0 wakeups and 0 alarms from Coulomb; ≤ 0.3% of capacity a day; Coulomb partial wakelocks < 30 s per 8 h |
 | F. Privilege drills | 16.3 failure drills on the real device | All pass |
 | G. OS matrix | Parsing and UI on the API 37 emulator; A–F on the phone; API 36 emulator only for a reported Android 16 issue | All pass or documented as hardware-limited |
 
@@ -1182,7 +1182,7 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 
 ## 17. Delivery phases
 
-Seven phases, each closed by an exit gate; the agent never starts a phase while the previous gate is red, except that P3 starts while the P2 gate waits for its phone night (ADR-0019). Data correctness comes before UI, and design direction is locked in HTML before any Compose screen is built.
+Seven phases, each closed by an exit gate; the agent never starts a phase while the previous gate is red, except that P3 starts while the P2 gate waits for its phone results (ADR-0019, ADR-0049). Data correctness comes before UI, and design direction is locked in HTML before any Compose screen is built.
 
 &#91;embedded content: Delivery roadmap · 7 phases, 7 gates\]
 
@@ -1193,7 +1193,7 @@ The design-lab gate at P3 is the only planned human checkpoint; every other gate
 2. **P1 Privileged core.** Shizuku and Sui client, UserService with streaming AIDL, bootstrap grants, typed command allowlist, capability probes, failure handling (4.5).
    - Gate: protocol F passes on the device; a 20 MB dump streams without OOM; bind-timeout fallback demonstrated.
 3. **P2 Data engine.** Parsers with golden tests, Room schema, collector actor, triggers, samplers, sessions, calibration, references, retention.
-   - Gate: 100% fixtures parse; the stress test (16.3) passes; protocols A and E pass on the phone, E in one night (no UI yet). P3 does not wait for that night: the gate closes when its report arrives (ADR-0019). Longer runs are optional and hold no gate.
+   - Gate: 100% fixtures parse; the stress test (16.3) passes; protocols A and E pass on the phone, E over stored screen-off sessions (ADR-0049; no UI yet). P3 does not wait for E: the gate closes when its report arrives (ADR-0019). Longer runs are optional and hold no gate.
 4. **P3 Design lab.** HTML prototypes of the seven key screens, `/impeccable` loops, tokens locked in `DESIGN.md`.
    - Gate: `npx impeccable detect` returns zero; critique and audit show no major findings; one human review of the direction (the only scheduled human checkpoint). While waiting, continue P4 work that has no UI: analytics wiring, ViewModels, navigation skeleton.
 5. **P4 Core screens.** Now, Drain (all lenses), App detail, Health, Charging, onboarding, Privileges; analytics for capacity and attribution.
@@ -1226,7 +1226,7 @@ The app is done when every box below is ticked with evidence linked in `docs/pro
 
 **Battery cost**
 
-- [ ] Protocol E passes on one 8 h screen-off, unplugged night in Full mode: 0 wakeups and 0 alarms from Coulomb, ≤ 0.1% of capacity, partial wakelocks < 30 s.
+- [ ] Protocol E passes in Full mode over screen-off sessions on battery of ≥ 30 min, together ≥ 8 h: 0 wakeups and 0 alarms from Coulomb, ≤ 0.3% of capacity a day, partial wakelocks < 30 s per 8 h (ADR-0049).
 - [ ] No alarms or long wakelocks anywhere (lint check green).
 - [ ] Nothing animates while idle.
 

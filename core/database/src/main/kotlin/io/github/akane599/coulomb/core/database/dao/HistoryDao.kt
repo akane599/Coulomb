@@ -9,6 +9,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.TypeConverters
+import io.github.akane599.coulomb.core.database.entity.HistoryCodes
 import io.github.akane599.coulomb.core.database.entity.HistoryEventEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryGapEntity
 import io.github.akane599.coulomb.core.database.entity.HistoryTagEntity
@@ -29,6 +31,13 @@ public data class NewHistoryEvent(
     val uid: Int?,
     val tag: String?,
     val value: Long?,
+)
+
+/** A battery level the platform's history recorded: [level] percent at [elapsedMs] in boot [bootSeq]. */
+public data class StoredLevelChange(
+    val bootSeq: Int,
+    val elapsedMs: Long,
+    val level: Long,
 )
 
 /** A stored history event with its tag's text. */
@@ -105,6 +114,54 @@ public abstract class HistoryDao {
         toBootSeq: Int,
         toElapsedNs: Long,
     ): List<StoredHistoryEvent>
+
+    /**
+     * The battery level changes over the span of [events], read through the same id range:
+     * `BATTERY_LEVEL` events that are not restated at a read's start (ADR-0014), in order. A closed
+     * screen-off session's rate is timed by them (ADR-0049).
+     */
+    public open suspend fun levelChanges(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<StoredLevelChange> = changesOf(HistoryKind.BATTERY_LEVEL, fromBootSeq, fromElapsedNs, toBootSeq, toElapsedNs)
+
+    /**
+     * Whether a snapshot at or after `(bootSeq, elapsedNs)` has stored its history read: until one
+     * has, the events up to that time may still be on their way, and [levelChanges] can come back
+     * short.
+     */
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM snapshot WHERE historyEventId IS NOT NULL " +
+            "AND (bootSeq > :bootSeq OR (bootSeq = :bootSeq AND elapsedNs >= :elapsedNs)))",
+    )
+    public abstract suspend fun readAfter(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): Boolean
+
+    @TypeConverters(HistoryCodes::class)
+    @Query(
+        "SELECT e.bootSeq AS bootSeq, e.elapsedMs AS elapsedMs, e.value AS level FROM history_event e WHERE " +
+            "e.id > IFNULL((SELECT historyEventId FROM snapshot WHERE historyEventId IS NOT NULL " +
+            "AND (bootSeq < :fromBootSeq OR (bootSeq = :fromBootSeq AND $READ_END < :fromElapsedNs)) " +
+            "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1), 0) " +
+            "AND e.id <= IFNULL((SELECT historyEventId FROM snapshot WHERE historyEventId IS NOT NULL " +
+            "AND (bootSeq > :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs >= :toElapsedNs)) " +
+            "ORDER BY bootSeq, elapsedNs LIMIT 1), $MAX_ID) " +
+            "AND (e.bootSeq > :fromBootSeq OR (e.bootSeq = :fromBootSeq AND $EVENT_NS >= :fromElapsedNs)) " +
+            "AND (e.bootSeq < :toBootSeq OR (e.bootSeq = :toBootSeq AND $EVENT_NS < :toElapsedNs)) " +
+            "AND e.type = :type AND e.baseline = 0 AND e.value IS NOT NULL " +
+            "ORDER BY e.id",
+    )
+    protected abstract suspend fun changesOf(
+        type: HistoryKind,
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<StoredLevelChange>
 
     /** Gaps that overlap the span of [events]. */
     @Query(

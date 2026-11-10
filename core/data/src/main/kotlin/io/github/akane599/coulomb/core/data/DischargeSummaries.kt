@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.analytics.Discharge
+import io.github.akane599.coulomb.core.analytics.LevelDrops
 import io.github.akane599.coulomb.core.analytics.LevelSpan
 import io.github.akane599.coulomb.core.analytics.ScreenRates
 import io.github.akane599.coulomb.core.analytics.TimeRemaining
@@ -22,6 +23,7 @@ import java.time.ZoneId
  * session's quality here is how far its level ends can be trusted ([levelQuality]), not the stored
  * quality: an open session stores 0 until it closes, and a closed one's stored quality already
  * holds its own level resolution, which [ScreenRates.combine] applies once over the combined drop.
+ * A closed screen-off session with the platform's level [drops] is timed by them (ADR-0049).
  */
 internal object DischargeSummaries {
     /** Sessions the summary reads: since this long before the latest sample, for the history. */
@@ -33,6 +35,7 @@ internal object DischargeSummaries {
         latest: BatterySampleEntity,
         sessions: List<SessionEntity>,
         zone: ZoneId,
+        drops: Map<Long, LevelDrops> = emptyMap(),
     ): DischargeSummary? {
         if (latest.plugType != 0) return null
         val open = sessions.lastOrNull { it.kind == SessionKind.DISCHARGE && it.closeReason == null } ?: return null
@@ -44,7 +47,7 @@ internal object DischargeSummaries {
         val discharges = readable.filter { it.kind == SessionKind.DISCHARGE }.map { it.toDischarge(latest) }
         val current = open.toDischarge(latest)
         val screens = readable.filter { it.kind != SessionKind.DISCHARGE }
-        val spans = screens.flatMap { ScreenRates.discharging(it.toSpan(latest), discharges) }
+        val spans = screens.flatMap { ScreenRates.discharging(it.toSpan(latest, drops[it.id]), discharges) }
         val inSession = spans.filter { it.startWallMs >= current.startWallMs }
         val on = ScreenRates.combine(inSession.filter { it.screenOn })
         val off = ScreenRates.combine(inSession.filter { !it.screenOn })
@@ -106,13 +109,16 @@ internal object DischargeSummaries {
     private fun SessionEntity.toDischarge(latest: BatterySampleEntity) =
         Discharge(startWall, endWall ?: latest.wallMs, startLevel, endLevel ?: latest.levelPct, levelQuality())
 
-    private fun SessionEntity.toSpan(latest: BatterySampleEntity) =
-        LevelSpan(
-            kind == SessionKind.SCREEN_ON,
-            startWall,
-            endWall ?: latest.wallMs,
-            startLevel,
-            endLevel ?: latest.levelPct,
-            levelQuality(),
-        )
+    private fun SessionEntity.toSpan(
+        latest: BatterySampleEntity,
+        drops: LevelDrops? = null,
+    ) = LevelSpan(
+        kind == SessionKind.SCREEN_ON,
+        startWall,
+        endWall ?: latest.wallMs,
+        startLevel,
+        endLevel ?: latest.levelPct,
+        levelQuality(),
+        drops,
+    )
 }

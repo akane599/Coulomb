@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.data
 
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.analytics.LevelDrops
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.model.SessionCloseReason
@@ -105,6 +106,29 @@ class DischargeSummariesTest {
         val left = summary.timeLeft!!
         assertThat(left.shortestHours).isLessThan(80 / 3.5)
         assertThat(left.longestHours).isGreaterThan(80 / 3.5)
+    }
+
+    @Test
+    fun aScreenOffSessionWithThePlatformsDropsIsTimedByThem() {
+        val off = session(SessionKind.SCREEN_OFF, 9.0, 14.0, 100 to 93).copy(id = 7)
+        val sessions =
+            listOf(
+                session(SessionKind.DISCHARGE, 9.0, null, 100 to null),
+                off,
+                session(SessionKind.SCREEN_ON, 14.0, null, 93 to null),
+            )
+        // The gauge held 100% until 10:00, then fell 6 points by 13:00 (ADR-0049).
+        val drops = mapOf(7L to LevelDrops(hour(10.0), 99, hour(13.0), 93))
+
+        val timed = DischargeSummaries.build(sample(15.0, 91), sessions, zone, drops)!!
+        val ends = DischargeSummaries.build(sample(15.0, 91), sessions, zone)!!
+
+        assertThat(timed.screenOff!!.pctPerHour).isWithin(1e-9).of(2.0)
+        // Watched for the whole 5 h: readiness and the caption keep the session's length.
+        assertThat(timed.screenOff.hours).isWithin(1e-9).of(5.0)
+        assertThat(ends.screenOff!!.pctPerHour).isWithin(1e-9).of(1.4)
+        // The deep-sleep share still weighs the whole session.
+        assertThat(timed.deepSleep).isEqualTo(ends.deepSleep)
     }
 
     private fun sleepAfter(hours: Double): DeepSleepShare {

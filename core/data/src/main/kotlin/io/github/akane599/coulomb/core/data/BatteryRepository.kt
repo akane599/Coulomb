@@ -5,9 +5,13 @@ package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.common.ZoneSource
+import io.github.akane599.coulomb.core.database.dao.HistoryDao
 import io.github.akane599.coulomb.core.database.dao.SampleDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
+import io.github.akane599.coulomb.core.database.dao.StoredLevelChange
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
+import io.github.akane599.coulomb.core.database.entity.SessionEntity
+import io.github.akane599.coulomb.core.model.SessionKind
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -31,6 +35,7 @@ public class BatteryRepository
     internal constructor(
         private val samples: SampleDao,
         private val sessions: SessionDao,
+        private val history: HistoryDao,
         private val zone: ZoneSource,
         private val dispatchers: AppDispatchers,
     ) {
@@ -42,15 +47,17 @@ public class BatteryRepository
          */
         public val reading: Flow<BatteryReading?> =
             flow {
-                // The level line's cache belongs to this collection alone.
+                // The level line's and the drops' caches belong to this collection alone.
                 val trail = LevelTrailCache()
+                val drops = LevelDropsCache()
                 emitAll(
                     latest.mapLatest { sample ->
                         if (sample == null) {
                             trail.clear()
+                            drops.clear()
                             null
                         } else {
-                            read(sample, trail)
+                            read(sample, trail, drops)
                         }
                     },
                 )
@@ -59,9 +66,11 @@ public class BatteryRepository
         private suspend fun read(
             sample: BatterySampleEntity,
             trail: LevelTrailCache,
+            dropCache: LevelDropsCache,
         ): BatteryReading {
             val overlapping = sessions.overlapping(DischargeSummaries.KINDS, sample.wallMs - DischargeSummaries.LOOKBACK_MS)
-            val discharge = DischargeSummaries.build(sample, overlapping, zone.zone())
+            val drops = dropCache.read(timedCandidates(sample, overlapping)) { s -> levelChanges(s) }
+            val discharge = DischargeSummaries.build(sample, overlapping, zone.zone(), drops)
             val start = discharge?.startWallMs
             val levels =
                 if (start == null) {
@@ -75,6 +84,26 @@ public class BatteryRepository
                     .samplesBetween(sample.wallMs - LIVE_WINDOW_MS, sample.wallMs + 1)
                     .mapNotNull { s -> s.currentUa?.let { CurrentPoint(s.wallMs, it / UA_PER_MA) } }
             return BatteryReading(sample.toBatteryNow(), discharge, levels, live)
+        }
+
+        /**
+         * The closed screen-off sessions in the open discharge: the ones Now's screen-off rate counts
+         * (ADR-0049). Older ones feed the time estimate's history by their ends.
+         */
+        private fun timedCandidates(
+            sample: BatterySampleEntity,
+            sessions: List<SessionEntity>,
+        ): List<SessionEntity> {
+            if (sample.plugType != 0) return emptyList()
+            val open = sessions.lastOrNull { it.kind == SessionKind.DISCHARGE && it.closeReason == null } ?: return emptyList()
+            return sessions.filter { LevelDropsCache.timed(it) && (it.endWall ?: 0) > open.startWall }
+        }
+
+        /** A session's stored level changes, or null until a history read past its end is stored. */
+        private suspend fun levelChanges(session: SessionEntity): List<StoredLevelChange>? {
+            val end = checkNotNull(session.endElapsedNs)
+            if (!history.readAfter(session.bootSeq, end)) return null
+            return history.levelChanges(session.bootSeq, session.startElapsedNs, session.bootSeq, end)
         }
 
         private fun BatterySampleEntity.toBatteryNow() =

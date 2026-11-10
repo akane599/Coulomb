@@ -40,6 +40,47 @@ class ScreenRatesTest {
     }
 
     @Test
+    fun dropsAreTheFirstAndLastFallAfterTheStartLevel() {
+        val changes = listOf(LevelChange(10, 80), LevelChange(20, 79), LevelChange(30, 80), LevelChange(40, 78), LevelChange(50, 78))
+
+        // 80 at 10 is no drop from a start at 80; the rise to 80 at 30 is no drop either.
+        assertThat(ScreenRates.drops(80, changes)).isEqualTo(LevelDrops(20, 79, 40, 78))
+        // From a start at 81, the first change is already a drop.
+        assertThat(ScreenRates.drops(81, changes)).isEqualTo(LevelDrops(10, 80, 40, 78))
+    }
+
+    @Test
+    fun oneDropOrNoneTimesNothing() {
+        assertThat(ScreenRates.drops(80, listOf(LevelChange(10, 79)))).isNull()
+        assertThat(ScreenRates.drops(80, listOf(LevelChange(10, 80), LevelChange(20, 81)))).isNull()
+        assertThat(ScreenRates.drops(80, emptyList())).isNull()
+    }
+
+    @Test
+    fun aTimedSpanCountsFromItsFirstDropToItsLast() {
+        // 100% held for an hour, then 6 points in 3 h: 2 %/h, not 7 points in 4 h.
+        val timed = span(8, 0.0, 4.0, 100 to 93, screenOn = false).copy(drops = LevelDrops(at(8, 1.0), 99, at(8, 4.0), 93))
+        val rate = ScreenRates.combine(listOf(timed, span(8, 5.0, 6.0, 90 to 88, screenOn = false)))!!
+
+        // 6 + 2 points over 3 + 1 hours counted; watched 5 hours; resolution over the 8 points counted.
+        assertThat(rate.pctPerHour).isWithin(1e-9).of(2.0)
+        assertThat(rate.hours).isWithin(1e-9).of(5.0)
+        assertThat(rate.quality).isWithin(1e-9).of(7.0 / 8)
+    }
+
+    @Test
+    fun aPartOnBatteryKeepsTheDropsOnlyWhenBothFallInsideIt() {
+        val drops = LevelDrops(at(8, 2.0), 79, at(8, 5.0), 76)
+        val span = span(8, 1.0, 6.0, 80 to 75, screenOn = false).copy(drops = drops)
+
+        val inside = ScreenRates.discharging(span, listOf(Discharge(at(8, 1.5), at(8, 7.0), 80, 70, 1.0)))
+        val cut = ScreenRates.discharging(span, listOf(Discharge(at(8, 3.0), at(8, 7.0), 78, 70, 1.0)))
+
+        assertThat(inside.single().drops).isEqualTo(drops)
+        assertThat(cut.single().drops).isNull()
+    }
+
+    @Test
     fun aOnePercentDropEarnsNoTrustAndNoTimeIsNoRate() {
         assertThat(ScreenRates.combine(listOf(span(8, 1.0, 4.0, 60 to 59, screenOn = false)))!!.quality).isEqualTo(0.0)
         assertThat(ScreenRates.combine(listOf(span(8, 1.0, 1.0, 60 to 60)))).isNull()

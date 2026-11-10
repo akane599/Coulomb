@@ -3,18 +3,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Report on a Coulomb validation run from one tools/validation/capture.sh checkpoint.
 
-    python3 -I tools/validation/report.py <capture-dir> [--night-start <capture-dir>]
-                                         [--after-screen-on <capture-dir>]
+    python3 -I tools/validation/report.py <capture-dir> [--coulomb-rates <rates.json>]
                                          [--video-from T --video-to T]
 
-Prints Markdown: the run's collection rates, the heavy snapshot cost and protocol A (calibration)
-of SPEC 16.6. With --night-start, the checkpoint taken when the night began, <capture-dir> is the
-one taken when it ended, before the screen came on, and protocols E (self-cost) and B (screen-off
-drain) are reported for that night (ADR-0019). Coulomb closes the night's session only at the
-screen-on snapshot, so B's Coulomb rate comes from --after-screen-on, a third checkpoint taken after
-the screen came on. T is epoch milliseconds or ISO 8601 with an offset (2026-11-07T21:10+03:00).
-Without --video-from/--video-to, protocol A uses the longest stretch of unplugged, screen-on
-samples of at least 30 minutes.
+Prints Markdown: the run's collection rates, the heavy snapshot cost, and protocols E (self-cost),
+B (screen-off drain) and A (calibration) of SPEC 16.6. E and B read the screen-off sessions Coulomb
+stored, as ADR-0049 amends them: a session counts when it is on battery with the screen off from
+its screen-off snapshot to its screen-on snapshot, with no reboot. B's Coulomb rates come from
+`CaptureRatesTest`, which runs the app's own read path on the capture. T is epoch milliseconds or ISO
+8601 with an offset (2026-11-07T21:10+03:00). Without --video-from/--video-to, protocol A uses the
+longest stretch of unplugged, screen-on samples of at least 30 minutes.
 
 Only aggregate numbers about Coulomb and the device are printed, never another app's name, so the
 output can be committed under docs/validation/ (ADR-0004).
@@ -43,14 +41,21 @@ UA_NS_PER_MAH = 3.6e15  # 1 mAh = 1000 µA × 3600 s
 SAMPLE_GAP_MS = 120_000  # SPEC 7.3: the slowest sampler rate while the screen is on is 30 s
 PROTOCOL_A_MIN_MS = 30 * 60_000
 
-# SPEC 16.6 pass marks (protocols B and E as amended by ADR-0019).
-E_NIGHT_MIN_MS = 8 * 3_600_000
-E_SHARE_PCT_PER_NIGHT = 0.1
-E_WAKELOCK_MS_PER_NIGHT = 30_000
-# A valid night is unplugged and screen-off between the checkpoints; this much slack covers the
-# capture itself.
-NIGHT_SLACK_MS = 2 * 60_000
+# SPEC 16.6 pass marks, protocols B and E as amended by ADR-0049 (owner decision, 2026-11-10).
+B_MIN_MS = 2 * 3_600_000
+B_MIN_DROP_PCT = 4
 B_TOLERANCE_PCT_PER_H = 0.1
+E_MIN_SESSION_MS = 30 * 60_000
+E_TOTAL_MIN_MS = 8 * 3_600_000
+E_SHARE_PCT_PER_DAY = 0.3
+E_WAKELOCK_MS_PER_8H = 30_000
+# A counted session is on battery with the screen off between its two snapshots; this much slack
+# covers the snapshots themselves.
+SESSION_SLACK_MS = 2 * 60_000
+# HistoryCodes.KINDS in :core:database: BATTERY_LEVEL is code 5 in every schema (codes only grow).
+BATTERY_LEVEL = 5
+# Process.SHELL_UID: Shizuku's server and its worker run as shell in shell mode.
+SHELL_UID = 2000
 A_AGREEMENT_PCT = 5.0
 # SPEC 16.5, reported here, gated in P4.
 HEAVY_WALL_MS = 1_500
@@ -291,7 +296,7 @@ def heavy_cost(db, capture, checkin, out):
 
 
 def since_charged(checkin, out):
-    """One checkpoint alone: the platform's own count of Coulomb since the last full charge."""
+    """The platform's own count of Coulomb since the last full charge, for context."""
     if not checkin:
         return
     out.append("## Coulomb since the last full charge\n")
@@ -299,225 +304,320 @@ def since_charged(checkin, out):
         "The platform's own count (`dumpsys batterystats -c`): "
         f"{fmt(checkin.get('own_mah'), 2, ' mAh')} attributed, "
         f"partial wakelocks on battery with the screen off {fmt(checkin.get('awl_ms', 0) / 1000, 1, ' s')}, "
-        f"wakeup alarms {checkin.get('wua', 0)}. Protocols B and E compare the night's checkpoints: pass the "
-        "first with `--night-start` and, for B, one taken after the screen came on with `--after-screen-on` "
-        "(SPEC 16.6, ADR-0019, ADR-0020).\n",
+        f"wakeup alarms {checkin.get('wua', 0)}.\n",
     )
-
-
-def uptime_s(capture):
-    text = read(capture, "uptime.txt")
-    return float(text.split()[0]) if text else None
-
-
-def pid(capture):
-    text = read(capture, "pid.txt")
-    return text if text and text != "none" else None
-
-
-def foreground(capture):
-    """Whether `dumpsys activity services` shows Coulomb's collector in the foreground."""
-    text = read(capture, "services.txt") or ""
-    return "CollectorService" in text and "isForeground=true" in text
-
-
-COUNTERS = ("own_mah", "awl_ms", "wua", "radio_wakeups", "deep_doze_ms", "screen_off_pct", "screen_off_mah")
-
-
-def night_deltas(uid, start_capture, end_capture, start, end):
-    """The night's change in the platform's since-charged counters, or why there is no valid night.
-
-    Each rule closes a way for a broken night to pass (SPEC 16.6, ADR-0019): the counters must run
-    on through the night for Coulomb's UID, Coulomb must run in Full mode throughout, and the phone
-    must stay unplugged with the screen off.
-    """
-    for name, capture in (("start", start_capture), ("end", end_capture)):
-        status = dump_status(capture, "batterystats")
-        if status is None:
-            return None, f"the {name} checkpoint does not record whether `dumpsys batterystats -c` finished; capture again"
-        if not status:
-            return None, f"`dumpsys batterystats -c` failed or printed nothing at the {name} checkpoint"
-    if uid is None:
-        return None, "Coulomb's UID is unknown (no `package.txt` and no `uid_package` row)"
-    a, b = start.get("bt"), end.get("bt")
-    if a is None or b is None:
-        return None, "a checkpoint has no `bt` line"
-    for name, found in (("start", start), ("end", end)):
-        # The foreground service always costs some CPU, so a missing line is a bad capture, not 0.
-        if "own_mah" not in found:
-            return None, f"the {name} checkpoint has no `pwi,uid` line for UID {uid}"
-    up_a, up_b = uptime_s(start_capture), uptime_s(end_capture)
-    if a["start_count"] != b["start_count"] or (up_a is not None and up_b is not None and up_b < up_a):
-        return None, "the phone rebooted between the two checkpoints"
-    first, last = device_wall_ms(start_capture), device_wall_ms(end_capture)
-    if first is None or last is None or last <= first:
-        return None, "the checkpoints have no usable device clock"
-    if b["battery_realtime_ms"] < a["battery_realtime_ms"] or b["start_clock_ms"] > first - 60_000:
-        return None, "the platform reset its statistics during the night"
-    keys = ("battery_realtime_ms", "screen_off_realtime_ms", "screen_off_uptime_ms")
-    delta = {key: b[key] - a[key] for key in keys}
-    for key in COUNTERS:
-        delta[key] = end.get(key, 0) - start.get(key, 0)
-    dropped = [key for key in COUNTERS if delta[key] < 0]
-    if dropped:
-        return None, f"{', '.join(dropped)} went down, which only a stats reset does"
-    wall_ms = last - first
-    if delta["battery_realtime_ms"] < wall_ms - NIGHT_SLACK_MS:
-        plugged = (wall_ms - delta["battery_realtime_ms"]) / 60_000
-        return None, f"the phone was plugged in for {plugged:.0f} min of the night"
-    if delta["screen_off_realtime_ms"] < delta["battery_realtime_ms"] - NIGHT_SLACK_MS:
-        lit = (delta["battery_realtime_ms"] - delta["screen_off_realtime_ms"]) / 60_000
-        return None, f"the screen was on for {lit:.0f} min of the night"
-    pid_a, pid_b = pid(start_capture), pid(end_capture)
-    if pid_a is None or pid_a != pid_b:
-        return None, f"Coulomb's process did not run through the night (PID {pid_a} at the start, {pid_b} at the end)"
-    if not (foreground(start_capture) and foreground(end_capture)):
-        return None, "Coulomb's collector was not a foreground service at both checkpoints (Full mode)"
-    delta["wall_ms"] = wall_ms
-    return delta, None
-
-
-def device_wall_ms(capture):
-    text = read(capture, "device_wall_s.txt")
-    return int(text) * 1000 if text and text.isdigit() else None
-
-
-def battery_level(capture):
-    match = re.search(r"^\s*level: (\d+)", read(capture, "battery.txt") or "", re.MULTILINE)
-    return int(match.group(1)) if match else None
 
 
 def alarm_lines(capture):
     return [line for line in (read(capture, "alarm_coulomb.txt") or "").splitlines() if line.strip()]
 
 
-def protocol_e(uid, start_capture, end_capture, start, end, out):
-    out.append("## Protocol E: self-cost over one night\n")
-    delta, why = night_deltas(uid, start_capture, end_capture, start, end)
-    if delta is None:
-        out.append(f"No result: {why}.\n")
-        return None
-    capacity = end.get("capacity_mah")
-    screen_off_ms = delta["screen_off_realtime_ms"]
-    slept_ms = screen_off_ms - delta["screen_off_uptime_ms"]
-    out.append(
-        f"Between the checkpoints, {delta['wall_ms'] / 3_600_000:.2f} h apart, the phone spent "
-        f"{delta['battery_realtime_ms'] / 3_600_000:.2f} h on battery, {screen_off_ms / 3_600_000:.2f} h of it "
-        f"with the screen off. The CPU slept for {slept_ms / 3_600_000:.2f} h of that, and the device was in "
-        f"deep Doze for {delta['deep_doze_ms'] / 3_600_000:.2f} h. Battery capacity {fmt(capacity, 0, ' mAh')} "
-        f"(the platform's estimate, `pws`). Coulomb's UID is {uid}; its process ran throughout as a "
-        "foreground service.\n",
+def columns(db, table):
+    return {row[1] for row in db.execute(f"PRAGMA main.table_info({table})")}
+
+
+def window_counters(db, window_id, uid):
+    """One window's counters for `uid` (-1: the device), by key. Schema 1 stores the key's text,
+    later schemas a `stat_key` id (ADR-0021)."""
+    if "keyId" in columns(db, "window_stat"):
+        rows = db.execute(
+            "SELECT k.name, w.value FROM window_stat w JOIN stat_key k ON k.id = w.keyId WHERE w.windowId = ? AND w.uid = ?",
+            (window_id, uid),
+        )
+    else:
+        rows = db.execute("SELECT key, value FROM window_stat WHERE windowId = ? AND uid = ?", (window_id, uid))
+    return {key: value for key, value in rows}
+
+
+def covering_windows(db, first, last):
+    """The consecutive windows that tile the snapshots `first` to `last`, or None when they leave a
+    hole or one has lost its detail (ADR-0021 prunes detail after 30 days)."""
+    rows = db.execute(
+        """SELECT id, fromSnapshotId, toSnapshotId, detailPruned FROM window_result
+           WHERE kind = 'CONSECUTIVE' AND fromSnapshotId >= ? AND toSnapshotId <= ? ORDER BY fromSnapshotId""",
+        (first, last),
+    ).fetchall()
+    at = first
+    for row in rows:
+        if row["fromSnapshotId"] != at or row["detailPruned"]:
+            return None
+        at = row["toSnapshotId"]
+    return [row["id"] for row in rows] if rows and at == last else None
+
+
+def history_overlaps_gap(db, boot, start_ns, end_ns):
+    """A history gap (ADR-0014) that reaches into the session leaves its level changes unknown."""
+    return (
+        db.execute(
+            """SELECT 1 FROM history_gap
+               WHERE (startBootSeq < ? OR (startBootSeq = ? AND startElapsedNs < ?))
+                 AND (endBootSeq > ? OR (endBootSeq = ? AND endElapsedNs > ?)) LIMIT 1""",
+            (boot, boot, end_ns, boot, boot, start_ns),
+        ).fetchone()
+        is not None
     )
 
-    # Wakeups: the platform's wakeup alarms for the UID (`wua`) and the radio wakeups it attributes
-    # to the UID (`nt`). Coulomb's own windows cannot add to this: no snapshot runs during the night.
-    alarms_ok = dump_status(start_capture, "alarm") and dump_status(end_capture, "alarm")
-    alarms_start, alarms_end = alarm_lines(start_capture), alarm_lines(end_capture)
-    share = delta["own_mah"] / capacity * 100 if capacity else None
-    wakeups = delta["wua"] + delta["radio_wakeups"]
-    long_enough = screen_off_ms >= E_NIGHT_MIN_MS
 
+def level_changes(db, boot, start_ns, end_ns):
+    """The platform's level changes inside the session, from the stored history (S7), found by boot
+    and elapsed time: (elapsed ns, level). Restated states after a read start are not changes
+    (ADR-0014). The app reads them by snapshot id range instead (`HistoryDao.levelChanges`), and
+    `CaptureRatesTest` gives its rates."""
+    t = event_ns(db)
+    rows = db.execute(
+        f"""SELECT {t}, value FROM history_event
+            WHERE bootSeq = ? AND type = ? AND baseline = 0 AND {t} >= ? AND {t} < ? ORDER BY id""",
+        (boot, BATTERY_LEVEL, start_ns, end_ns),
+    )
+    return [(at, v) for at, v in rows if v is not None]
+
+
+def event_ns(db):
+    """History time in nanoseconds: schema 1 stores nanoseconds, later schemas milliseconds (ADR-0021)."""
+    return "elapsedMs * 1000000" if "elapsedMs" in columns(db, "history_event") else "elapsedNs"
+
+
+def first_and_last_drop(start_level, changes):
+    """(time, level) of the first and last drop below the level before it, or None with fewer than two."""
+    level, drops = start_level, []
+    rise = False
+    for at, value in changes:
+        if value < level:
+            drops.append((at, value))
+        elif value > level:
+            rise = True
+        level = value
+    return (drops[0], drops[-1], rise) if len(drops) >= 2 and drops[-1][0] > drops[0][0] else None
+
+
+def uid_mah(db, windows, uid):
+    """`uid`'s attributed charge over `windows` (ADR-0018 `window_uid`; component rows are apart)."""
+    return sum(
+        row[0] or 0
+        for window_id in windows
+        for row in db.execute("SELECT mAh FROM window_uid WHERE windowId = ? AND uid = ?", (window_id, uid))
+    )
+
+
+def screen_off_sessions(db, uid):
+    """Every closed screen-off session with what protocols B and E need from it, or why it does not
+    count (ADR-0049): split by a reboot (closed by one, or opened at boot), closed by a data gap or a
+    stop, not covered by consecutive windows, or plugged in or lit for more than the slack. A session
+    may open or close at a plug change: the screen stays off, and the windows' clocks show whether
+    it ran on battery throughout."""
+    sessions = []
+    for s in db.execute(
+        """SELECT s.id, s.bootSeq, s.startElapsedNs, s.endElapsedNs, s.startWall, s.endWall, s.startLevel,
+                  s.endLevel, s.startSnapshotId, s.endSnapshotId, s.closeReason,
+                  a.trigger AS opened, b.trigger AS closed, a.bootSeq AS openBoot, b.bootSeq AS closeBoot,
+                  EXISTS(SELECT 1 FROM snapshot p WHERE p.bootSeq = a.bootSeq AND p.elapsedNs < a.elapsedNs) AS afterBoot
+           FROM session s LEFT JOIN snapshot a ON a.id = s.startSnapshotId LEFT JOIN snapshot b ON b.id = s.endSnapshotId
+           WHERE s.kind = 'SCREEN_OFF' AND s.endElapsedNs IS NOT NULL ORDER BY s.startWall""",
+    ):
+        item = {"session": s, "ms": (s["endElapsedNs"] - s["startElapsedNs"]) / NS_PER_MS, "why": None}
+        sessions.append(item)
+        if s["opened"] is None or s["closed"] is None:
+            item["why"] = "a snapshot at its ends is gone"
+            continue
+        # Opened by the boot's first snapshot, whatever its trigger: the screen went off before it.
+        rebooted = s["closeReason"] == "REBOOT" or s["opened"] == "BOOT_COMPLETED" or not s["afterBoot"]
+        if rebooted or s["openBoot"] != s["closeBoot"] or s["openBoot"] != s["bootSeq"]:
+            item["why"] = "split by a reboot"
+            continue
+        if s["closeReason"] != "STATE_CHANGED":
+            item["why"] = f"closed by {s['closeReason']}"
+            continue
+        windows = covering_windows(db, s["startSnapshotId"], s["endSnapshotId"])
+        if windows is None:
+            item["why"] = "not covered by consecutive windows"
+            continue
+        device, own = Counter(), Counter()
+        for window_id in windows:
+            device.update(window_counters(db, window_id, -1))
+            own.update(window_counters(db, window_id, uid))
+        own_mah = uid_mah(db, windows, uid)
+        # A window stores only the counters that moved, so a missing one is 0.
+        total = device.get("total_realtime_ms")
+        if not total:
+            item["why"] = "the windows have no device clock"
+            continue
+        # The windows' clock must run as long as the session: a stats reset inside, such as the
+        # one Android makes on unplugging at full charge, restarts every counter.
+        if abs(total - item["ms"]) > SESSION_SLACK_MS:
+            item["why"] = "the platform's statistics restarted inside"
+            continue
+        if total - device.get("battery_realtime_ms", 0) > SESSION_SLACK_MS:
+            item["why"] = "plugged in during the session"
+            continue
+        if total - device.get("screen_off_realtime_ms", 0) > SESSION_SLACK_MS:
+            item["why"] = "the screen was on during the session"
+            continue
+        # SPEC 16.6 E is Full mode: the collector ran as a foreground service throughout, so the
+        # counts are of a running Coulomb.
+        if own.get("fg_service_ms", 0) < total - SESSION_SLACK_MS:
+            item["why"] = "the collector was not in the foreground throughout"
+            continue
+        item.update(
+            device=device,
+            wakeups=own.get("alarm_wakeups", 0) + own.get("mobile_wakeups", 0) + own.get("wifi_wakeups", 0),
+            alarm_wakeups=own.get("alarm_wakeups", 0),
+            radio_wakeups=own.get("mobile_wakeups", 0) + own.get("wifi_wakeups", 0),
+            wakelock_ms=own.get("partial_wakelock_ms", 0),
+            cpu_ms=own.get("cpu_user_ms", 0) + own.get("cpu_system_ms", 0),
+            fg_service_ms=own.get("fg_service_ms", 0),
+            own_mah=own_mah,
+            shell_mah=uid_mah(db, windows, SHELL_UID),
+        )
+    return sessions
+
+
+def day_of(wall_ms, first_wall):
+    """The collection day a time falls on, from 1: the report keeps no clock time (ADR-0004)."""
+    return int((wall_ms - first_wall) // DAY_MS) + 1
+
+
+def protocol_e(sessions, capture, checkin, first_wall, out):
+    """SPEC 16.6 E as amended by ADR-0049: screen-off sessions of 30 minutes or more on battery,
+    together at least 8 h."""
+    out.append("## Protocol E: self-cost over the stored screen-off sessions\n")
+    counted = [s for s in sessions if s["why"] is None and s["ms"] >= E_MIN_SESSION_MS]
+    long_ones = [s for s in sessions if s["ms"] >= E_MIN_SESSION_MS]
+    reasons = Counter(s["why"] for s in long_ones if s["why"])
+    ms = sum(s["ms"] for s in counted)
+    hours = ms / 3_600_000
+    capacity = checkin.get("capacity_mah")
+    own_mah = sum(s["own_mah"] for s in counted)
+    share = own_mah / capacity * 100 if capacity else None
+    share_mark = E_SHARE_PCT_PER_DAY * hours / 24
+    wakelock_ms = sum(s["wakelock_ms"] for s in counted)
+    wakelock_mark = E_WAKELOCK_MS_PER_8H * hours / 8
+    wakeups = sum(s["wakeups"] for s in counted)
+    asleep = sum(s["device"].get("screen_off_realtime_ms", 0) - s["device"].get("screen_off_uptime_ms", 0) for s in counted)
+    deep = sum(s["device"].get("deep_doze_ms", 0) for s in counted)
+    fg = sum(min(s["fg_service_ms"], s["ms"]) for s in counted)
+    out.append(
+        f"{len(long_ones)} screen-off sessions lasted 30 minutes or more; {len(counted)} count, "
+        f"{hours:.2f} h together. Left out: "
+        + (", ".join(f"{n} {why}" for why, n in reasons.most_common()) or "none")
+        + f". Over the counted time the CPU slept {fmt(asleep / ms * 100 if ms else None, 0, '%')} of it and the "
+        f"device was in deep Doze {fmt(deep / ms * 100 if ms else None, 0, '%')}; Coulomb's collector ran as a "
+        f"foreground service for {fmt(fg / ms * 100 if ms else None, 0, '%')}. Battery capacity "
+        f"{fmt(capacity, 0, ' mAh')} (the platform's, `pws`).\n",
+    )
+    alarms_ok = dump_status(capture, "alarm")
+    alarms = alarm_lines(capture)
     out.append("| Check | Measured | Pass mark | Result |\n| --- | ---: | ---: | --- |")
     out.append(
-        f"| Screen off on battery | {screen_off_ms / 3_600_000:.2f} h | ≥ {E_NIGHT_MIN_MS // 3_600_000} h "
-        f"| {verdict(long_enough)} |",
+        f"| Screen off on battery, sessions of 30 min or more | {hours:.2f} h | ≥ {E_TOTAL_MIN_MS // 3_600_000} h "
+        f"| {verdict(ms >= E_TOTAL_MIN_MS)} |",
     )
     out.append(
-        f"| Wakeups from Coulomb (wakeup alarms {delta['wua']}, radio wakeups {delta['radio_wakeups']}) "
-        f"| {wakeups} | 0 | {verdict(wakeups == 0)} |",
-    )
-    alarm_measured = f"{len(alarms_end)} (start {len(alarms_start)})" if alarms_ok else "n/a (`dumpsys alarm` failed)"
-    out.append(
-        f"| Coulomb entries in `dumpsys alarm` | {alarm_measured} | 0 | {verdict(not alarms_end if alarms_ok else None)} |",
+        f"| Wakeups from Coulomb (wakeup alarms {sum(s['alarm_wakeups'] for s in counted)}, radio wakeups "
+        f"{sum(s['radio_wakeups'] for s in counted)}) | {wakeups} | 0 | {verdict(wakeups == 0 if counted else None)} |",
     )
     out.append(
-        f"| Coulomb's attributed charge | {delta['own_mah']:.2f} mAh, {fmt(share, 3, '%')} of capacity "
-        f"| ≤ {E_SHARE_PCT_PER_NIGHT}% | {verdict(None if share is None else share <= E_SHARE_PCT_PER_NIGHT)} |",
+        f"| Coulomb lines in `dumpsys alarm` at the capture | "
+        f"{len(alarms) if alarms_ok else 'n/a (`dumpsys alarm` failed)'} | 0 | {verdict(not alarms if alarms_ok else None)} |",
     )
     out.append(
-        f"| Coulomb's partial wakelocks, screen off on battery | {delta['awl_ms'] / 1000:.1f} s "
-        f"| < {E_WAKELOCK_MS_PER_NIGHT // 1000} s | {verdict(delta['awl_ms'] < E_WAKELOCK_MS_PER_NIGHT)} |",
+        f"| Coulomb's attributed charge | {own_mah:.3f} mAh, {fmt(share, 4, '%')} of capacity "
+        f"| ≤ {share_mark:.4f}% ({E_SHARE_PCT_PER_DAY}% a day) "
+        f"| {verdict(None if share is None or not counted else share <= share_mark)} |",
+    )
+    out.append(
+        f"| Coulomb's partial wakelocks | {wakelock_ms / 1000:.3f} s | < {wakelock_mark / 1000:.1f} s "
+        f"(30 s per 8 h) | {verdict(wakelock_ms < wakelock_mark if counted else None)} |",
     )
     out.append("")
-    if delta["awl_ms"] > 0:
+    shell = sum(s["shell_mah"] for s in counted)
+    out.append(
+        f"Not counted against Coulomb: heavy snapshots read through Shizuku's shell UID ({SHELL_UID}) and "
+        f"system_server, which the platform bills to them. The shell UID drew {shell:.3f} mAh over the same "
+        "windows, with everything else that ran as shell.\n",
+    )
+    out.append("| Session | Day | Hours | Coulomb mAh | Wakeups | Wakelock ms | CPU ms |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |")
+    for s in counted:
         out.append(
-            "Coulomb takes its sampling wakelock only while plugged in (SPEC 7.4), so any partial "
-            "wakelock time here is a finding even under the pass mark (ADR-0019).\n",
+            f"| {s['session']['id']} | {day_of(s['session']['startWall'], first_wall)} | {s['ms'] / 3_600_000:.2f} "
+            f"| {s['own_mah']:.3f} | {s['wakeups']} | {s['wakelock_ms']} | {s['cpu_ms']} |",
         )
-    if screen_off_ms and slept_ms < screen_off_ms / 2:
-        out.append(
-            "The CPU stayed awake for most of the night, so Coulomb was not tested in deep sleep. "
-            "The result stands, but repeat the night with fewer apps holding the CPU awake.\n",
-        )
-    return delta
+    out.append("")
 
 
-def protocol_b(session_db, start_capture, end_capture, end, delta, out):
-    """B over E's night. Coulomb neither samples nor snapshots while the screen is off on battery,
-    so the night's session gets its end reading only from the screen-on snapshot: its rate needs
-    `session_db` from a capture taken after the screen came on."""
-    out.append("## Protocol B: screen-off drain over the same night\n")
-    if delta is None:
-        out.append("No result: protocol E found no valid night.\n")
+def protocol_b(db, sessions, rates, first_wall, out):
+    """SPEC 16.6 B as amended by ADR-0049. The reference is the platform's own level changes: the
+    whole points between the first drop and the last, over the time between them. Sessions of 2 h
+    or more on battery with the screen off count, together at least 4 points. Coulomb's rate per
+    session is the app's own, from `CaptureRatesTest` on the same capture (`rates`, by session id);
+    the report does not compute it."""
+    out.append("## Protocol B: screen-off drain over the stored sessions\n")
+    rows = []
+    reasons = Counter()
+    for s in sessions:
+        if s["ms"] < B_MIN_MS:
+            continue
+        if s["why"]:
+            reasons[s["why"]] += 1
+            continue
+        x = s["session"]
+        # Conservative: a gap can hide the first or the last drop (ADR-0049 decision 3).
+        if history_overlaps_gap(db, x["bootSeq"], x["startElapsedNs"], x["endElapsedNs"]):
+            reasons["a history gap inside"] += 1
+            continue
+        found = first_and_last_drop(x["startLevel"], level_changes(db, x["bootSeq"], x["startElapsedNs"], x["endElapsedNs"]))
+        if found is None:
+            reasons["fewer than two level drops"] += 1
+            continue
+        (t1, l1), (t2, l2), rise = found
+        ends = (x["startLevel"] - x["endLevel"], (x["endWall"] - x["startWall"]) / 3_600_000)
+        app = (rates or {}).get(str(x["id"]))
+        coulomb = (app["points"], app["hours"]) if app and app.get("rate") is not None else None
+        rows.append((s, (l1 - l2, (t2 - t1) / NS_PER_MS / 3_600_000), coulomb, ends, rise))
+    out.append(
+        f"{len(rows)} sessions of 2 h or more count. Left out: "
+        + (", ".join(f"{n} {why}" for why, n in reasons.most_common()) or "none")
+        + ".\n",
+    )
+    if not rows:
+        out.append("No result: no session qualifies.\n")
         return
-    first, last = device_wall_ms(start_capture), device_wall_ms(end_capture)
-    level_a, level_b = battery_level(start_capture), battery_level(end_capture)
-    capacity = end.get("capacity_mah")
-    hours = delta["wall_ms"] / 3_600_000
-    reference = (level_a - level_b) / hours if level_a is not None and level_b is not None else None
-    screen_off_h = delta["screen_off_realtime_ms"] / 3_600_000
-    platform = delta["screen_off_pct"] / screen_off_h if screen_off_h else None
-
-    # Coulomb's view: the screen-off session that covers most of the night, from its start reading
-    # to its end reading (SPEC 6.2: the counter rate is the one shown once calibration completes;
-    # the level rate before).
-    counter = level_rate = None
-    why = None
-    row = session_db.execute(
-        """SELECT bootSeq, startWall, endWall, startElapsedNs, startLevel, startChargeUah, endElapsedNs, endLevel,
-                  endChargeUah
-           FROM session WHERE kind = 'SCREEN_OFF' AND startWall < ? AND COALESCE(endWall, ?) > ?
-           ORDER BY MIN(COALESCE(endWall, ?), ?) - MAX(startWall, ?) DESC LIMIT 1""",
-        (last, last, first, last, last, first),
-    ).fetchone()
-    if row is None:
-        why = "no Coulomb screen-off session overlaps the night"
-    elif row["endElapsedNs"] is None:
-        why = "the night's session is still open; pass a capture taken after the screen came on with `--after-screen-on`"
-    elif min(row["endWall"], last) - max(row["startWall"], first) < 0.9 * (last - first):
-        why = "Coulomb's longest screen-off session covers less than 90% of the night"
-    elif row["endElapsedNs"] > row["startElapsedNs"]:
-        session_h = (row["endElapsedNs"] - row["startElapsedNs"]) / NS_PER_MS / 3_600_000
-        level_rate = (row["startLevel"] - row["endLevel"]) / session_h
-        if capacity and row["startChargeUah"] and row["endChargeUah"]:
-            counter = (row["startChargeUah"] - row["endChargeUah"]) / 1000 / capacity * 100 / session_h
-    if why:
-        out.append(f"Coulomb's rate: n/a, {why}.\n")
-
-    out.append("| Rate | %/h |\n| --- | ---: |")
     out.append(
-        f"| Level delta ÷ hours between the checkpoints ({level_a}% → {level_b}%) | {fmt(reference, 3)} |",
+        "| Session | Day | Hours | Levels | First to last drop | Reference %/h | Coulomb %/h | Apart | From the ends %/h |\n"
+        "| --- | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: |",
     )
-    out.append(f"| The platform's screen-off level drop ÷ screen-off hours | {fmt(platform, 3)} |")
-    out.append(f"| Coulomb, charge counter ÷ capacity | {fmt(counter, 3)} |")
-    out.append(f"| Coulomb, level | {fmt(level_rate, 3)} |")
-    out.append("")
-    gap = None if counter is None or reference is None else abs(counter - reference)
-    # Whole-percent levels at both ends put the true drop anywhere within one percent of the
-    # level delta, so the reference itself is only known to ±1 % over the night.
-    rounding = 1 / hours
-    if gap is None:
-        result = verdict(None)
-    elif gap <= B_TOLERANCE_PCT_PER_H:
-        result = verdict(True)
-    elif gap <= B_TOLERANCE_PCT_PER_H + rounding:
-        result = f"inconclusive: within the level delta's rounding (±{rounding:.3f} %/h)"
-    else:
-        result = verdict(False)
+    for s, ref, coulomb, ends, rise in rows:
+        x = s["session"]
+        mine = coulomb[0] / coulomb[1] if coulomb else None
+        out.append(
+            f"| {x['id']} | {day_of(x['startWall'], first_wall)} | {s['ms'] / 3_600_000:.2f} "
+            f"| {x['startLevel']}% → {x['endLevel']}% "
+            f"| {ref[0]} points in {ref[1]:.2f} h{' (a rise inside)' if rise else ''} | {ref[0] / ref[1]:.3f} "
+            f"| {fmt(mine, 3)} | {fmt(None if mine is None else abs(mine - ref[0] / ref[1]), 3)} | {ends[0] / ends[1]:.3f} |",
+        )
+
+    def combined(index):
+        return sum(r[index][0] for r in rows) / sum(r[index][1] for r in rows)
+
+    points = sum(r[1][0] for r in rows)
+    reference, ends = combined(1), combined(3)
+    coulomb = combined(2) if all(r[2] for r in rows) else None
+    gap = None if coulomb is None else abs(coulomb - reference)
+    enough = points >= B_MIN_DROP_PCT
     out.append(
-        f"Coulomb's counter rate against the level delta: {fmt(gap, 3, ' %/h')} apart "
-        f"(pass within ±{B_TOLERANCE_PCT_PER_H} %/h: {result}). "
-        "The system battery usage graph is the third reference; read it by hand.\n",
+        f"| **All counted** | | {sum(r[0]['ms'] for r in rows) / 3_600_000:.2f} | | {points} points | "
+        f"{reference:.3f} | {fmt(coulomb, 3)} | {fmt(gap, 3)} | {ends:.3f} |",
+    )
+    out.append("")
+    if coulomb is None:
+        out.append(
+            "Coulomb's rates: n/a. Run `CaptureRatesTest` on this capture and pass its output with "
+            "`--coulomb-rates` (ADR-0049).\n",
+        )
+    out.append(
+        f"Together {points} points (at least {B_MIN_DROP_PCT}: {verdict(enough)}). Coulomb against the reference: "
+        f"{fmt(gap, 3, ' %/h')} apart (pass within ±{B_TOLERANCE_PCT_PER_H} %/h: "
+        f"{verdict(None if gap is None or not enough else gap <= B_TOLERANCE_PCT_PER_H)}). From the session's ends, "
+        f"as before ADR-0049, Coulomb would be {abs(ends - reference):.3f} %/h apart.\n",
     )
 
 
@@ -579,7 +679,7 @@ def protocol_a(db, video_from, video_to, out):
     gaps = [(b["wallMs"] - a["wallMs"]) / 1000 for a, b in zip(chosen, chosen[1:])]
     agreement = abs(integrated - counter) / counter * 100 if counter > 0 else None
     long_enough = length_ms >= PROTOCOL_A_MIN_MS
-    start = dt.datetime.fromtimestamp(chosen[0]["wallMs"] / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    start = dt.datetime.fromtimestamp(chosen[0]["wallMs"] / 1000, dt.timezone.utc).strftime("%Y-%m-%d")  # no clock time (ADR-0004)
     out.append(
         f"Window: {how}, from {start}, {length_ms / 60_000:.1f} min, {len(chosen)} samples "
         f"(median spacing {statistics.median(gaps):.0f} s), level {chosen[0]['levelPct']}% → {chosen[-1]['levelPct']}%. "
@@ -599,15 +699,12 @@ def protocol_a(db, video_from, video_to, out):
 def main():
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("capture", type=Path)
-    parser.add_argument("--night-start", type=Path)
-    parser.add_argument("--after-screen-on", type=Path)
+    parser.add_argument("--coulomb-rates", type=Path, help="CaptureRatesTest's output for this capture (protocol B)")
     parser.add_argument("--video-from", type=parse_time)
     parser.add_argument("--video-to", type=parse_time)
     args = parser.parse_args()
     if (args.video_from is None) != (args.video_to is None):
         parser.error("give both --video-from and --video-to, or neither")
-    if args.after_screen_on is not None and args.night_start is None:
-        parser.error("--after-screen-on needs --night-start")
 
     db = open_db(args.capture)
     first, last = span(db)
@@ -615,25 +712,25 @@ def main():
         sys.exit("the database holds no snapshot")
     days = (last - first) / DAY_MS
     uid = own_uid(args.capture, db)
+    if uid is None:
+        sys.exit("Coulomb's UID is unknown (no `package.txt` and no `uid_package` row)")
     checkin = checkin_lines(args.capture, uid)
     profile = db.execute("SELECT model, sdkInt FROM device_profile").fetchone()
 
     out = ["# Validation run report\n"]
     out.append(
         f"Device: {profile['model'] if profile else 'unknown'}, SDK {profile['sdkInt'] if profile else '?'}. "
-        f"Captured {read(args.capture, 'captured_at.txt') or 'at an unknown time'}. Data from "
-        f"{dt.datetime.fromtimestamp(first / 1000, dt.timezone.utc):%Y-%m-%d %H:%M} UTC, "
+        f"Captured {(read(args.capture, 'captured_at.txt') or 'on an unknown day')[:10]}. Data from "
+        f"{dt.datetime.fromtimestamp(first / 1000, dt.timezone.utc):%Y-%m-%d} (day 1), "
         f"{days * 24:.1f} h.\n",
     )
     rates(db, args.capture, days, out)
     heavy_cost(db, args.capture, checkin, out)
-    if args.night_start is None:
-        since_charged(checkin, out)
-    else:
-        start = checkin_lines(args.night_start, uid)
-        delta = protocol_e(uid, args.night_start, args.capture, start, checkin, out)
-        session_db = open_db(args.after_screen_on) if args.after_screen_on else db
-        protocol_b(session_db, args.night_start, args.capture, checkin, delta, out)
+    since_charged(checkin, out)
+    sessions = screen_off_sessions(db, uid)
+    app_rates = json.loads(args.coulomb_rates.read_text()) if args.coulomb_rates else None
+    protocol_e(sessions, args.capture, checkin, first, out)
+    protocol_b(db, sessions, app_rates, first, out)
     protocol_a(db, args.video_from, args.video_to, out)
     print("\n".join(out))
 
