@@ -26,8 +26,17 @@ Gate status (2026-11-10, SPEC 17):
 - Pending, needing the phone's screen (the owner says when): the cold-start Macrobenchmark and
   protocol C (1 h unplugged, driven over adb). The benchmark build now installs beside the
   owner's Coulomb (ADR-0050), and the owner allowed uninstalling it after the run.
-- The owner allowed updating Coulomb on the phone after a rehearsal; the rehearsal passed (ADR-0049
-  Results). The update follows this commit.
+- Coulomb on the phone was updated in place on 2026-11-10 (owner approved, after the rehearsal in
+  ADR-0049 Results), from the build of 2026-11-06 to `bee7dc1`:
+  - a read-only capture came first (schema 1, `quick_check` ok, 273,730 history events);
+  - `adb install -r` kept the data. The collector came back as a foreground service on its own, and
+    the crash log has nothing from Coulomb;
+  - a copy pulled afterwards is schema 5 and passes `integrity_check` and `foreign_key_check`,
+    with 273,935 history events: every row kept and new ones added. The file went from 27.7 MB to
+    21.3 MB.
+  - The first pre-update capture lost the database: the copy hit the script's 120 s limit, and the
+    script deleted the partial file and exited 0. `capture.sh` now gives the copy 15 minutes and
+    fails when the database is missing.
 - P5 does not start while this gate is red (SPEC 17).
 
 - Working rules from 2026-11-08 (ADR-0027):

@@ -34,10 +34,18 @@ sh_ date +%s > "$out/device_wall_s.txt"
 sh_ cat /proc/uptime > "$out/uptime.txt"
 sh_ getconf CLK_TCK > "$out/clk_tck.txt"
 
-# The database with its write-ahead log, so the copy holds every committed transaction.
+# The database with its write-ahead log, so the copy holds every committed transaction. The
+# database grows past what 120 s carries over a slow link (28 MB after 4 days), so the copies get
+# 15 minutes. A missing -wal or -shm is noted; a failed database copy ends the capture.
 for f in coulomb.db coulomb.db-wal coulomb.db-shm; do
-  app cat "no_backup/$f" > "$out/$f" 2> "$out/$f.err" || rm -f "$out/$f"
-  [ -s "$out/$f.err" ] || rm -f "$out/$f.err"
+  if timeout 900 adb -s "$serial" shell -T run-as "$pkg" cat "no_backup/$f" > "$out/$f" 2> "$out/$f.err"; then
+    [ -s "$out/$f.err" ] || rm -f "$out/$f.err"
+  else
+    st=$?
+    rm -f "$out/$f"
+    echo "exit $st" >> "$out/$f.err"
+    if [ "$f" = coulomb.db ]; then echo "capture failed: copying $f exited $st" >&2; exit 1; fi
+  fi
 done
 app ls -l files/snapshots > "$out/blobs.txt" 2>&1 || true
 
