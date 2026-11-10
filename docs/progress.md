@@ -6,15 +6,28 @@ One section per phase (SPEC 0.3.9, 17). Newest phase first.
 
 Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the phone night (ADR-0019).
 
-Gate status (2026-11-09, SPEC 17):
+Gate status (2026-11-10, SPEC 17):
 - Per-screen `/impeccable` gates: all eight have run on Now, Drain, App detail, Health, Charging,
   Onboarding, Privileges and Settings with no critical or major finding open. A whole-app pass
   followed (button padding at large text, the shared error state).
 - Mode-switch test on the API 37 emulator: passed (2026-11-08).
-- Macrobenchmark: indicative on the emulator (median 686 ms to verdict); the S25 Ultra run is
-  pending real device.
-- Protocols B, C and D: pending real device. B needs the overnight run shared with E (the P2
-  night); D needs three qualifying charge sessions.
+- Protocol B: **passes** on the phone's stored sessions, as the owner redefined it (ADR-0049).
+  - Coulomb's screen-off rate now uses the platform's level changes inside the session; its old
+    rate, from the session's ends, failed (0.223 %/h apart).
+  - Two sessions, 11 points: Coulomb 1.848 %/h, the reference 1.848.
+  - One independent review; all its findings are fixed (ADR-0049, Review).
+- Protocol D: hardware-limited on the S25 Ultra (SPEC 16.6 G).
+  - The charge counter is the gauge's full-charge figure times its level: 4.9 mAh steps that follow
+    the level. Calibration rightly marks it coarse, and SPEC 6.3 needs a reliable counter, so no
+    window qualifies.
+  - Seven charges would have qualified on ΔSoC and temperature. Taken anyway, they give 4,900 to
+    4,937 mAh (median 4,911): the gauge's own 4,900 mAh back, not a measurement.
+  - The platform reports `mSavedBatteryAsoc` 100 and `mSavedBatteryBsoh` 96.
+- Pending, needing the phone's screen (the owner says when): the cold-start Macrobenchmark and
+  protocol C (1 h unplugged, driven over adb). The benchmark build now installs beside the
+  owner's Coulomb (ADR-0050), and the owner allowed uninstalling it after the run.
+- The owner allowed updating Coulomb on the phone after a rehearsal; the rehearsal passed (ADR-0049
+  Results). The update follows this commit.
 - P5 does not start while this gate is red (SPEC 17).
 
 - Working rules from 2026-11-08 (ADR-0027):
@@ -580,21 +593,44 @@ were reset; the phone was left on the screen it was on.
   first catch-up read). Process CPU is at most 604 ms per heavy snapshot, sampling and idle
   included, against a 300 ms target; this needs a closer look before P4.
 
+### Phone data, 2026-11-10 (one read-only session, owner approved)
+
+The owner allowed a connection to pull what the phone had collected since 2026-11-06 (build of
+that day, schema 1), and redefined protocols B and E so they read stored sessions (ADR-0049). No
+night was needed. Nothing on the phone changed; it stayed on the screen the owner was using.
+- **Span.** 95.1 h of data and 55 boots, most of them the owner's own installs and reboots.
+- **Collection rates, per day:**
+  - snapshots: 238 heavy and 129 light; samples: 4,703;
+  - history events: 68,702. The longest boot without a reboot (16 h) ran at 111,000 a day,
+    mostly CPU-running and wake-reason events;
+  - the database is 25.9 MB and the blob folder 10.4 MB, both in schema 1.
+- **Heavy snapshot cost** (SPEC 16.5): wall time p50 310 ms, p90 764 ms, max 6,488 ms (passes at
+  p90). Process CPU is at most 228 ms per heavy snapshot (passes 300 ms).
+- **Protocol E: passes** (ADR-0049).
+  - Eight screen-off sessions on battery count, 12.64 h together. The device was in deep Doze for
+    93% of that time and the CPU slept for 29%.
+  - Coulomb: 0 wakeups, 0 alarms, 0 s of partial wakelock, 0.151 mAh (0.003% of capacity, against
+    0.158% allowed).
+  - The dumps run through Shizuku as shell and in system_server, which the platform bills to them.
+    Even all of the shell UID's 0.184 mAh in those windows on top of Coulomb's is 0.0067%.
+- **Protocol B: passes** with ADR-0049's estimator; see the P4 gate status.
+- **Protocol A: not yet run.** The only stretch in the data has no fixed load (mean 424 mA,
+  standard deviation 547 mA), and it gives 9.8% between integrated current and the counter. It is
+  not a protocol A run. Protocol A needs 30 minutes of video at fixed brightness: it joins the
+  screen session with protocol C.
+
 ### Still to do before the P2 gate
 
-SPEC 17 as amended by ADR-0019 (owner decision, 2026-11-07): the gate is fixtures parse (done), the
-30-day stress test (SPEC 16.3; passed, see above), and protocols A and E on the phone, E in one
-night together with B. P3 starts now; the P2 gate closes when the night's report arrives.
-
-- The phone night, which needs the owner's go-ahead: 8 h or more with the screen off and
-  unplugged, ideally with nothing else holding the CPU awake. Take three checkpoints (ADR-0020):
-  - at the start;
-  - at the end, before the screen comes on;
-  - after the screen comes on, once Coulomb has closed the night's session.
-
-  Disconnect adb between them. Protocol A's 30 minutes of video run the same evening. Then run
-  `report.py <end> --night-start <start> --after-screen-on <after> --video-from T --video-to T`.
-- Check the night's clean history rate against the stress test's 3% margin (ADR-0021).
+SPEC 17 as amended by ADR-0019 and ADR-0049: fixtures parse (done), the 30-day stress test (passed),
+protocols A and E on the phone (E passed on 2026-11-10). The P2 gate stays open on two items:
+- **Protocol A.** It needs the screen session.
+- **The year budget at the measured history rate.**
+  - The stress test assumed 65,800 history events a day as an upper bound (ADR-0021). The phone
+    stored 68,702 a day over 4 days, and 111,000 a day in its longest clean boot. The clean rate is
+    not lower.
+  - At 68,702 a day the 30-day ring holds about 2.6 MB more, so the year projects to about
+    150.8 MB against 150.
+  - ADR-0021's next steps apply. This is a schema decision, so it gets a second opinion first.
 - The gate review decides whether history tags from before an unclean boot are kept.
 
 ## P1 Privileged core (2026-11-06)
