@@ -503,7 +503,7 @@ Order by `elapsedRealtimeNanos` plus boot count; display wall-clock time. Wall-c
 
 ## 8. Domain model and database schema
 
-The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested. ADR-0015 records the keys, foreign-key actions, retention and size budget of version 1; ADR-0021 records version 2; ADR-0029 records version 3 (collection mode and root kernel data).
+The schema below is the minimum; the agent MAY add columns but MUST NOT merge entities or drop provenance fields. Room with KSP, exported schemas committed, every migration tested. ADR-0015 records the keys, foreign-key actions, retention and size budget of version 1; ADR-0021 records version 2; ADR-0029 records version 3 (collection mode and root kernel data). ADR-0051 records versions 6 and 7 (the year budget at the phone's measured rates).
 
 ```kotlin
 // Units are in field names. Times: elapsed = elapsedRealtimeNanos, wall = epoch ms.
@@ -564,7 +564,7 @@ entity WindowResult(id PK, kind /*CONSECUTIVE|SESSION|DAY|REFERENCE*/, sessionId
   kernelCoverage? /*2 bits each for S25, S9, S27: none, partial, whole (ADR-0029)*/)
 entity WindowUid(windowId FK, uid, component, processState, process, mAh, provenance)
 entity WindowWake(windowId FK, uid?, tagId, kind, totalMs, count, screenOffMs?, wakeups?)
-entity WindowStat(windowId FK, uid, keyId, value, provenance)
+entity WindowStat(windowId FK, uid, keyId, value, provenance) /*stored WITHOUT ROWID, ADR-0051*/
 entity WakeTag(id PK, tag)
 entity StatKey(id PK, name)
   // interned tags and keys; detail provenance as codes (ADR-0021)

@@ -63,7 +63,10 @@ class CollectorStressTest {
         root = File(context.noBackupFilesDir, "stress")
         root.deleteRecursively()
         root.mkdirs()
-        db = Room.databaseBuilder(context, CoulombDatabase::class.java, File(root, CoulombDatabase.FILE_NAME).path).build()
+        db =
+            CoulombDatabase.configured(
+                Room.databaseBuilder(context, CoulombDatabase::class.java, File(root, CoulombDatabase.FILE_NAME).path),
+            )
     }
 
     @After
@@ -391,7 +394,7 @@ class CollectorStressTest {
                         out += t + 9 * MINUTE_MS to Act.CLOSE_APP
                     }
                     out += t + onMs to Act.SCREEN_OFF
-                    t += onMs + random.nextLong(2 * MINUTE_MS, 14 * MINUTE_MS)
+                    t += onMs + random.nextLong(GAP_MIN_MS, GAP_MAX_MS)
                 }
                 when (d % 3) {
                     1 -> out += listOf(at(15) to Act.PLUG, at(15, 45) to Act.UNPLUG, at(23) to Act.PLUG)
@@ -605,7 +608,9 @@ class CollectorStressTest {
         val ZONE: ZoneOffset = ZoneOffset.ofHours(3)
 
         /** Stored history events a day at the 2026-11-07 checkpoint (an upper bound, docs/progress.md). */
-        const val HISTORY_PER_DAY = 65_755.0
+        const val HISTORY_PER_DAY = 68_702.0
+        const val GAP_MIN_MS = 72_000L
+        const val GAP_MAX_MS = 9 * MINUTE_MS
 
         /** New tags a day: about the 1,436 the phone stored in its first 17 h, less the ones seen before. */
         const val NEW_TAGS_PER_DAY = 600.0

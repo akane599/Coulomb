@@ -6,6 +6,7 @@ package io.github.akane599.coulomb.core.database
 import android.content.Context
 import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -297,6 +298,72 @@ class MigrationTest {
             }
         }
 
+    @Test
+    fun fiveToSixDropsTheRowidAndKeepsEveryDetailRow() =
+        runTest {
+            helper.createDatabase(NAME, 4).use { v4 -> (recordsV4() + detailV4()).forEach(v4::execSQL) }
+            val before = helper.runMigrationsAndValidate(NAME, 5, true, *Migrations.ALL).use(::detail)
+            assertThat(before).hasSize(7)
+
+            helper.runMigrationsAndValidate(NAME, 6, true, *Migrations.ALL).use { v6 ->
+                assertThat(detail(v6)).containsExactlyElementsIn(before)
+                WithoutRowid.TABLES.forEach { table ->
+                    val sql = strings(v6, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '$table'").single()
+                    assertThat(sql).endsWith("WITHOUT ROWID")
+                }
+                // The key is stored once now: SQLite keeps no automatic index beside the table.
+                assertThat(strings(v6, "SELECT name FROM sqlite_master WHERE tbl_name = 'window_stat' AND type = 'index'")).isEmpty()
+                assertThat(strings(v6, "PRAGMA foreign_key_check")).isEmpty()
+            }
+
+            migrated { db ->
+                val rows = db.windowDao().rows(7)
+                assertThat(rows.stats)
+                    .containsExactly(
+                        WindowStat(-1, "cpu", 14, Provenance.MEASURED),
+                        WindowStat(10123, "cpu", 900, Provenance.MEASURED),
+                        WindowStat(10123, "wifi", 30, Provenance.ESTIMATED),
+                    )
+                assertThat(rows.uids.map { it.uid to it.mAh }).containsExactly(10123 to 4.5, 10124 to 0.5, -2 to 0.25)
+                // The cascade still finds the rows through the key.
+                db.windowDao().pruneDetail(listOf(7))
+                assertThat(long(db, "SELECT COUNT(*) FROM window_stat WHERE windowId = 7")).isEqualTo(0)
+                assertThat(long(db, "SELECT COUNT(*) FROM window_stat")).isEqualTo(1)
+            }
+        }
+
+    /** Every `window_stat` and `window_uid` row as text, for a before-and-after comparison. */
+    private fun detail(db: SupportSQLiteDatabase): List<String> =
+        strings(db, "SELECT 'stat|' || windowId || '|' || uid || '|' || keyId || '|' || value || '|' || provenance FROM window_stat") +
+            strings(
+                db,
+                "SELECT 'uid|' || windowId || '|' || uid || '|' || componentId || '|' || processStateId || '|' || process || '|' || " +
+                    "mAh || '|' || provenance FROM window_uid",
+            )
+
+    private fun strings(
+        db: SupportSQLiteDatabase,
+        query: String,
+    ): List<String> =
+        db.query(query).use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) add(cursor.getString(0))
+            }
+        }
+
+    /** More version 4 detail: windows 7 and 8 share keys, and a UID has several rows. */
+    private fun detailV4() =
+        listOf(
+            "INSERT INTO stat_key VALUES (5, 'wifi')",
+            "INSERT INTO stat_key VALUES (6, 'any')",
+            "INSERT INTO window_stat VALUES (7, 10123, 5, 30, 2)",
+            "INSERT INTO window_stat VALUES (7, -1, 4, 14, 0)",
+            "INSERT INTO window_stat VALUES (8, 10123, 4, 77, 0)",
+            "INSERT INTO window_uid VALUES (7, 10123, 4, 6, '', 4.5, 1)",
+            "INSERT INTO window_uid VALUES (7, 10124, 4, 6, 'media', 0.5, 1)",
+            "INSERT INTO window_uid VALUES (7, -2, 5, 6, '', 0.25, 3)",
+        )
+
     /** Version 4 records of every kind, with the highest id of each table deleted. */
     private fun recordsV4() =
         listOf(
@@ -390,10 +457,9 @@ class MigrationTest {
     private suspend fun migrated(check: suspend (CoulombDatabase) -> Unit) {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val db =
-            Room
-                .databaseBuilder(context, CoulombDatabase::class.java, context.getDatabasePath(NAME).path)
-                .addMigrations(*Migrations.ALL)
-                .build()
+            CoulombDatabase.configured(
+                Room.databaseBuilder(context, CoulombDatabase::class.java, context.getDatabasePath(NAME).path),
+            )
         try {
             check(db)
         } finally {

@@ -64,7 +64,7 @@ internal abstract class DrainDbTest {
     @Before
     fun open() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, CoulombDatabase::class.java).build()
+        db = CoulombDatabase.inMemory(context)
         reader = DrainReader(windows, snapshots, sessions, db.deviceDao()) { ZoneOffset.UTC }
     }
 

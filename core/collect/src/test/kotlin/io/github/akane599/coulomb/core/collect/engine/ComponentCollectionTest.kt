@@ -39,7 +39,7 @@ class ComponentCollectionTest {
     @Before
     fun open() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, CoulombDatabase::class.java).allowMainThreadQueries().build()
+        db = CoulombDatabase.configured(Room.inMemoryDatabaseBuilder(context, CoulombDatabase::class.java).allowMainThreadQueries())
         // S7 whole, so a snapshot is partial only if S4 made it so.
         val history = BatteryHistory(null, nextCursorMs = 1_000, firstRecordMs = null, recordCount = 0, gapBeforeFirstRecord = false)
         stats.history = { HistoryRead(emptyList(), history, SourceStatus.OK) }

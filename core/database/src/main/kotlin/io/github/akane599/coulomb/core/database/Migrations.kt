@@ -84,7 +84,17 @@ internal object Migrations {
             }
         }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    /**
+     * Version 6 (ADR-0051) stores `window_stat` without a rowid, so each row's key is kept once
+     * instead of twice. The rows are copied as they are: no value or key changes, the table has
+     * no `AUTOINCREMENT` counter, and nothing references its rows.
+     */
+    val MIGRATION_5_6: Migration =
+        object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) = WithoutRowid.rebuild(db)
+        }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 
     /** The 20 S4 columns of version 4 (`PowerColumns`), in their exported order. */
     private const val POWER_COLUMNS =

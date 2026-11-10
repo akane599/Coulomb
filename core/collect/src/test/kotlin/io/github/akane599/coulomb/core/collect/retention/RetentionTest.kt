@@ -44,7 +44,10 @@ class RetentionTest {
 
     @Before
     fun open() {
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), CoulombDatabase::class.java).build()
+        db =
+            CoulombDatabase.configured(
+                Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), CoulombDatabase::class.java),
+            )
     }
 
     @After

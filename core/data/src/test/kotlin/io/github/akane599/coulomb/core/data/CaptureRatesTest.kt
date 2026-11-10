@@ -27,6 +27,9 @@ import java.io.File
  *     ./gradlew :core:data:testDebugUnitTest --tests '*CaptureRatesTest' \
  *         -Pcoulomb.capture=<capture dir> -Pcoulomb.captureOut=<rates.json>
  *
+ * With `-Pcoulomb.captureDb=<file>` it also writes the migrated database there, checkpointed into
+ * one file, so a migration can be checked on real data before a phone runs it.
+ *
  * Skipped without a capture, as in CI.
  */
 @RunWith(AndroidJUnit4::class)
@@ -68,9 +71,13 @@ class CaptureRatesTest {
                         "\"${s.id}\": {\"timed\": ${drops != null}, \"points\": $points, \"hours\": $hours, \"rate\": ${rate?.pctPerHour}}"
                     }
                 checkNotNull(out).writeText(rows.joinToString(",\n  ", prefix = "{\n  ", postfix = "\n}\n"))
+                db.openHelper.writableDatabase
+                    .query("PRAGMA wal_checkpoint(TRUNCATE)")
+                    .use { it.moveToFirst() }
             } finally {
                 db.close()
             }
+            System.getProperty("coulomb.captureDb")?.takeIf { it.isNotBlank() }?.let { target.copyTo(File(it), overwrite = true) }
         }
 
     private companion object {

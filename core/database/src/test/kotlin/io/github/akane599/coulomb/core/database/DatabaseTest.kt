@@ -16,7 +16,7 @@ abstract class DatabaseTest {
     @Before
     fun open() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, CoulombDatabase::class.java).build()
+        db = CoulombDatabase.inMemory(context)
     }
 
     @After

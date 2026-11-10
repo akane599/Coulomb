@@ -58,13 +58,13 @@ import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.database.entity.WindowWakeEntity
 
 /**
- * The SPEC 8 schema (ADR-0015, ADR-0021, ADR-0029, ADR-0035, ADR-0040). Schemas are exported to
- * `core/database/schemas` and committed; a version bump needs a migration and a migration test
- * (SPEC 8). Enums are stored by name, except the position codes of the history and window detail
+ * The SPEC 8 schema (ADR-0015, ADR-0021, ADR-0029, ADR-0035, ADR-0040, ADR-0051). Schemas are
+ * exported to `core/database/schemas` and committed; a version bump needs a migration and a
+ * migration test (SPEC 8). Enums are stored by name, except the position codes of the history and window detail
  * tables ([HistoryCodes], [DetailCodes]) and of the records kept for good ([RecordCodes]).
  */
 @Database(
-    version = 5,
+    version = 6,
     exportSchema = true,
     entities = [
         DeviceProfileEntity::class,
@@ -127,11 +127,23 @@ public abstract class CoulombDatabase : RoomDatabase() {
         public const val FILE_NAME: String = "coulomb.db"
 
         /** The app's database in its no-backup directory: battery data stays on the device (SPEC 14). */
-        @Suppress("SpreadOperator") // One small array, copied once when the database is built.
         public fun build(context: Context): CoulombDatabase =
-            Room
-                .databaseBuilder(context, CoulombDatabase::class.java, context.noBackupFilesDir.resolve(FILE_NAME).path)
+            configured(Room.databaseBuilder(context, CoulombDatabase::class.java, context.noBackupFilesDir.resolve(FILE_NAME).path))
+
+        /** An in-memory database in the same stored form as the app's, for tests. */
+        public fun inMemory(context: Context): CoulombDatabase =
+            configured(Room.inMemoryDatabaseBuilder(context, CoulombDatabase::class.java))
+
+        /**
+         * [builder]'s database with the migrations and the stored form Room cannot declare
+         * ([WithoutRowid], ADR-0051). Every database is built through here, so tests read the
+         * tables in the form the app stores them.
+         */
+        @Suppress("SpreadOperator") // One small array, copied once when the database is built.
+        public fun configured(builder: RoomDatabase.Builder<CoulombDatabase>): CoulombDatabase =
+            builder
                 .addMigrations(*Migrations.ALL)
+                .addCallback(WithoutRowid.Callback)
                 .build()
     }
 }

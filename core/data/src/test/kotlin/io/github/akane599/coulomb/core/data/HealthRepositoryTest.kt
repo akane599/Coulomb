@@ -39,7 +39,7 @@ internal class HealthRepositoryTest {
     @Before
     fun open() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, CoulombDatabase::class.java).build()
+        db = CoulombDatabase.inMemory(context)
         val dispatchers = AppDispatchers(Dispatchers.IO, Dispatchers.Default)
         repository =
             HealthRepository(db.sessionDao(), db.sampleDao(), db.deviceDao(), { FINGERPRINT }, { ZoneOffset.UTC }, dispatchers)

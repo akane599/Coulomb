@@ -15,8 +15,18 @@ class SchemaTest : DatabaseTest() {
         // Changing a table changes this hash. Bump the version and add a tested migration instead
         // (SPEC 8, MigrationTest): version 1 is installed on a phone, so even the P2 schema freeze
         // (ADR-0021) migrates rather than edits.
-        assertThat(db.openHelper.readableDatabase.version).isEqualTo(5)
+        assertThat(db.openHelper.readableDatabase.version).isEqualTo(6)
         assertThat(string("SELECT identity_hash FROM room_master_table")).isEqualTo("657ecf02f10d6d502d9b844b3c797eb1")
+    }
+
+    @Test
+    fun aNewDatabaseStoresWindowStatWithoutARowid() {
+        // Room cannot declare the clause and its exported schema does not show it (ADR-0051), so a
+        // new database gets it from a callback. Without it the year's file is a tenth larger.
+        WithoutRowid.TABLES.forEach { table ->
+            assertThat(string("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '$table'")).endsWith("WITHOUT ROWID")
+        }
+        assertThat(long("SELECT COUNT(*) FROM sqlite_master WHERE tbl_name = 'window_stat' AND type = 'index'")).isEqualTo(0)
     }
 
     @Test
