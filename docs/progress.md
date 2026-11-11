@@ -53,6 +53,18 @@ Gate status (2026-11-10, SPEC 17):
     All 296,264 events decode identical to the rows before, 102 new ones follow, and every
     snapshot mark falls at a chunk's end. The database with its log went from 19.1 MB to 12.1 MB.
   - Protocols B and E read the same as before the update.
+- Updated once more on 2026-11-11 (owner approved), to `c1cbab7` with the `BootReceiver` fix
+  (ADR-0052):
+  - The data was kept and nothing crashed.
+  - **The collector did not come back on its own.** The update killed the old process, and no new
+    one started until the owner opened Coulomb about six minutes later. The log shows no
+    `MY_PACKAGE_REPLACED` delivery to Coulomb. That morning's identical update had restarted the
+    collector within about 5 s.
+  - An app-control module on the phone hooks package installs and app starts, and may have held
+    the broadcast back; nothing in the log proves it. The emulator showed a similar miss once
+    (the ADR-0029 notes below).
+  - Until it is understood, an update is followed by a check that the collector runs, and by a
+    launch if it does not.
 - P5 does not start while this gate is red (SPEC 17).
 
 - Working rules from 2026-11-08 (ADR-0027):
@@ -74,7 +86,8 @@ Gate status (2026-11-10, SPEC 17):
     fixed.
   - Seen once on the emulator: during an update install, Android 17 restarted the app and killed
     one process start as invalid. `MY_PACKAGE_REPLACED` was logged as delivered, but the collector
-    did not start until the app was opened. Not reproduced; watch for it on the phone.
+    did not start until the app was opened. Not reproduced on the emulator. The phone showed a
+    similar miss on 2026-11-11 (the phone updates above).
 - `material3` 1.5.0-rc01 for the Expressive components, fenced to `:core:designsystem` by a detekt
   rule (ADR-0030).
 - App shell (ADR-0031):
