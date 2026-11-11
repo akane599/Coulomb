@@ -37,6 +37,14 @@ Gate status (2026-11-10, SPEC 17):
   - The first pre-update capture lost the database: the copy hit the script's 120 s limit, and the
     script deleted the partial file and exited 0. `capture.sh` now gives the copy 15 minutes and
     fails when the database is missing.
+- Updated again on 2026-11-11 (owner approved), to `eb5d2a0`: schema 7 (ADR-0051).
+  - A read-only capture came first: schema 5, `integrity_check` ok, 296,264 history events.
+  - `adb install -r` kept the data. The collector was back as a foreground service in about 5 s,
+    and the crash log stayed empty.
+  - The copy pulled afterwards is schema 7 and passes `integrity_check` and `foreign_key_check`.
+    All 296,264 events decode identical to the rows before, 102 new ones follow, and every
+    snapshot mark falls at a chunk's end. The database with its log went from 19.1 MB to 12.1 MB.
+  - Protocols B and E read the same as before the update.
 - P5 does not start while this gate is red (SPEC 17).
 
 - Working rules from 2026-11-08 (ADR-0027):
@@ -651,7 +659,7 @@ protocols A and E on the phone (E passed on 2026-11-10). The P2 gate stays open 
     decoder, in `report.py`, reads every event back identical to the original rows.
   - An independent review found no way to lose an event. Its four robustness defects and six
     missing tests are fixed (ADR-0051, Review).
-  - The phone still runs schema 5. Updating it again is the owner's call.
+  - The phone runs schema 7 since 2026-11-11 (see P4).
 - The gate review decides whether history tags from before an unclean boot are kept.
 
 ## P1 Privileged core (2026-11-06)

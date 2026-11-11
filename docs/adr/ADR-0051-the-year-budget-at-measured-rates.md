@@ -149,6 +149,12 @@ S4 on, 4,836 of 5,455 consecutive windows broken down):
 - `integrity_check` passes, the other tables keep their row counts, and protocols B and E read
   the same as on schema 5.
 
+**The phone, updated in place on 2026-11-11** (schema 5 to 7, owner approved):
+- The migration ran on the collector's first start after the install. The crash log stayed empty.
+- All 296,264 events decode identical to the schema 5 rows captured just before. Every snapshot
+  mark falls at a chunk's end. The next id follows the last event.
+- The database with its log went from 19.1 MB to 12.1 MB.
+
 ## Review
 
 One independent read-only review of the codec, the migration and the DAO found no way to lose or
