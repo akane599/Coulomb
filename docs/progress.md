@@ -23,6 +23,11 @@ Gate status (2026-11-10, SPEC 17):
   - Seven charges would have qualified on ΔSoC and temperature. Taken anyway, they give 4,900 to
     4,937 mAh (median 4,911): the gauge's own 4,900 mAh back, not a measurement.
   - The platform reports `mSavedBatteryAsoc` 100 and `mSavedBatteryBsoh` 96.
+- Work-profile app names, checked on the API 37 emulator with a managed profile, 2026-11-11:
+  - Without `INTERACT_ACROSS_USERS`, `getPackagesForUid` throws for another user's UID, so the
+    collector's naming step after a snapshot would have failed.
+  - It now falls back to `getNameForUid`, which needs no permission. Full mode, which holds the
+    permission, resolves the UID directly (`docs/questions.md`, Answered).
 - Macrobenchmark on the phone, 2026-11-11 (owner approved): **passes**.
   - 10 cold starts to the verdict with cached data: median 231 ms, p90 259 ms, max 292 ms,
     against SPEC 16.5's p50 < 800 ms and p90 < 1.2 s. First frame median 185 ms.

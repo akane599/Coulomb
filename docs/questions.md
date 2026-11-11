@@ -23,9 +23,6 @@ start of every phase. Answered questions move to the bottom with the answer and 
   the screen on, it is the time left if the screen stays on. The independent review proposed instead
   integrating hour-of-day profiles of whole past discharges (nights included) forward to empty, which
   reads longer and closer to a typical day. Default: per screen state (ADR-0033 §5).
-- 2026-11-08. Work-profile apps: `PackageManager.getPackagesForUid` may not resolve another user's UIDs
-  without cross-user access, which would leave those apps unnamed. Default: they show the fallback name
-  until an emulator check with a work profile settles it.
 - 2026-11-09. Drain at 1000 dp and up leaves the summary column mostly empty below the reconcile bar
   (`drain-apps-expanded`). Default: left as is. App detail now opens beside Drain at expanded
   widths (ADR-0041 amendment), which fills the width while an app is open; Drain alone keeps its
@@ -58,6 +55,14 @@ start of every phase. Answered questions move to the bottom with the answer and 
   detail's figure always equals the Drain row it came from.
 
 ## Answered
+
+- 2026-11-08, settled by the emulator on 2026-11-11 (no owner answer needed). Work-profile apps:
+  - With `INTERACT_ACROSS_USERS` (Full mode), `getPackagesForUid` resolves a managed profile's UIDs.
+  - Without it, the call throws a `SecurityException`; it does not return null. That would have
+    broken the collector's naming step.
+  - `AndroidAppLabels` now falls back to `getNameForUid`, which needs no permission. A profile app
+    that the main user also has keeps its name; one only in the profile keeps the fallback name.
+  - `WorkProfileLabelsProbeTest` checks this on a profile.
 
 - 2026-11-06. License: GPL-3.0-or-later, with the Apache-2.0 `NOTICE` for the AOSP protos kept as planned.
   `LICENSE`, `LICENSES/`, SPDX headers and `REUSE.toml` were added as publish prep (ADR-0012).
