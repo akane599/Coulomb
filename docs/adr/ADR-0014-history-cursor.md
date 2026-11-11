@@ -109,7 +109,10 @@ These findings changed the parser, or the collector still has to act on them:
   prints the change. Only the next read's baseline shows the new state, with no transition time.
   The collector must compare each read's baseline with the state it has stored. On a difference
   it records "changed somewhere in (T, first record]" instead of a transition at the first record.
-  An emulator experiment (toggle Wi-Fi during a long read) is queued with the P2 instrumented work.
+  The emulator experiment ran on 2026-11-11 with faked plug changes rather than Wi-Fi: compared
+  kinds, and no radio needed. `HistoryMergeExperimentTest` made 150 changes at least 1.2 s apart
+  while reads ran back to back. In two runs, 79 and 82 of them were merged and never printed, and
+  every one fell inside a `STATE_MISMATCH` gap.
 - **Times that go backwards.** The platform logs an error only when a record is more than 60 s
   earlier than the one before it (`BatteryStatsHistory` L1810-1814, both tags). A record written with a
   time below an earlier read's cursor is never printed. How often this happens on the phone is an

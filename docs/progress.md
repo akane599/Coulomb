@@ -546,8 +546,15 @@ Started 2026-11-07 while the P2 gate waits for the night report (owner decision,
   proto and any source whose parse was incomplete) and caps the folder.
 - A state change within a second of a read's last record can be merged into that record after the
   read, and no later read prints it (ADR-0014 second amendment). The collector now compares each
-  read's baseline with the stored state and records a `STATE_MISMATCH` gap (ADR-0018). An
-  instrumented test on the emulator is still to come.
+  read's baseline with the stored state and records a `STATE_MISMATCH` gap (ADR-0018).
+  - Instrumented test on the API 37 emulator, 2026-11-11 (`HistoryMergeExperimentTest`):
+    - 150 faked plug changes at least 1.2 s apart, with history reads back to back through the
+      collector's parser and ingest.
+    - In two runs, 71 and 68 changes came out as transitions. The other 79 and 82 were merged and
+      never printed, and each fell inside a mismatch gap. None was lost.
+  - So the case is common when a change follows a read within a second. Real reads are rare, but
+    heavy snapshots are taken on exactly such changes (screen, plug). A merged change keeps only
+    "somewhere in the gap" as its time.
 - Snapshot blobs are settled in ADR-0018: the raw S5 proto (about 340 KB on the phone) for 5 to 10
   heavy snapshots a day, plus the raw text of any source whose parse was incomplete, kept 30 days
   or up to 128 MB.
