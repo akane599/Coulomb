@@ -23,9 +23,17 @@ Gate status (2026-11-10, SPEC 17):
   - Seven charges would have qualified on ΔSoC and temperature. Taken anyway, they give 4,900 to
     4,937 mAh (median 4,911): the gauge's own 4,900 mAh back, not a measurement.
   - The platform reports `mSavedBatteryAsoc` 100 and `mSavedBatteryBsoh` 96.
-- Pending, needing the phone's screen (the owner says when): the cold-start Macrobenchmark and
-  protocol C (1 h unplugged, driven over adb). The benchmark build now installs beside the
-  owner's Coulomb (ADR-0050), and the owner allowed uninstalling it after the run.
+- Macrobenchmark on the phone, 2026-11-11 (owner approved): **passes**.
+  - 10 cold starts to the verdict with cached data: median 231 ms, p90 259 ms, max 292 ms,
+    against SPEC 16.5's p50 < 800 ms and p90 < 1.2 s. First frame median 185 ms.
+  - Unplugged at 48%. The benchmark build ran beside the owner's Coulomb (ADR-0050); both
+    benchmark packages were uninstalled afterwards.
+  - The run crashed the benchmark build twice in `BootReceiver`. A force-stopped app whose
+    process starts again gets a `BOOT_COMPLETED` that cannot start a foreground service. Fixed:
+    the receiver logs it and the collector starts on the next launch (ADR-0052). The
+    `:core:collect` Robolectric tests had run at API 23; they now run at 36.
+- Pending, needing the phone's screen (the owner says when): protocol C (1 h unplugged, driven
+  over adb).
 - Coulomb on the phone was updated in place on 2026-11-10 (owner approved, after the rehearsal in
   ADR-0049 Results), from the build of 2026-11-06 to `bee7dc1`:
   - a read-only capture came first (schema 1, `quick_check` ok, 273,730 history events);
@@ -242,8 +250,8 @@ Gate status (2026-11-10, SPEC 17):
   - The app's benchmark variant alone is profileable.
   - API 37 emulator, unplugged by a faked plug, 2026-11-09: time to verdict median 686 ms (min 522,
     max 719); first frame median 562 ms.
-  - Indicative only: the target (p50 < 800 ms, p90 < 1.2 s) is for the S25 Ultra, so that gate is
-    pending real device.
+  - Indicative only: the target (p50 < 800 ms, p90 < 1.2 s) is for the S25 Ultra. The phone run
+    of 2026-11-11 meets it (median 231 ms, p90 259 ms; gate status above).
 - Whole-app follow-up from the Charging audit: `BatteryRepository` and `DrainRepository` share a
   `stateIn`/`shareIn` flow in the app scope. A failed read ends that shared flow for every later
   collector, so "Try again" cannot recover without a restart. Charging moved to a cold flow per
