@@ -14,6 +14,7 @@ step() {
   case "$1" in
     static)   python3 -I tools/design/icons.py --check
               python3 -I tools/validation/report.py --self-test
+              python3 -I tools/ci/translations.py
               run spotlessCheck detekt checkModuleBoundaries ;;
     unit)     run test :build-logic:convention:test ;;
     lint)     run :app:lintDebug ;;

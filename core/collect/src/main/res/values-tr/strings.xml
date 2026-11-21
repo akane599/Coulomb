@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="collector_channel">Pil izleme</string>
+    <string name="collector_channel_description">Coulomb pil kullanımını kaydederken gösterilir. Kapatmak bildirimi gizler; izleme sürer.</string>
+    <string name="collector_notification">Pil izleniyor</string>
+</resources>
