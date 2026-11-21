@@ -85,4 +85,5 @@ internal class SettingsActions(
     val insightsDigestMinute: (Int) -> Unit = {},
     val openActionCenter: () -> Unit = {},
     val allowNotifications: () -> Unit = {},
+    val openData: () -> Unit = {},
 )

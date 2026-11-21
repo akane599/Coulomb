@@ -130,6 +130,38 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   is no longer called a loss of access; the monitor notification and "Back" are in Turkish and a
   check keeps both languages complete.
   - Run 1 does not count. Next: run 2 and 3 with fresh reviewers; two clean runs in a row end the gate.
+- **Whole-app gate, run 2 (2026-11-21).** Fresh reviewers: audit 16/20, critique 28/40. No critical;
+  the audit found 3 major and the critique 5, one of them the same; all fixed (ADR-0063,
+  `docs/design-gates/2026-11-21-audit-whole-app-run-2.md` and `…-critique-whole-app-run-2.md`).
+  - Privileges had lost "Re-run probes" to run 1's own fix.
+  - The night page called wakeups "none recorded" when none were collected.
+  - A notification said "Charging" while the phone held at its target or drew from the battery.
+  - While plugged in, Watch and Info insights could be reached nowhere: Charging now has Now's
+    Insights section.
+  - "It kept the phone awake for…" added overlapping wakelock rows: it takes the app's own total.
+  - At 200% the Timeline's current axis put "−1.00 A" on the zero line.
+  - Drain's component table and its lens took shares of different totals.
+  - Run 2 does not count. Run 3 starts after P6's screens are in, because the last two runs must
+    cover them.
+
+## P6 Polish and release (in progress)
+
+Started 2026-11-21, on the data pulled that day (ADR-0053).
+
+- **Export, import and "Delete all data" (SPEC 14.5, ADR-0062).**
+  - The JSON bundle (a zip of one line-delimited file per table, with a manifest and a closing
+    entry), the CSV export (names in place of codes, a UTC column beside every time) and the raw
+    bundle (`batterystats -c` and `--history` as Android prints them).
+  - Import keeps another phone's history as an archive of its own and never merges it (second
+    opinion, then ADR-0062 §9; the question is in `docs/questions.md`). A bundle is treated as
+    hostile and refused whole on any failed check.
+  - "Data and export" in Settings holds the three exports, the import with its archives, and
+    "Delete all data", which is refused while an action is in force.
+  - One independent review of the engine found three things above minor, all for a file built to
+    do harm (a stack overflow from nested brackets, no bound on what a file inflates to, values a
+    reader would throw on); fixed, with tests (ADR-0062 §11 and "Reviewed").
+  - Not verified on a device: the system's file pickers, the restart after a deletion, the raw
+    bundle's dumps and whether Battery Historian takes them.
 - **Settings rows still to come (SPEC 14.4), all in P6:** Monitoring mode (Full, Lite), the two
   sampling intervals, Theme with true black, Language, Units, Automation API, Data retention, the
   Developer console, and the self-cost line of SPEC 6.9. Lite mode was once planned with P4's

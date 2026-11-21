@@ -11,6 +11,7 @@
     <string name="screen_action_center">Action Center</string>
     <string name="screen_privileges">Privileges</string>
     <string name="screen_settings">Settings</string>
+    <string name="screen_data">Data and export</string>
     <!-- The notification channels of SPEC 12.1; Monitor is the collector's. -->
     <string name="surface_channel_charging">Charging</string>
     <string name="surface_channel_charging_about">Level, power and time to your target while the phone charges.</string>

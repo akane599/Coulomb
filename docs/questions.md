@@ -5,6 +5,21 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. **Import keeps another phone's history apart; it does not merge it** (ADR-0062 §9,
+  after a second opinion). SPEC 14.5 says import is "for moving to a new phone". Merged rows would
+  put the old phone's capacity, cycles, baselines and app UIDs under this phone's name, so an
+  imported bundle becomes an archive: "Data and export" lists it with where it is from, its dates,
+  its session counts and its size, and it can be deleted. Default in use: no screen draws an
+  archive's sessions yet; the bundle's neutral settings can be applied. Say so if the old phone's
+  history should be browsable on Coulomb's screens, or continue this phone's charts.
+- 2026-11-21. Whether Battery Historian accepts the raw bundle's two files (`batterystats -c` and
+  `--history`) without a full bug report is not verified; it needs Historian on a computer and a
+  bundle from the phone. Default in use: the bundle holds both dumps as Android printed them, and
+  its README says the check has not been made.
+- 2026-11-21. "Delete all data" restarts Coulomb's process after clearing, because the collector
+  holds the boot, the calibration and the capacity in memory. The restart is the usual
+  start-the-launcher-activity-then-exit and has not run on a device. Default in use: built that
+  way, tested against a stand-in; an emulator run is queued with P6's device tests.
 - 2026-11-21. **Needs a yes before it is run (device writes).** The Action Center's commands
   (`appops set`, `am set-standby-bucket`, `cmd deviceidle whitelist`, `settings put global
   device_idle_constants`, `cmd power set-mode`, `am force-stop`, `dumpsys batterystats --reset`)

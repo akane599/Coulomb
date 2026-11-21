@@ -86,6 +86,7 @@ import io.github.akane599.coulomb.feature.health.ChargeSessionsScreen
 import io.github.akane599.coulomb.feature.health.HealthScreen
 import io.github.akane599.coulomb.feature.health.chargeSessionViewModel
 import io.github.akane599.coulomb.feature.now.NowScreen
+import io.github.akane599.coulomb.feature.settings.DataScreen
 import io.github.akane599.coulomb.feature.settings.PrivilegesScreen
 import io.github.akane599.coulomb.feature.settings.SettingsScreen
 import io.github.akane599.coulomb.feature.timeline.NightReportScreen
@@ -245,6 +246,8 @@ class AppScreens(
     val actionCenter: @Composable (AppNavigator) -> Unit = {},
     /** One kernel record or wakeup reason (SPEC 10.5), beside Drain's list; [kind] is a `WakeKind`'s name. */
     val wakeSource: @Composable (AppNavigator, kind: String, tag: String) -> Unit = { _, _, _ -> },
+    /** SPEC 14.5, opened from Settings. */
+    val data: @Composable (AppNavigator) -> Unit = {},
 ) {
     companion object {
         val Default: AppScreens =
@@ -337,7 +340,13 @@ class AppScreens(
                 },
                 chargeSession = { _, id -> ChargeSessionScreen(chargeSessionViewModel(id)) },
                 privileges = { PrivilegesScreen() },
-                settings = { navigator -> SettingsScreen(onOpenActionCenter = { navigator.open(Route.ActionCenter) }) },
+                settings = { navigator ->
+                    SettingsScreen(
+                        onOpenActionCenter = { navigator.open(Route.ActionCenter) },
+                        onOpenData = { navigator.open(Route.Data) },
+                    )
+                },
+                data = { navigator -> DataScreen(onOpenActionCenter = { navigator.open(Route.ActionCenter) }) },
                 actionCenter = { navigator ->
                     ActionCenterScreen(
                         onOpenPrivileges = { navigator.open(Route.Privileges) },
@@ -419,6 +428,9 @@ private fun EntryProviderScope<NavKey>.barEntries(
     }
     entry<Route.Settings> {
         InnerScreen(stringResource(R.string.screen_settings), navigator::back, pane = true) { screens.settings(navigator) }
+    }
+    entry<Route.Data> {
+        InnerScreen(stringResource(R.string.screen_data), navigator::back, pane = true) { screens.data(navigator) }
     }
 }
 

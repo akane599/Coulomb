@@ -63,6 +63,7 @@ import java.time.ZoneOffset
 public fun SettingsScreen(
     modifier: Modifier = Modifier,
     onOpenActionCenter: () -> Unit = {},
+    onOpenData: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -81,7 +82,7 @@ public fun SettingsScreen(
         onPauseOrDispose {}
     }
     val actions =
-        remember(viewModel, onOpenActionCenter, allowed, refused) {
+        remember(viewModel, onOpenActionCenter, onOpenData, allowed, refused) {
             // Asked once in place; after a refusal the system's page is where it is changed.
             val ask = {
                 if (refused) context.openNotificationSettings() else launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -107,6 +108,7 @@ public fun SettingsScreen(
                 allowNotifications = ask,
                 insightsDigestMinute = viewModel::insightsDigestMinute,
                 openActionCenter = onOpenActionCenter,
+                openData = onOpenData,
             )
         }
     // Nothing until the stored values are read, then one fade-in (SPEC 10.11).
@@ -197,6 +199,14 @@ internal fun SettingsContent(
         CoulombTextButton(
             stringResource(R.string.settings_action_center_open),
             actions.openActionCenter,
+            trailingIcon = CoulombIcons.ChevronRight,
+            edge = ButtonEdge.Start,
+        )
+        // SPEC 14.5 on its own screen: three exports, an import and a deletion are more than rows here.
+        SectionTitle(stringResource(R.string.settings_data), provenance = null)
+        CoulombTextButton(
+            stringResource(R.string.settings_data_open),
+            actions.openData,
             trailingIcon = CoulombIcons.ChevronRight,
             edge = ButtonEdge.Start,
         )

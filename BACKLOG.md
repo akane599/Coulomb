@@ -12,5 +12,8 @@ where the spec has it.
 - Validation runs longer than protocol E's one night (SPEC 17, P2 gate).
 - A two-pane Charging layout for expanded windows, readings and session beside the hero (SPEC 10.10's
   adaptive layouts; the Charging adapt gate, ADR-0034 keeps one column).
+- Browsing an imported history on Coulomb's screens, and one view that continues the old phone's
+  charts on the new one (SPEC 14.5 says only "import is supported for moving to a new phone";
+  ADR-0062 §9 keeps an import as an archive and lists it).
 
 Read but not listed: SPEC 9.1's "optional action ids" is a field a rule may leave empty, not a task.
