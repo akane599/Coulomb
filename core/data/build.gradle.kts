@@ -7,6 +7,8 @@ plugins {
 }
 
 android {
+    // DataTransferTest imports a bundle, which reads :core:database's schema assets.
+    testOptions.unitTests.isIncludeAndroidResources = true
     testOptions.unitTests.all {
         // Robolectric reaches FileDescriptor internals on API 36 (as in :core:database).
         it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED")
