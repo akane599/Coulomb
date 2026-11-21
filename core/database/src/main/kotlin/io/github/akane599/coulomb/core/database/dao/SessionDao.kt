@@ -112,6 +112,10 @@ public interface SessionDao {
     @Query("SELECT * FROM health_summary WHERE epochDay = :epochDay")
     public suspend fun healthSummary(epochDay: Int): HealthSummaryEntity?
 
+    /** The latest day's capacity estimate in mAh; null before any day has one. */
+    @Query("SELECT estimateMah FROM health_summary WHERE estimateMah IS NOT NULL ORDER BY epochDay DESC LIMIT 1")
+    public suspend fun latestHealthEstimateMah(): Double?
+
     @Query("SELECT * FROM health_summary ORDER BY epochDay")
     public fun observeHealthSummaries(): Flow<List<HealthSummaryEntity>>
 
