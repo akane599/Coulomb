@@ -14,6 +14,7 @@ import androidx.core.graphics.drawable.IconCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.akane599.coulomb.MainActivity
 import io.github.akane599.coulomb.R
+import io.github.akane599.coulomb.core.analytics.ChargePhase
 import io.github.akane599.coulomb.core.collect.android.CollectorService
 import io.github.akane599.coulomb.core.common.OpenRequest
 import io.github.akane599.coulomb.core.data.ChargingNow
@@ -113,7 +114,7 @@ class SurfaceNotifier
             val status = status(now, formats)
             val notification =
                 base(CHARGING, HERE)
-                    .setContentTitle(context.getString(R.string.surface_charging_title, status))
+                    .setContentTitle(title(now, status, formats))
                     .setContentText(timeToTarget(now, formats))
                     .setShortCriticalText(status)
                     .setStyle(style)
@@ -126,13 +127,32 @@ class SurfaceNotifier
             manager.notify(CHARGING_ID, notification)
         }
 
-        /** "62% · 18 W": the status chip's text and the title's figures. */
+        /**
+         * The title says what the phone is doing, in the Charging screen's own phases: on a charger
+         * it may hold at a limit, be full, or draw from the battery, and none of those is "Charging".
+         */
+        private fun title(
+            now: ChargingNow,
+            status: String,
+            formats: Formats,
+        ): String {
+            val level = formats.percent(now.levelPct)
+            return when (now.phase) {
+                ChargePhase.HOLDING -> context.getString(R.string.surface_charging_holding, level)
+                ChargePhase.FULL -> context.getString(R.string.surface_charging_full, level)
+                ChargePhase.DRAWING -> context.getString(R.string.surface_charging_plugged, level)
+                else -> context.getString(R.string.surface_charging_title, status)
+            }
+        }
+
+        /** "62% · 18 W": the status chip's text and the title's figures. The power only while it goes in and rounds to a watt. */
         private fun status(
             now: ChargingNow,
             formats: Formats,
         ): String {
             val level = formats.percent(now.levelPct)
-            val watts = now.watts?.takeIf { it > 0 } ?: return level
+            val charging = now.phase != ChargePhase.HOLDING && now.phase != ChargePhase.FULL && now.phase != ChargePhase.DRAWING
+            val watts = now.watts?.takeIf { charging && it >= HALF_WATT } ?: return level
             return context.getString(R.string.surface_charging_status, level, formats.wholeWatts(watts).joined())
         }
 
@@ -283,6 +303,7 @@ class SurfaceNotifier
 
             /** A tap that opens the app where it is: no request the activity knows. */
             private const val HERE = ""
+            private const val HALF_WATT = 0.5
 
             // 1 is the collector's.
             private const val CHARGING_ID = 2

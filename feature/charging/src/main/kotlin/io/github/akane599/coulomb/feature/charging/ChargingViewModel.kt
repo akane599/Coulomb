@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -42,6 +43,12 @@ internal sealed interface ChargingUiState {
         val now: ChargingNow,
     ) : ChargingUiState
 }
+
+/** The insights Charging shows, and how many more are open. */
+internal data class ChargingInsights(
+    val shown: List<ShownInsight> = emptyList(),
+    val more: Int = 0,
+)
 
 /**
  * Charging over [ChargingRepository], which reads again at each sample. While the screen shows,
@@ -77,20 +84,28 @@ public class ChargingViewModel
                 .catch { emit(false) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
+        private val allInsights = MutableStateFlow(false)
+
         /**
-         * The open insights that ask for action (SPEC 9.2 Act), which Charging shows because it
-         * stands in Now's place while plugged in: "the battery is hot" is about this very charge.
-         * The flow runs only while Charging is on screen, so what passes through it has been shown.
+         * The open insights as Now shows them (SPEC 10.2): two, highest severity first, and how
+         * many more are open. Charging stands in Now's place while plugged in, so without them an
+         * insight the digest named could not be read until the phone is unplugged. The flow runs
+         * only while Charging is on screen, so what passes through it has been shown.
          */
-        internal val actInsights: StateFlow<List<ShownInsight>> =
-            insights
-                .observeShown(Int.MAX_VALUE)
-                .map { open -> open.filter { it.insight.severity == InsightSeverity.ACT }.take(MAX_INSIGHTS) }
-                .onEach { shown ->
-                    val now = System.currentTimeMillis()
-                    shown.forEach { insights.seen(it.insight, now) }
-                }.catch { emit(emptyList()) }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+        internal val shownInsights: StateFlow<ChargingInsights> =
+            combine(insights.observeShown(Int.MAX_VALUE), allInsights) { open, all ->
+                val shown = if (all) open else open.take(MAX_INSIGHTS)
+                ChargingInsights(shown, open.size - shown.size)
+            }.onEach { (shown, _) ->
+                val now = System.currentTimeMillis()
+                shown.forEach { insights.seen(it.insight, now) }
+            }.catch { emit(ChargingInsights()) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ChargingInsights())
+
+        /** "Show N more": every open insight, until Charging is left. */
+        internal fun showAllInsights() {
+            allInsights.value = true
+        }
 
         /** Snoozes the insight for [forMs] ([InsightStore.SNOOZE_DAY_MS], [InsightStore.SNOOZE_WEEK_MS]). */
         internal fun snoozeInsight(

@@ -478,7 +478,6 @@ private fun ColumnScope.Matrix(
         stringResource(R.string.privileges_matrix),
         provenance = null,
         first = besideFirst,
-        caption = checked,
         action = {
             CoulombTextButton(
                 stringResource(if (state.probing) R.string.privileges_probing else R.string.privileges_rerun),
@@ -488,6 +487,15 @@ private fun ColumnScope.Matrix(
             )
         },
     )
+    // A section title holds a caption or an action, not both: the time of the check goes under it.
+    if (checked != null) {
+        Text(
+            checked,
+            Modifier.padding(bottom = CoulombSpacing.Space12),
+            color = CoulombTheme.colors.textSecondary,
+            style = CoulombTheme.typography.caption,
+        )
+    }
     MatrixStatus(state)
     state.groups.forEachIndexed { index, (tier, rows) ->
         // The first group sits a head's gap under the title, unless a note stands between them.

@@ -100,13 +100,8 @@ internal fun nightStory(
 ): Story {
     val drains = report?.drains
     val alarms = report?.alarms.orEmpty().associate { it.uid to it.wakeups }
-    val held =
-        report
-            ?.wakes
-            .orEmpty()
-            .filter { it.kind == WakeKind.PARTIAL && it.uid != null }
-            .groupingBy { it.uid }
-            .fold(0L) { sum, wake -> sum + wake.totalMs }
+    // Each app's own total: its wakelock rows overlap and cannot be added up (ADR-0039 §4).
+    val held = report?.heldMs.orEmpty()
     return DrainStory.compose(
         StoryInput(
             subject = StorySubject.ScreenOff(overnight = false),

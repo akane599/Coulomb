@@ -126,8 +126,11 @@ private fun topApps(
         .reduceOrNull { a, b -> resources.getString(R.string.drain_detail_separator, a, b) }
 }
 
-/** Less than this is rounding, not energy worth a row (as [io.github.akane599.coulomb.core.data.SpanBreakdown]'s remainder). */
-private const val MIN_SHOWN_MAH = 0.05
+/**
+ * Less than this is rounding, not energy worth a row (as [io.github.akane599.coulomb.core.data.SpanBreakdown]'s
+ * remainder); the lens and its table both leave it out.
+ */
+internal const val MIN_SHOWN_MAH = 0.05
 
 /**
  * The lens's caption, the coarse note where Android names only some components (naming the

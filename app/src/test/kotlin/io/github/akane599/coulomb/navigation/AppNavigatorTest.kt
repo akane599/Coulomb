@@ -149,6 +149,11 @@ class AppNavigatorTest {
         assertThat(navigator.current).isEqualTo(Destination.Timeline)
         assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.NightReport).inOrder()
 
+        // With a night open on it, the list is shown again, not stacked a second time.
+        navigator.openDetail(Route.Night(7))
+        navigator.show(Route.NightReport)
+        assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.NightReport).inOrder()
+
         // Privileges opens over wherever the user is, once.
         navigator.show(Route.Privileges)
         navigator.show(Route.Privileges)

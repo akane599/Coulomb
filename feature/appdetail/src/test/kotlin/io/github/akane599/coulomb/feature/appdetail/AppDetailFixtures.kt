@@ -134,4 +134,6 @@ internal fun labCounters(): AppCounters =
         wifiTxBytes = 3_000_000,
         foregroundActivityMs = 52 * MINUTE,
         foregroundServiceMs = 18 * MINUTE,
+        // Its three wakelock rows (9, 6 and 22 min) overlap: the app's own total is less than their sum.
+        partialWakelockMs = 24 * MINUTE,
     )

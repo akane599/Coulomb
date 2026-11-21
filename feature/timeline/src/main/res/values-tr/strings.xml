@@ -51,7 +51,7 @@
     <string name="night_timeline">Zaman çizelgesi</string>
     <string name="night_timeline_sources">Seviye: %1$s. Şeritler: %2$s.</string>
     <string name="night_no_history">Android’in bu süreye ait pil geçmişi saklı değil; bu yüzden zaman çizelgesi yok.</string>
-    <string name="night_timeline_summary">Seviye %1$s değerinden %2$s değerine indi. Telefon %3$s kez uyandı ve %4$s uyanık kaldı.</string>
+    <string name="night_timeline_summary">Seviye %1$s değerinden %2$s değerine geldi. Telefon %3$s kez uyandı ve %4$s uyanık kaldı.</string>
     <string name="night_timeline_caption">Uyanık, Uyanık tutma ve radyo şeritlerinde çerçeveli bölüm, her biri ayrı çizilemeyecek kadar sık olayları gösterir. Doze şeridinde çerçeveli bölüm hafif Doze’dur.</string>
     <string name="night_culprits">Uyanık tutanlar</string>
     <string name="night_no_records">Bu sürenin kayıtları artık saklı değil.</string>
@@ -66,6 +66,10 @@
     <string name="night_column_held">Süre</string>
     <string name="night_column_wakeups">Uyandırma</string>
     <string name="night_none">Kayıt yok.</string>
+    <string name="night_none_partial">Toplanan kısımda kayıt yok.</string>
+    <string name="night_group_not_collected">Bu süre için toplanmadı.</string>
+    <string name="night_not_collected">Bu süre için uyandırmalar toplanmadı.</string>
+    <string name="night_partial">Bu sürenin bir kısmı toplanmadı; bu sayılar alt sınırdır.</string>
     <string name="night_small_apps">Küçük uygulamalar birlikte</string>
     <string name="night_open_drain">Bu süreyi Tüketim’de aç</string>
 
@@ -83,7 +87,7 @@
     <string name="timeline_no_history">Coulomb’da bu aralık için pil geçmişi yok. Şimdi, en son geçmişe döner.</string>
     <string name="timeline_reading">Bu aralık okunuyor…</string>
     <string name="timeline_read_failed">Coulomb bu aralığı okuyamadı.</string>
-    <string name="timeline_locked">Zaman çizelgesi Android’in pil geçmişinden çizilir; Coulomb onu yalnızca Shizuku üzerinden okuyabilir. Shizuku olmadan buraya bir şey eklenmez.</string>
+    <string name="timeline_locked">Zaman çizelgesi Android’in pil geçmişinden çizilir; Coulomb onu yalnızca Shizuku ile ya da ADB üzerinden bir kez verilen izinlerle okuyabilir. İkisi de yoksa buraya bir şey eklenmez.</string>
     <string name="timeline_earlier">Daha önce</string>
     <string name="timeline_later">Daha sonra</string>
     <string name="timeline_readout">%1$s · %2$s</string>

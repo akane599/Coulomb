@@ -67,4 +67,9 @@
     <string name="charging_row_full">Reaches full</string>
     <string name="charging_times_need_both">Times to %1$s and to full show after three past charges that started below this level and reached them without a pause.</string>
     <string name="charging_times_drawing">No times while the phone draws on the battery.</string>
+    <string name="charging_insights">Insights</string>
+    <plurals name="charging_insights_more">
+        <item quantity="one">Show %1$s more</item>
+        <item quantity="other">Show %1$s more</item>
+    </plurals>
 </resources>

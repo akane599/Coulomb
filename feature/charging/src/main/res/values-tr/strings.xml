@@ -67,4 +67,9 @@
     <string name="charging_row_full">Dolma</string>
     <string name="charging_times_need_both">%1$s seviyesine ve dolmaya kalan süreler, bu seviyenin altında başlayıp bunlara ara vermeden ulaşan üç geçmiş şarjdan sonra görünür.</string>
     <string name="charging_times_drawing">Telefon pilden beslenirken süre verilmez.</string>
+    <string name="charging_insights">İçgörüler</string>
+    <plurals name="charging_insights_more">
+        <item quantity="one">%1$s tane daha göster</item>
+        <item quantity="other">%1$s tane daha göster</item>
+    </plurals>
 </resources>

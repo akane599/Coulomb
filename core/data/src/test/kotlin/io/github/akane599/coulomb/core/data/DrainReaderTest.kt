@@ -260,11 +260,11 @@ internal class DrainReaderTest : DrainDbTest() {
             val hour = 3_600_000L
             store(
                 window(a, b).copy(measuredMah = 120.0),
-                WindowRows(uids = listOf(uid(APP, 30.0)), stats = listOf(alarms(APP, 3)) + device(hour, hour)),
+                WindowRows(uids = listOf(uid(APP, 30.0)), stats = listOf(alarms(APP, 3), held(APP, 60_000)) + device(hour, hour)),
             )
             store(
                 window(b, c).copy(measuredMah = 50.0, chargeSource = ChargeSource.LEVEL_DELTA),
-                WindowRows(uids = listOf(uid(APP, 10.0)), stats = device(hour, hour)),
+                WindowRows(uids = listOf(uid(APP, 10.0)), stats = listOf(held(APP, 30_000)) + device(hour, hour)),
             )
             // On the charger, batterystats counts no time on battery.
             store(window(c, d).copy(measuredMah = -300.0), WindowRows(stats = listOf(alarms(APP, 2))))
@@ -285,6 +285,8 @@ internal class DrainReaderTest : DrainDbTest() {
             assertThat(report.lowerBound).isTrue()
             assertThat(report.drains.apps.map { it.uid to it.mah }).containsExactly(APP to 40.0)
             assertThat(report.alarms.map { it.uid to it.wakeups }).containsExactly(APP to 5L)
+            // The app's own total of partial wakelock time, which its overlapping rows cannot be added up to (ADR-0039 §4).
+            assertThat(report.heldMs).containsExactly(APP, 90_000L)
         }
 
     @Test

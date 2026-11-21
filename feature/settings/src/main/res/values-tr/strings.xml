@@ -115,7 +115,7 @@
     <string name="settings_charge_alarm_note">Seviye hedefe ulaştığında her şarjda bir kez çalar.</string>
     <string name="settings_temperature">Pil sıcaklığı alarmı</string>
     <string name="settings_temperature_note">Pil en az bu kadar ısındığında uyarır; 30 dakikada en çok bir kez. Telefon uyanıkken denetlenir.</string>
-    <string name="settings_temperature_note_off">Pil sıcaklığı için uyarı yok.</string>
+    <string name="settings_temperature_note_off">Belirli bir sıcaklıkta alarm yok. Isıyla ilgili bir içgörü yine de bildirim gönderebilir.</string>
     <string name="settings_alerts">Uyarılar</string>
     <string name="settings_notifications_off">Coulomb için bildirimler kapalı; bu uyarılar ve özet gösterilemez.</string>
     <string name="settings_notifications_allow">Bildirimlere izin ver</string>

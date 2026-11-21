@@ -67,6 +67,10 @@
     <string name="night_column_held">Held</string>
     <string name="night_column_wakeups">Wakeups</string>
     <string name="night_none">None recorded.</string>
+    <string name="night_none_partial">None recorded in the part that was collected.</string>
+    <string name="night_group_not_collected">Not collected for this stretch.</string>
+    <string name="night_not_collected">Wakeups weren’t collected for this stretch.</string>
+    <string name="night_partial">Part of this stretch was not collected, so these counts are lower bounds.</string>
     <string name="night_small_apps">Small apps together</string>
     <string name="night_open_drain">Open this stretch in Drain</string>
 
@@ -84,7 +88,7 @@
     <string name="timeline_no_history">Coulomb has no battery history for this range. Now returns to the latest.</string>
     <string name="timeline_reading">Reading this range…</string>
     <string name="timeline_read_failed">Coulomb couldn’t read this range.</string>
-    <string name="timeline_locked">The Timeline is drawn from Android’s battery history, which Coulomb can read only through Shizuku. Without it, nothing is added here.</string>
+    <string name="timeline_locked">The Timeline is drawn from Android’s battery history, which Coulomb can read only with Shizuku or with permissions granted once over ADB. Without either, nothing is added here.</string>
     <string name="timeline_earlier">Earlier</string>
     <string name="timeline_later">Later</string>
     <string name="timeline_readout">%1$s · %2$s</string>

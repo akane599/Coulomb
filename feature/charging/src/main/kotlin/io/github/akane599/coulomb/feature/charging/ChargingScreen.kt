@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -35,7 +36,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.data.ChargingNow
+import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
+import io.github.akane599.coulomb.core.designsystem.component.CoulombSectionHead
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
 import io.github.akane599.coulomb.core.designsystem.component.SkeletonBlock
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
@@ -76,7 +80,7 @@ public fun ChargingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val alarm by viewModel.targetAlarm.collectAsStateWithLifecycle()
-    val insights by viewModel.actInsights.collectAsStateWithLifecycle()
+    val insights by viewModel.shownInsights.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {
         viewModel.visible(true)
         onPauseOrDispose { viewModel.visible(false) }
@@ -91,9 +95,10 @@ public fun ChargingScreen(
                 snoozeInsight = viewModel::snoozeInsight,
                 dismissInsight = viewModel::dismissInsight,
                 insightAction = onInsightAction,
+                showAllInsights = viewModel::showAllInsights,
             )
         }
-    ChargingContent(state, actions, modifier, targetAlarm = alarm, insights = insights)
+    ChargingContent(state, actions, modifier, targetAlarm = alarm, insights = insights.shown, moreInsights = insights.more)
 }
 
 /** What Charging's controls do; the screen itself holds no logic. */
@@ -105,6 +110,7 @@ internal class ChargingActions(
     val snoozeInsight: (id: Long, forMs: Long) -> Unit = { _, _ -> },
     val dismissInsight: (id: Long) -> Unit = {},
     val insightAction: (ActionId, Insight) -> Unit = { _, _ -> },
+    val showAllInsights: () -> Unit = {},
 )
 
 /** Charging's column on wide windows, as Now's (ADR-0034). */
@@ -118,6 +124,7 @@ internal fun ChargingContent(
     zone: ZoneId = ZoneId.systemDefault(),
     targetAlarm: Boolean = false,
     insights: List<ShownInsight> = emptyList(),
+    moreInsights: Int = 0,
 ) {
     val formats = rememberFormats()
     var table by rememberSaveable { mutableStateOf<String?>(null) }
@@ -165,7 +172,22 @@ internal fun ChargingContent(
                         Hero(now, formats)
                         LevelScale(now, formats, zone, onViewTable = { table = SCALE_TABLE })
                         Times(now, formats)
-                        ActInsights(insights, copy, actions, onWhy = { why = it })
+                        Insights(
+                            insights,
+                            copy,
+                            actions,
+                            onWhy = { why = it },
+                            more =
+                                if (moreInsights > 0) {
+                                    pluralStringResource(
+                                        R.plurals.charging_insights_more,
+                                        moreInsights,
+                                        formats.integer(moreInsights.toLong()),
+                                    )
+                                } else {
+                                    null
+                                },
+                        )
                         Readings(now, formats)
                         Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
                         Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings)
@@ -190,19 +212,23 @@ internal fun ChargingContent(
 }
 
 /**
- * The open insights that ask for action, on their cards as on Now (DESIGN.md: cards stack 12 dp
- * apart). Charging stands where Now does while plugged in, so without this "the battery is hot
- * while charging" could not be read during the charge it is about.
+ * The open insights on their cards as on Now (SPEC 10.2; DESIGN.md: cards stack 12 dp apart):
+ * two, highest severity first, under their own head, with the rest a tap away. Charging stands
+ * where Now does while plugged in, so without this "the battery is hot while charging" could not
+ * be read during the charge it is about, and no other insight until the phone is unplugged. The
+ * head keeps a card about another day from reading as a line about this charge.
  */
 @Composable
-private fun ActInsights(
+private fun Insights(
     insights: List<ShownInsight>,
     copy: InsightCopy,
     actions: ChargingActions,
     onWhy: (id: Long) -> Unit,
+    more: String?,
 ) {
     if (insights.isEmpty()) return
     Column(Modifier.padding(top = currentSectionGap()), verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space12)) {
+        CoulombSectionHead(title = stringResource(R.string.charging_insights))
         for (shown in insights) {
             val id = shown.insight.id
             key(id) {
@@ -220,6 +246,8 @@ private fun ActInsights(
                 )
             }
         }
+        // The rest are a tap away: nobody has to dismiss a card to reach the next.
+        if (more != null) CoulombTextButton(text = more, onClick = actions.showAllInsights, edge = ButtonEdge.Start)
     }
 }
 

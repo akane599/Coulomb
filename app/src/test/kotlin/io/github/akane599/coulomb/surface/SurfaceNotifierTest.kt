@@ -7,6 +7,7 @@ import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.analytics.ChargePhase
 import io.github.akane599.coulomb.core.analytics.ChargeTime
 import io.github.akane599.coulomb.core.analytics.ChargeTimeBasis
 import io.github.akane599.coulomb.core.data.ChargingNow
@@ -100,6 +101,31 @@ class SurfaceNotifierTest {
     @Test
     fun withoutACalibratedCurrentTheLiveUpdateSaysTheLevelOnly() {
         notifier.charging(charge(null))
+        assertThat(posted().single().title()).isEqualTo("Charging · 62%")
+    }
+
+    @Test
+    fun aPluggedPhoneThatIsNotChargingIsNotCalledCharging() {
+        // Held at a limit the current is a trickle: the title names the state and no "0 W" is printed.
+        notifier.charging(charge(0.2).copy(levelPct = 80, phase = ChargePhase.HOLDING))
+        assertThat(posted().single().title()).isEqualTo("Holding at 80%")
+        assertThat(
+            posted()
+                .single()
+                .extras
+                .getCharSequence("android.shortCriticalText")
+                ?.toString()
+                ?.plain(),
+        ).isEqualTo("80%")
+
+        notifier.charging(charge(0.0).copy(levelPct = 100, phase = ChargePhase.FULL))
+        assertThat(posted().single().title()).isEqualTo("Full · 100%")
+
+        notifier.charging(charge(null).copy(levelPct = 52, phase = ChargePhase.DRAWING))
+        assertThat(posted().single().title()).isEqualTo("Plugged in · 52%")
+
+        // A power that rounds to no watt is left out while charging too.
+        notifier.charging(charge(0.3).copy(phase = ChargePhase.SLOWING))
         assertThat(posted().single().title()).isEqualTo("Charging · 62%")
     }
 

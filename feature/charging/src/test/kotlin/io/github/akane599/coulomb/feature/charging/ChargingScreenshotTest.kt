@@ -84,6 +84,14 @@ class ChargingScreenshotTest {
     @Config(qualifiers = "$PAGE-xhdpi")
     fun hotInsight() = shoot("insight") { ChargingContent(ChargingUiState.Ready(labNow()), NoActions, zone = ZONE, insights = hot()) }
 
+    /** More open insights than the two shown are a tap away, as on Now. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun insightsMore() =
+        shoot("insights-more") {
+            ChargingContent(ChargingUiState.Ready(labNow()), NoActions, zone = ZONE, insights = hot(), moreInsights = 3)
+        }
+
     @Test
     @Config(qualifiers = "tr-$PAGE-night-xhdpi")
     fun hotInsightTurkishDark() =

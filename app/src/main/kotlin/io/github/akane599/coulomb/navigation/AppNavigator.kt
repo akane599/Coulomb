@@ -58,7 +58,9 @@ class AppNavigator internal constructor(
 
             route == Route.NightReport -> {
                 current = Destination.Timeline
-                if (backStack.lastOrNull() != route) openList(route)
+                // Back to the list when it is already open under a night, so it is never on the stack twice.
+                val at = backStack.indexOf(route)
+                if (at < 0) openList(route) else while (backStack.lastIndex > at) backStack.removeAt(backStack.lastIndex)
             }
 
             backStack.lastOrNull() != route -> {

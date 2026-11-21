@@ -81,6 +81,11 @@ public data class DrainReport(
     /** Wakeup alarms per app, most first (S5 reports wakeup alarms only). */
     val alarms: List<AlarmEntry>,
     /**
+     * Per UID, the time it held partial wakelocks with overlaps between its tags removed (S5's
+     * `awl` line). An app's rows in [wakes] overlap, so their sum is not this (ADR-0039 §4).
+     */
+    val heldMs: Map<Int, Long> = emptyMap(),
+    /**
      * The device's power by component, apps included, largest first. Modeled. From S4 when its
      * windows hold at least half the span's modeled total ([componentsNotBrokenDownMah] is then set),
      * else S5's coarse device rows (ADR-0035 §7).

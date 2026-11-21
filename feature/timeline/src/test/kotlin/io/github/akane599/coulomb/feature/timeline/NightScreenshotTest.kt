@@ -21,7 +21,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -101,6 +104,23 @@ class NightScreenshotTest {
     /** A drop of one point has no rate: the level lost is the figure. */
     @Test
     fun nightNoRate() = shoot("night-no-rate") { Night(NightDetail(labNights()[2], report = null, timeline = null)) }
+
+    @Test
+    fun nightNotCollected() =
+        shoot("night-not-collected") {
+            // Basic mode or a failed read: nothing was collected, which is not "none recorded".
+            val nothing = WakeCoverage(Coverage.NONE, Coverage.NONE, Coverage.NONE)
+            val report = labNightReport().copy(wakes = emptyList(), alarms = emptyList(), heldMs = emptyMap(), wakeCoverage = nothing)
+            Night(labDetail().copy(report = report))
+        }
+
+    @Test
+    fun nightPartlyCollected() =
+        shoot("night-partly-collected") {
+            val partly = WakeCoverage(Coverage.PARTIAL, Coverage.NONE, Coverage.NONE)
+            val report = labNightReport().let { r -> r.copy(wakes = r.wakes.filter { it.kind == WakeKind.PARTIAL }, wakeCoverage = partly) }
+            Night(labDetail().copy(report = report))
+        }
 
     @Test
     fun nightGone() = shoot("night-gone") { NightContent(Read.Ready(null), {}, {}, zone = ZoneOffset.UTC, nowMs = NOW) }

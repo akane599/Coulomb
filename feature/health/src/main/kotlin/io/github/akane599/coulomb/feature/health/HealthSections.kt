@@ -98,7 +98,8 @@ internal fun Estimate(
 
                     else -> {
                         val amount = formats.mah(size).joined()
-                        val range = formats.mah(change.marginMah).joined()
+                        // The figures beside it are rounded to 10 mAh; a margin to the last mAh would claim more, so it rounds outward.
+                        val range = formats.mah(ceil(change.marginMah / SAME_MAH) * SAME_MAH).joined()
                         val within = size <= change.marginMah
                         val lower = change.deltaMah < 0
                         val id =

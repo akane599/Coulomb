@@ -241,6 +241,16 @@ class DrainScreenshotTest {
         captureScreenRoboImage("src/test/screenshots/drain-components-table.png")
     }
 
+    /** With a part S4 did not split, the table closes with it as the lens does, and takes its shares of the same total. */
+    @OptIn(ExperimentalRoborazziApi::class, ExperimentalTestApi::class)
+    @Test
+    fun componentsTableWithRest() {
+        shoot("components-s4-table", ready(brokenDownReport()), lens = Lens.COMPONENTS, capture = false)
+        compose.onAllNodes(hasViewAsTable)[1].performCustomAccessibilityActionWithLabel("View as table")
+        compose.waitForIdle()
+        captureScreenRoboImage("src/test/screenshots/drain-components-s4-table.png")
+    }
+
     /** The custom range picker, in a past month so that Material's ring for today never shows. */
     @OptIn(ExperimentalRoborazziApi::class)
     @Test

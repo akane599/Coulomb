@@ -121,7 +121,7 @@
     <string name="settings_charge_alarm_note">Sounds once per charge when the level reaches the target.</string>
     <string name="settings_temperature">Battery temperature alarm</string>
     <string name="settings_temperature_note">Alerts when the battery is at least this warm, at most once in 30 minutes. Checked while the phone is awake.</string>
-    <string name="settings_temperature_note_off">No alert for battery temperature.</string>
+    <string name="settings_temperature_note_off">No alarm at a set temperature. An insight about heat can still notify.</string>
     <string name="settings_alerts">Alerts</string>
     <string name="settings_notifications_off">Notifications are off for Coulomb, so these alerts and the digest can’t be shown.</string>
     <string name="settings_notifications_allow">Allow notifications</string>

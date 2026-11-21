@@ -53,6 +53,7 @@ internal class AppDetailReaderTest : DrainDbTest() {
                                 stat(APP, UidKeys.JOB_RUNTIME_MS, 30_000),
                                 stat(APP, UidKeys.WIFI_RX_BYTES, 1_000_000),
                                 stat(APP, UidKeys.FOREGROUND_ACTIVITY_MS, 0),
+                                stat(APP, UidKeys.PARTIAL_WAKELOCK_MS, 3_500),
                             ),
                     ),
                 )
@@ -77,6 +78,8 @@ internal class AppDetailReaderTest : DrainDbTest() {
                         wifiTxBytes = 0,
                         foregroundActivityMs = 0,
                         foregroundServiceMs = 0,
+                        // Less than the 4,000 ms of its one wakelock row could be: the app's own total, not a sum of rows.
+                        partialWakelockMs = 3_500,
                     ),
                 )
             assertThat(detail.components).isNull()

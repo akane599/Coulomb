@@ -63,6 +63,8 @@ class BatteryTileService : TileService() {
         if (reading == null) {
             tile.label = name
             tile.subtitle = null
+            // Not the level of the last reading there was.
+            tile.contentDescription = name
             tile.state = Tile.STATE_INACTIVE
         } else {
             val words = TileWords.of(reading, formatsFor(this), resources)

@@ -19,13 +19,16 @@
     <string name="surface_channel_insights">Insights</string>
     <string name="surface_channel_insights_about">New insights, at most once a day.</string>
     <string name="surface_channel_privileges">Privileges</string>
-    <string name="surface_channel_privileges_about">When Coulomb loses the access it reads battery data with.</string>
+    <string name="surface_channel_privileges_about">When Shizuku stops, or Coulomb loses the access it reads battery data with.</string>
     <!-- The Monitor notification's line: a rate and how long it covers. -->
     <string name="surface_monitor_off">%1$s · screen off %2$s</string>
     <string name="surface_monitor_on">%1$s · screen on %2$s</string>
     <string name="surface_monitor_charging">Charging · %1$s</string>
     <!-- The Charging Live Update (SPEC 12.2). -->
     <string name="surface_charging_title">Charging · %1$s</string>
+    <string name="surface_charging_holding">Holding at %1$s</string>
+    <string name="surface_charging_full">Full · %1$s</string>
+    <string name="surface_charging_plugged">Plugged in · %1$s</string>
     <string name="surface_charging_status">%1$s · %2$s</string>
     <string name="surface_charging_to_target">%1$s in %2$s</string>
     <string name="surface_charge_ended_title">Charge ended</string>

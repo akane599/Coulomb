@@ -84,6 +84,11 @@ public data class AppCounters(
     val wifiTxBytes: Long? = null,
     val foregroundActivityMs: Long? = null,
     val foregroundServiceMs: Long? = null,
+    /**
+     * The time the app held partial wakelocks, with overlaps between its tags removed (S5's `awl`
+     * line). The per-tag rows overlap, so their sum is not this (ADR-0039 §4).
+     */
+    val partialWakelockMs: Long? = null,
 ) {
     /** Every counter, a missing one as 0: for an app whose records were all read. */
     internal fun zeroFilled(): AppCounters =
@@ -97,6 +102,7 @@ public data class AppCounters(
             wifiTxBytes = wifiTxBytes ?: 0,
             foregroundActivityMs = foregroundActivityMs ?: 0,
             foregroundServiceMs = foregroundServiceMs ?: 0,
+            partialWakelockMs = partialWakelockMs ?: 0,
         )
 }
 

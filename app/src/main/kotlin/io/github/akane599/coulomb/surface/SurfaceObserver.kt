@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.surface
 
 import android.content.Context
+import android.os.BatteryManager
 import androidx.core.content.edit
 import dagger.Binds
 import dagger.Lazy
@@ -84,10 +85,14 @@ class SurfaceObserver
             formats: Formats,
         ): String? {
             if (reading.battery.plugged) {
-                return context.getString(
-                    R.string.surface_monitor_charging,
-                    formats.percent(reading.battery.levelPct),
-                )
+                // The words the widget and the tile use for the same states: plugged in is not always charging.
+                val words =
+                    when (reading.battery.status) {
+                        BatteryManager.BATTERY_STATUS_FULL -> R.string.surface_charging_full
+                        BatteryManager.BATTERY_STATUS_CHARGING -> R.string.surface_monitor_charging
+                        else -> R.string.surface_charging_plugged
+                    }
+                return context.getString(words, formats.percent(reading.battery.levelPct))
             }
             val discharge = reading.discharge ?: return null
             val off = discharge.screenOff?.takeIf { it.ready }

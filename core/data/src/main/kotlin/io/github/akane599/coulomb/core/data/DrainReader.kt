@@ -155,6 +155,7 @@ internal class DrainReader
                 wifiTxBytes = value(UidKeys.WIFI_TX_BYTES),
                 foregroundActivityMs = value(UidKeys.FOREGROUND_ACTIVITY_MS),
                 foregroundServiceMs = value(UidKeys.FOREGROUND_SERVICE_MS),
+                partialWakelockMs = value(UidKeys.PARTIAL_WAKELOCK_MS),
             )
         }
 
@@ -248,6 +249,7 @@ internal class DrainReader
                 wakes = wakes(rows, chain, names),
                 wakeCoverage = if (detail != null) WakeCoverage.ofWindow(detail) else WakeCoverage.ofChain(chain.steps()),
                 alarms = alarms(rows, chain, names),
+                heldMs = held(rows, chain),
                 components = s4.device?.let { deviceComponents(it, s4.apps, names) } ?: components(uids),
                 componentsNotBrokenDownMah = s4.notBrokenDownMah,
                 breakdown = s4.apps.takeIf { it.isNotEmpty() }?.let(::SpanBreakdown),
@@ -535,6 +537,17 @@ internal class DrainReader
                         wakeups = total.wakeups,
                     )
                 }.sortedByDescending { it.totalMs }
+        }
+
+        /** Each app's own total of partial wakelock time, which its rows cannot be added up to (ADR-0039 §4). */
+        private suspend fun held(
+            rows: WindowRows?,
+            chain: Chain,
+        ): Map<Int, Long> {
+            val perUid =
+                rows?.stats?.filter { it.key == UidKeys.PARTIAL_WAKELOCK_MS }?.map { it.uid to it.value }
+                    ?: chain.stat(UidKeys.PARTIAL_WAKELOCK_MS).map { it.uid to it.value }
+            return perUid.filter { (uid, ms) -> uid >= 0 && ms > 0 }.groupingBy { it.first }.fold(0L) { sum, (_, ms) -> sum + ms }
         }
 
         private suspend fun alarms(

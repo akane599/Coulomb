@@ -42,7 +42,7 @@
     <string name="health_agree_same">Farklı yöntemlerden %1$s değer; hepsi aynı.</string>
     <string name="health_differ_coulomb">Farklı yöntemlerden %1$s değer arasında %2$s puana varan fark var. Coulomb giren ve çıkan yükü sayar; diğerleri yakıt göstergesinin kendi tahmininden gelir.</string>
     <string name="health_differ">%1$s değer arasında %2$s puana varan fark var. Android ve üretici sağlığı kendi yöntemleriyle hesaplar ve nasıl hesapladığını açıklamaz.</string>
-    <string name="health_only_coulomb">Android ve üretici bu telefonda sağlık değeri bildirmiyor.</string>
+    <string name="health_only_coulomb">Coulomb bu telefonda Android’den ya da üreticiden sağlık değeri alamıyor.</string>
     <string name="health_no_values">Henüz sağlık değeri yok. Coulomb’unki için uzun bir şarj veya deşarj gerekiyor; Android’inki için pil istatistikleri izni gerekiyor ve her telefon bu değeri bildirmiyor.</string>
     <string name="health_coulomb_needs_design">Coulomb’un sağlık yüzdesi için tasarım kapasitesi gerekiyor.</string>
     <string name="health_cycles_age">Döngüler ve yaş</string>

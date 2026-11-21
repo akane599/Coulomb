@@ -213,6 +213,12 @@ internal abstract class DrainDbTest {
         wakeups: Long,
     ) = WindowStat(uid, UidKeys.ALARM_WAKEUPS, wakeups, Provenance.MEASURED)
 
+    /** The UID's partial wakelock time with overlaps between its tags removed (S5's `awl` line). */
+    protected fun held(
+        uid: Int,
+        ms: Long,
+    ) = WindowStat(uid, UidKeys.PARTIAL_WAKELOCK_MS, ms, Provenance.MEASURED)
+
     /** A window's device rows: batterystats' time on battery, and with the screen off on battery. */
     protected fun device(
         onBatteryMs: Long,

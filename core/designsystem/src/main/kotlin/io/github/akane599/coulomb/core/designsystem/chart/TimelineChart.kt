@@ -141,6 +141,9 @@ private val LineInset = 2.dp
 
 /** The label column may take this share of the width; past it each band's label sits above it. */
 private const val MAX_LABEL_SHARE = 0.34f
+
+/** The current panel is at least this many lines of its value labels tall. */
+private const val CURRENT_LINES = 3
 private const val FULL = 100
 
 /** A panel's title sits a quarter of the way down it. */
@@ -303,10 +306,13 @@ internal class TimelineLayout(
                 var currentTop: Float? = null
                 var currentBottom: Float? = null
                 if (hasCurrent) {
-                    y += PanelGap.toPx() + if (stacked) line + StackGap.toPx() else 0f
+                    // Stacked, the title sits above the panel and the top value is centred on its line below it.
+                    y += PanelGap.toPx() + if (stacked) line + StackGap.toPx() + line / 2 else 0f
                     currentTop = y
-                    y += CurrentHeight.toPx()
+                    // Tall enough at any text size that an end value never sits level with the zero line.
+                    y += maxOf(CurrentHeight.toPx(), CURRENT_LINES * line)
                     currentBottom = y
+                    if (stacked) y += line / 2
                 }
                 y += PanelGap.toPx() - BandGap.toPx()
                 val pitch = maxOf(BandHeight.toPx(), if (stacked) 0f else line)
@@ -452,10 +458,11 @@ private fun DrawScope.currentPanel(
     fun y(ma: Double) = (top + (range.max - ma) / (range.max - range.min) * (bottom - top)).toFloat()
     val zero = y(0.0)
     drawLine(ink.colors.textSecondary, Offset(scale.left, zero), Offset(scale.right, zero), Outline.toPx())
-    // Stacked, the panel's title sits right above it: the end values stay inside the panel.
-    if (range.max > 0) value(scale, text.measure(labels.amps(range.max)), top, top, bottom, inside = layout.stacked)
-    if (range.min < 0) value(scale, text.measure(labels.amps(range.min)), bottom, top, bottom, inside = layout.stacked)
-    title(layout, scale, strong.measure(labels.current), top, bottom)
+    // Each end value is centred on the line it names; the layout leaves half a line for it past the panel.
+    val upper = text.measure(labels.amps(range.max))
+    if (range.max > 0) value(scale, upper, top, top, bottom)
+    if (range.min < 0) value(scale, text.measure(labels.amps(range.min)), bottom, top, bottom)
+    title(layout, scale, strong.measure(labels.current), top, bottom, lift = upper.size.height / 2f)
     val gap = maxOf(MIN_CURRENT_GAP_MS, ((scale.at(scale.right) - scale.at(scale.left)).let { abs(it) } * CURRENT_GAP_SHARE).toLong())
     val runs = ArrayList<MutableList<CurrentMark>>()
     current.forEach { mark ->
@@ -496,32 +503,32 @@ private fun DrawScope.currentPanel(
     }
 }
 
-/** A value label against the plot, centred on [y] but kept by its panel: wholly [inside] it, or half a line past its ends. */
-@Suppress("LongParameterList") // A label, its place and its bounds.
+/** A value label against the plot, centred on [y] and kept within half a line of its panel's ends. */
 private fun DrawScope.value(
     scale: TimeScale,
     label: TextLayoutResult,
     y: Float,
     top: Float,
     bottom: Float,
-    inside: Boolean = false,
 ) {
     val height = label.size.height
-    val reach = if (inside) 0f else height / 2f
+    val reach = height / 2f
     val at = (y - height / 2f).coerceIn(top - reach, (bottom - height + reach).coerceAtLeast(top - reach))
     drawText(label, topLeft = Offset(scale.valueStart(label.size.width, LabelGap.toPx()), at))
 }
 
-/** A panel's name: in the label column beside it, or above it when labels are stacked. */
+/** A panel's name: in the label column beside it, or above it when labels are stacked, by [lift] more for a value on its top line. */
+@Suppress("LongParameterList") // A name, its place and its bounds.
 private fun DrawScope.title(
     layout: TimelineLayout,
     scale: TimeScale,
     label: TextLayoutResult,
     top: Float,
     bottom: Float,
+    lift: Float = 0f,
 ) {
     if (layout.stacked) {
-        drawText(label, topLeft = Offset(scale.columnStart(label.size.width), top - StackGap.toPx() - label.size.height))
+        drawText(label, topLeft = Offset(scale.columnStart(label.size.width), top - lift - StackGap.toPx() - label.size.height))
     } else {
         // Between the top and the middle gridline's values, as the lab sets it.
         val y = top + (bottom - top) * TITLE_AT - label.size.height / 2f

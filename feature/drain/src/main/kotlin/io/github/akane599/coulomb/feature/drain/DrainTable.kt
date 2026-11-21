@@ -10,6 +10,7 @@ import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.R as UiR
 
 /** The bars whose figures "View as table" opens (SPEC 11.8). */
 internal enum class DrainTable { RECONCILE, COMPONENTS }
@@ -46,15 +47,17 @@ internal fun tableOf(
         }
 
         DrainTable.COMPONENTS -> {
-            val total = report.components.sumOf { it.mah }
+            // The lens's own total and its closing row, so a share here is the share there.
+            val rest = report.componentsNotBrokenDownMah?.takeIf { it >= MIN_SHOWN_MAH }
+            val total = report.components.sumOf { it.mah } + (rest ?: 0.0)
+            val parts =
+                report.components.map { stringResource(it.component.label) to it.mah } +
+                    listOfNotNull(rest?.let { stringResource(UiR.string.component_not_broken_down) to it })
             DataTable(
                 title = stringResource(R.string.drain_table_components),
                 // The components caption names the base: the modeled total.
                 columns = listOf(stringResource(R.string.drain_column_component), energy, stringResource(R.string.drain_column_share)),
-                rows =
-                    report.components.map {
-                        listOf(stringResource(it.component.label), formats.mah(it.mah).joined(), formats.share(it.mah / total))
-                    },
+                rows = parts.map { (name, mah) -> listOf(name, formats.mah(mah).joined(), formats.share(mah / total)) },
                 provenance = Provenance.MODELED,
             )
         }

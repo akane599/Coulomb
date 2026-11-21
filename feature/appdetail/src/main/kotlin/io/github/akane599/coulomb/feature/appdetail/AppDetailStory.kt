@@ -47,7 +47,8 @@ internal fun appStory(
     val detail = view.detail
     val report = detail.report
     val drop = report.startLevel?.let { start -> report.endLevel?.let { start - it } }
-    val heldMs = detail.wakes.filter { it.kind == WakeKind.PARTIAL }.sumOf { it.totalMs }
+    // The app's own total, with overlaps between its wakelocks removed: its rows cannot be added up (ADR-0039 §4).
+    val heldMs = detail.counters.partialWakelockMs ?: 0
     return DrainStory.compose(
         StoryInput(
             subject = StorySubject.App(detail.uid, detail.label),

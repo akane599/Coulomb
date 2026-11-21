@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.timeline
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -48,6 +49,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.FigureText
@@ -420,12 +422,28 @@ private fun Culprits(
     onOpenDrain: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
+        // What S5 covered of this stretch (ADR-0028 §3): under NONE a missing record is not a zero, as Drain says of
+        // the same report; under PARTIAL the counts are lower bounds.
+        val covered = report?.wakeCoverage?.batteryStats
+        val nothing = report == null || (report.wakes.isEmpty() && report.alarms.isEmpty())
         // The mark is for figures: a section that only says why it has none carries no mark.
-        SectionTitle(stringResource(R.string.night_culprits), provenance = report?.let { Provenance.MEASURED })
+        SectionTitle(stringResource(R.string.night_culprits), provenance = Provenance.MEASURED.takeUnless { nothing })
         if (report == null) {
             StandIn(stringResource(R.string.night_no_records), top = 0.dp)
             return@Column
         }
+        if (nothing && covered == Coverage.NONE) {
+            StandIn(stringResource(R.string.night_not_collected), top = 0.dp)
+            OpenDrain(onOpenDrain)
+            return@Column
+        }
+        if (covered == Coverage.PARTIAL) Note(stringResource(R.string.night_partial), top = 0.dp)
+        val empty =
+            when (covered) {
+                Coverage.WHOLE -> R.string.night_none
+                Coverage.PARTIAL -> R.string.night_none_partial
+                else -> R.string.night_group_not_collected
+            }
         val wakes = report.wakes.groupBy { it.kind }
         val reasons = wakes[WakeKind.WAKEUP_REASON].orEmpty().ifEmpty { wakes[WakeKind.RESUME_CAUSE].orEmpty() }
         val kernel = wakes[WakeKind.KERNEL].orEmpty().ifEmpty { wakes[WakeKind.WAKEUP_SOURCE].orEmpty() }
@@ -438,7 +456,8 @@ private fun Culprits(
             reasons.sortedByDescending {
                 it.count
             },
-            first = true,
+            empty,
+            first = covered != Coverage.PARTIAL,
         ) {
             listOf(formats.integer(it.count))
         }
@@ -449,6 +468,7 @@ private fun Culprits(
             kernel.sortedByDescending {
                 it.totalMs
             },
+            empty,
         ) {
             listOf(formats.held(it.totalMs), formats.integer(it.count))
         }
@@ -457,16 +477,11 @@ private fun Culprits(
             R.string.night_column_wakelock,
             listOf(heldFor, count),
             wakes[WakeKind.PARTIAL].orEmpty().sortedByDescending { it.totalMs },
+            empty,
             note = { entry -> entry.uid?.let { formats.appName(entry.label, it) } },
         ) { listOf(formats.held(it.totalMs), formats.integer(it.count)) }
-        Alarms(report.alarms, formats)
-        CoulombTextButton(
-            stringResource(R.string.night_open_drain),
-            onOpenDrain,
-            Modifier.padding(top = CoulombSpacing.Space8),
-            trailingIcon = CoulombIcons.ChevronRight,
-            edge = ButtonEdge.Start,
-        )
+        Alarms(report.alarms, formats, empty)
+        OpenDrain(onOpenDrain)
     }
 }
 
@@ -477,13 +492,14 @@ private fun WakeTable(
     nameColumn: Int,
     valueColumns: List<String>,
     entries: List<WakeEntry>,
+    @StringRes empty: Int,
     first: Boolean = false,
     note: (WakeEntry) -> String? = { null },
     values: (WakeEntry) -> List<String>,
 ) {
     Subhead(stringResource(title), top = if (first) 0.dp else CoulombSpacing.Space24)
     if (entries.isEmpty()) {
-        Note(stringResource(R.string.night_none), top = CoulombSpacing.Space4)
+        Note(stringResource(empty), top = CoulombSpacing.Space4)
         return
     }
     InlineTable(
@@ -494,13 +510,25 @@ private fun WakeTable(
 }
 
 @Composable
+private fun OpenDrain(onOpenDrain: () -> Unit) {
+    CoulombTextButton(
+        stringResource(R.string.night_open_drain),
+        onOpenDrain,
+        Modifier.padding(top = CoulombSpacing.Space8),
+        trailingIcon = CoulombIcons.ChevronRight,
+        edge = ButtonEdge.Start,
+    )
+}
+
+@Composable
 private fun Alarms(
     alarms: List<AlarmEntry>,
     formats: Formats,
+    @StringRes empty: Int,
 ) {
     Subhead(stringResource(R.string.night_alarms), top = CoulombSpacing.Space24)
     if (alarms.isEmpty()) {
-        Note(stringResource(R.string.night_none), top = CoulombSpacing.Space4)
+        Note(stringResource(empty), top = CoulombSpacing.Space4)
         return
     }
     val small = stringResource(R.string.night_small_apps)

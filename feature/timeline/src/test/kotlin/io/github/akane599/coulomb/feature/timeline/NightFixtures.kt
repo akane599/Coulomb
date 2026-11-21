@@ -195,6 +195,7 @@ internal fun labNightReport(): DrainReport =
                 AlarmEntry(10_515, "Northwind Mail", null, 12),
                 AlarmEntry(1_000, null, null, 7),
             ),
+        heldMs = mapOf(10_123 to 21 * MINUTE, 10_515 to 6 * MINUTE, 1_000 to 3 * MINUTE),
     )
 
 internal fun labDetail(): NightDetail = NightDetail(labNight(), labNightReport(), labTimeline())
