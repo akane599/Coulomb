@@ -167,6 +167,34 @@ class ActionCenterScreenshotTest {
     fun previewNoWorker() =
         sheet("preview-no-worker") { ActionPreviewContent(blocked(RESTRICT), busy = false, {}, {}, subject = "Halcyon") }
 
+    /** Without the helper and without a fixed inverse: the undo needs the value read first. */
+    @Test
+    @Config(qualifiers = "w412dp-h900dp-xhdpi")
+    fun previewNoWorkerBucket() =
+        sheet("preview-no-worker-bucket") {
+            ActionPreviewContent(
+                blocked(
+                    ActionPreview(
+                        request = ActionRequest.SetStandbyBucket(APP_PACKAGE, StandbyBucket.RARE),
+                        risk = ActionRisk.MEDIUM,
+                        command = "adb shell am set-standby-bucket --user 0 $APP_PACKAGE rare",
+                        revertCommand = null,
+                        before = null,
+                        after = null,
+                        block = null,
+                    ),
+                ),
+                busy = false,
+                {},
+                {},
+                subject = "Halcyon",
+            )
+        }
+
+    @Test
+    @Config(qualifiers = "w412dp-h1000dp-xhdpi")
+    fun previewBusy() = sheet("preview-busy") { ActionPreviewContent(RESTRICT, busy = true, {}, {}, subject = "Halcyon") }
+
     @Test
     @Config(qualifiers = "w412dp-h900dp-xhdpi")
     fun logDetails() =
@@ -281,7 +309,8 @@ private fun blocked(preview: ActionPreview) =
         block = ActionBlock.NO_WORKER,
         before = null,
         after = null,
-        revertCommand = null,
+        // The planner still knows the inverse where it does not depend on a value read from the phone.
+        revertCommand = preview.revertCommand.takeIf { preview.request is ActionRequest.RestrictBackground },
         dozeChanges = emptyList(),
         command = preview.command.takeIf { preview.request !is ActionRequest.ApplyDozeProfile },
     )

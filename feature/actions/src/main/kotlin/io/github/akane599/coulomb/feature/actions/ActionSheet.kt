@@ -24,7 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.collect.actions.ActionBlock
@@ -129,6 +131,15 @@ internal fun ActionPreviewContent(
             CommandBlock(it)
         }
         Undo(preview)
+        if (busy) {
+            // A read alone may take seconds: say that it runs.
+            Text(
+                stringResource(R.string.actions_running),
+                Modifier.padding(top = CoulombSpacing.Space16).semantics { liveRegion = LiveRegionMode.Polite },
+                color = colors.textSecondary,
+                style = type.body,
+            )
+        }
         FlowRow(
             Modifier.padding(top = CoulombSpacing.Space16),
             horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
@@ -181,7 +192,6 @@ private fun Values(preview: ActionPreview) {
             Fact(
                 change.key,
                 stringResource(R.string.actions_log_change, formats.held(change.fromMs), formats.held(change.toMs)),
-                Modifier.padding(top = 0.dp),
             )
         }
     } else if (type.stateful && !doze && preview.block == null) {
@@ -192,16 +202,32 @@ private fun Values(preview: ActionPreview) {
 @Composable
 private fun Undo(preview: ActionPreview) {
     val type = preview.request.type
+    // Run by hand, a change is outside the log: say so, and how it is put back (SPEC 13.1 "how to revert").
+    val byHand = preview.block == ActionBlock.NO_WORKER && preview.command != null
     val text =
         when {
             type == ActionType.FORCE_STOP -> R.string.actions_undo_none_stop
             type == ActionType.RESET_STATS -> R.string.actions_undo_none_reset
             type == ActionType.DOZE_TAKEOVER -> R.string.actions_undo_take_over
+            byHand && preview.revertCommand != null -> R.string.actions_undo_by_hand_command
+            byHand -> R.string.actions_undo_needs_value
             preview.revertCommand != null -> R.string.actions_undo_log
             else -> return
         }
-    Fact(stringResource(R.string.actions_undo), stringResource(text))
-    preview.revertCommand?.let { CommandBlock(it, Modifier.padding(top = CoulombSpacing.Space8)) }
+    Column(Modifier.fillMaxWidth()) {
+        if (byHand) {
+            Text(
+                stringResource(R.string.actions_undo_by_hand),
+                Modifier.padding(top = CoulombSpacing.Space16),
+                color = CoulombTheme.colors.textPrimary,
+                style = CoulombTheme.typography.body,
+            )
+        }
+        Fact(stringResource(R.string.actions_undo), stringResource(text))
+        preview.revertCommand?.let {
+            CommandBlock(it, Modifier.padding(top = CoulombSpacing.Space8), copyLabel = R.string.actions_copy_undo)
+        }
+    }
 }
 
 /** SPEC 13.2 "two confirmations": the second, for the one action that cannot be undone. */
@@ -234,6 +260,6 @@ private fun SecondQuestion(
     )
 }
 
-internal val DialogShape = RoundedCornerShape(28.dp)
+internal val DialogShape = RoundedCornerShape(CoulombRadius.Large)
 
 private val UNREAD = setOf(ActionBlock.OFF, ActionBlock.NO_WORKER, ActionBlock.UNREADABLE, ActionBlock.NOT_INSTALLED, ActionBlock.PROTECTED)

@@ -94,9 +94,21 @@ internal class ActionPlanner(
             before = null,
             want = "",
             write = if (block == ActionBlock.NO_WORKER) fixedWrite(request) else null,
-            undo = null,
+            undo = if (block == ActionBlock.NO_WORKER) fixedUndo(request) else null,
             block = block,
         )
+
+    /**
+     * The inverse of [fixedWrite] where it is the same whatever the value was: it puts back the
+     * state the engine itself would have required before acting. A bucket's depends on the bucket before.
+     */
+    private fun fixedUndo(request: ActionRequest): PrivilegedAction? =
+        when (request) {
+            is ActionRequest.RestrictBackground -> PrivilegedAction.SetRunInBackground(request.packageName, allowed = true)
+            is ActionRequest.DozeAllowlist -> PrivilegedAction.SetDozeAllowlisted(request.packageName, !request.listed)
+            is ActionRequest.BatterySaver -> PrivilegedAction.SetBatterySaver(!request.on)
+            else -> null
+        }
 
     /** The command of a request whose arguments do not come from the phone's current value. */
     private fun fixedWrite(request: ActionRequest): PrivilegedAction? =

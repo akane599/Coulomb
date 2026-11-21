@@ -7,12 +7,13 @@
 
     <string name="actions_off_title">The Action Center is off</string>
     <string name="actions_off_body">With it on, Coulomb can change a few settings of the phone and of single apps. Each change is shown before it runs, is logged with the value it replaced, and can be reverted. Nothing runs without your tap.</string>
-    <string name="actions_off_grant">Turning it on also gives Coulomb the permission to write system settings (WRITE_SECURE_SETTINGS).</string>
+    <string name="actions_off_grant">With its helper process running, turning it on also gives Coulomb the permission to write system settings (WRITE_SECURE_SETTINGS). The permission stays when you turn the Action Center off.</string>
     <string name="actions_turn_on">Turn on the Action Center</string>
     <string name="actions_switch">Action Center</string>
     <string name="actions_switch_note">Nothing runs without your tap.</string>
-    <string name="actions_save_failed">Coulomb couldn’t save this setting. Free some storage and try again.</string>
-    <string name="actions_no_worker">Coulomb’s helper process is not running, so nothing can be changed from here. Each action still shows its command, which you can run over adb.</string>
+    <string name="actions_save_failed">Couldn’t save that change. Try again.</string>
+    <string name="actions_doze_needs_worker">A profile is built from values only the helper process can read.</string>
+    <string name="actions_no_worker">Coulomb’s helper process is not running, so nothing can be changed from here. Each action except a Doze profile still shows its command, which you can run over adb.</string>
     <string name="actions_open_privileges">Open Privileges</string>
 
     <string name="actions_off_keep_title">Turn off the Action Center</string>
@@ -36,14 +37,16 @@
     <string name="actions_doze_baseline">You took over the value found on %1$s. A profile keeps it and changes only what it needs.</string>
     <string name="actions_doze_release">Stop managing it</string>
     <!-- %1$s: a profile’s name. -->
-    <string name="actions_doze_applied">%1$s is applied.</string>
+    <string name="actions_doze_applied">The %1$s profile is in force.</string>
     <string name="actions_doze_stock">Return to stock</string>
     <string name="actions_doze_balanced">Balanced</string>
-    <string name="actions_doze_balanced_detail">Deep Doze about 30 min after the screen goes off</string>
+    <string name="actions_doze_balanced_detail">Deep Doze at most 30 min after the screen goes off</string>
     <string name="actions_doze_aggressive">Aggressive</string>
-    <string name="actions_doze_aggressive_detail">Deep Doze about 10 min after the screen goes off, and longer idle stretches</string>
+    <string name="actions_doze_aggressive_detail">Deep Doze at most 10 min after the screen goes off, and longer idle stretches</string>
     <!-- %1$s: a duration. -->
-    <string name="actions_doze_would_idle">after %1$s</string>
+    <string name="actions_doze_same_time">Changes how the phone idles; deep Doze stays at %1$s after the screen goes off.</string>
+    <!-- %1$s: a duration. -->
+    <string name="actions_doze_would_idle">to %1$s</string>
     <string name="actions_doze_setting">The setting now</string>
     <string name="actions_doze_changes">What it changes</string>
 
@@ -56,6 +59,7 @@
 
     <string name="actions_apps">Apps</string>
     <string name="actions_apps_note">Actions for one app are on that app’s page, under Actions.</string>
+    <string name="actions_open_drain">Open Drain</string>
     <string name="actions_not_offered">Not offered</string>
     <string name="actions_deny_wakelocks">Deny wakelocks</string>
     <string name="actions_deny_wakelocks_why">Android records this setting and does not act on it, so it would change nothing.</string>
@@ -116,9 +120,16 @@
     <string name="actions_after">After</string>
     <string name="actions_command">Command</string>
     <string name="actions_copy">Copy command</string>
+    <string name="actions_copy_undo">Copy undo command</string>
+    <string name="actions_undo_by_hand">A change you run yourself is not in Coulomb’s log, and Coulomb can’t revert it.</string>
+    <string name="actions_undo_by_hand_command">If the value is at its usual state now, this command puts it back.</string>
+    <string name="actions_undo_needs_value">The undo depends on the value now, which only the helper process can read.</string>
+    <!-- A row's current value. -->
+    <string name="actions_now_value">Now: %1$s</string>
+    <string name="actions_running">Running…</string>
     <string name="actions_clip_label">adb command</string>
     <string name="actions_undo">To undo</string>
-    <string name="actions_undo_log">Revert it from the log, or run this command.</string>
+    <string name="actions_undo_log">Tap Revert in the log, or run this command.</string>
     <string name="actions_undo_none_stop">Nothing to undo: open the app and it runs again.</string>
     <string name="actions_undo_none_reset">It cannot be undone.</string>
     <string name="actions_undo_take_over">Stop managing it from the Action Center; the value stays.</string>

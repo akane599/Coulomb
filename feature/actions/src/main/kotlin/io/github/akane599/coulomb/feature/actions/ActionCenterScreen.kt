@@ -72,6 +72,7 @@ import java.time.format.DateTimeParseException
 @Composable
 public fun ActionCenterScreen(
     onOpenPrivileges: () -> Unit,
+    onOpenDrain: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ActionCenterViewModel = hiltViewModel(),
 ) {
@@ -84,7 +85,7 @@ public fun ActionCenterScreen(
         onPauseOrDispose {}
     }
     val actions =
-        remember(viewModel, onOpenPrivileges) {
+        remember(viewModel, onOpenPrivileges, onOpenDrain) {
             CenterActions(
                 enable = viewModel::enable,
                 disable = viewModel::disable,
@@ -92,6 +93,7 @@ public fun ActionCenterScreen(
                 revert = { viewModel.flow.revert(it.id, it.type) },
                 revertAll = { viewModel.flow.revertAll() },
                 openPrivileges = onOpenPrivileges,
+                openDrain = onOpenDrain,
             )
         }
     ActionCenterContent(state, flow, actions, modifier, saveFailed = saveFailed)
@@ -107,6 +109,7 @@ internal class CenterActions(
     val revert: (ActionRecord) -> Unit = {},
     val revertAll: () -> Unit = {},
     val openPrivileges: () -> Unit = {},
+    val openDrain: () -> Unit = {},
 )
 
 @Composable
@@ -165,7 +168,8 @@ private fun Ready(
     val active = state.active.size
     Column(Modifier.fillMaxWidth()) {
         if (saveFailed) Note(stringResource(R.string.actions_save_failed), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-        flow.note?.let { ActionNoteLine(it, Modifier.padding(top = CoulombSpacing.Space8)) }
+        // A revert's result is said at the log, where its button is; an action's at the top, under the bar.
+        flow.note?.takeUnless { it.revert }?.let { ActionNoteLine(it, Modifier.padding(top = CoulombSpacing.Space8)) }
         val board = state.board
         if (!state.enabled || board == null) {
             Off(actions.enable)
@@ -180,46 +184,46 @@ private fun Ready(
             if (board.noWorker) NoWorker(actions.openPrivileges)
             Doze(board, state, formats, flow.busy, actions)
             Device(board, actions.open)
-            Apps()
+            Apps(actions.openDrain)
         }
         // The log stays while the Action Center is off, and a change in force can still be reverted.
         if (state.enabled || state.log.isNotEmpty()) {
-            SectionTitle(
-                stringResource(R.string.actions_log),
-                provenance = null,
-                action =
-                    if (active > 0) {
-                        {
-                            CoulombTextButton(stringResource(R.string.actions_revert_all), {
-                                asking = Asking.REVERT_ALL
-                            }, enabled = !flow.busy, edge = ButtonEdge.End)
-                        }
-                    } else {
-                        null
-                    },
-            )
-            ActionLog(state.log, formats, clock, flow.busy, actions.revert) { opened = it.record.id }
+            LogSection(state, flow, formats, clock, actions.revert, onRevertAll = { asking = Asking.REVERT_ALL }) { opened = it }
         }
+        // Last: what is not offered is the least of what the screen is for (ADR-0060 §7, §8).
+        if (state.enabled && board != null) NotOffered()
     }
     state.log.firstOrNull { it.record.id == opened }?.let { row ->
         CoulombSheet({ opened = null }) {
             LogDetails(row, formats, clock, flow.busy, onRevert = { actions.revert(row.record) }, onDismiss = { opened = null })
         }
     }
+    Question(asking, active, formats, actions) { asking = null }
+}
+
+/** The question open over the screen, if one is; any answer closes it. */
+@Composable
+private fun Question(
+    asking: Asking?,
+    active: Int,
+    formats: Formats,
+    actions: CenterActions,
+    close: () -> Unit,
+) {
     when (asking) {
         Asking.TURN_OFF -> {
             TurnOffQuestion(
                 active,
                 formats,
                 onRevert = {
-                    asking = null
+                    close()
                     actions.disable(true)
                 },
                 onKeep = {
-                    asking = null
+                    close()
                     actions.disable(false)
                 },
-                onDismiss = { asking = null },
+                onDismiss = close,
             )
         }
 
@@ -228,10 +232,10 @@ private fun Ready(
                 active,
                 formats,
                 onConfirm = {
-                    asking = null
+                    close()
                     actions.revertAll()
                 },
-                onDismiss = { asking = null },
+                onDismiss = close,
             )
         }
 
@@ -301,6 +305,8 @@ private fun ColumnScope.Doze(
         }
     }
     if (doze != null) Holder(doze, state, busy, actions)
+    // Without a worker a profile has no command either: it is built from values only the worker reads.
+    if (board.noWorker) Note(stringResource(R.string.actions_doze_needs_worker))
     Column(Modifier.padding(top = CoulombSpacing.Space12)) {
         ProfileRow(board.balanced, R.string.actions_doze_balanced_detail, doze, formats, first = true, actions.open)
         ProfileRow(board.aggressive, R.string.actions_doze_aggressive_detail, doze, formats, first = false, actions.open)
@@ -388,6 +394,67 @@ private fun takenOn(
         name
     }
 
+/** The log under its title, with "Revert all" while a change is in force and a revert's result where its button is. */
+@Composable
+@Suppress("LongParameterList") // The log, its clock and its three controls.
+private fun LogSection(
+    state: ActionCenterState.Ready,
+    flow: FlowState,
+    formats: Formats,
+    clock: LogClock,
+    onRevert: (ActionRecord) -> Unit,
+    onRevertAll: () -> Unit,
+    onOpen: (Long) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        SectionTitle(
+            stringResource(R.string.actions_log),
+            provenance = null,
+            action =
+                if (state.active.isNotEmpty()) {
+                    {
+                        CoulombTextButton(
+                            stringResource(R.string.actions_revert_all),
+                            onRevertAll,
+                            enabled = !flow.busy,
+                            edge = ButtonEdge.End,
+                        )
+                    }
+                } else {
+                    null
+                },
+        )
+        flow.note?.takeIf { it.revert }?.let { ActionNoteLine(it, Modifier.padding(bottom = CoulombSpacing.Space8)) }
+        ActionLog(state.log, formats, clock, flow.busy, onRevert) { onOpen(it.record.id) }
+    }
+}
+
+/** Why a profile cannot be applied; empty where the reason is said once above the rows, null when it can. */
+@Composable
+private fun blockedWords(
+    preview: ActionPreview,
+    idleAfter: Long?,
+    formats: Formats,
+): String? =
+    when (val block = preview.block) {
+        null -> {
+            null
+        }
+
+        ActionBlock.NO_WORKER -> {
+            ""
+        }
+
+        ActionBlock.NOTHING_TO_CHANGE -> {
+            idleAfter?.let { stringResource(R.string.actions_block_nothing, formats.held(it)) }
+                ?: stringResource(ActionWords.block(block))
+        }
+
+        else -> {
+            stringResource(ActionWords.block(block))
+        }
+    }
+
 /** One profile: what it is for, how soon the phone would doze with it, or why it cannot be applied. */
 @Composable
 private fun ProfileRow(
@@ -401,28 +468,15 @@ private fun ProfileRow(
     val idleAfter = doze?.idleAfterMs
     // The two keys whose sum is the time to deep Doze; what the profile takes off them comes off the sum.
     val gain = preview.dozeChanges.filter { it.key in IDLE_KEYS }.sumOf { it.fromMs - it.toMs }
-    val blocked =
-        when (val block = preview.block) {
-            null, ActionBlock.NO_WORKER -> {
-                null
-            }
-
-            ActionBlock.NOTHING_TO_CHANGE -> {
-                idleAfter?.let { stringResource(R.string.actions_block_nothing, formats.held(it)) }
-                    ?: stringResource(ActionWords.block(block))
-            }
-
-            else -> {
-                stringResource(ActionWords.block(block))
-            }
-        }
+    val blocked = blockedWords(preview, idleAfter, formats)
+    // What the profile is for, unless on this phone it leaves the time to deep Doze as it is.
+    val same = preview.block == null && idleAfter != null && gain <= 0
+    val words = if (same) stringResource(R.string.actions_doze_same_time, formats.held(idleAfter)) else stringResource(detail)
     DataRow(
         name = stringResource(ActionWords.title(preview.request)),
-        detail = blocked ?: stringResource(detail),
+        detail = blocked?.ifEmpty { stringResource(detail) } ?: words,
         value =
-            if (preview.block == null &&
-                idleAfter != null
-            ) {
+            if (preview.block == null && idleAfter != null && gain > 0) {
                 stringResource(R.string.actions_doze_would_idle, formats.held(idleAfter - gain))
             } else {
                 ""
@@ -465,17 +519,23 @@ private fun ColumnScope.Device(
     )
 }
 
-/** Where an app's actions are, and the two of SPEC 13.2 that are not offered, with why (ADR-0060 §7, §8). */
+/** Where an app's actions are: on its page, reached from Drain. */
 @Composable
-private fun ColumnScope.Apps() {
+private fun ColumnScope.Apps(openDrain: () -> Unit) {
     SectionTitle(stringResource(R.string.actions_apps), provenance = null)
     StandIn(stringResource(R.string.actions_apps_note), top = 0.dp)
-    Text(
-        stringResource(R.string.actions_not_offered),
-        Modifier.padding(top = CoulombSpacing.Space16, bottom = CoulombSpacing.Space8),
-        color = CoulombTheme.colors.textSecondary,
-        style = CoulombTheme.typography.label,
+    CoulombTextButton(
+        stringResource(R.string.actions_open_drain),
+        openDrain,
+        trailingIcon = CoulombIcons.ChevronRight,
+        edge = ButtonEdge.Start,
     )
+}
+
+/** The two actions of SPEC 13.2 that are not offered, with why (ADR-0060 §7, §8). */
+@Composable
+private fun ColumnScope.NotOffered() {
+    SectionTitle(stringResource(R.string.actions_not_offered), provenance = null)
     DataRow(
         stringResource(R.string.actions_deny_wakelocks),
         stringResource(R.string.actions_deny_wakelocks_why),

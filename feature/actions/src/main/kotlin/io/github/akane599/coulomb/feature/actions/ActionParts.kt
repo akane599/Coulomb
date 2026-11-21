@@ -4,20 +4,27 @@
 package io.github.akane599.coulomb.feature.actions
 
 import android.content.ClipData
+import android.view.HapticFeedbackConstants
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDirection
@@ -91,45 +98,61 @@ internal fun noteText(note: ActionNote): String =
         }
     }
 
-/** The sentence for [note], announced when it changes. */
+/**
+ * The sentence for [note]: announced when it changes, scrolled into view, since the control that
+ * caused it may be a screen away, and felt (SPEC 11.6: confirm for a result that went through,
+ * reject for one that did not).
+ */
 @Composable
 internal fun ActionNoteLine(
     note: ActionNote,
     modifier: Modifier = Modifier,
 ) {
+    val requester = remember { BringIntoViewRequester() }
+    val view = LocalView.current
+    LaunchedEffect(note) {
+        val went = note.result is ActionResult.Done
+        view.performHapticFeedback(if (went) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+        requester.bringIntoView()
+    }
     Text(
         noteText(note),
-        modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        modifier.fillMaxWidth().bringIntoViewRequester(requester).semantics { liveRegion = LiveRegionMode.Polite },
         color = CoulombTheme.colors.textPrimary,
         style = CoulombTheme.typography.body,
     )
 }
 
 /**
- * One `adb shell` line in Mono on `surface`, selectable, with "Copy command" (SPEC 4.4). It stays
- * left to right in a right-to-left layout. Android 13 and later confirm the copy themselves.
+ * One `adb shell` line in Mono on `surface` with its copy button (SPEC 4.4). The line may wrap
+ * after a comma, so a long Doze value breaks between its pairs and not inside a number; it is
+ * therefore not selectable, and the button copies the command as it is. It stays left to right
+ * in a right-to-left layout. Android 13 and later confirm the copy themselves.
  */
 @Composable
 internal fun CommandBlock(
     command: String,
     modifier: Modifier = Modifier,
+    @StringRes copyLabel: Int = R.string.actions_copy,
 ) {
     val colors = CoulombTheme.colors
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val label = stringResource(R.string.actions_clip_label)
     Column(modifier.fillMaxWidth()) {
-        SelectionContainer(Modifier.fillMaxWidth().background(colors.surface, RoundedCornerShape(CoulombRadius.Row))) {
-            // As it is: a copied selection must be the command, without the marks that let a long name wrap.
-            Text(
-                command,
-                Modifier.padding(CoulombSpacing.Space16),
-                color = colors.textPrimary,
-                style = CoulombTheme.typography.mono.copy(textDirection = TextDirection.Ltr),
-            )
-        }
+        Text(
+            command.replace(",", ",$ZERO_WIDTH_SPACE"),
+            Modifier
+                .fillMaxWidth()
+                .background(colors.surface, RoundedCornerShape(CoulombRadius.Row))
+                .padding(CoulombSpacing.Space16)
+                // TalkBack reads the command, not its break marks.
+                .semantics { contentDescription = command },
+            color = colors.textPrimary,
+            style = CoulombTheme.typography.mono.copy(textDirection = TextDirection.Ltr),
+        )
         CoulombTextButton(
-            text = stringResource(R.string.actions_copy),
+            text = stringResource(copyLabel),
             onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, command))) } },
             modifier = Modifier.padding(top = CoulombSpacing.Space4),
             trailingIcon = CoulombIcons.ContentCopy,
@@ -159,3 +182,5 @@ internal fun Fact(
 }
 
 private const val MAX_DETAIL = 200
+
+private const val ZERO_WIDTH_SPACE = "\u200B"

@@ -5,19 +5,20 @@
     <string name="actions_loading">Yükleniyor</string>
 
     <string name="actions_off_title">Eylem Merkezi kapalı</string>
-    <string name="actions_off_body">Açıkken Coulomb, telefonun ve seçtiğiniz uygulamaların birkaç ayarını değiştirebilir. Her değişiklik çalışmadan önce gösterilir, yerine geçtiği değerle birlikte kaydedilir ve geri alınabilir. Siz dokunmadan hiçbir şey çalışmaz.</string>
-    <string name="actions_off_grant">Açmak, Coulomb’a sistem ayarlarını yazma iznini de verir (WRITE_SECURE_SETTINGS).</string>
+    <string name="actions_off_body">Açıkken Coulomb, telefonun ve seçtiğin uygulamaların birkaç ayarını değiştirebilir. Her değişiklik çalışmadan önce gösterilir, yerine geçtiği değerle birlikte kaydedilir ve geri alınabilir. Sen dokunmadan hiçbir şey çalışmaz.</string>
+    <string name="actions_off_grant">Yardımcı süreç çalışıyorsa açmak, Coulomb’a sistem ayarlarını yazma iznini de verir (WRITE_SECURE_SETTINGS). Eylem Merkezi’ni kapatınca izin kalır.</string>
     <string name="actions_turn_on">Eylem Merkezi’ni aç</string>
     <string name="actions_switch">Eylem Merkezi</string>
-    <string name="actions_switch_note">Siz dokunmadan hiçbir şey çalışmaz.</string>
-    <string name="actions_save_failed">Coulomb bu ayarı kaydedemedi. Depolamada yer açıp yeniden deneyin.</string>
-    <string name="actions_no_worker">Coulomb’un yardımcı süreci çalışmıyor, bu yüzden buradan hiçbir şey değiştirilemez. Her eylem yine de komutunu gösterir; komutu adb ile çalıştırabilirsiniz.</string>
+    <string name="actions_switch_note">Sen dokunmadan hiçbir şey çalışmaz.</string>
+    <string name="actions_save_failed">Coulomb bu ayarı kaydedemedi. Yeniden dene.</string>
+    <string name="actions_doze_needs_worker">Bir profil, yalnızca yardımcı sürecin okuyabildiği değerlerden kurulur.</string>
+    <string name="actions_no_worker">Coulomb’un yardımcı süreci çalışmıyor, bu yüzden buradan hiçbir şey değiştirilemez. Her eylem yine de komutunu gösterir; profiller dışında komutu adb ile çalıştırabilirsin.</string>
     <string name="actions_open_privileges">Yetkiler’i aç</string>
 
     <string name="actions_off_keep_title">Eylem Merkezi’ni kapat</string>
     <plurals name="actions_off_keep_body">
-        <item quantity="one">Coulomb’un yaptığı %1$s değişiklik hâlâ yürürlükte. Şimdi geri alabilir ya da bırakabilirsiniz; her iki durumda da kayıtta kalır.</item>
-        <item quantity="other">Coulomb’un yaptığı %1$s değişiklik hâlâ yürürlükte. Şimdi geri alabilir ya da bırakabilirsiniz; her iki durumda da kayıtta kalırlar.</item>
+        <item quantity="one">Coulomb’un yaptığı %1$s değişiklik hâlâ yürürlükte. Şimdi geri alabilir ya da bırakabilirsin; her iki durumda da kayıtta kalır.</item>
+        <item quantity="other">Coulomb’un yaptığı %1$s değişiklik hâlâ yürürlükte. Şimdi geri alabilir ya da bırakabilirsin; her iki durumda da kayıtta kalırlar.</item>
     </plurals>
     <string name="actions_off_revert">Hepsini geri al, sonra kapat</string>
     <string name="actions_off_keep">Bırak ve kapat</string>
@@ -27,29 +28,31 @@
     <string name="actions_doze_idle_after">Hareketsiz ve fişe takılı değilken bu telefon, ekran kapandıktan %1$s sonra derin Doze’a girebilir.</string>
     <string name="actions_doze_unreadable">Coulomb Doze ayarlarını okuyamadı.</string>
     <string name="actions_doze_external">Dışarıdan yönetiliyor</string>
-    <string name="actions_doze_external_body">Doze ayarında Coulomb’un yazmadığı bir değer var: telefonun üreticisi ya da başka bir araç koymuş. Siz devralana kadar Coulomb ona dokunmaz.</string>
+    <string name="actions_doze_external_body">Doze ayarında Coulomb’un yazmadığı bir değer var: telefonun üreticisi ya da başka bir araç koymuş. Sen devralana kadar Coulomb ona dokunmaz.</string>
     <string name="actions_doze_take_over">Bu değeri devral</string>
-    <string name="actions_doze_baseline">Bulunan değeri %1$s günü devraldınız. Bir profil onu korur ve yalnızca gerekeni değiştirir.</string>
+    <string name="actions_doze_baseline">Bulunan değeri %1$s günü devraldın. Bir profil onu korur ve yalnızca gerekeni değiştirir.</string>
     <string name="actions_doze_release">Yönetmeyi bırak</string>
-    <string name="actions_doze_applied">%1$s uygulanıyor.</string>
+    <string name="actions_doze_applied">%1$s profili yürürlükte.</string>
     <string name="actions_doze_stock">Stok ayara dön</string>
     <string name="actions_doze_balanced">Dengeli</string>
-    <string name="actions_doze_balanced_detail">Ekran kapandıktan yaklaşık 30 dk sonra derin Doze</string>
+    <string name="actions_doze_balanced_detail">Ekran kapandıktan en geç 30 dk sonra derin Doze</string>
     <string name="actions_doze_aggressive">Agresif</string>
-    <string name="actions_doze_aggressive_detail">Ekran kapandıktan yaklaşık 10 dk sonra derin Doze ve daha uzun boşta kalma</string>
-    <string name="actions_doze_would_idle">%1$s sonra</string>
+    <string name="actions_doze_aggressive_detail">Ekran kapandıktan en geç 10 dk sonra derin Doze ve daha uzun boşta kalma</string>
+    <string name="actions_doze_same_time">Telefonun boşta kalışını değiştirir; derin Doze ekran kapandıktan %1$s sonra kalır.</string>
+    <string name="actions_doze_would_idle">%1$s olur</string>
     <string name="actions_doze_setting">Ayarın şimdiki değeri</string>
     <string name="actions_doze_changes">Neyi değiştirir</string>
 
     <string name="actions_device">Telefon</string>
     <string name="actions_saver">Pil tasarrufu</string>
-    <string name="actions_saver_on_detail">Siz kapatana ya da telefonu fişe takana kadar arka plan işlerini ve bazı efektleri sınırlar.</string>
+    <string name="actions_saver_on_detail">Sen kapatana ya da telefonu fişe takana kadar arka plan işlerini ve bazı efektleri sınırlar.</string>
     <string name="actions_saver_off_detail">Android’in pil tasarrufunu kapatır.</string>
     <string name="actions_reset">Pil istatistiklerini sıfırla</string>
     <string name="actions_reset_detail">Android’in kendi pil geçmişini siler. Geri alınamaz.</string>
 
     <string name="actions_apps">Uygulamalar</string>
     <string name="actions_apps_note">Tek bir uygulamaya ait eylemler, o uygulamanın sayfasında Eylemler başlığı altındadır.</string>
+    <string name="actions_open_drain">Tüketim’i aç</string>
     <string name="actions_not_offered">Sunulmayanlar</string>
     <string name="actions_deny_wakelocks">Wakelock’ları reddet</string>
     <string name="actions_deny_wakelocks_why">Android bu ayarı kaydeder ama uygulamaz; yani hiçbir şey değişmezdi.</string>
@@ -79,7 +82,7 @@
     <string name="actions_log_take_over">Doze değeri devralındı</string>
 
     <string name="actions_force_stop">Durmaya zorla</string>
-    <string name="actions_force_stop_effect">Uygulamayı şimdi durdurur. Siz yeniden açana kadar alarm almaz ve bildirim göstermez.</string>
+    <string name="actions_force_stop_effect">Uygulamayı şimdi durdurur. Sen yeniden açana kadar alarm almaz ve bildirim göstermez.</string>
     <string name="actions_restrict">Arka planı kısıtla</string>
     <string name="actions_restrict_effect">Uygulamanın arka plandaki işlerini durdurur. Bildirimleri gecikebilir.</string>
     <string name="actions_bucket_rare">Bekleme grubu: Nadir</string>
@@ -106,12 +109,18 @@
     <string name="actions_after">Sonra</string>
     <string name="actions_command">Komut</string>
     <string name="actions_copy">Komutu kopyala</string>
+    <string name="actions_copy_undo">Geri alma komutunu kopyala</string>
+    <string name="actions_undo_by_hand">Kendi çalıştırdığın değişiklik Coulomb’un kaydına girmez ve Coulomb onu geri alamaz.</string>
+    <string name="actions_undo_by_hand_command">Değer şimdi olağan durumundaysa bu komut onu geri koyar.</string>
+    <string name="actions_undo_needs_value">Geri alma komutu şimdiki değere bağlıdır; onu yalnızca yardımcı süreç okuyabilir.</string>
+    <string name="actions_now_value">Şimdi: %1$s</string>
+    <string name="actions_running">Çalışıyor…</string>
     <string name="actions_clip_label">adb komutu</string>
     <string name="actions_undo">Geri almak için</string>
-    <string name="actions_undo_log">Kayıttan geri alın ya da bu komutu çalıştırın.</string>
-    <string name="actions_undo_none_stop">Geri alınacak bir şey yok: uygulamayı açtığınızda yeniden çalışır.</string>
+    <string name="actions_undo_log">Geri al’a dokun ya da bu komutu çalıştır.</string>
+    <string name="actions_undo_none_stop">Geri alınacak bir şey yok: uygulamayı açtığında yeniden çalışır.</string>
     <string name="actions_undo_none_reset">Geri alınamaz.</string>
-    <string name="actions_undo_take_over">Eylem Merkezi’nden yönetmeyi bırakın; değer yerinde kalır.</string>
+    <string name="actions_undo_take_over">Eylem Merkezi’nden yönetmeyi bırak; değer yerinde kalır.</string>
     <string name="actions_reset_confirm_title">Android’in pil istatistiklerini sıfırla</string>
     <string name="actions_reset_confirm_body">Bu ikinci ve son soru. Silindikten sonra Android’in istatistikleri geri getirilemez.</string>
     <string name="actions_reset_confirm">İstatistikleri sıfırla</string>
@@ -137,7 +146,7 @@
     <string name="actions_bucket_never">Hiç</string>
 
     <string name="actions_block_off">Eylem Merkezi kapalı.</string>
-    <string name="actions_block_no_worker">Coulomb’un yardımcı süreci çalışmıyor. Komutu adb ile çalıştırabilirsiniz.</string>
+    <string name="actions_block_no_worker">Coulomb’un yardımcı süreci çalışmıyor. Komutu adb ile çalıştırabilirsin.</string>
     <string name="actions_block_unreadable">Coulomb şimdiki değeri okuyamadı, bu yüzden hiçbir şeyi değiştirmiyor.</string>
     <string name="actions_block_protected">Coulomb sistem uygulamalarına, kendisine ve ona erişim veren uygulamaya dokunmaz.</string>
     <string name="actions_block_not_installed">Uygulama bu profilde yüklü değil.</string>
@@ -146,13 +155,13 @@
     <string name="actions_block_bucket_fixed">Android bu uygulamanın grubunu sabit tutuyor ya da uygulama zaten daha uzak bir grupta.</string>
     <string name="actions_block_system_listed">Sistemin kendi listesinde; onu hiçbir komut değiştirmez.</string>
     <string name="actions_block_charging">Telefon şarj olurken pil tasarrufu değiştirilemez.</string>
-    <string name="actions_block_external">Önce Doze ayarını devralın.</string>
+    <string name="actions_block_external">Önce Doze ayarını devral.</string>
     <string name="actions_block_malformed">Doze ayarı, Coulomb’un güvenle yeniden yazabileceği bir liste değil.</string>
     <string name="actions_block_nothing">Değişecek bir şey yok: bu telefon zaten %1$s sonra derin Doze’a giriyor.</string>
     <string name="actions_block_nothing_plain">Değişecek bir şey yok: bu telefon zaten daha erken Doze’a giriyor.</string>
-    <string name="actions_block_profile_active">Önce stok ayara dönün.</string>
+    <string name="actions_block_profile_active">Önce stok ayara dön.</string>
     <string name="actions_block_nothing_to_take">Devralınacak dış bir değer yok.</string>
-    <string name="actions_block_in_force">Coulomb bunu zaten değiştirdi. Önce o değişikliği geri alın.</string>
+    <string name="actions_block_in_force">Coulomb bunu zaten değiştirdi. Önce o değişikliği geri al.</string>
     <string name="actions_block_not_active">Geri alınacak bir şey yok.</string>
 
     <string name="actions_result_done">Yapıldı.</string>

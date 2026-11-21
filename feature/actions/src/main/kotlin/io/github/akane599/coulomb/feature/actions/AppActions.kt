@@ -92,7 +92,12 @@ public fun AppActionsSheet(
             onDismiss()
             onOpenActionCenter()
         }
-    CoulombSheet(onDismiss, modifier) {
+    // Swiped away with a preview open, the sheet takes the preview with it: the next opening starts at the list.
+    val close = {
+        viewModel.flow.dismiss()
+        onDismiss()
+    }
+    CoulombSheet(close, modifier) {
         val label = (state as? AppActionsState.Ready)?.label
         val preview = flow.preview
         if (preview != null) {
@@ -234,11 +239,17 @@ private fun Row(
         value =
             when {
                 // The user's list does not hold it and the system's does: "not on the list" would mislead.
-                preview.block == ActionBlock.SYSTEM_LISTED -> stringResource(R.string.actions_value_system_listed)
+                preview.block == ActionBlock.SYSTEM_LISTED -> {
+                    stringResource(R.string.actions_value_system_listed)
+                }
 
-                preview.request.type.stateful && preview.block !in UNREAD -> valueText(preview.request.type, preview.before)
+                preview.request.type.stateful && preview.block !in UNREAD -> {
+                    stringResource(R.string.actions_now_value, valueText(preview.request.type, preview.before))
+                }
 
-                else -> ""
+                else -> {
+                    ""
+                }
             },
         mark = null,
         share = null,

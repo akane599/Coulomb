@@ -328,7 +328,12 @@ class AppScreens(
                 chargeSession = { _, id -> ChargeSessionScreen(chargeSessionViewModel(id)) },
                 privileges = { PrivilegesScreen() },
                 settings = { navigator -> SettingsScreen(onOpenActionCenter = { navigator.open(Route.ActionCenter) }) },
-                actionCenter = { navigator -> ActionCenterScreen(onOpenPrivileges = { navigator.open(Route.Privileges) }) },
+                actionCenter = { navigator ->
+                    ActionCenterScreen(
+                        onOpenPrivileges = { navigator.open(Route.Privileges) },
+                        onOpenDrain = { navigator.select(Destination.Drain) },
+                    )
+                },
             )
     }
 }
