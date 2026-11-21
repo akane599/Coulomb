@@ -26,7 +26,6 @@
     <string name="timeline_column_time">Açık süre</string>
     <string name="timeline_column_stretches">Aralık</string>
 
-    <string name="night_report_title">Gece Raporu</string>
     <string name="night_report_note">Ekranın bir saat ya da daha uzun kapalı kaldığı her süre, en yenisi üstte. Çubuk her hızı en yüksek hızla karşılaştırır.</string>
     <string name="night_empty">Ekranın bir saat ya da daha uzun kapalı kaldığı bir süre henüz yok. İlki, ekran yeniden açıldığında burada görünür.</string>
     <string name="night_today_at">Bugün, %1$s</string>

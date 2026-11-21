@@ -26,7 +26,6 @@
     <string name="timeline_column_time">Time on</string>
     <string name="timeline_column_stretches">Stretches</string>
 
-    <string name="night_report_title">Night Report</string>
     <string name="night_report_note">Every stretch of an hour or more with the screen off, newest first. The bar compares each rate with the fastest.</string>
     <string name="night_empty">No stretch of an hour or more with the screen off yet. The first shows here once the screen comes back on.</string>
     <string name="night_today_at">Today, %1$s</string>
