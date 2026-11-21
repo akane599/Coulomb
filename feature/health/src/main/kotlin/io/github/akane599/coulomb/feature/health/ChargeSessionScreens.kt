@@ -57,6 +57,7 @@ import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.DASH
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.DataRow
 import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
