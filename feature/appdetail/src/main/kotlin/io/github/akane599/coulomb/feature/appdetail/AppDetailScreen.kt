@@ -303,6 +303,7 @@ private fun Empty(span: DrainSpan) {
             DrainSpan.Today -> R.string.appdetail_empty_today
             DrainSpan.Last24Hours -> R.string.appdetail_empty_last_24h
             DrainSpan.LastNight -> R.string.appdetail_empty_last_night
+            is DrainSpan.Night -> R.string.appdetail_empty_night
             is DrainSpan.Days -> R.string.appdetail_empty_days
         }
     Text(

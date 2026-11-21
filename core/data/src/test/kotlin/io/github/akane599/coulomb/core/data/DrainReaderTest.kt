@@ -377,7 +377,7 @@ internal class DrainReaderTest : DrainDbTest() {
             val e = heavy(20_000)
             val f = heavy(20_000 + 600)
             val night = sessions.insert(screenOff(a, b))
-            sessions.insert(screenOff(c, d))
+            val shorter = sessions.insert(screenOff(c, d))
             // Too short to be a night.
             sessions.insert(screenOff(e, f))
             // Screen sessions keep no detail of their own.
@@ -393,6 +393,12 @@ internal class DrainReaderTest : DrainDbTest() {
             assertThat(report.drains.measuredMah).isEqualTo(80.0)
             assertThat(report.drains.apps.map { it.uid to it.mah }).containsExactly(APP to 20.0)
             assertThat(report.lowerBound).isTrue()
+            // The Night Report asks for one session by its id, whichever is longest (SPEC 10.7).
+            val other = checkNotNull(reader.read(DrainSpan.Night(shorter), empty()))
+            assertThat(other.drains.fromWallMs).isEqualTo(wall(c))
+            assertThat(other.drains.toWallMs).isEqualTo(wall(d))
+            assertThat(reader.read(DrainSpan.Night(night), empty())?.drains).isEqualTo(report.drains)
+            assertThat(reader.read(DrainSpan.Night(9_999), empty())).isNull()
         }
 
     @Test

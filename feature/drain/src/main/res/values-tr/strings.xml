@@ -14,6 +14,7 @@
     <string name="drain_last_night">Dün gece</string>
 
     <string name="drain_sheet_title">Diğer seçenekler</string>
+    <string name="drain_night">Ekran kapalı süre</string>
     <string name="drain_last_night_detail">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı en uzun süre</string>
     <string name="drain_custom_range">Özel aralık</string>
     <plurals name="drain_custom_range_detail">
@@ -133,6 +134,7 @@
     <string name="drain_empty_since_unplugged">Uygulama başına tüketim, şarjdan çıkardıktan sonraki ilk tam ölçümle görünür.</string>
     <string name="drain_empty_today">Bugün için henüz bir şey kaydedilmedi.</string>
     <string name="drain_empty_last_24h">Son 24 saat için henüz bir şey kaydedilmedi.</string>
+    <string name="drain_empty_night">Bu ekran kapalı süre için artık kayıt yok.</string>
     <string name="drain_empty_last_night">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı bir süre yok.</string>
     <string name="drain_empty_days">O günler için kayıtlı bir şey yok.</string>
     <string name="drain_wake_not_collected">Bu aralık için uyandırmalar toplanmadı.</string>

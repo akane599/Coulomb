@@ -133,6 +133,17 @@ public interface SessionDao {
         limit: Int,
     ): Flow<List<SessionEntity>>
 
+    /** The latest [limit] closed sessions of [kind] that lasted at least [minNs], newest first: the Night Report (SPEC 10.7). */
+    @Query(
+        "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL AND endElapsedNs - startElapsedNs >= :minNs " +
+            "ORDER BY bootSeq DESC, startElapsedNs DESC LIMIT :limit",
+    )
+    public fun observeClosedLasting(
+        kind: SessionKind,
+        minNs: Long,
+        limit: Int,
+    ): Flow<List<SessionEntity>>
+
     /** Closed sessions of [kind] that ended at or after [fromWall], newest first. */
     @Query(
         "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL AND endWall >= :fromWall " +
@@ -162,6 +173,9 @@ public interface SessionDao {
 
     @Query("SELECT * FROM session WHERE id = :id")
     public fun observeSession(id: Long): Flow<SessionEntity?>
+
+    @Query("SELECT * FROM session WHERE id = :id")
+    public suspend fun session(id: Long): SessionEntity?
 
     /** The charge details of [sessionIds], those that have one. */
     @Query("SELECT * FROM charge_detail WHERE sessionId IN (:sessionIds)")

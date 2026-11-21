@@ -150,6 +150,7 @@ internal fun windowName(
         DrainSpan.Today -> stringResource(R.string.appdetail_window_today)
         DrainSpan.Last24Hours -> stringResource(R.string.appdetail_window_last_24h)
         DrainSpan.LastNight -> stringResource(R.string.appdetail_window_last_night)
+        is DrainSpan.Night -> stringResource(R.string.appdetail_window_night)
         is DrainSpan.Days -> stringResource(R.string.appdetail_window_days, formats.days(span.first, span.last))
     }
 

@@ -24,6 +24,11 @@ public sealed interface DrainSpan {
     /** The longest screen-off session of an hour or more that ended in the last 24 hours (ADR-0036). */
     public data object LastNight : DrainSpan
 
+    /** One screen-off session, as the Night Report opens it (SPEC 10.7). */
+    public data class Night(
+        val sessionId: Long,
+    ) : DrainSpan
+
     /** Whole local days from [first] to [last], within the 30 days consecutive windows are kept (ADR-0021). */
     public data class Days(
         val first: LocalDate,

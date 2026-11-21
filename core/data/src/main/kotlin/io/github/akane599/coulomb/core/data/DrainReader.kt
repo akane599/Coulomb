@@ -373,6 +373,10 @@ internal class DrainReader
                     lastNight()
                 }
 
+                is DrainSpan.Night -> {
+                    night(span.sessionId)
+                }
+
                 is DrainSpan.Days -> {
                     val z = zone.zone()
                     val start =
@@ -412,6 +416,14 @@ internal class DrainReader
         private suspend fun lastNight(): Bounds? {
             val latest = snapshots.latestHeavy() ?: return null
             val night = sessions.longestClosed(SessionKind.SCREEN_OFF, latest.wallMs - DAY_MS, NIGHT_MIN_NS) ?: return null
+            val from = night.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
+            val to = night.endSnapshotId?.let { snapshots.snapshot(it) } ?: return null
+            return Bounds(from, to, windows.forSession(night.id)).takeIf { before(from, to) }
+        }
+
+        /** The screen-off session [id] between its two snapshots; null when either is gone. */
+        private suspend fun night(id: Long): Bounds? {
+            val night = sessions.session(id)?.takeIf { it.kind == SessionKind.SCREEN_OFF } ?: return null
             val from = night.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
             val to = night.endSnapshotId?.let { snapshots.snapshot(it) } ?: return null
             return Bounds(from, to, windows.forSession(night.id)).takeIf { before(from, to) }

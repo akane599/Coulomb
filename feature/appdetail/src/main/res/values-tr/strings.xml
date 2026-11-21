@@ -5,6 +5,7 @@
     <string name="appdetail_window_since_unplugged">Şarjdan çıkalı</string>
     <string name="appdetail_window_today">Bugün</string>
     <string name="appdetail_window_last_24h">Son 24 sa</string>
+    <string name="appdetail_window_night">Ekran kapalı süre</string>
     <string name="appdetail_window_last_night">Dün gece</string>
     <string name="appdetail_window_days">%1$s</string>
     <string name="appdetail_window_note">Aralık: %1$s. Drain’de değiştirebilirsin.</string>
@@ -96,6 +97,7 @@
     <string name="appdetail_empty_since_unplugged">Uygulama başına tüketim, şarjdan çıkardıktan sonraki ilk tam ölçümle görünür.</string>
     <string name="appdetail_empty_today">Bugün için henüz bir şey kaydedilmedi.</string>
     <string name="appdetail_empty_last_24h">Son 24 saat için henüz bir şey kaydedilmedi.</string>
+    <string name="appdetail_empty_night">Bu ekran kapalı süre için artık kayıt yok.</string>
     <string name="appdetail_empty_last_night">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı bir süre yok.</string>
     <string name="appdetail_empty_days">O günler için kayıtlı bir şey yok.</string>
     <string name="appdetail_error_title">Coulomb pil kayıtlarını okuyamadı</string>

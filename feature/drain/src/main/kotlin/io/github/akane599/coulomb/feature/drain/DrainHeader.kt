@@ -68,6 +68,7 @@ internal fun WindowChoice(
     val more =
         when (chosen) {
             DrainSpan.LastNight -> stringResource(R.string.drain_last_night)
+            is DrainSpan.Night -> stringResource(R.string.drain_night)
             is DrainSpan.Days -> formats.days(chosen.first, chosen.last)
             else -> stringResource(R.string.drain_more)
         }
@@ -106,7 +107,7 @@ internal fun WindowNote(
             duration
         }
     val note =
-        if (report.span == DrainSpan.LastNight) {
+        if (report.span == DrainSpan.LastNight || report.span is DrainSpan.Night) {
             val clock = formats.range(formats.clock(drains.fromWallMs, zone, drains.toWallMs), formats.clock(drains.toWallMs, zone))
             stringResource(R.string.drain_detail_separator, clock, levels)
         } else {
