@@ -193,8 +193,14 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
 - **True black and the wide layouts (ADR-0066).** Privileges is now in every top app bar (SPEC
   14.3); every screen has a true black golden and the detail screens one at a pane's width.
   Neither set of new goldens showed anything to fix. Not seen in a resizable window or in DeX.
-- **Still to come in P6:** release signing and SPEC 18's checklist; then the whole-app design
-  gate's third run.
+- **Release signing (SPEC 15.6, ADR-0067).** The release build type is signed when four
+  environment variables name the owner's key and stays unsigned without them, as in CI; a
+  half-set environment fails the build. `tools/release/build.sh` builds from a pushed commit,
+  verifies the signature, refuses a debug key and an APK of 15 MB or more, and prints the tag and
+  release commands without running them. Tried with a throwaway key: signed, verified, 7.2 MB.
+  `docs/releasing.md` has the steps, Obtainium included. **Waiting for the owner:** the key, the
+  first version number and the release itself (`docs/questions.md`).
+- **Still to come in P6:** SPEC 18's checklist; then the whole-app design gate's third run.
 
 ## P4 Core screens (gate deferred: protocol C)
 

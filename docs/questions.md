@@ -5,6 +5,15 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. **Release key and the first release (hard stop, SPEC 0.6).** The build signs a
+  release when four environment variables name a key, and `tools/release/build.sh` builds and
+  checks the APK without publishing (ADR-0067, `docs/releasing.md`). Still the owner's: creating
+  the key (the `keytool` line is in `docs/releasing.md`) and keeping its backup; the first
+  version number (default proposed: `0.1.0`, as a pre-release, until SPEC 18 is ticked; `1.0.0`
+  after); the tag and the GitHub Release. Also the owner's: whether the phone moves to the signed
+  build. It cannot be installed over the development build there, so that build would have to
+  be removed, and its history would come back only as an imported history beside a new one.
+  Default in use: nothing is signed, tagged or published, and the phone keeps its build.
 - 2026-11-21. The wide layouts (SPEC 10.10) are checked through screenshot tests at fixed widths
   only. Not seen: a freeform or DeX window resized across the width classes, an external
   display, the mouse wheel and the keyboard on the charts. Default in use: an emulator run in a

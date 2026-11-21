@@ -6,6 +6,8 @@ import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.variant.ApplicationAndroidComponentsExtension
 import io.github.akane599.coulomb.buildlogic.BASE_NAMESPACE
 import io.github.akane599.coulomb.buildlogic.ManifestPermissions
+import io.github.akane599.coulomb.buildlogic.RELEASE_SIGNING
+import io.github.akane599.coulomb.buildlogic.ReleaseKey
 import io.github.akane599.coulomb.buildlogic.UNIT_TEST_BUILD_TYPE
 import io.github.akane599.coulomb.buildlogic.VerifyManifestPermissionsTask
 import io.github.akane599.coulomb.buildlogic.configureAndroidCommon
@@ -42,10 +44,23 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                     buildConfig = true
                     resValues = true
                 }
+                // SPEC 15.6: the release is signed with the owner's key. The key and its passwords live
+                // outside the repository and reach the build through the environment (ADR-0067); without
+                // them the release APK is left unsigned, which is what CI assembles.
+                val releaseKey = ReleaseKey.from { name -> providers.environmentVariable(name).orNull }
+                if (releaseKey != null) {
+                    signingConfigs.create(RELEASE_SIGNING) {
+                        storeFile = file(releaseKey.store)
+                        storePassword = releaseKey.storePassword
+                        keyAlias = releaseKey.alias
+                        keyPassword = releaseKey.keyPassword
+                    }
+                }
                 buildTypes.apply {
                     getByName("release") {
                         isMinifyEnabled = true
                         isShrinkResources = true
+                        signingConfig = signingConfigs.findByName(RELEASE_SIGNING)
                         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
                     }
                     // SPEC 15.6: debug, release and benchmark variants.

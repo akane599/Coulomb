@@ -27,7 +27,8 @@ JDK 21 and the Android SDK (API 37) are required.
 tools/ci/check.sh all          # everything CI runs
 ```
 
-The requirements are in [`SPEC.md`](SPEC.md); decisions are in [`docs/adr/`](docs/adr/).
+The requirements are in [`SPEC.md`](SPEC.md); decisions are in [`docs/adr/`](docs/adr/). How a signed
+release is made is in [`docs/releasing.md`](docs/releasing.md).
 
 ## License
 
