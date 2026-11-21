@@ -43,6 +43,16 @@ public abstract class SampleDao {
         toElapsedNs: Long,
     ): List<BatterySampleEntity>
 
+    /** The hottest sample taken in `[fromWall, toWall)`; of equals, the latest (SPEC 9.2, R12). */
+    @Query(
+        "SELECT * FROM battery_sample WHERE wallMs >= :fromWall AND wallMs < :toWall " +
+            "ORDER BY tempDeciC DESC, bootSeq DESC, elapsedNs DESC LIMIT 1",
+    )
+    public abstract suspend fun hottest(
+        fromWall: Long,
+        toWall: Long,
+    ): BatterySampleEntity?
+
     /** Samples taken in `[fromWall, toWall)` for a chart; the wall clock picks them, the key orders them. */
     @Query(
         "SELECT * FROM battery_sample WHERE wallMs >= :fromWall AND wallMs < :toWall " +

@@ -76,7 +76,8 @@ class RulesTest {
         deep: Boolean? = null,
     ): ScreenOffSession {
         val ms = (hours * hour).toLong()
-        return ScreenOffSession(id, Span(now - endedAgo - ms, now - endedAgo), ms, awake, rate, deep, windowId = 100 + id)
+        val drop = rate?.let { (it * hours).toInt() }
+        return ScreenOffSession(id, Span(now - endedAgo - ms, now - endedAgo), ms, awake, rate, drop, deep, windowId = 100 + id)
     }
 
     private fun nights(vararg sessions: ScreenOffSession) = RuleContext(now, screenOffSessions = sessions.toList())
@@ -112,6 +113,8 @@ class RulesTest {
         // Twice a very low median is still not a high rate: the 0.8 %/h floor holds.
         quiet(RuleId.HIGH_SCREEN_OFF_DRAIN, nights(*usual(0.2), night(9, hour, rate = 0.8)))
         assertThat(run(RuleId.HIGH_SCREEN_OFF_DRAIN, nights(*usual(0.2), night(9, hour, rate = 0.81)))).hasSize(1)
+        // A night that lost two level points is within the gauge's rounding, whatever its rate.
+        quiet(RuleId.HIGH_SCREEN_OFF_DRAIN, nights(*usual(0.5), night(9, hour, hours = 1.5, rate = 1.9)))
         // Too few earlier nights, or nights older than 14 days, give no baseline.
         quiet(RuleId.HIGH_SCREEN_OFF_DRAIN, nights(*usual(0.5, count = 4), night(9, hour, rate = 5.0)))
         val old = (1..5).map { night(it.toLong(), (20 + it) * day, rate = 0.5) }.reversed().toTypedArray()

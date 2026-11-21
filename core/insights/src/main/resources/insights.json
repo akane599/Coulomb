@@ -2,7 +2,7 @@
   "R01": { "wakelockHours": 2.0 },
   "R02": { "tagMinutes": 60 },
   "R03": { "minSessionHours": 1, "awakeShare": 0.15 },
-  "R04": { "medianMultiple": 2, "minRatePctPerHour": 0.8, "minSessionHours": 1, "baselineDays": 14, "minBaselineSessions": 5 },
+  "R04": { "medianMultiple": 2, "minRatePctPerHour": 0.8, "minSessionHours": 1, "baselineDays": 14, "minBaselineSessions": 5, "minDropPct": 3 },
   "R05": { "alarmsPerHour": 12, "minScreenOffHours": 1 },
   "R06": { "gnssMinutes": 10 },
   "R07": { "lowSignalShare": 0.30, "modemShare": 0.15, "minHours": 2 },

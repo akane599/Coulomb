@@ -48,7 +48,7 @@ internal object BatteryRules {
                 val usual = session.baselineW?.takeIf { it > 0 } ?: return@mapNotNull null
                 val threshold = usual * limit("baselineShare")
                 if (watts >= threshold) return@mapNotNull null
-                val labels = session.chargerName?.let { mapOf("charger" to it) }.orEmpty()
+                val labels = session.baselineName?.let { mapOf("charger" to it) }.orEmpty()
                 val values = mapOf("baselineW" to usual)
                 val evidence = session.span.evidence(watts, threshold, EvidenceUnit.WATTS, values, labels, session.id)
                 found(session.chargerId?.let(Subject::charger), evidence)

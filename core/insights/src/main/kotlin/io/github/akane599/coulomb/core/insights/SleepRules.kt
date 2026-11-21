@@ -35,6 +35,8 @@ internal object SleepRules {
             val rated = sessionsOfAtLeast("minSessionHours").filter { it.ratePctPerHour != null }
             val session = rated.lastOrNull() ?: return@rule emptyList()
             val rate = session.ratePctPerHour ?: return@rule emptyList()
+            // One or two level points over a night are within the gauge's rounding.
+            if ((session.levelDropPct ?: 0) < limit("minDropPct")) return@rule emptyList()
             val since = session.span.fromWallMs - limit("baselineDays") * MS_PER_DAY
             val earlier = rated.dropLast(1).filter { it.span.toWallMs >= since }.mapNotNull { it.ratePctPerHour }
             if (earlier.size < limit("minBaselineSessions")) return@rule emptyList()

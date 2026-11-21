@@ -365,6 +365,26 @@ public abstract class WindowDao {
         toElapsedNs: Long,
     ): List<ChainStat>
 
+    /**
+     * As [chainStat], over only the windows that began on battery and had the screen off throughout:
+     * what an app did while the phone lay unused (SPEC 9.2, R06 and R09). A window with any screen-on
+     * time is left out whole, so this is a lower bound.
+     */
+    @Query(
+        "SELECT x.uid, SUM(x.value) AS value FROM window_stat x JOIN stat_key k ON k.id = x.keyId " +
+            "JOIN window_result w ON w.id = x.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "JOIN snapshot f ON f.id = w.fromSnapshotId " +
+            "WHERE k.name = :key AND w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND w.screenOnMs = 0 AND f.plugType = 0 " +
+            "AND $TO_IN_CHAIN GROUP BY x.uid",
+    )
+    public abstract suspend fun chainStatScreenOff(
+        key: String,
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<ChainStat>
+
     /** One UID's shares across the windows that still have them, for app detail (SPEC 10). */
     @Query("$UID_ROWS WHERE u.uid = :uid ORDER BY u.windowId")
     public abstract fun observeForUid(uid: Int): Flow<List<WindowUid>>

@@ -139,6 +139,16 @@ public interface SessionDao {
         fromWall: Long,
     ): Flow<List<SessionEntity>>
 
+    /** Closed sessions of [kind] that ended at or after [fromWall], oldest first. */
+    @Query(
+        "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL AND endWall >= :fromWall " +
+            "ORDER BY bootSeq, startElapsedNs",
+    )
+    public suspend fun closedSince(
+        kind: SessionKind,
+        fromWall: Long,
+    ): List<SessionEntity>
+
     /** The oldest session of [kind] in the running sum of cycle equivalents (ADR-0037 §4). */
     @Query(
         "SELECT * FROM session WHERE kind = :kind AND cycleEquivalents IS NOT NULL " +

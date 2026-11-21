@@ -12,6 +12,16 @@ public class InsightEngine(
     private val rules: List<Rule> = Rules.all,
 ) {
     /**
+     * The shortest screen-off session any rule judges, for the loader: the lowest `minSessionHours`
+     * among the rules that have one.
+     */
+    public val minScreenOffMs: Long =
+        rules
+            .map { thresholds.of(it.id) }
+            .filter { SESSION_FLOOR in it.names }
+            .minOfOrNull { (it[SESSION_FLOOR] * MS_PER_HOUR).toLong() } ?: 0L
+
+    /**
      * The findings in [ctx] of the rules that read any of [changed] (SPEC 7.5), at most one per rule
      * and subject: of several about the same subject, the one whose evidence ends last.
      */
@@ -27,4 +37,8 @@ public class InsightEngine(
                     .groupBy { it.subject?.key }
                     .map { (_, sameSubject) -> sameSubject.maxBy { it.evidence.toWallMs } }
             }
+
+    private companion object {
+        const val SESSION_FLOOR = "minSessionHours"
+    }
 }

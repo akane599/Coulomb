@@ -104,6 +104,8 @@ public data class ScreenOffSession(
     val durationMs: Long,
     val awakeRatio: Double? = null,
     val ratePctPerHour: Double? = null,
+    /** Whole level points lost over the session; a rate from one or two points is mostly rounding. */
+    val levelDropPct: Int? = null,
     val deepIdleReached: Boolean? = null,
     val windowId: Long? = null,
 )
@@ -127,9 +129,10 @@ public data class TempSample(
 )
 
 /**
- * A closed charge session. [avgW] is its power before the taper and [baselineW] what its charger
- * usually gives. [protectionOn] is whether the phone's battery protection limited the charge; null
- * where that could not be read.
+ * A closed charge session. [avgW] is its power before the taper and [baselineW] what the charger it
+ * is compared with usually gives; [baselineName] is that charger's name, where the user gave one.
+ * [protectionOn] is whether the phone's battery protection limited the charge; null where that
+ * could not be read.
  */
 public data class ChargeSession(
     val id: Long,
@@ -138,7 +141,7 @@ public data class ChargeSession(
     val avgW: Double? = null,
     val baselineW: Double? = null,
     val chargerId: Long? = null,
-    val chargerName: String? = null,
+    val baselineName: String? = null,
     val minutesAtFull: Int = 0,
     val protectionOn: Boolean? = null,
 )

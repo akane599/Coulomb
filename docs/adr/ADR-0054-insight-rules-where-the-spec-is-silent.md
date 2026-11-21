@@ -37,6 +37,7 @@ accurate, cheaper, easier-to-revert option and record it. Every number below liv
 
    | Rule | Floor | Why |
    | --- | --- | --- |
+   | R04 | The judged night lost at least 3 level points | Fewer are within the gauge's rounding |
    | R05 | 1 h of screen-off time in the day | A rate over a few minutes swings widely |
    | R07 | 2 h of signal time | Same |
    | R11 | Readings more than 120 s apart count for no time | Nothing is known about the gap |
@@ -45,15 +46,28 @@ accurate, cheaper, easier-to-revert option and record it. Every number below liv
    | R19 | 50 mAh measured | Below that the share is mostly rounding |
    | R20 | 20 h of data, scaled to 24 h | A short span is not "per day" |
 
-7. **R08 judges the busier radio.** Wi-Fi and Bluetooth scan times are not added: they can overlap,
-   and the spec says "Wi-Fi or Bluetooth".
+7. **R08 judges the busier radio, by its busiest app.** Wi-Fi and Bluetooth scan times are not
+   added: they can overlap, and the spec says "Wi-Fi or Bluetooth". Per-app scan timers overlap too,
+   so the loader passes the busiest single app's time: the most that is certain. The exact radio time
+   is in the history's scan flags; reading it there is a later refinement.
 8. **Severity is the table's.** No rule raises its own severity yet. The lifecycle already handles a
    rise (SPEC 9.1), so a later threshold for it needs no structural change.
+9. **R13 compares a new charger with the usual one.** A charge is matched to a charger profile
+   only within 25% of its baseline (ADR-0043), so a charge below 70% of a baseline never matches
+   and becomes a new profile. Such a session is compared with the profile of the same plug type
+   seen last before it. A slower charger the user owns fires once and is then its own profile.
+10. **Screen-off sessions count only inside one discharge.** On the charger the phone does not
+    sleep, so a session that touches a charge is left out of R03, R04 and R17.
+11. **Deep idle per session is read from the windows.** `Session.deepIdleReached` is not filled
+    yet; the loader reads the device's `deep_doze_count` over the session's chain of windows.
+12. **App rules look at installed apps only.** A UID below the first application UID (the system,
+    the phone process, shared system UIDs) is left out of R01, R05, R06, R09, R10 and R18: their
+    actions restrict an app, and the user cannot restrict the system.
 
 ## Consequences
 
 - The rules are pure functions of `RuleContext`. What loads that context from the database is a
   separate step, and so are the collector additions some rules need (job stop reasons, the battery
-  protection setting, standby buckets, per-session deep idle).
+  protection setting, standby buckets).
 - Until those additions land, R15 and R16 find nothing and R10 sees job counts only. That is the
   honest result of decision 4, not a defect in the rules.
