@@ -18,6 +18,8 @@ import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.datastore.SettingsStore
+import io.github.akane599.coulomb.core.insights.InsightStore
+import io.github.akane599.coulomb.core.insights.ShownInsight
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** An app's label as read; null is a UID with no label, which reads "UID n". */
 @Immutable
@@ -52,6 +55,8 @@ internal sealed interface AppDetailUiState {
         val detail: AppDetailReport?,
         /** Drain's "scale to measured" setting, so the figure is the one on the Drain row (ADR-0041 §1). */
         val scaled: Boolean,
+        /** The app's highest-severity open insight, or null (SPEC 10.4). */
+        val insight: ShownInsight? = null,
     ) : AppDetailUiState
 }
 
@@ -69,6 +74,7 @@ public class AppDetailViewModel
         window: ChosenWindow,
         settings: SettingsStore,
         private val icons: AppIcons,
+        private val insights: InsightStore,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
 
@@ -81,8 +87,10 @@ public class AppDetailViewModel
                             drains.app(span, uid).map<AppDetailReport?, Loaded?> { Loaded(span, it) }.onStart { emit(null) }
                         }
                     val scaled = settings.settings.map { it.scaleToMeasured }.distinctUntilChanged()
-                    combine(details, scaled) { loaded, scale ->
-                        loaded?.let { AppDetailUiState.Ready(it.span, it.detail, scale) } ?: AppDetailUiState.Loading
+                    // Open insights come most severe first, so the app's first is its highest.
+                    val insight = insights.observeShown(Int.MAX_VALUE).map { open -> open.firstOrNull { it.insight.uid == uid } }
+                    combine(details, scaled, insight) { loaded, scale, shown ->
+                        loaded?.let { AppDetailUiState.Ready(it.span, it.detail, scale, shown) } ?: AppDetailUiState.Loading
                     }.catch { emit(AppDetailUiState.Error) }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AppDetailUiState.Loading)
 
@@ -95,6 +103,17 @@ public class AppDetailViewModel
         /** After [AppDetailUiState.Error]: reads everything again. */
         internal fun retry() {
             attempt.value++
+        }
+
+        internal fun snoozeInsight(
+            id: Long,
+            forMs: Long,
+        ) {
+            viewModelScope.launch { insights.snooze(id, System.currentTimeMillis(), forMs) }
+        }
+
+        internal fun dismissInsight(id: Long) {
+            viewModelScope.launch { insights.dismiss(id, System.currentTimeMillis()) }
         }
 
         /** The app's icon at [sizePx], from the shared cache. */

@@ -30,8 +30,14 @@ import io.github.akane599.coulomb.core.data.AppCounters
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.WakeEntry
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.model.InsightState
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.Insight
+import io.github.akane599.coulomb.core.model.insight.RuleId
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -54,6 +60,15 @@ class AppDetailScreenshotTest {
 
     @Test
     fun labLight() = shoot("lab-light", ready())
+
+    /** ADR-0026 §3: an open Act insight ends the story, as its card, before the evidence. */
+    @Test
+    @Config(qualifiers = COMPACT)
+    fun actInsight() = shoot("insight", withInsight())
+
+    @Test
+    @Config(qualifiers = "tr-$COMPACT")
+    fun actInsightTurkish() = shoot("insight-tr", withInsight())
 
     @Test
     @Config(qualifiers = "$PAGE-night-xhdpi")
@@ -215,6 +230,16 @@ private fun ready(
     detail: io.github.akane599.coulomb.core.data.AppDetailReport = labDetail(),
     scaled: Boolean = false,
 ) = AppDetailUiState.Ready(DrainSpan.SinceUnplugged, detail, scaled)
+
+/** The lab's app with an open Act insight whose evidence lies in the window. */
+private fun withInsight(): AppDetailUiState.Ready {
+    val state = ready()
+    val drains = checkNotNull(state.detail).report.drains
+    val evidence = Evidence(2.57, 2.0, EvidenceUnit.HOURS, drains.fromWallMs, drains.toWallMs)
+    val rule = RuleId.EXCESSIVE_WAKELOCK
+    val insight = Insight(1, rule, rule.severity, InsightState.SEEN, null, checkNotNull(state.detail).uid, null, evidence, drains.toWallMs)
+    return state.copy(insight = ShownInsight(insight, "Halcyon"))
+}
 
 private fun manyWakelockDetail() =
     labDetail().let { detail ->

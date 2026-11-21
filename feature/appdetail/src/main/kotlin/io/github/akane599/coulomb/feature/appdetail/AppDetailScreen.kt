@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -50,11 +51,15 @@ import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.model.story.Story
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
+import io.github.akane599.coulomb.core.ui.story.StoryCopy
 import java.time.ZoneId
 
 /**
@@ -77,9 +82,9 @@ public fun appDetailTitle(viewModel: AppDetailViewModel): String {
 }
 
 /**
- * App detail (SPEC 10.4): one app over the window chosen on Drain. The story, its Act insight and
- * the actions arrive in P5 with the insight engine and the Action Center (ADR-0041); App info
- * opens the system's page for the app.
+ * App detail (SPEC 10.4): one app over the window chosen on Drain, with its story and the card of
+ * its open Act insight. The actions arrive with the Action Center (ADR-0041); App info opens the
+ * system's page for the app.
  */
 @Composable
 public fun AppDetailScreen(
@@ -103,6 +108,8 @@ public fun AppDetailScreen(
                 },
                 icon = viewModel::icon,
                 peekIcon = viewModel::peekIcon,
+                snoozeInsight = viewModel::snoozeInsight,
+                dismissInsight = viewModel::dismissInsight,
             )
         }
     AppDetailContent(state, actions, modifier)
@@ -114,6 +121,8 @@ internal class AppDetailActions(
     val openAppInfo: (packageName: String) -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
     val peekIcon: (packageName: String, sizePx: Int) -> ImageBitmap? = { _, _ -> null },
+    val snoozeInsight: (id: Long, forMs: Long) -> Unit = { _, _ -> },
+    val dismissInsight: (id: Long) -> Unit = {},
 )
 
 /** The two tables a chart opens ("View as table", SPEC 11.8). */
@@ -149,7 +158,7 @@ internal fun AppDetailContent(
                 Column(modifier.fillMaxSize().padding(horizontal = gutter)) { Empty(state.span) }
             } else {
                 val view = remember(detail, state.scaled) { AppDetailView.of(detail, state.scaled) }
-                FadeInOnce(modifier.fillMaxSize()) { Ready(view, actions, zone) }
+                FadeInOnce(modifier.fillMaxSize()) { Ready(view, state.insight, actions, zone) }
             }
         }
     }
@@ -163,20 +172,30 @@ internal fun AppDetailContent(
 @Composable
 private fun Ready(
     view: AppDetailView,
+    insight: ShownInsight?,
     actions: AppDetailActions,
     zone: ZoneId,
 ) {
     val formats = rememberFormats()
     val gutter = currentGutter()
     var table by rememberSaveable { mutableStateOf<AppTable?>(null) }
+    var why by rememberSaveable { mutableStateOf(false) }
     val icon = rememberAppIcon(view.detail.iconPackage, actions.icon, actions.peekIcon)
-    val sections = remember(view, formats, icon, zone, actions) { Sections(view, formats, icon, zone, actions) { table = it } }
+    val resources = LocalResources.current
+    val words =
+        remember(resources, formats) {
+            val insights = InsightCopy(resources, formats)
+            StoryWords(StoryCopy(resources, formats, insights), insights)
+        }
+    val story = remember(view, insight) { StoryPart(appStory(view, insight?.insight), insight, words) { why = true } }
+    val sections =
+        remember(view, formats, icon, zone, actions) { Sections(view, formats, icon, zone, actions) { table = it } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val column = MinColumnWidth * LocalDensity.current.fontScale.coerceAtLeast(1f)
         val twoColumns = currentWindowWidth() != WindowWidth.Compact && maxWidth - gutter * GUTTERS >= column * 2
         if (!twoColumns) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Bottom)) {
-                sections.first(this)
+                sections.first(this, story)
                 sections.second(this)
             }
         } else {
@@ -184,7 +203,9 @@ private fun Ready(
                 Modifier.widthIn(max = MaxTwoColumnWidth).fillMaxSize().padding(horizontal = gutter),
                 horizontalArrangement = Arrangement.spacedBy(gutter),
             ) {
-                LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = PaddingValues(bottom = Bottom)) { sections.first(this) }
+                LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = PaddingValues(bottom = Bottom)) {
+                    sections.first(this, story)
+                }
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = PaddingValues(bottom = Bottom)) {
                     sections.second(this, besideFirst = true)
                 }
@@ -192,7 +213,24 @@ private fun Ready(
         }
     }
     table?.let { open -> DataTableSheet(tableOf(open, view, formats), onDismiss = { table = null }) }
+    if (why && insight != null) {
+        DataTableSheet(words.insights.evidence(insight.insight, zone, view.detail.report.drains.toWallMs), onDismiss = { why = false })
+    }
 }
+
+/** The two sets of words the story part needs. */
+private class StoryWords(
+    val story: StoryCopy,
+    val insights: InsightCopy,
+)
+
+/** The story, the app's insight and how to ask why, for [Sections]. */
+private class StoryPart(
+    val story: Story,
+    val insight: ShownInsight?,
+    val words: StoryWords,
+    val onWhy: () -> Unit,
+)
 
 /** The screen's sections as list items, in the two groups the wide layout splits them into. */
 private class Sections(
@@ -203,8 +241,14 @@ private class Sections(
     val actions: AppDetailActions,
     val viewTable: (AppTable) -> Unit,
 ) {
-    fun first(scope: LazyListScope) {
+    fun first(
+        scope: LazyListScope,
+        story: StoryPart,
+    ) {
         scope.item(key = "header", contentType = "header") { Header(view, view.detail.report.span, formats, icon) }
+        scope.item(key = "story", contentType = "story") {
+            StoryAndInsight(story.story, story.insight, story.words.story, story.words.insights, actions, story.onWhy)
+        }
         if (view.detail.app != null) {
             scope.item(key = "where", contentType = "where") { WhereItWent(view, formats) { viewTable(AppTable.COMPONENTS) } }
         }

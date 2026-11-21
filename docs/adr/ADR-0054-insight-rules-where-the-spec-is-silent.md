@@ -69,6 +69,10 @@ accurate, cheaper, easier-to-revert option and record it. Every number below liv
     insight's data types (`RuleId`, `Evidence`, `Insight`) are in `:core:model`, the rule engine and
     its JSON stay in `:core:insights`, and `InsightCopy` with its Turkish and English strings is in
     `:core:ui`. Which causes and which anomaly a story names is still the engine's decision.
+14. **App detail says nothing twice.** Its header already gives the story's verdict as figures
+    (the app's mAh and share), so the story there starts with what the app did. When the app's open
+    insight is rated Act its card follows the story (ADR-0026 §3); the card's title is the anomaly
+    sentence, so the paragraph leaves that sentence out.
 
 ## Consequences
 
