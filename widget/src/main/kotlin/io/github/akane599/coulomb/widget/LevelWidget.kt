@@ -31,6 +31,7 @@ import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.formatsFor
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.story.StoryCopy
+import io.github.akane599.coulomb.core.ui.story.lastReadingLine
 import java.time.ZoneId
 
 /** Level and verdict, 2×1 (SPEC 12.4). */
@@ -107,10 +108,18 @@ internal fun LevelContent(
         val scale = context.resources.configuration.fontScale
         val inner = DpSize(size.width - WidgetPadding * 2, size.height - WidgetPadding * 2)
         if (!stacked) {
-            OneLine(level, percent, state, formats, zone, inner, scale)
+            OneLine(percent, state, oneLineTimes(context, level, formats, zone), inner, scale)
             return@WidgetSurface
         }
-        val verdict = level.story?.let { StoryCopy(context.resources, formats, InsightCopy(context.resources, formats)).line(it).text }
+        // An old reading's verdict names its end, as Now's does (ADR-0069).
+        val verdict =
+            level.story?.let {
+                if (level.asOfWallMs != null) {
+                    lastReadingLine(context.resources, formats, it.span)
+                } else {
+                    StoryCopy(context.resources, formats, InsightCopy(context.resources, formats)).line(it).text
+                }
+            }
         if (size.width >= BesideFrom) {
             val width = inner.width - LevelColumn * scale - BesideGap
             val lines = verdict?.let { WidgetFit.lines(it, width.value, inner.height.value, scale) }
@@ -148,34 +157,73 @@ private fun stateLine(
     return context.getString(R.string.widget_as_of, formats.dayClock(at, zone))
 }
 
-/** The level on one line, with its state, or an old reading's time, where the width holds both. */
-@Composable
-private fun OneLine(
+/**
+ * An old reading's time for the one-line form, longest first: "As of Sun 2:30 PM", "Sun 2:30 PM",
+ * "2:30 PM". The day comes from [Formats.dayClock], as in the stacked form, since the widget is not
+ * drawn again at midnight (ADR-0069). Empty for a current reading.
+ */
+private fun oneLineTimes(
+    context: Context,
     level: LevelFacts,
-    percent: String,
-    state: String,
     formats: Formats,
     zone: ZoneId,
+): List<String> {
+    val at = level.asOfWallMs ?: return emptyList()
+    val day = formats.dayClock(at, zone)
+    return listOf(context.getString(R.string.widget_as_of, day), day, formats.clock(at, zone))
+}
+
+/** The first of [lines] that fits beside the level, at hero size if the height holds it, then title; with the size. */
+private fun chooseLine(
+    percent: String,
+    lines: List<String>,
+    inner: DpSize,
+    scale: Float,
+): Pair<String?, Boolean> {
+    fun fits(
+        line: String,
+        hero: Boolean,
+    ) = WidgetFit.width(percent, if (hero) WidgetLine.HERO_SP else WidgetLine.TITLE_SP, scale) + WidgetLine.mark.value +
+        StateGap.value + WidgetFit.width(line, WidgetLine.LABEL_SP, scale) <= inner.width.value
+    val tall = inner.height >= WidgetLine.hero * scale
+    return lines.firstOrNull { tall && fits(it, hero = true) }?.let { it to true }
+        ?: lines.firstOrNull { fits(it, hero = false) }?.let { it to false }
+        ?: (null to tall)
+}
+
+/**
+ * The level on one line with its state, or an old reading's time, where the width holds both. The
+ * time takes the longest form that fits beside the level at hero or title size; with none, it goes
+ * under the level where the height holds two lines. Where neither holds (the smallest size, large
+ * text) the level is drawn muted, so it does not read as now, and TalkBack says its time; a tap
+ * opens Now, which shows it (ADR-0069). Never cut (SPEC 12.4).
+ */
+@Composable
+private fun OneLine(
+    percent: String,
+    state: String,
+    times: List<String>,
     inner: DpSize,
     scale: Float,
 ) {
-    // One line: the level at the size the height holds, and its state where the width holds both.
-    // An old reading's time is never left out (ADR-0069): it is the short "at 2:30 PM" here, and the
-    // level steps down to title size to make room for it.
-    val line =
-        level.asOfWallMs?.let { LocalContext.current.getString(R.string.widget_at, formats.clock(it, zone, System.currentTimeMillis())) }
-            ?: state
-    val lineWidth = WidgetFit.width(line, WidgetLine.LABEL_SP, scale)
-
-    fun fits(hero: Boolean) =
-        WidgetFit.width(percent, if (hero) WidgetLine.HERO_SP else WidgetLine.TITLE_SP, scale) + WidgetLine.mark.value +
-            StateGap.value + lineWidth <= inner.width.value
-    val tall = inner.height >= WidgetLine.hero * scale
-    val large = tall && (level.asOfWallMs == null || fits(hero = true))
-    val both = level.asOfWallMs != null || fits(large)
+    val (line, large) = chooseLine(percent, times.ifEmpty { listOf(state) }, inner, scale)
+    if (line == null && times.isNotEmpty() && inner.height >= (WidgetLine.title + WidgetLine.label) * scale) {
+        Column {
+            Figure(percent, Provenance.MODELED, WidgetType.title)
+            Text(times.last(), style = WidgetType.label, maxLines = 1)
+        }
+        return
+    }
+    val style = if (large) WidgetType.hero else WidgetType.title
+    val untimed = line == null && times.isNotEmpty()
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Figure(percent, Provenance.MODELED, if (large) WidgetType.hero else WidgetType.title)
-        if (both) {
+        Figure(
+            percent,
+            Provenance.MODELED,
+            if (untimed) style.copy(color = WidgetColors.textSecondary) else style,
+            spokenNote = times.firstOrNull()?.takeIf { untimed },
+        )
+        if (line != null) {
             Spacer(GlanceModifier.defaultWeight())
             Text(line, style = WidgetType.label, maxLines = 1)
         }

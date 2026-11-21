@@ -54,11 +54,13 @@ public fun ChargeLevelScale(
     onViewTable: () -> Unit,
     modifier: Modifier = Modifier,
     targetLabel: (@Composable () -> Unit)? = null,
+    // An old reading's level is drawn in ink: copper is the charge happening now (DESIGN.md, ADR-0069).
+    live: Boolean = true,
 ) {
     val colors = CoulombTheme.colors
     val track: @Composable () -> Unit = {
         Canvas(Modifier.fillMaxWidth().height(TrackHeight)) {
-            drawScale(levelPct, targetPct, colors.hairline, colors.accent, colors.textPrimary)
+            drawScale(levelPct, targetPct, colors.hairline, if (live) colors.accent else colors.textPrimary, colors.textPrimary)
         }
     }
     Layout(

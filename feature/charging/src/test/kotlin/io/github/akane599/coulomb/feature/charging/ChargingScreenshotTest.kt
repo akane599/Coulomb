@@ -231,7 +231,7 @@ class ChargingScreenshotTest {
     @Test
     @Config(qualifiers = "tr-w412dp-h3600dp-xhdpi")
     fun slowingTurkishText200() =
-        shoot("slowing-tr-200", fontScale = 2f) { Charging(labNow().copy(levelPct = 81, phase = ChargePhase.SLOWING)) }
+        shoot("slowing-tr-200", fontScale = 2f) { Charging(labNow().copy(levelPct = 81, phase = ChargePhase.SLOWING, toTarget = null)) }
 
     /** The curve's "View as table" (SPEC 11.8). */
     @Test
@@ -259,6 +259,19 @@ class ChargingScreenshotTest {
         compose.onNode(hasContentDescription("Level 52%", substring = true)).performCustomAccessibilityActionWithLabel("View as table")
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("src/test/screenshots/charging-scale-table.png")
+    }
+
+    /** An old reading's scale table, from the same TalkBack action: no projected times (ADR-0069). */
+    @Test
+    @OptIn(ExperimentalTestApi::class) // Custom accessibility actions.
+    fun scaleTableStale() {
+        shoot("scale-table-stale", capture = false) {
+            val now = labNow()
+            ChargingContent(ChargingUiState.Ready(now), NoActions, zone = ZONE, nowMs = now.wallMs + 30 * 60_000L)
+        }
+        compose.onNode(hasContentDescription("Level 52%", substring = true)).performCustomAccessibilityActionWithLabel("View as table")
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/charging-scale-table-stale.png")
     }
 
     /** The target group moves the tick: 85% is passed on and becomes the selected choice. */

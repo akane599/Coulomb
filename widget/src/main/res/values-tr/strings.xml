@@ -43,5 +43,4 @@
     <string name="tile_spoken">Pil %1$s. %2$s</string>
     <string name="widget_state_as_of">%2$s itibarıyla %1$s</string>
     <string name="widget_as_of">%1$s itibarıyla</string>
-    <string name="widget_at">saat %1$s</string>
 </resources>

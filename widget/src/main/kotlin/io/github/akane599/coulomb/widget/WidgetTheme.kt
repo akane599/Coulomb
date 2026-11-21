@@ -142,6 +142,8 @@ internal fun Figure(
     unit: String? = null,
     /** The unit TalkBack says when it is not drawn beside the number. */
     spokenUnit: String? = unit,
+    /** Said after the figure, such as an old reading's time the widget has no room to draw. */
+    spokenNote: String? = null,
 ) {
     val context = LocalContext.current
     val name =
@@ -153,7 +155,8 @@ internal fun Figure(
                 Provenance.DERIVED -> UiR.string.provenance_derived
             },
         )
-    val spoken = context.getString(R.string.widget_figure_spoken, listOfNotNull(number, spokenUnit).joinToString(" "), name)
+    val figure = context.getString(R.string.widget_figure_spoken, listOfNotNull(number, spokenUnit).joinToString(" "), name)
+    val spoken = listOfNotNull(figure, spokenNote).joinToString(", ")
     Row(modifier.semantics { contentDescription = spoken }, verticalAlignment = Alignment.CenterVertically) {
         Text(number, style = style, maxLines = 1)
         if (unit != null) {

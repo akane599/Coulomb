@@ -217,6 +217,7 @@ internal fun LevelScale(
     formats: Formats,
     zone: ZoneId,
     onViewTable: () -> Unit,
+    stale: Boolean = false,
 ) {
     val type = CoulombTheme.typography
     val colors = CoulombTheme.colors
@@ -248,6 +249,7 @@ internal fun LevelScale(
                 Text(stringResource(R.string.charging_target_plain, target), color = colors.textSecondary, style = type.captionEmphasis)
             }
         },
+        live = !stale,
     )
 }
 
@@ -423,6 +425,7 @@ internal fun Session(
     formats: Formats,
     zone: ZoneId,
     onViewTable: () -> Unit,
+    stale: Boolean = false,
 ) {
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(
@@ -438,7 +441,10 @@ internal fun Session(
         val to = formats.percent(now.levelPct)
         val start = formats.clock(now.startWallMs, zone, now.wallMs)
         val summary =
-            now.watts?.let { stringResource(R.string.charging_curve_summary_power, from, to, start, formats.signedWatts(it).joined()) }
+            // "Power now" would be false of an old reading (ADR-0069).
+            now.watts?.takeUnless { stale }?.let {
+                stringResource(R.string.charging_curve_summary_power, from, to, start, formats.signedWatts(it).joined())
+            }
                 ?: stringResource(R.string.charging_curve_summary, from, to, start)
         // The power panel shows power into the battery; a stretch drawing on it is a gap, never a dip to zero.
         val readings =
@@ -513,6 +519,7 @@ internal fun Target(
     onSelect: (Int) -> Unit,
     onOpenSettings: () -> Unit,
     lite: Boolean = false,
+    stale: Boolean = false,
 ) {
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.charging_target), provenance = null)
@@ -525,7 +532,7 @@ internal fun Target(
         )
         // SPEC 10.9: the selector links to the alarm. The note says what the alarm is set to, not what it could be.
         Note(
-            stringResource(R.string.charging_target_note) + " " +
+            stringResource(if (stale) R.string.charging_target_note_mark else R.string.charging_target_note) + " " +
                 stringResource(
                     when {
                         alarm && lite -> R.string.charging_target_alarm_lite

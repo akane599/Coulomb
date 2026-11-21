@@ -48,6 +48,7 @@
     <string name="charging_column_power">Power</string>
     <string name="charging_target">Target</string>
     <string name="charging_target_note">Moves the mark on the level bar and the time to it.</string>
+    <string name="charging_target_note_mark">Moves the mark on the level bar.</string>
     <string name="charging_target_alarm_on">The alarm at the target is on.</string>
     <string name="charging_target_alarm_off">The alarm at the target is off.</string>
     <string name="charging_open_settings">Alerts in Settings</string>

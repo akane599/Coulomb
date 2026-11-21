@@ -85,6 +85,7 @@ import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
 import io.github.akane599.coulomb.core.ui.story.StoryCopy
+import io.github.akane599.coulomb.core.ui.story.lastReadingLine
 import java.time.ZoneId
 import kotlin.math.roundToInt
 import io.github.akane599.coulomb.core.ui.R as UiR
@@ -183,20 +184,24 @@ private fun Projection(
     if (stale) StaleVerdict(state, discharge, formats) else Verdict(state, discharge, formats)
 }
 
-/**
- * The verdict of an old reading: the story's "ago" would count to the reading, not to now, so the
- * sentence names its end instead, as Drain's note does (ADR-0069).
- */
+/** The verdict of an old reading, which names its end instead of counting "ago" (ADR-0069). */
 @Composable
 private fun StaleVerdict(
     state: NowUiState.Ready,
     discharge: DischargeSummary,
     formats: Formats,
 ) {
-    val minutes = ((state.battery.wallMs - discharge.startWallMs) / MS_PER_MINUTE).coerceAtLeast(0)
-    val fell = (discharge.startLevel - state.battery.levelPct).coerceAtLeast(0)
+    val resources = LocalResources.current
+    val span =
+        StorySpan(
+            fromWallMs = discharge.startWallMs,
+            toWallMs = state.battery.wallMs,
+            durationMs = state.battery.wallMs - discharge.startWallMs,
+            levelDropPct = discharge.startLevel - state.battery.levelPct,
+            ratePctPerHour = null,
+        )
     Text(
-        stringResource(R.string.now_verdict_stale, formats.duration(minutes), formats.percent(fell)),
+        lastReadingLine(resources, formats, span),
         Modifier.widthIn(max = VerdictMeasure),
         color = CoulombTheme.colors.textPrimary,
         style = CoulombTheme.typography.body,

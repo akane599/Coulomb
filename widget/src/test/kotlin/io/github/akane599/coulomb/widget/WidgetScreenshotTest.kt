@@ -152,6 +152,34 @@ class WidgetScreenshotTest {
     @Test
     fun levelSmallest() = capture("widget-level-min", DpSize(110.dp, 50.dp)) { LevelContent(Samples.level) }
 
+    // An old reading's time at the smallest size, at large text and in Turkish: never cut (ADR-0069).
+    @Test
+    fun levelSmallestAsOf() =
+        capture("widget-level-min-as-of", DpSize(110.dp, 50.dp)) {
+            LevelContent(Samples.level.copy(asOfWallMs = AS_OF), ZoneOffset.UTC)
+        }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 2f)
+    fun levelAsOfLargeText() =
+        capture("widget-level-as-of-200", DpSize(170.dp, 64.dp)) {
+            LevelContent(Samples.level.copy(asOfWallMs = AS_OF), ZoneOffset.UTC)
+        }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 1.3f)
+    fun levelAsOfText130() =
+        capture("widget-level-as-of-130", DpSize(170.dp, 64.dp)) {
+            LevelContent(Samples.level.copy(asOfWallMs = AS_OF), ZoneOffset.UTC)
+        }
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h915dp-xhdpi")
+    fun levelAsOfTurkish() =
+        capture("widget-level-as-of-tr", DpSize(170.dp, 64.dp)) {
+            LevelContent(Samples.level.copy(asOfWallMs = AS_OF), ZoneOffset.UTC)
+        }
+
     @Test
     fun levelSmallestEmpty() = capture("widget-level-min-empty", DpSize(110.dp, 50.dp)) { LevelContent(null) }
 

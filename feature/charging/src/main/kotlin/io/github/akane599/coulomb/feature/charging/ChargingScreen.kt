@@ -225,8 +225,8 @@ internal fun ChargingContent(
                             )
                             Readings(now, formats, lite || stale)
                             actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
-                            Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
-                            Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings, lite)
+                            Session(now, formats, zone, onViewTable = { table = CURVE_TABLE }, stale = stale)
+                            Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings, lite, stale)
                         }
                     }
                 }
@@ -234,7 +234,8 @@ internal fun ChargingContent(
         }
     }
     // A snapshot taken when the sheet opens: at 1 Hz the rows would otherwise shift under the reader (gate audit).
-    val ready = (state as? ChargingUiState.Ready)?.now
+    // From the same stale-aware reading as the page: an old reading's table projects nothing (ADR-0069).
+    val ready = state.shownNow(nowMs)
     val shown = remember(table, ready == null) { ready }
     if (shown != null) {
         when (table) {
@@ -419,6 +420,10 @@ private fun rememberResumedNowMs(changesAt: Long?): Long {
     return now
 }
 
+/** A ready state's reading as the page shows it at [nowMs]; null otherwise. */
+private fun ChargingUiState.shownNow(nowMs: Long?): ChargingNow? =
+    (this as? ChargingUiState.Ready)?.now?.let { it.shown(it.isStaleAt(nowMs)) }
+
 /** Older than [BatteryNow.STALE_MS] at [nowMs]; never without a clock (ADR-0069). */
 private fun ChargingNow.isStaleAt(nowMs: Long?): Boolean = nowMs != null && nowMs - wallMs > BatteryNow.STALE_MS
 
@@ -443,6 +448,6 @@ private fun Top(
             Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
-    LevelScale(now, formats, zone, onViewTable = onViewScale)
+    LevelScale(now, formats, zone, onViewTable = onViewScale, stale = stale)
     if (!stale) Times(now, formats)
 }

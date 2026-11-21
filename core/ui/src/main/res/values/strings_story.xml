@@ -7,6 +7,8 @@
     <string name="story_unplugged">Since unplugged %1$s ago, the battery fell %2$s.</string>
     <string name="story_unplugged_with_app">Since unplugged %1$s ago, the battery fell %2$s; %3$s used %4$s of it.</string>
     <string name="story_unplugged_flat">Unplugged %1$s ago; the level hasn’t changed yet.</string>
+    <string name="story_to_last_reading">From the unplug to the last reading, %1$s, the battery fell %2$s.</string>
+    <string name="story_to_last_reading_flat">From the unplug to the last reading, %1$s, the level did not change.</string>
     <string name="story_night">Your screen was off for %1$s overnight and the battery fell %2$s (%3$s).</string>
     <string name="story_night_no_rate">Your screen was off for %1$s overnight and the battery fell %2$s.</string>
     <string name="story_night_flat">Your screen was off for %1$s overnight; the level did not change.</string>

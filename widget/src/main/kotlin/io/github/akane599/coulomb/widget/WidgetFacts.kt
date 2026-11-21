@@ -96,7 +96,8 @@ internal object WidgetFacts {
     ): LevelFacts {
         val battery = reading.battery
         val discharge = reading.discharge.takeUnless { battery.plugged }
-        // The same input as Now's verdict (`NowSections`): both show the story's one line.
+        // The same input as Now's verdict (`NowSections`): the story's one line, or for an old
+        // reading the line that names its end (ADR-0069).
         val story =
             discharge?.let {
                 DrainStory.compose(
