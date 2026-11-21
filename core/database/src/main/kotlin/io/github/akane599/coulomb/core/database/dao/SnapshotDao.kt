@@ -185,25 +185,9 @@ public abstract class SnapshotDao {
     public abstract suspend fun latestHeavy(): SnapshotEntity?
 
     /**
-     * Heavy snapshots strictly between `(fromBootSeq, fromElapsedNs)` and `(toBootSeq, toElapsedNs)`
-     * whose counters are still stored, in time order: the links of a window's chain (ADR-0018).
-     */
-    @Query(
-        "SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} AND countersPruned = 0 " +
-            "AND (bootSeq > :fromBootSeq OR (bootSeq = :fromBootSeq AND elapsedNs > :fromElapsedNs)) " +
-            "AND (bootSeq < :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs < :toElapsedNs)) " +
-            "ORDER BY bootSeq, elapsedNs",
-    )
-    public abstract suspend fun heavyWithCountersBetween(
-        fromBootSeq: Int,
-        fromElapsedNs: Long,
-        toBootSeq: Int,
-        toElapsedNs: Long,
-    ): List<SnapshotEntity>
-
-    /**
-     * Every heavy snapshot strictly between the two points, counters pruned or not, in time order:
-     * the S9 steps of a long window, which must see where its rows are gone (ADR-0029 §4).
+     * Every heavy snapshot strictly between the two points, counters pruned or not, in time order.
+     * A window's chain judges each step over them (ADR-0055), and the S9 steps of a long window
+     * must see where its rows are gone (ADR-0029 §4).
      */
     @Query(
         "SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
@@ -299,13 +283,19 @@ public abstract class SnapshotDao {
      * `(cutBootSeq, cutElapsedNs)` that no window can start at any more. Kept: the latest heavy
      * snapshot, every referenced snapshot and the start of every open session. The snapshot rows
      * stay, marked [SnapshotEntity.countersPruned]. Returns the snapshots pruned.
+     *
+     * The heavy snapshots on either side of a change of boot number keep their counters until
+     * `(edgeBootSeq, edgeElapsedNs)`: a window that spans a system restart can count only up to
+     * the one and from the other (ADR-0055). By default they go with the rest.
      */
     @Transaction
     public open suspend fun pruneCounters(
         cutBootSeq: Int,
         cutElapsedNs: Long,
+        edgeBootSeq: Int = cutBootSeq,
+        edgeElapsedNs: Long = cutElapsedNs,
     ): Int {
-        val ids = prunableCounters(cutBootSeq, cutElapsedNs)
+        val ids = prunableCounters(cutBootSeq, cutElapsedNs, edgeBootSeq, edgeElapsedNs)
         ids.chunked(MAX_IDS).forEach { chunk ->
             deleteUidPower(chunk)
             deleteComponentPower(chunk)
@@ -494,11 +484,22 @@ public abstract class SnapshotDao {
             "AND id NOT IN (SELECT startSnapshotId FROM session " +
             "WHERE closeReason IS NULL AND startSnapshotId IS NOT NULL) " +
             "AND id NOT IN (SELECT id FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
-            "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1)",
+            "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1) " +
+            // Not the last heavy snapshot before a later boot number, nor the first after an earlier one,
+            // while it is newer than the edge cut.
+            "AND ((bootSeq < :edgeBootSeq OR (bootSeq = :edgeBootSeq AND elapsedNs < :edgeElapsedNs)) OR (" +
+            "(EXISTS (SELECT 1 FROM snapshot n WHERE n.kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
+            "AND n.bootSeq = snapshot.bootSeq AND n.elapsedNs > snapshot.elapsedNs) " +
+            "OR NOT EXISTS (SELECT 1 FROM snapshot n WHERE n.kind = ${RecordCodes.SNAPSHOT_HEAVY} AND n.bootSeq > snapshot.bootSeq)) " +
+            "AND (EXISTS (SELECT 1 FROM snapshot p WHERE p.kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
+            "AND p.bootSeq = snapshot.bootSeq AND p.elapsedNs < snapshot.elapsedNs) " +
+            "OR NOT EXISTS (SELECT 1 FROM snapshot p WHERE p.kind = ${RecordCodes.SNAPSHOT_HEAVY} AND p.bootSeq < snapshot.bootSeq))))",
     )
     protected abstract suspend fun prunableCounters(
         cutBootSeq: Int,
         cutElapsedNs: Long,
+        edgeBootSeq: Int,
+        edgeElapsedNs: Long,
     ): List<Long>
 
     @Query("DELETE FROM uid_power WHERE snapshotId IN (:ids)")

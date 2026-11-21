@@ -7,6 +7,7 @@ import io.github.akane599.coulomb.core.analytics.Attribution
 import io.github.akane599.coulomb.core.analytics.CounterWindow
 import io.github.akane599.coulomb.core.analytics.Counters
 import io.github.akane599.coulomb.core.analytics.StatsEpoch
+import io.github.akane599.coulomb.core.analytics.Step
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
@@ -29,6 +30,14 @@ import kotlin.math.roundToLong
 internal data class WindowEnd(
     val snapshot: SnapshotEntity,
     val rows: SnapshotRows,
+    /** How the counters got here from the chain's previous end ([WindowBuilder.links]); null to judge the two alone. */
+    val step: Step? = null,
+)
+
+/** A snapshot a window's chain keeps, and how its counters relate to the kept one before it; null for the first. */
+internal data class Link(
+    val snapshot: SnapshotEntity,
+    val step: Step?,
 )
 
 /** What a window needs besides its chain. */
@@ -44,8 +53,9 @@ internal data class WindowSettings(
 /**
  * Builds a stored window over a chain of heavy snapshots (SPEC 6.2, 6.5; ADR-0015, ADR-0018). Pure.
  *
- * The chain runs from the window's start to its end and holds every snapshot in between whose
- * counters are still stored; [Attribution.window] splits the counters at each reset. Measured
+ * The chain runs from the window's start to its end and holds the snapshots [links] keeps;
+ * [Attribution.window] splits the counters at each reset and leaves out a step across a system
+ * restart (ADR-0055). With every step left out nothing is modeled, and the total is null. Measured
  * drain is the charge counter's change when it is reliable and both ends are in one boot, else
  * the level change times the capacity (Estimated). Modeled drain is the change in the power
  * model's device total (the [UidPowerEntity.DEVICE_UID] rows). Detail rows keep the UIDs above
@@ -77,7 +87,8 @@ internal object WindowBuilder {
         val to = chain.last()
         val power = window(chain) { rows -> rows.uidPower.associate { PowerKey(it.uid, it.component, it.processState) to it.mAh } }
         val device = window(chain) { rows -> rows.deviceStats.associate { it.key to it.value.toDouble() } }
-        val modeled = modeled(from, to, power)
+        val counted = power.uncounted < chain.size - 1
+        val modeled = modeled(from, to, power).takeIf { counted }
         val (measured, source) = measured(from.snapshot, to.snapshot, settings)
         val screenOn = device.values[DeviceKeys.SCREEN_ON_MS]?.roundToLong() ?: 0
         val realtime =
@@ -98,7 +109,8 @@ internal object WindowBuilder {
                 screenOffMs = (realtime - screenOn).coerceAtLeast(0),
                 // The mapper omits zero counters: with device counters at both ends, a missing key is 0.
                 awakeMsScreenOff =
-                    device.values[DeviceKeys.SCREEN_OFF_UPTIME_MS]?.roundToLong() ?: 0L.takeIf { hasDevice(from) && hasDevice(to) },
+                    device.values[DeviceKeys.SCREEN_OFF_UPTIME_MS]?.roundToLong()
+                        ?: 0L.takeIf { counted && hasDevice(from) && hasDevice(to) },
                 quality = quality(measured, source, from.snapshot, to.snapshot, power.partial || device.partial),
                 detailPruned = !withDetail,
             )
@@ -134,24 +146,32 @@ internal object WindowBuilder {
     }
 
     /**
-     * The snapshots of [ordered] (a window's ends and every stored heavy snapshot in between) whose
-     * counters the window needs: its ends and the two snapshots around each reset. Without a reset
+     * The chain over [path], a window's ends and every heavy snapshot stored in between, counters
+     * pruned or not: its ends and the snapshots around each reset and each system restart that
+     * still have their counters, each with the step that leads to it. Without a reset or a restart
      * the changes between two snapshots add up to the change between the outer ones, so loading
-     * the others would change nothing. Reads only the snapshot rows, not their counters.
+     * the others would change nothing. Each step is judged over every snapshot it spans
+     * ([Attribution.step]), so a reset or a restart between two pruned snapshots still counts.
+     * Reads only the snapshot rows, not their counters.
      */
-    fun links(ordered: List<SnapshotEntity>): List<SnapshotEntity> {
-        if (ordered.size <= 2) return ordered
-        val keep = sortedSetOf(0, ordered.lastIndex)
-        ordered.zipWithNext().forEachIndexed { i, (a, b) ->
-            if (Attribution.resetBetween(epochOf(a), epochOf(b))) {
-                keep += i
-                keep += i + 1
+    fun links(path: List<SnapshotEntity>): List<Link> {
+        val epochs = path.map(::epochOf)
+        val around = sortedSetOf(0, path.lastIndex)
+        epochs.zipWithNext().forEachIndexed { i, (a, b) ->
+            if (Attribution.resetBetween(a, b) || Attribution.systemRestartBetween(a, b)) {
+                around += i
+                around += i + 1
             }
         }
-        return keep.map(ordered::get)
+        val kept = around.filter { it == 0 || it == path.lastIndex || !path[it].countersPruned }
+        return kept.mapIndexed { n, i -> Link(path[i], if (n == 0) null else Attribution.step(epochs.subList(kept[n - 1], i + 1))) }
     }
 
-    /** [snapshot]'s place and statistics epoch without counters, for [Attribution.resetBetween]. */
+    /** The step of each neighbouring pair of [chain]: the one [links] gave, else the two judged alone. */
+    fun steps(chain: List<WindowEnd>): List<Step> =
+        chain.zipWithNext { a, b -> b.step ?: Attribution.step(listOf(epochOf(a.snapshot), epochOf(b.snapshot))) }
+
+    /** [snapshot]'s place and statistics epoch without counters, for [Attribution.resetBetween] and [Attribution.step]. */
     fun epochOf(snapshot: SnapshotEntity): Counters<Unit> =
         Counters(
             bootSeq = snapshot.bootSeq,
@@ -183,7 +203,7 @@ internal object WindowBuilder {
     private fun <K> window(
         chain: List<WindowEnd>,
         values: (SnapshotRows) -> Map<K, Double>,
-    ): CounterWindow<K> = Attribution.window(chain.map { counters(it, values(it.rows)) })
+    ): CounterWindow<K> = Attribution.window(chain.map { counters(it, values(it.rows)) }, steps(chain))
 
     private fun <K> counters(
         end: WindowEnd,

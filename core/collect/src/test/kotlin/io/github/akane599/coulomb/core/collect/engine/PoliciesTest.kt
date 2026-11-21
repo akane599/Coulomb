@@ -100,4 +100,22 @@ class PoliciesTest {
         assertThat(cut(34)).isEqualTo(Cut(5, 0))
         assertThat(cut(35)).isNull()
     }
+
+    @Test
+    fun aRetentionCutCountsAKernelBootOnceAcrossASystemRestart() {
+        val hourNs = 3_600_000_000_000L
+        val hourMs = 3_600_000L
+        // Boot number 8 began 30.2 h into the kernel boot that number 7 was last seen in at 30 h.
+        val old = BootEntity(7, 7, "fp", firstWallMs = 0, firstElapsedNs = 2 * hourNs, null, imported = false)
+        val current = BootEntity(8, 8, "fp", firstWallMs = 0, firstElapsedNs = 30 * hourNs + hourNs / 5, null, imported = false)
+        val lastSeen = mapOf(7 to 30 * hourNs)
+        val now = 30 * hourNs + hourNs / 2
+
+        fun cut(hours: Long) = Retention.cutKey(listOf(old, current), lastSeen, current, now, hours * hourMs)
+
+        // An hour ago lies under number 7. Counting number 8 as 30.5 h old would cut all of 7's rows.
+        assertThat(cut(1)).isEqualTo(Cut(7, 29 * hourNs + hourNs / 2))
+        assertThat(cut(30)).isEqualTo(Cut(7, hourNs / 2))
+        assertThat(cut(31)).isNull()
+    }
 }

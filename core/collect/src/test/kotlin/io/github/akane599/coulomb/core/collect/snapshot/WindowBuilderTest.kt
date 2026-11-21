@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.collect.snapshot
 
+import io.github.akane599.coulomb.core.analytics.Step
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
 import io.github.akane599.coulomb.core.database.entity.NetStatEntity
@@ -231,8 +232,73 @@ class WindowBuilderTest {
                 snapshot(6, 6 * hourMs, 2_500_000, 70, statsRealtimeMs = 2 * hourMs + hourMs / 4),
             )
 
-        assertEquals(listOf(1L, 3L, 4L, 6L), WindowBuilder.links(chain).map { it.id })
-        assertEquals(listOf(1L, 2L), WindowBuilder.links(chain.take(2)).map { it.id })
+        val links = WindowBuilder.links(chain)
+        assertEquals(listOf(1L, 3L, 4L, 6L), links.map { it.snapshot.id })
+        assertEquals(listOf(null, Step.CONTINUES, Step.RESET_UNSEEN, Step.CONTINUES), links.map { it.step })
+        assertEquals(listOf(1L, 2L), WindowBuilder.links(chain.take(2)).map { it.snapshot.id })
+        // With the counters around the reset pruned, the one step left spans it.
+        val pruned = chain.map { if (it.id in 2L..5L) it.copy(countersPruned = true) else it }
+        assertEquals(listOf(Link(chain.first(), null), Link(chain.last(), Step.RESET_UNSEEN)), WindowBuilder.links(pruned))
+    }
+
+    /** [snapshot] under the next boot number, in the same kernel boot: the system server restarted. */
+    private fun restarted(snapshot: SnapshotEntity) = snapshot.copy(bootSeq = snapshot.bootSeq + 1)
+
+    @Test
+    fun aChainKeepsTheSnapshotsAroundASystemRestartAndLeavesItsStepOut() {
+        val path =
+            listOf(
+                snapshot(1, hourMs, 3_000_000, 80),
+                snapshot(2, 2 * hourMs, 2_900_000, 78),
+                snapshot(3, 3 * hourMs, 2_800_000, 76),
+                // The system server restarts between 3 and 4; the statistics lost ten minutes.
+                restarted(snapshot(4, 4 * hourMs, 2_700_000, 74, statsRealtimeMs = 4 * hourMs - 600_000)),
+                restarted(snapshot(5, 5 * hourMs, 2_600_000, 72, statsRealtimeMs = 5 * hourMs - 600_000)),
+            )
+
+        val links = WindowBuilder.links(path)
+        assertEquals(listOf(1L, 3L, 4L, 5L), links.map { it.snapshot.id })
+        assertEquals(listOf(null, Step.CONTINUES, Step.RESTART, Step.CONTINUES), links.map { it.step })
+        // Once the counters around it are pruned, the whole stretch is one step that cannot be counted.
+        val pruned = path.map { if (it.id in 2L..4L) it.copy(countersPruned = true) else it }
+        assertEquals(listOf(Link(pruned.first(), null), Link(pruned.last(), Step.RESTART)), WindowBuilder.links(pruned))
+    }
+
+    @Test
+    fun aWindowAcrossASystemRestartCountsOnlyTheStepsAroundIt() {
+        fun end(
+            snapshot: SnapshotEntity,
+            mAh: Double,
+            step: Step?,
+        ) = WindowEnd(
+            snapshot,
+            SnapshotRows(
+                uidPower = listOf(power(10_100, mAh), devicePower("CPU", mAh)),
+                deviceStats =
+                    device(snapshot.elapsedNs / 1_000_000, 0, 0),
+            ),
+            step,
+        )
+        val chain =
+            listOf(
+                end(snapshot(1, hourMs, 3_000_000, 80), 100.0, null),
+                end(snapshot(3, 3 * hourMs, 2_800_000, 76), 150.0, Step.CONTINUES),
+                // On battery the platform charges every app its CPU time since boot a second time.
+                end(restarted(snapshot(4, 4 * hourMs, 2_700_000, 74)), 900.0, Step.RESTART),
+                end(restarted(snapshot(5, 5 * hourMs, 2_600_000, 72)), 930.0, Step.CONTINUES),
+            )
+
+        val (window, rows) = WindowBuilder.build(WindowKind.DAY, null, chain, SETTINGS, withDetail = true)
+
+        assertEquals(80.0, window.modeledMah!!, 1e-9)
+        assertEquals(80.0, rows.uids.filter { it.uid == 10_100 }.sumOf { it.mAh }, 1e-9)
+        // Three of the four hours were counted.
+        assertEquals(3 * hourMs, window.screenOnMs + window.screenOffMs)
+        // With nothing but the restart step, nothing is modeled.
+        val (alone, none) = WindowBuilder.build(WindowKind.DAY, null, chain.subList(1, 3), SETTINGS, withDetail = true)
+        assertNull(alone.modeledMah)
+        assertNull(alone.awakeMsScreenOff)
+        assertTrue(none.uids.isEmpty())
     }
 
     @Test

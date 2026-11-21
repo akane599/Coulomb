@@ -16,6 +16,7 @@ import io.github.akane599.coulomb.core.analytics.DeviceState
 import io.github.akane599.coulomb.core.analytics.OpenSession
 import io.github.akane599.coulomb.core.analytics.SessionChange
 import io.github.akane599.coulomb.core.analytics.SessionRules
+import io.github.akane599.coulomb.core.analytics.Step
 import io.github.akane599.coulomb.core.analytics.StressThresholds
 import io.github.akane599.coulomb.core.collect.snapshot.KernelEnd
 import io.github.akane599.coulomb.core.collect.snapshot.KernelReader
@@ -95,17 +96,34 @@ internal class SnapshotWriter(
         moveReferences(stored, context, changes)
         if (stored.kind != SnapshotKind.HEAVY) return
         val previous = context.previousHeavy?.takeIf { hasCounters(it) && sameSource(it, stored) }
-        if (previous != null) {
-            insertWindow(
-                WindowKind.CONSECUTIVE,
-                null,
-                listOf(WindowEnd(previous, snapshots.rows(previous.id)), WindowEnd(stored, rows)),
-                context,
-                true,
-            )
-        }
+        if (previous != null) consecutive(previous, stored, rows, context)
         day(stored, rows, context)
         if (context.references) references(stored, rows, context)
+    }
+
+    /**
+     * The CONSECUTIVE window from [previous] to [stored]. None across a system restart: its counters
+     * cannot be compared (ADR-0055), and a window with drain but no counted time would bend every
+     * rate summed over it. Readers already take a missing window as a gap.
+     */
+    private suspend fun consecutive(
+        previous: SnapshotEntity,
+        stored: SnapshotEntity,
+        rows: SnapshotRows,
+        context: WriteContext,
+    ) {
+        val step = Attribution.step(listOf(WindowBuilder.epochOf(previous), WindowBuilder.epochOf(stored)))
+        if (step == Step.RESTART) {
+            Log.i(TAG, "system restart; no consecutive window")
+            return
+        }
+        insertWindow(
+            WindowKind.CONSECUTIVE,
+            null,
+            listOf(WindowEnd(previous, snapshots.rows(previous.id)), WindowEnd(stored, rows, step)),
+            context,
+            true,
+        )
     }
 
     /**
@@ -462,8 +480,8 @@ internal class SnapshotWriter(
     ) = snapshots.moveAutoReference(kind, snapshot.id, snapshot.wallMs)
 
     /**
-     * The window chain from [start] to [end]: the snapshots around each reset in between (see
-     * [WindowBuilder.links]) with their counters. Null when an end has no counters any more.
+     * The window chain from [start] to [end]: the snapshots around each reset and system restart in
+     * between (see [WindowBuilder.links]) with their counters. Null when an end has no counters any more.
      */
     private suspend fun chain(
         start: SnapshotEntity,
@@ -471,13 +489,13 @@ internal class SnapshotWriter(
         endRows: SnapshotRows? = null,
     ): List<WindowEnd>? {
         if (!hasCounters(start) || !hasCounters(end) || !sameSource(start, end)) return null
-        // A link from the other source is left out; a reset next to it then makes the window partial.
+        // A snapshot from the other source is left out; a reset next to it then makes the window partial.
         val between =
             snapshots
-                .heavyWithCountersBetween(start.bootSeq, start.elapsedNs, end.bootSeq, end.elapsedNs)
+                .heavyBetween(start.bootSeq, start.elapsedNs, end.bootSeq, end.elapsedNs)
                 .filter { sameSource(it, end) }
-        return WindowBuilder.links(listOf(start) + between + end).map { s ->
-            WindowEnd(s, if (s.id == end.id && endRows != null) endRows else snapshots.rows(s.id))
+        return WindowBuilder.links(listOf(start) + between + end).map { (s, step) ->
+            WindowEnd(s, if (s.id == end.id && endRows != null) endRows else snapshots.rows(s.id), step)
         }
     }
 

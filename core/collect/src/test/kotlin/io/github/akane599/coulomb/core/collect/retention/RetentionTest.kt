@@ -258,6 +258,35 @@ class RetentionTest {
         }
 
     @Test
+    fun aSystemRestartNeitherCutsEarlyNorTakesTheCountersAroundIt() =
+        runTest {
+            db.deviceDao().enterBoot(1, "fp", wall0, 0)
+            val before = (0..10).map { heavy(it) }
+            // The system server restarts 10.2 h into the kernel boot: a new boot number, the same elapsed clock.
+            val boot = db.deviceDao().enterBoot(2, "fp", wall0 + 10 * hourNs / 1_000_000, 10 * hourNs + hourNs / 5)
+            val after = listOf(11, 13, 14).map { heavy(it, bootSeq = 2) }
+
+            suspend fun kept() =
+                (before + after).filter {
+                    db
+                        .snapshotDao()
+                        .rows(it)
+                        .deviceStats
+                        .isNotEmpty()
+                }
+
+            // Half an hour after the restart, two hours back lies under the earlier boot number.
+            assertThat(Retention(db, Blobs()).pruneCounters(boot, 10 * hourNs + hourNs / 2)).isEqualTo(9)
+            assertThat(kept()).containsExactly(before[9], before[10], after[0], after[1], after[2])
+            // Later the cut passes the restart; the snapshots on either side of it keep their counters.
+            assertThat(Retention(db, Blobs()).pruneCounters(boot, 14 * hourNs)).isEqualTo(1)
+            assertThat(kept()).containsExactly(before[10], after[0], after[1], after[2])
+            // Past the edge cut they go like the rest.
+            assertThat(db.snapshotDao().pruneCounters(2, 12 * hourNs)).isEqualTo(2)
+            assertThat(kept()).containsExactly(after[1], after[2])
+        }
+
+    @Test
     fun blobsPastTheCapGoOldestFirstAndUnnamedFilesGo() =
         runTest {
             val boot = db.deviceDao().enterBoot(1, "fp", wall0, 0)

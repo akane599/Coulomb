@@ -38,13 +38,18 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
 - **First run over the phone's data of 2026-11-21** (`CaptureInsightsTest`): R01 for three apps, R02
   for one job wakelock, R03 for the latest 3.2 h night (20% awake), R08 and R10. It also showed four
   things now fixed in the loader (ADR-0054 §9 to §12) and one fault in the collector, below.
-- **A system restart was read as a statistics reset (found 2026-11-21, fix under review).** The
+- **A system restart was read as a statistics reset (found 2026-11-21, fixed, ADR-0055).** The
   platform's boot count also rises when the system server restarts without a reboot. Coulomb then
-  took the next snapshot for a reset and added every counter's whole total to one window. On the
-  phone, 13 consecutive windows carry about 47,000 mAh of modeled drain that never happened; session,
-  day and reference windows are not affected. `Attribution.resetBetween` now tells a system restart
-  from a reboot by the wall time of boot. Open: what to do with the 13 stored windows (they leave by
-  retention within 30 days).
+  took the next snapshot for a reset and added every counter's whole total to one window. The
+  independent review found more: after a restart on battery the platform charges every app its CPU
+  time since boot again, far-apart snapshots were judged as neighbours, and retention counted a
+  kernel boot twice. Now a step across a restart adds nothing, a chain is judged over every
+  snapshot in between, no consecutive window is written across a restart, and the snapshots around
+  one keep their counters for three days.
+  - On the phone's data: 22 restarts and 36 reboots; 21 consecutive windows across a restart hold
+    about 47,800 mAh modeled against 900 mAh measured, and four day windows span one.
+  - Open (owner): deleting those stored windows (`docs/questions.md`). The phone keeps the old
+    build until the deferred update.
 - **Still to build for the rules:** insights on Now and App detail with their evidence sheet, the
   daily digest, and three collector additions: job stop reasons (R10), the battery protection
   setting (R15), standby buckets and last launch (R16).

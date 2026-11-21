@@ -59,16 +59,23 @@ internal class Retention(
     /**
      * Deletes the counters no window can start at any more (ADR-0015: kept 2 h). Cheap, so it runs
      * on battery too: a day of heavy snapshots would otherwise keep every counter until the charger.
-     * Returns the snapshots pruned.
+     * The snapshots on either side of a change of boot number keep theirs for [EDGE_COUNTERS_MS],
+     * until the day windows that span it are built (ADR-0055). Returns the snapshots pruned.
      */
     suspend fun pruneCounters(
         boot: BootEntity,
         nowElapsedNs: Long,
-    ): Int = cutter(boot, nowElapsedNs)(COUNTERS_MS)?.let { db.snapshotDao().pruneCounters(it.bootSeq, it.elapsedNs) } ?: 0
+    ): Int {
+        val cut = cutter(boot, nowElapsedNs)
+        val counters = cut(COUNTERS_MS) ?: return 0
+        // No edge cut yet: nothing stored is that old, so every edge stays.
+        val edges = cut(EDGE_COUNTERS_MS) ?: Cut(Int.MIN_VALUE, 0)
+        return db.snapshotDao().pruneCounters(counters.bootSeq, counters.elapsedNs, edges.bootSeq, edges.elapsedNs)
+    }
 
     /**
      * Cuts for one run. The boots and their last-seen times are read only when a cut reaches back
-     * past the current boot: the hourly 2 h counter cut almost never does.
+     * past what this boot number has seen: the hourly 2 h counter cut almost never does.
      */
     private fun cutter(
         boot: BootEntity,
@@ -77,7 +84,7 @@ internal class Retention(
         var earlier: Pair<List<BootEntity>, Map<Int, Long>>? = null
         return { agoMs ->
             val loaded =
-                if (nowElapsedNs >= agoMs * NS_PER_MS) {
+                if (nowElapsedNs - agoMs * NS_PER_MS >= boot.firstElapsedNs) {
                     emptyList<BootEntity>() to emptyMap()
                 } else {
                     earlier ?: run {
@@ -149,6 +156,9 @@ internal class Retention(
         const val KERNEL_LOG_MS: Long = 7 * DAY_MS
         const val DETAIL_MS: Long = 30 * DAY_MS
         const val COUNTERS_MS: Long = 2 * HOUR_MS
+
+        /** A day window starts at most two local days before it is built; a third covers a late start. */
+        const val EDGE_COUNTERS_MS: Long = 3 * DAY_MS
         const val BLOBS_MS: Long = 30 * DAY_MS
         const val BLOB_CAP_BYTES: Long = 128L * 1024 * 1024
         private const val MINUTE_S = 60
@@ -164,6 +174,11 @@ internal class Retention(
          * sighting). The time a boot ran unseen, and boots never stored, count as nothing, so the
          * cut can only fall earlier than the true instant: rows are kept too long, never pruned
          * early. Null when it falls before every stored boot: there is nothing to cut.
+         *
+         * A boot number is not always a boot: it also rises when the system server restarts, and
+         * elapsed time then runs on (ADR-0055). So the boot number right after another, first seen
+         * no earlier in elapsed time than that one was last seen, counts only for the time since
+         * then. A real boot that happens to look so is counted short, which again only keeps rows longer.
          */
         fun cutKey(
             boots: List<BootEntity>,
@@ -173,14 +188,18 @@ internal class Retention(
             agoMs: Long,
         ): Cut? {
             var left = agoMs * NS_PER_MS
-            if (nowElapsedNs >= left) return Cut(current.bootSeq, nowElapsedNs - left)
-            left -= nowElapsedNs
-            for (boot in boots.filter { it.bootSeq < current.bootSeq }.sortedByDescending { it.bootSeq }) {
-                val ran = maxOf(lastSeen[boot.bootSeq] ?: 0, boot.firstElapsedNs)
-                if (ran >= left) return Cut(boot.bootSeq, ran - left)
+            var boot = current
+            var end = nowElapsedNs
+            for (before in boots.filter { it.bootSeq < current.bootSeq }.sortedByDescending { it.bootSeq }) {
+                val beforeEnd = maxOf(lastSeen[before.bootSeq] ?: 0, before.firstElapsedNs)
+                val sameKernelBoot = before.bootSeq + 1 == boot.bootSeq && boot.firstElapsedNs >= beforeEnd
+                val ran = if (sameKernelBoot) end - beforeEnd else end
+                if (ran >= left) return Cut(boot.bootSeq, end - left)
                 left -= ran
+                boot = before
+                end = beforeEnd
             }
-            return null
+            return if (end >= left) Cut(boot.bootSeq, end - left) else null
         }
     }
 }

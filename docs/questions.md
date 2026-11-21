@@ -5,6 +5,13 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. **Needs a yes before it is built (it deletes data).** Windows stored before the fix of
+  ADR-0055 hold drain that never happened: on the phone's data of 2026-11-21, 21 consecutive windows
+  across a system restart (about 47,800 mAh modeled, 900 mAh measured) and four day windows that span
+  one. Proposed: after the update, one repeatable sweep deletes every consecutive window whose two
+  ends are a system-restart pair and clears the modeled total and detail of the day windows that span
+  one. Default in use until answered: nothing is deleted; the consecutive windows leave by retention
+  after 30 days, the day windows stay, and insights computed over those days read too high.
 - 2026-11-21. R09 says "wakeup sensor", but the stored counters give sensor time per app without
   saying which sensors are wakeup sensors. Default in use: the rule counts every sensor except GNSS
   held while the screen is off, and its copy says "a sensor" (ADR-0054). Telling them apart needs a
