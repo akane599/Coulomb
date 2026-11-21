@@ -1,0 +1,22 @@
+{
+  "R01": { "wakelockHours": 2.0 },
+  "R02": { "tagMinutes": 60 },
+  "R03": { "minSessionHours": 1, "awakeShare": 0.15 },
+  "R04": { "medianMultiple": 2, "minRatePctPerHour": 0.8, "minSessionHours": 1, "baselineDays": 14, "minBaselineSessions": 5 },
+  "R05": { "alarmsPerHour": 12, "minScreenOffHours": 1 },
+  "R06": { "gnssMinutes": 10 },
+  "R07": { "lowSignalShare": 0.30, "modemShare": 0.15, "minHours": 2 },
+  "R08": { "scanMinutesPerDay": 20 },
+  "R09": { "sensorMinutes": 30 },
+  "R10": { "jobsPerDay": 50, "abandonedJobs": 0 },
+  "R11": { "tempC": 40, "minutes": 10, "maxSampleGapSeconds": 120 },
+  "R12": { "tempC": 45 },
+  "R13": { "baselineShare": 0.70 },
+  "R14": { "points": 3, "days": 30, "minDaysApart": 7 },
+  "R15": { "hoursAtFull": 2 },
+  "R16": { "unusedDays": 7 },
+  "R17": { "sessions": 3, "minSessionHours": 2 },
+  "R18": { "medianMultiple": 2, "baselineDays": 14, "daysAfterUpdate": 3, "minBaselineDays": 5, "minDailyMah": 10 },
+  "R19": { "unattributedShare": 0.20, "minWindowHours": 2, "minMeasuredMah": 50 },
+  "R20": { "sharePctPerDay": 0.3, "minHours": 20 }
+}

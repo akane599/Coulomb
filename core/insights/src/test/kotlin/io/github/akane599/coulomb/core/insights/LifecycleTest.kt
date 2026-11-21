@@ -28,10 +28,10 @@ class LifecycleTest {
     }
 
     @Test
-    fun anOpenInsightIsKeptUnlessTheSeverityRises() {
+    fun anOpenInsightTakesNewEvidenceAndRisesOnlyWithItsSeverity() {
         for (state in listOf(InsightState.NEW, InsightState.SEEN)) {
-            assertThat(InsightLifecycle.decide(WATCH, stored(state), now)).isEqualTo(Decision.Keep)
-            assertThat(InsightLifecycle.decide(INFO, stored(state), now)).isEqualTo(Decision.Keep)
+            assertThat(InsightLifecycle.decide(WATCH, stored(state), now)).isEqualTo(Decision.Refresh(7))
+            assertThat(InsightLifecycle.decide(INFO, stored(state), now)).isEqualTo(Decision.Refresh(7))
             assertThat(InsightLifecycle.decide(ACT, stored(state), now)).isEqualTo(Decision.Raise(7))
         }
     }

@@ -74,4 +74,6 @@ public data class InsightCandidate(
     /** The stored window the finding came from, when it came from one. */
     val windowId: Long?,
     val evidence: Evidence,
+    /** An app the finding points at without being about it, such as the top consumer when the battery ran hot. */
+    val relatedUid: Int? = null,
 )

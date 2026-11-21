@@ -26,6 +26,15 @@ captured. Each run below needs the owner to say when; the phone must be unplugge
 
 Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols A and C.
 
+- **Insight engine, rules (SPEC 9.1, 9.2).** `:core:insights` holds the 20 rules as pure functions of
+  `RuleContext`, their thresholds in the bundled `insights.json`, the evidence an insight stores and
+  the lifecycle that keeps one open insight per rule and subject. Each rule has a firing case, a
+  non-firing case and a case exactly on its threshold (SPEC 16.1); 33 tests. ADR-0054 records what
+  the rule table leaves open.
+- **Still to build for the rules:** the loader that fills `RuleContext` from the database, the
+  recorder that stores findings, and four collector additions: job stop reasons (R10), the battery
+  protection setting (R15), standby buckets and last launch (R16), deep idle per session (R17).
+
 ## P4 Core screens (gate deferred: protocol C)
 
 Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the phone night (ADR-0019).

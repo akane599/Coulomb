@@ -18,10 +18,12 @@ class EvidenceTest {
                 toWallMs = 1_793_577_600_000,
                 values = mapOf("holds" to 41.0, "share" to 0.125),
                 labels = mapOf("tag" to "*job*/com.example/.Sync \"quoted\" \\ ü"),
+                sessionId = 9_007_199_254_740_993,
             )
         assertThat(Evidence.fromJson(evidence.toJson())).isEqualTo(evidence)
-        val plain = evidence.copy(values = emptyMap(), labels = emptyMap())
+        val plain = evidence.copy(values = emptyMap(), labels = emptyMap(), sessionId = null)
         assertThat(plain.toJson()).doesNotContain("values")
+        assertThat(plain.toJson()).doesNotContain("session")
         assertThat(Evidence.fromJson(plain.toJson())).isEqualTo(plain)
     }
 

@@ -25,13 +25,16 @@ public enum class EvidenceUnit {
     CELSIUS,
     WATTS,
     POINTS,
+    DAYS,
+    MAH,
 }
 
 /**
  * Why an insight exists: what "Why am I seeing this?" shows (SPEC 9.4). [measured] and
  * [threshold] are the rule's main comparison, in [unit]. [values] holds its other numbers by name
  * (a second threshold, a baseline, a count) and [labels] its names (a tag, a charger). The span is
- * the time the measurement covers.
+ * the time the measurement covers, and [sessionId] the session it was made in, which the insight's
+ * card opens.
  *
  * Stored as `Insight.evidenceJson`. Reading is lenient: a field this version does not know is
  * ignored, and text that is not evidence reads as null rather than failing a screen.
@@ -44,6 +47,7 @@ public data class Evidence(
     val toWallMs: Long,
     val values: Map<String, Double> = emptyMap(),
     val labels: Map<String, String> = emptyMap(),
+    val sessionId: Long? = null,
 ) {
     public fun toJson(): String =
         buildJsonObject {
@@ -52,6 +56,7 @@ public data class Evidence(
             put("unit", unit.name)
             put("from", fromWallMs)
             put("to", toWallMs)
+            sessionId?.let { put("session", it) }
             if (values.isNotEmpty()) putJsonObject("values") { values.forEach { (name, value) -> put(name, value) } }
             if (labels.isNotEmpty()) putJsonObject("labels") { labels.forEach { (name, value) -> put(name, value) } }
         }.toString()
@@ -72,6 +77,7 @@ public data class Evidence(
                 to,
                 values = root.members("values").mapNotNull { (name, value) -> value.doubleOrNull?.let { name to it } }.toMap(),
                 labels = root.members("labels").filter { it.value.isString }.mapValues { it.value.content },
+                sessionId = (root["session"] as? JsonPrimitive)?.longOrNull,
             )
         }
 

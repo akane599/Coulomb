@@ -5,6 +5,10 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. R09 says "wakeup sensor", but the stored counters give sensor time per app without
+  saying which sensors are wakeup sensors. Default in use: the rule counts every sensor except GNSS
+  held while the screen is off, and its copy says "a sensor" (ADR-0054). Telling them apart needs a
+  per-sensor counter and a map from sensor handle to its wakeup flag.
 - 2026-11-09. One UI's "Never sleeping apps": no public intent opens that list. The keep-running
   button opens `Intent.ACTION_POWER_USAGE_SUMMARY` (battery settings), falling back to the app's
   details page; the Turkish copy calls the list "Hiç uyumayan uygulamalar". Default: as is until
