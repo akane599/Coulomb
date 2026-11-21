@@ -9,12 +9,12 @@
     <string name="insight_r01_title">%1$s telefonu bir günde %2$s uyanık tuttu</string>
     <string name="insight_r01_body">Android, günde %1$s üzerindeki uyanık tutmayı aşırı sayar. Arka plan kullanımını kısıtlamak bunu genellikle azaltır.</string>
     <string name="insight_r02_title">Bir uyanık tutma %1$s sürdü</string>
-    <string name="insight_r02_body">%1$s, tek oturumda “%2$s” kilidini tuttu. Bu kadar uzun tutulan bir kilit işlemcinin uyumasını engeller.</string>
-    <string name="insight_r02_body_unnamed">%1$s, tek oturumda bir kilidi tuttu. Bu kadar uzun tutulan bir kilit işlemcinin uyumasını engeller.</string>
-    <string name="insight_r03_title">Telefon, ekran kapalı sürenin %1$s kadarında uyanıktı</string>
+    <string name="insight_r02_body">%1$s, tek oturumda “%2$s” uyanık tutmasını sürdürdü. Bu kadar uzun süren bir uyanık tutma işlemcinin uyumasını engeller.</string>
+    <string name="insight_r02_body_unnamed">%1$s, tek oturumda bir uyanık tutmayı sürdürdü. Bu kadar uzun süren bir uyanık tutma işlemcinin uyumasını engeller.</string>
+    <string name="insight_r03_title">Telefon, ekran kapalı sürenin %1$s kadarında uyanıktı (bitiş: %2$s)</string>
     <string name="insight_r03_body">Ekran %1$s kapalıydı. İyi uyuyan bir telefon %2$s altında kalır; oturum neyin uyandırdığını gösterir.</string>
-    <string name="insight_r04_title">Ekran kapalıyken tüketim %1$s oldu</string>
-    <string name="insight_r04_body">Ekran kapalıyken olağan hızın %1$s. Gece raporu farkın nereye gittiğini gösterir.</string>
+    <string name="insight_r04_title">Ekran kapalıyken tüketim %1$s oldu (bitiş: %2$s)</string>
+    <string name="insight_r04_body">Ekran kapalıyken olağan hızın %1$s. Gece Raporu farkın nereye gittiğini gösterir.</string>
     <string name="insight_r05_title">%1$s telefonu saatte %2$s kez uyandırdı</string>
     <string name="insight_r05_body">Ekranın kapalı geçtiği %2$s içinde %1$s alarm. Arka plan kullanımını kısıtlamak bunları seyreltir.</string>
     <string name="insight_r06_title">%1$s bir günde ekran kapalıyken %2$s konum kullandı</string>
@@ -30,12 +30,12 @@
     <string name="insight_r10_title_abandoned">%1$s, %2$s arka plan işini yarım bıraktı</string>
     <string name="insight_r10_body">Daha sıkı bir bekleme grubu, Android’in bu işleri daha seyrek çalıştırmasını sağlar.</string>
     <string name="insight_r11_title">Pil şarj olurken %2$s boyunca %1$s üzerinde kaldı</string>
-    <string name="insight_r11_body">En yüksek %1$s oldu. Şarj sırasındaki ısı pili yıpratır; kılıfı çıkarmak ya da daha yavaş bir şarj aleti kullanmak pili serin tutar.</string>
+    <string name="insight_r11_body">En yüksek %1$s oldu (şarjın başlangıcı: %2$s). Şarj sırasındaki ısı pili yıpratır; kılıfı çıkarmak ya da daha yavaş bir şarj cihazı kullanmak pili serin tutar.</string>
     <string name="insight_r12_title">Pil %1$s sıcaklığa ulaştı</string>
     <string name="insight_r12_body_app">O sırada en çok gücü %1$s kullanıyordu. %2$s üzerinde pil hızlı yıpranır.</string>
     <string name="insight_r12_body">%1$s üzerinde pil hızlı yıpranır. Yoğun kullanımdan ya da şarjdan önce telefonun soğumasını bekle.</string>
     <string name="insight_r13_title">Şarj yavaştı: %1$s</string>
-    <string name="insight_r13_body">Her zamanki şarj aletin %1$s veriyor. Kabloyu ve girişi kontrol et.</string>
+    <string name="insight_r13_body">Şarjın başlangıcı: %2$s. Her zamanki şarj cihazın %1$s veriyor. Kabloyu ve girişi kontrol et.</string>
     <string name="insight_r14_title">Kapasite tahmini %1$s puan düştü</string>
     <string name="insight_r14_body">%3$s gün içinde %1$s değerinden %2$s değerine indi. Bu bir tahmindir; Sağlık sayfası aralığını gösterir.</string>
     <string name="insight_r15_title">Pil %1$s boyunca %%100’de kaldı</string>
@@ -47,7 +47,7 @@
     <string name="insight_r18_title">%1$s güncellemeden beri daha çok harcıyor</string>
     <string name="insight_r18_body">Olağan %2$s yerine bir günde %1$s. Sayfası öncesini ve sonrasını gösterir.</string>
     <string name="insight_r19_title">Tüketimin %1$s kadarı atanamadı</string>
-    <string name="insight_r19_body">Android’in güç modeli, ölçülen %2$s tüketimin %1$s kadarını uygulamalara ve donanıma atadı. Kalanı modelin yerleştiremediği gerçek tüketimdir; yapılacak bir şey yok.</string>
+    <string name="insight_r19_body">Aralık: %3$s. Android’in güç modeli, ölçülen %2$s tüketimin %1$s kadarını uygulamalara ve donanıma atadı. Kalanı modelin yerleştiremediği gerçek tüketimdir; yapılacak bir şey yok.</string>
     <string name="insight_r20_title">Coulomb bir günde pilin %1$s kadarını kullandı</string>
     <string name="insight_r20_body">Kendi bütçesi %1$s. Hafif mod daha az veri toplar.</string>
 
@@ -72,7 +72,7 @@
     <string name="insight_column_what">Ne</string>
     <string name="insight_column_value">Değer</string>
     <string name="insight_row_rule">Kural</string>
-    <string name="insight_row_measured">Ölçülen</string>
+    <string name="insight_row_measured">Bulunan</string>
     <string name="insight_row_threshold">Eşik</string>
     <string name="insight_row_period">Dönem</string>
     <string name="insight_row_baseline">Olağan değerin</string>

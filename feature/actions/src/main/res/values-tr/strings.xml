@@ -54,7 +54,7 @@
     <string name="actions_apps_note">Tek bir uygulamaya ait eylemler, o uygulamanın sayfasında Eylemler başlığı altındadır.</string>
     <string name="actions_open_drain">Tüketim’i aç</string>
     <string name="actions_not_offered">Sunulmayanlar</string>
-    <string name="actions_deny_wakelocks">Wakelock’ları reddet</string>
+    <string name="actions_deny_wakelocks">Uyanık tutmaları reddet</string>
     <string name="actions_deny_wakelocks_why">Android bu ayarı kaydeder ama uygulamaz; yani hiçbir şey değişmezdi.</string>
     <string name="actions_sensors">Sensör kısıtlaması</string>
     <string name="actions_sensors_why">Bunun tek komutu, tersine, diğer bütün uygulamaların sensörlerini keser.</string>
@@ -160,6 +160,7 @@
     <string name="actions_block_nothing">Değişecek bir şey yok: bu telefon zaten %1$s sonra derin Doze’a giriyor.</string>
     <string name="actions_block_nothing_plain">Değişecek bir şey yok: bu telefon zaten daha erken Doze’a giriyor.</string>
     <string name="actions_block_profile_active">Önce stok ayara dön.</string>
+    <string name="actions_block_profile_own">Şu an yürürlükte.</string>
     <string name="actions_block_nothing_to_take">Devralınacak dış bir değer yok.</string>
     <string name="actions_block_in_force">Coulomb bunu zaten değiştirdi. Önce o değişikliği geri al.</string>
     <string name="actions_block_not_active">Geri alınacak bir şey yok.</string>

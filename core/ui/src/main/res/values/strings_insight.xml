@@ -12,9 +12,9 @@
     <string name="insight_r02_title">One wakelock was held for %1$s</string>
     <string name="insight_r02_body">%1$s held “%2$s” through one session. A lock held that long keeps the processor from sleeping.</string>
     <string name="insight_r02_body_unnamed">%1$s held one lock through one session. A lock held that long keeps the processor from sleeping.</string>
-    <string name="insight_r03_title">The phone was awake %1$s of the time the screen was off</string>
+    <string name="insight_r03_title">The phone was awake %1$s of the screen-off stretch that ended %2$s</string>
     <string name="insight_r03_body">The screen was off for %1$s. A phone that sleeps well stays under %2$s; the session shows what woke it.</string>
-    <string name="insight_r04_title">Screen-off drain was %1$s</string>
+    <string name="insight_r04_title">Screen-off drain was %1$s in the stretch that ended %2$s</string>
     <string name="insight_r04_body">Your usual rate with the screen off is %1$s. The Night Report shows where the rest went.</string>
     <string name="insight_r05_title">%1$s woke the phone %2$s times an hour</string>
     <string name="insight_r05_body">%1$s alarms in %2$s with the screen off. Restricting its background use makes them rarer.</string>
@@ -31,12 +31,12 @@
     <string name="insight_r10_title_abandoned">%1$s left %2$s background jobs unfinished</string>
     <string name="insight_r10_body">A stricter standby bucket lets Android run its jobs less often.</string>
     <string name="insight_r11_title">The battery stayed above %1$s for %2$s while charging</string>
-    <string name="insight_r11_body">It peaked at %1$s. Heat during charging ages a battery; taking the case off or using a slower charger keeps it cooler.</string>
+    <string name="insight_r11_body">It peaked at %1$s in the charge that began %2$s. Heat during charging ages a battery; taking the case off or using a slower charger keeps it cooler.</string>
     <string name="insight_r12_title">The battery reached %1$s</string>
     <string name="insight_r12_body_app">%1$s was using the most power then. Above %2$s a battery ages quickly.</string>
     <string name="insight_r12_body">Above %1$s a battery ages quickly. Let the phone cool before heavy use or charging.</string>
     <string name="insight_r13_title">Charging was slow: %1$s</string>
-    <string name="insight_r13_body">Your usual charger gives %1$s. Check the cable and the port.</string>
+    <string name="insight_r13_body">This was the charge that began %2$s. Your usual charger gives %1$s. Check the cable and the port.</string>
     <string name="insight_r14_title">The capacity estimate fell %1$s points</string>
     <string name="insight_r14_body">From %1$s to %2$s within %3$s days. It is an estimate; Health shows its range.</string>
     <string name="insight_r15_title">The battery sat at 100%% for %1$s</string>
@@ -48,7 +48,7 @@
     <string name="insight_r18_title">%1$s uses more since its update</string>
     <string name="insight_r18_body">%1$s in a day against its usual %2$s. Its page shows before and after.</string>
     <string name="insight_r19_title">%1$s of the drain is unattributed</string>
-    <string name="insight_r19_body">Android’s power model assigned %1$s of the measured %2$s to apps and hardware. The rest is real drain the model cannot place; there is nothing to act on.</string>
+    <string name="insight_r19_body">Window: %3$s. Android’s power model assigned %1$s of the measured %2$s to apps and hardware. The rest is real drain the model cannot place; there is nothing to act on.</string>
     <string name="insight_r20_title">Coulomb used %1$s of the battery in a day</string>
     <string name="insight_r20_body">Its own budget is %1$s. Lite mode collects less.</string>
 
@@ -74,7 +74,7 @@
     <string name="insight_column_what">What</string>
     <string name="insight_column_value">Value</string>
     <string name="insight_row_rule">Rule</string>
-    <string name="insight_row_measured">Measured</string>
+    <string name="insight_row_measured">Found</string>
     <string name="insight_row_threshold">Threshold</string>
     <string name="insight_row_period">Period</string>
     <string name="insight_row_baseline">Your usual</string>

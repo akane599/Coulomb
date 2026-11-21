@@ -35,6 +35,7 @@ import io.github.akane599.coulomb.core.designsystem.component.CoulombFigure
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFigureStrip
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.component.ShareBar
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
@@ -151,7 +152,14 @@ internal fun SessionsHead(
     Column(Modifier.fillMaxWidth()) {
         val action: (@Composable () -> Unit)? =
             if (more) {
-                { CoulombTextButton(stringResource(R.string.health_see_all), onSeeAll, edge = ButtonEdge.End) }
+                {
+                    CoulombTextButton(
+                        stringResource(R.string.health_see_all),
+                        onSeeAll,
+                        trailingIcon = CoulombIcons.ChevronRight,
+                        edge = ButtonEdge.End,
+                    )
+                }
             } else {
                 null
             }

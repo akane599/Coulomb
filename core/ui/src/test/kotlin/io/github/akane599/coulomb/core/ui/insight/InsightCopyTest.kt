@@ -28,7 +28,7 @@ class InsightCopyTest {
 
     private fun copy(language: String): InsightCopy {
         val resources = ApplicationProvider.getApplicationContext<Context>().resources
-        return InsightCopy(resources, Formats(resources, Locale.forLanguageTag(language), "HH:mm", "HH:mm:ss"))
+        return InsightCopy(resources, Formats(resources, Locale.forLanguageTag(language), "HH:mm", "HH:mm:ss"), ZoneId.of("UTC"))
     }
 
     /** The text with its no-break spaces as plain ones and without word joiners, so expectations stay readable. */
@@ -114,14 +114,15 @@ class InsightCopyTest {
         assertThat(copy.plain(all[0], "Halcyon").title).isEqualTo("Halcyon kept the phone awake for 2 h 34 min in a day")
         assertThat(copy.plain(all[0], "Halcyon").body).startsWith("Android counts more than 2 h of wakelocks")
         assertThat(copy.plain(all[1], null).body).startsWith("An app held “*job*/sync” through one session.")
-        assertThat(copy.plain(all[3], null).title).isEqualTo("Screen-off drain was 1.2 %/h")
+        assertThat(copy.plain(all[3], null).title).isEqualTo("Screen-off drain was 1.2 %/h in the stretch that ended Fri 08:00")
         assertThat(copy.plain(all[7], null).title).isEqualTo("Bluetooth scanning ran for 30 min")
         assertThat(copy.plain(all[9], "Halcyon").title).isEqualTo("Halcyon ran 1,240 background jobs in a day")
         assertThat(copy.plain(all[11], "Halcyon").body).startsWith("Halcyon was using the most power then.")
         assertThat(copy.plain(all[11], null).body).startsWith("Above 45.0 °C a battery ages quickly.")
         assertThat(copy.plain(all[13], null).body).startsWith("From 95% to 92% within 30 days.")
         assertThat(copy.plain(all[18], null).title).isEqualTo("35% of the drain is unattributed")
-        assertThat(copy.plain(all[18], null).body).startsWith("Android’s power model assigned 806 mAh of the measured 1,240 mAh")
+        assertThat(copy.plain(all[18], null).body)
+            .startsWith("Window: Thu 08:00 – Fri 08:00. Android’s power model assigned 806 mAh of the measured 1,240 mAh")
         assertThat(copy.plain(all[19], null).title).isEqualTo("Coulomb used 0.5% of the battery in a day")
     }
 
@@ -131,7 +132,7 @@ class InsightCopyTest {
         val copy = copy("tr")
         assertThat(copy.plain(all[0], "Halcyon").title).isEqualTo("Halcyon telefonu bir günde 2 sa 34 dk uyanık tuttu")
         // SPEC 9.3's own examples of the form: "0,8 %/sa", "1.240 mAh".
-        assertThat(copy.plain(all[3], null).title).isEqualTo("Ekran kapalıyken tüketim 1,2 %/sa oldu")
+        assertThat(copy.plain(all[3], null).title).isEqualTo("Ekran kapalıyken tüketim 1,2 %/sa oldu (bitiş: Cum 08:00)")
         assertThat(copy.plain(all[9], "Halcyon").title).isEqualTo("Halcyon bir günde 1.240 arka plan işi çalıştırdı")
         assertThat(copy.plain(all[18], null).title).isEqualTo("Tüketimin %35 kadarı atanamadı")
         assertThat(copy.plain(all[18], null).body).contains("ölçülen 1.240 mAh tüketimin 806 mAh kadarını")
@@ -150,16 +151,16 @@ class InsightCopyTest {
         assertThat(table.rows.map { row -> row.map { it.replace('\u00A0', ' ') } })
             .containsExactly(
                 listOf("Rule", "Excessive wakelock"),
-                listOf("Measured", "2 h 34 min"),
+                listOf("Found", "2 h 34 min"),
                 listOf("Threshold", "2 h"),
-                // From the day before to now: only the earlier end names its day.
-                listOf("Period", "Thu 08:00 – 08:00"),
+                // From the day before to now: both ends name their day, so the span never reads as nothing.
+                listOf("Period", "Thu 08:00 – Fri 08:00"),
             ).inOrder()
         assertThat(table.provenance).isEqualTo(Provenance.MEASURED)
         // A rule that compares with the user's own past shows that too.
         val night = all[3].copy(evidence = all[3].evidence.copy(unit = EvidenceUnit.PERCENT_PER_HOUR))
         assertThat(copy.evidence(night, zone, now).rows.map { it.first() })
-            .containsExactly("Rule", "Measured", "Threshold", "Your usual", "Period")
+            .containsExactly("Rule", "Found", "Threshold", "Your usual", "Period")
             .inOrder()
         assertThat(copy.evidence(night, zone, now).provenance).isEqualTo(Provenance.DERIVED)
     }

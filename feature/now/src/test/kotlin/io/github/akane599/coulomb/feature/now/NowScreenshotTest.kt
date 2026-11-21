@@ -124,6 +124,11 @@ class NowScreenshotTest {
     @Config(qualifiers = "w412dp-h2000dp-xhdpi")
     fun insights() = shoot("insights", withInsights())
 
+    /** More open insights than Now starts with: the rest are one tap away. */
+    @Test
+    @Config(qualifiers = "w412dp-h2000dp-xhdpi")
+    fun insightsMore() = shoot("insights-more", withInsights().copy(moreInsights = 3))
+
     @Test
     @Config(qualifiers = "w412dp-h2000dp-night-xhdpi")
     fun insightsDark() = shoot("insights-dark", withInsights(), dark = true)

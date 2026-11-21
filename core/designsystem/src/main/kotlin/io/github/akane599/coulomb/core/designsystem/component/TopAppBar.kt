@@ -15,10 +15,16 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -87,7 +93,12 @@ public fun CoulombTopAppBar(
     }
 }
 
-/** A 48 dp icon button in the current content colour, `text-secondary` inside [CoulombTopAppBar]. */
+/**
+ * A 48 dp icon button in `text-secondary`, wherever it stands: Material's own default is black,
+ * which a dark ground swallows. A long press or a pointer resting on it shows [contentDescription],
+ * since an icon alone names nothing.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 public fun CoulombIconButton(
     @DrawableRes icon: Int,
@@ -95,8 +106,20 @@ public fun CoulombIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    IconButton(onClick = onClick, modifier = modifier) {
-        Icon(painter = painterResource(icon), contentDescription = contentDescription)
+    val colors = CoulombTheme.colors
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+        tooltip = {
+            PlainTooltip(containerColor = colors.textPrimary, contentColor = colors.bg) {
+                Text(contentDescription, style = CoulombTheme.typography.caption)
+            }
+        },
+        state = rememberTooltipState(),
+    ) {
+        // The caller's modifier stays on the button: its semantics and the icon's are one node.
+        IconButton(onClick = onClick, modifier = modifier) {
+            Icon(painter = painterResource(icon), contentDescription = contentDescription, tint = colors.textSecondary)
+        }
     }
 }
 

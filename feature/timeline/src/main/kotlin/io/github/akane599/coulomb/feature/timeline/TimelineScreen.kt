@@ -231,7 +231,14 @@ private fun Page(
             SectionTitle(
                 stringResource(R.string.night_report_title),
                 provenance = null,
-                action = { CoulombTextButton(stringResource(R.string.timeline_see_all), links.onOpenNights, edge = ButtonEdge.End) },
+                action = {
+                    CoulombTextButton(
+                        stringResource(R.string.timeline_see_all),
+                        links.onOpenNights,
+                        trailingIcon = CoulombIcons.ChevronRight,
+                        edge = ButtonEdge.End,
+                    )
+                },
             )
             NightRow(night, first = true, selected = false, fastest = 0.0, nowMs = state.nowMs, zone = zone, formats = formats) {
                 links.onOpenNight(night.id)
@@ -478,7 +485,7 @@ private fun caption(
  * rate over more (two wakeups in a quarter of an hour are not "8.0 an hour").
  */
 @Composable
-private fun wakeSentence(
+internal fun wakeSentence(
     visible: Timeline,
     formats: Formats,
 ): String? {

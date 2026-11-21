@@ -334,6 +334,17 @@ public class Formats(
         }.format(time)
     }
 
+    /** The end of a span that began on another day: as [clock], but today's end names its weekday too. */
+    public fun endClock(
+        wallMs: Long,
+        zone: ZoneId,
+        nowMs: Long,
+    ): String {
+        val at = Instant.ofEpochMilli(wallMs).atZone(zone)
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+        return if (at.toLocalDate() == today) dayClock.format(at) else clock(wallMs, zone, nowMs)
+    }
+
     /**
      * A clock time that always names its weekday: "Thu 7:42 AM". For a surface drawn once and read
      * later, such as a widget, where "today" at drawing is not today at reading.

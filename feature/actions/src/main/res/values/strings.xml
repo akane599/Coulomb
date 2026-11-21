@@ -174,6 +174,7 @@
     <string name="actions_block_nothing">Nothing to change: this phone already enters deep Doze after %1$s.</string>
     <string name="actions_block_nothing_plain">Nothing to change: this phone already dozes sooner.</string>
     <string name="actions_block_profile_active">Return to stock first.</string>
+    <string name="actions_block_profile_own">In force now.</string>
     <string name="actions_block_nothing_to_take">There is no outside value to take over.</string>
     <string name="actions_block_in_force">Coulomb changed this already. Revert that change first.</string>
     <string name="actions_block_not_active">There is nothing to revert.</string>

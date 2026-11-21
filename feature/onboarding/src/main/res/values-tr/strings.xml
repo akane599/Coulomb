@@ -11,7 +11,7 @@
     <string name="onboarding_welcome_title">Pilinin nereye gittiğini gör</string>
     <string name="onboarding_welcome_lede">Coulomb pili hangi uygulamaların ve telefon parçalarının kullandığını gösterir, her değerin nereden geldiğini de işaretler.</string>
     <string name="onboarding_welcome_shizuku_title">Shizuku ile (önerilen)</string>
-    <string name="onboarding_welcome_shizuku_body">Uygulama başına tüketim, uyanık tutma kilitleri ve çekirdek uyanmaları. Bu telefonda Shizuku ya da Sui gerekir.</string>
+    <string name="onboarding_welcome_shizuku_body">Uygulama başına tüketim, uyanık tutmalar ve çekirdek uyanmaları. Bu telefonda Shizuku ya da Sui gerekir.</string>
     <string name="onboarding_welcome_basic_title">Temel modda</string>
     <string name="onboarding_denied_body">Shizuku yeniden sorduğunda Coulomb’a izin ver ya da erişimi aşağıdaki komutlarla bir kez ADB üzerinden ver.</string>
     <string name="onboarding_welcome_basic_body">Pil seviyesi, akım, sıcaklık ve uygulama başına ekran süresi. Her telefonda çalışır; Shizuku’yu sonra da bağlayabilirsin.</string>
@@ -57,7 +57,7 @@
     <string name="onboarding_result_failed">Coulomb bir sonraki açılışta yeniden dener. Şimdi de deneyebilirsin.</string>
     <string name="onboarding_result_deep_title">Coulomb pilinin nereye gittiğini görebiliyor</string>
     <string name="onboarding_result_basic_title">Coulomb temel modda</string>
-    <string name="onboarding_result_basic_more">Uygulama başına tüketim ve uyanık tutma kilitleri için Shizuku’yu daha sonra Yetkiler’den bağla.</string>
+    <string name="onboarding_result_basic_more">Uygulama başına tüketim ve uyanık tutmalar için Shizuku’yu daha sonra Yetkiler’den bağla.</string>
     <string name="onboarding_keep_running_title">İzleyiciyi çalışır tut</string>
     <string name="onboarding_keep_running_body">One UI, Coulomb’u uyutup kaydında boşluklar bırakabilir. Onu Hiç uyumayan uygulamalar listesine ekle.</string>
     <string name="onboarding_keep_running_action">Pil ayarlarını aç</string>

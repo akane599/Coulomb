@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
@@ -39,6 +40,7 @@ public fun PrivilegeIssueBlock(
             text = stringResource(R.string.privilege_open),
             onClick = openPrivileges,
             modifier = Modifier.padding(top = CoulombSpacing.Space4),
+            trailingIcon = CoulombIcons.ChevronRight,
             edge = ButtonEdge.Start,
         )
     }

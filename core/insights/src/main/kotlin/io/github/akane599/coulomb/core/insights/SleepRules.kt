@@ -35,7 +35,12 @@ internal object SleepRules {
      * the sessions of the 14 days before; with too few of them there is no baseline and no finding.
      */
     val highScreenOffDrain =
-        rule(RuleId.HIGH_SCREEN_OFF_DRAIN, setOf(RuleInput.SCREEN_OFF_SESSIONS), listOf(ActionId.OPEN_NIGHT_REPORT)) {
+        rule(
+            RuleId.HIGH_SCREEN_OFF_DRAIN,
+            setOf(RuleInput.SCREEN_OFF_SESSIONS),
+            // The judged stretch itself, which is a page of the Night Report; the list where it is not known.
+            listOf(ActionId.OPEN_SESSION, ActionId.OPEN_NIGHT_REPORT),
+        ) {
             val rated = sessionsOfAtLeast("minSessionHours").filter { it.ratePctPerHour != null }
             val session = rated.lastOrNull() ?: return@rule emptyList()
             val rate = session.ratePctPerHour ?: return@rule emptyList()

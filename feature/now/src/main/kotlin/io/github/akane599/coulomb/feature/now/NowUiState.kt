@@ -34,6 +34,8 @@ internal sealed interface NowUiState {
         val issue: PrivilegeIssue?,
         /** The open insights Now shows: at most [MAX_INSIGHTS], highest severity first (SPEC 10.2). */
         val insights: List<ShownInsight> = emptyList(),
+        /** Open insights behind the ones shown; "Show N more" brings them in. */
+        val moreInsights: Int = 0,
     ) : NowUiState {
         /** The three largest drains (SPEC 10.2). */
         val topDrains: List<AppDrain> get() = drains?.apps.orEmpty().take(TOP_DRAINS)

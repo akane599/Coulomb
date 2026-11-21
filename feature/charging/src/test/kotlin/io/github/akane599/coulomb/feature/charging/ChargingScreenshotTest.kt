@@ -41,6 +41,12 @@ import io.github.akane599.coulomb.core.analytics.ChargeTime
 import io.github.akane599.coulomb.core.analytics.ChargeTimeBasis
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.model.InsightState
+import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.Insight
+import io.github.akane599.coulomb.core.model.insight.RuleId
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -67,6 +73,23 @@ class ChargingScreenshotTest {
     @Test
     @Config(qualifiers = "$PAGE-xhdpi")
     fun page() = shoot("page") { Charging(labNow()) }
+
+    /** The target's note follows the alarm in Settings. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun alarmOn() = shoot("alarm-on") { ChargingContent(ChargingUiState.Ready(labNow()), NoActions, zone = ZONE, targetAlarm = true) }
+
+    /** An insight that asks for action shows here too: Charging stands in Now's place while plugged in. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun hotInsight() = shoot("insight") { ChargingContent(ChargingUiState.Ready(labNow()), NoActions, zone = ZONE, insights = hot()) }
+
+    @Test
+    @Config(qualifiers = "tr-$PAGE-night-xhdpi")
+    fun hotInsightTurkishDark() =
+        shoot("insight-tr-dark", dark = true) {
+            ChargingContent(ChargingUiState.Ready(labNow()), NoActions, zone = ZONE, insights = hot())
+        }
 
     @Test
     @Config(qualifiers = "$PAGE-night-xhdpi")
@@ -249,6 +272,16 @@ class ChargingScreenshotTest {
     }
 }
 
+/** R11 for a charge that began at 13:05 UTC. */
+private fun hot(): List<ShownInsight> {
+    val evidence =
+        Evidence(14.0, 10.0, EvidenceUnit.MINUTES, STARTED, STARTED + 40 * 60_000L, mapOf("tempC" to 40.0, "peakC" to 43.2), sessionId = 7)
+    val rule = RuleId.HOT_CHARGING
+    return listOf(ShownInsight(Insight(1, rule, rule.severity, InsightState.SEEN, null, null, null, evidence, STARTED), null))
+}
+
+/** 13:05 UTC on 2026-10-22. */
+private const val STARTED = 1_792_674_300_000L
 private const val SKELETON_WAIT_MS = 200L
 private const val COMPACT = "w412dp-h915dp-xhdpi"
 private const val PAGE = "w412dp-h1800dp"

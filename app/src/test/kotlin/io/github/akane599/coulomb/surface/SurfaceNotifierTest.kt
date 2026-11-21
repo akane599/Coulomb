@@ -134,7 +134,10 @@ class SurfaceNotifierTest {
 
     @Test
     fun aLostAccessIsPostedAndWithdrawn() {
+        // A stopped Shizuku takes no permission away, so it is not called a loss.
         notifier.privileges(PrivilegeIssue.MANAGER_STOPPED)
+        assertThat(posted().single().title()).isEqualTo("Shizuku is stopped")
+        notifier.privileges(PrivilegeIssue.GRANTS_REVOKED)
         assertThat(posted().single().title()).isEqualTo("Coulomb lost its access")
         notifier.privileges(null)
         assertThat(posted()).isEmpty()

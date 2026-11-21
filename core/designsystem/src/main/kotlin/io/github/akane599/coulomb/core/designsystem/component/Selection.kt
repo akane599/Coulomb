@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -158,7 +159,8 @@ private fun WindowChoice(
     ) {
         Row(
             Modifier
-                .heightIn(min = ChoiceHeight)
+                // A short label ("Off") is still a full target wide.
+                .sizeIn(minWidth = MinChoiceWidth, minHeight = ChoiceHeight)
                 .drawBehind {
                     val shape = corners.shape(size.height / density.density, progress.value.coerceIn(0f, 1f))
                     val fill = lerp(colors.surfaceRaised, colors.accentFill, progress.value.coerceIn(0f, 1f))
@@ -166,6 +168,7 @@ private fun WindowChoice(
                 }.clip(corners.shape(ChoiceHeight.value, if (chosen) 1f else 0f))
                 .indication(interactions, ripple())
                 .padding(horizontal = CoulombSpacing.Space12),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CheckLead(chosen, ink)
@@ -416,6 +419,7 @@ private const val STACK_EM = 14f
 private const val HALF = 50
 private val InnerCorner: Dp = CoulombRadius.Chip
 private val ChoiceHeight = 40.dp
+private val MinChoiceWidth = 48.dp
 private val ChoiceGap = 2.dp
 private val TargetSlack = 4.dp
 private val TabSidePadding = 8.dp

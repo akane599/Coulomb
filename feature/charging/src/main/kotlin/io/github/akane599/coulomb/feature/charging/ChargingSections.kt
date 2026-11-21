@@ -29,10 +29,13 @@ import io.github.akane599.coulomb.core.designsystem.chart.ChargeLevelScale
 import io.github.akane599.coulomb.core.designsystem.chart.CurveLabels
 import io.github.akane599.coulomb.core.designsystem.chart.CurveProjection
 import io.github.akane599.coulomb.core.designsystem.chart.CurveReading
+import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombChoiceGroup
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFigure
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFigureStrip
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTerm
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.Provenance
@@ -281,8 +284,14 @@ internal fun Times(
         return
     }
     if (now.phase == ChargePhase.HOLDING) {
-        val held = if (now.levelPct >= now.targetPct) R.string.charging_times_held_target else R.string.charging_times_holding
-        StandIn(stringResource(held), top = CoulombSpacing.Space16)
+        // The level it holds at, not "the target": Coulomb does not stop a charge, and the level may be past the target.
+        val held =
+            if (now.levelPct >= now.targetPct) {
+                stringResource(R.string.charging_times_held_target, formats.percent(now.levelPct))
+            } else {
+                stringResource(R.string.charging_times_holding)
+            }
+        StandIn(held, top = CoulombSpacing.Space16)
         return
     }
     val wantsTarget = now.levelPct < now.targetPct
@@ -492,8 +501,10 @@ private const val PROJECTION_SHARE = 2
 @Composable
 internal fun Target(
     targetPct: Int,
+    alarm: Boolean,
     formats: Formats,
     onSelect: (Int) -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.charging_target), provenance = null)
@@ -504,6 +515,16 @@ internal fun Target(
             selected = targets.indexOf(targetPct),
             onSelect = { onSelect(targets[it]) },
         )
-        Note(stringResource(R.string.charging_target_note))
+        // SPEC 10.9: the selector links to the alarm. The note says what the alarm is set to, not what it could be.
+        Note(
+            stringResource(R.string.charging_target_note) + " " +
+                stringResource(if (alarm) R.string.charging_target_alarm_on else R.string.charging_target_alarm_off),
+        )
+        CoulombTextButton(
+            stringResource(R.string.charging_open_settings),
+            onOpenSettings,
+            trailingIcon = CoulombIcons.ChevronRight,
+            edge = ButtonEdge.Start,
+        )
     }
 }

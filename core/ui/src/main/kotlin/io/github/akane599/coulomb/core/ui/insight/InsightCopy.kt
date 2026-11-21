@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.R
 import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.Formats
+import java.time.Instant
 import java.time.ZoneId
 import kotlin.math.roundToLong
 
@@ -29,6 +30,8 @@ public data class InsightText(
 public class InsightCopy(
     private val resources: Resources,
     private val formats: Formats,
+    /** Where a title's or body's time is read: a stretch or a charge is named by its day and clock time. */
+    private val zone: ZoneId = ZoneId.systemDefault(),
 ) {
     /** [appName] is the label of the app the insight is about or points at; null when it has none or it is not known. */
     @Suppress("CyclomaticComplexMethod", "LongMethod") // One branch per rule, each two lines.
@@ -61,7 +64,8 @@ public class InsightCopy(
             RuleId.POOR_DEEP_SLEEP -> {
                 text(
                     R.string.insight_r03_title,
-                    listOf(share(e.measured)),
+                    // Which stretch: the strip above the card has its own screen-off figure, for another span.
+                    listOf(share(e.measured), formats.dayClock(e.toWallMs, zone)),
                     R.string.insight_r03_body,
                     listOf(formats.hours(e.values["hours"] ?: 0.0), share(e.threshold)),
                 )
@@ -70,7 +74,7 @@ public class InsightCopy(
             RuleId.HIGH_SCREEN_OFF_DRAIN -> {
                 text(
                     R.string.insight_r04_title,
-                    listOf(rate(e.measured)),
+                    listOf(rate(e.measured), formats.dayClock(e.toWallMs, zone)),
                     R.string.insight_r04_body,
                     listOf(rate(e.values["median"] ?: 0.0)),
                 )
@@ -120,7 +124,7 @@ public class InsightCopy(
                     R.string.insight_r11_title,
                     listOf(celsius(e.values["tempC"] ?: 0.0), minutes(e.measured)),
                     R.string.insight_r11_body,
-                    listOf(celsius(e.values["peakC"] ?: 0.0)),
+                    listOf(celsius(e.values["peakC"] ?: 0.0), formats.dayClock(e.fromWallMs, zone)),
                 )
             }
 
@@ -142,7 +146,7 @@ public class InsightCopy(
                     R.string.insight_r13_title,
                     listOf(formats.watts(e.measured).joined()),
                     R.string.insight_r13_body,
-                    listOf(formats.watts(e.values["baselineW"] ?: 0.0).joined()),
+                    listOf(formats.watts(e.values["baselineW"] ?: 0.0).joined(), formats.dayClock(e.fromWallMs, zone)),
                 )
             }
 
@@ -178,7 +182,7 @@ public class InsightCopy(
                     R.string.insight_r19_title,
                     listOf(share(e.measured)),
                     R.string.insight_r19_body,
-                    listOf(formats.mah(assigned).joined(), formats.mah(measured).joined()),
+                    listOf(formats.mah(assigned).joined(), formats.mah(measured).joined(), span(e)),
                 )
             }
 
@@ -207,7 +211,12 @@ public class InsightCopy(
             if (e.fromWallMs == e.toWallMs) {
                 formats.clock(e.toWallMs, zone, nowWallMs)
             } else {
-                formats.range(formats.clock(e.fromWallMs, zone, nowWallMs), formats.clock(e.toWallMs, zone, nowWallMs))
+                // Two ends on different days each name their day: "Sat 2:20 PM – Sun 2:20 PM", never a span that reads as nothing.
+                val sameDay =
+                    Instant.ofEpochMilli(e.fromWallMs).atZone(zone).toLocalDate() ==
+                        Instant.ofEpochMilli(e.toWallMs).atZone(zone).toLocalDate()
+                val to = if (sameDay) formats.clock(e.toWallMs, zone, nowWallMs) else formats.endClock(e.toWallMs, zone, nowWallMs)
+                formats.range(formats.clock(e.fromWallMs, zone, nowWallMs), to)
             }
         val rows =
             listOfNotNull(
@@ -278,6 +287,14 @@ public class InsightCopy(
     ) = InsightText(resources.getString(title, *titleArgs.toTypedArray()), resources.getString(body, *bodyArgs.toTypedArray()))
 
     private fun minutes(value: Double): String = formats.duration(value.roundToLong())
+
+    /** The evidence's period with its day: "Thu 6:10 AM – 9:40 AM", the second day only where it differs. */
+    private fun span(e: Evidence): String {
+        val sameDay =
+            Instant.ofEpochMilli(e.fromWallMs).atZone(zone).toLocalDate() == Instant.ofEpochMilli(e.toWallMs).atZone(zone).toLocalDate()
+        val to = if (sameDay) formats.clock(e.toWallMs, zone) else formats.dayClock(e.toWallMs, zone)
+        return formats.range(formats.dayClock(e.fromWallMs, zone), to)
+    }
 
     private fun count(value: Double): String = formats.integer(value.roundToLong())
 

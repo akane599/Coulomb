@@ -19,10 +19,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -145,7 +148,13 @@ internal fun SettingsContent(
         // Read in a moment; until then nothing shows rather than a default that flips.
         settings ?: return@Column
         if (saveFailed) {
-            Note(stringResource(R.string.settings_save_failed), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            // The switch that flipped back may be a page further down: the reason comes to it.
+            val requester = remember { BringIntoViewRequester() }
+            LaunchedEffect(Unit) { requester.bringIntoView() }
+            Note(
+                stringResource(R.string.settings_save_failed),
+                Modifier.bringIntoViewRequester(requester).semantics { liveRegion = LiveRegionMode.Polite },
+            )
         }
         SectionTitle(stringResource(R.string.settings_drain), provenance = null, first = !saveFailed)
         Setting(stringResource(R.string.settings_show_system), settings.showSystemApps, actions.showSystemApps)
@@ -203,12 +212,8 @@ private fun NotificationsOff(allow: () -> Unit) {
             color = CoulombTheme.colors.textPrimary,
             style = CoulombTheme.typography.body,
         )
-        CoulombTextButton(
-            stringResource(R.string.settings_notifications_allow),
-            allow,
-            trailingIcon = CoulombIcons.ChevronRight,
-            edge = ButtonEdge.Start,
-        )
+        // It asks in place: no link icon (a chevron is another screen of Coulomb, open-in-new a page of the system's).
+        CoulombTextButton(stringResource(R.string.settings_notifications_allow), allow, edge = ButtonEdge.Start)
     }
 }
 

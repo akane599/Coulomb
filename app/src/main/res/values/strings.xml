@@ -41,7 +41,8 @@
         <item quantity="other">%1$s new insights</item>
     </plurals>
     <string name="surface_privileges_title">Coulomb lost its access</string>
-    <string name="surface_privileges_stopped">Shizuku is stopped, so Coulomb reads basic data only. Open Privileges to start it again.</string>
+    <string name="surface_privileges_stopped_title">Shizuku is stopped</string>
+    <string name="surface_privileges_stopped">What Coulomb reads through Shizuku waits until it runs again. Permissions you already granted keep working. Open Privileges to start it.</string>
     <string name="surface_privileges_revoked">The permissions Coulomb was granted were taken back. Open Privileges to grant them again.</string>
     <string name="surface_privileges_denied">Shizuku no longer authorizes Coulomb. Open Privileges to allow it again.</string>
 </resources>

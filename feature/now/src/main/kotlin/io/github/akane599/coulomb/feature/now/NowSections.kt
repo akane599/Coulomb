@@ -460,6 +460,7 @@ internal fun Insights(
     copy: InsightCopy,
     actions: NowActions,
     onWhy: (id: Long) -> Unit,
+    more: String? = null,
 ) {
     if (insights.isEmpty()) return
     Column(Modifier.padding(top = currentSectionGap()), verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space12)) {
@@ -481,6 +482,8 @@ internal fun Insights(
                 )
             }
         }
+        // The rest are a tap away: nobody has to dismiss a card to reach the next.
+        if (more != null) CoulombTextButton(text = more, onClick = actions.showAllInsights, edge = ButtonEdge.Start)
     }
 }
 
@@ -556,7 +559,17 @@ private fun DrainList(
         } else {
             // Keyed by UID, so a reorder moves the rows instead of rewriting them (SPEC 11.6).
             top.forEachIndexed { index, app ->
-                key(app.uid) { DrainRow(app, drains.share(app.mah), index == 0, formats, actions.icon, Modifier.animatePlacement()) }
+                key(app.uid) {
+                    DrainRow(
+                        app,
+                        drains.share(app.mah),
+                        index == 0,
+                        formats,
+                        actions.icon,
+                        onClick = { actions.openApp(app.uid) },
+                        Modifier.animatePlacement(),
+                    )
+                }
             }
             val rest = state.remainderMah
             if (rest > 0) {
@@ -587,6 +600,7 @@ private fun DrainRow(
     first: Boolean,
     formats: Formats,
     icon: suspend (String, Int) -> ImageBitmap?,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AppDrainRow(
@@ -600,7 +614,7 @@ private fun DrainRow(
         share = share,
         shareText = formats.share(share),
         first = first,
-        onClick = null,
+        onClick = onClick,
         modifier = modifier,
     )
 }

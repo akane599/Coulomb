@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.charging
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,12 +18,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -39,12 +42,21 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
+import io.github.akane599.coulomb.core.insights.InsightStore
+import io.github.akane599.coulomb.core.insights.Rules
+import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.insight.ActionId
+import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.DASH
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.insight.InsightCard
+import io.github.akane599.coulomb.core.ui.insight.InsightCardActions
+import io.github.akane599.coulomb.core.ui.insight.InsightCopy
+import io.github.akane599.coulomb.core.ui.insight.insightAction
 import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.page.StandIn
 import kotlinx.coroutines.delay
@@ -57,17 +69,31 @@ import java.time.ZoneId
  */
 @Composable
 public fun ChargingScreen(
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onInsightAction: (ActionId, Insight) -> Unit = { _, _ -> },
     viewModel: ChargingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val alarm by viewModel.targetAlarm.collectAsStateWithLifecycle()
+    val insights by viewModel.actInsights.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {
         viewModel.visible(true)
         onPauseOrDispose { viewModel.visible(false) }
     }
     // One instance, so sections that take only the actions skip the 1 Hz recompositions.
-    val actions = remember(viewModel) { ChargingActions(retry = viewModel::retry, setTarget = viewModel::setTarget) }
-    ChargingContent(state, actions, modifier)
+    val actions =
+        remember(viewModel, onOpenSettings, onInsightAction) {
+            ChargingActions(
+                retry = viewModel::retry,
+                setTarget = viewModel::setTarget,
+                openSettings = onOpenSettings,
+                snoozeInsight = viewModel::snoozeInsight,
+                dismissInsight = viewModel::dismissInsight,
+                insightAction = onInsightAction,
+            )
+        }
+    ChargingContent(state, actions, modifier, targetAlarm = alarm, insights = insights)
 }
 
 /** What Charging's controls do; the screen itself holds no logic. */
@@ -75,6 +101,10 @@ public fun ChargingScreen(
 internal class ChargingActions(
     val retry: () -> Unit,
     val setTarget: (Int) -> Unit,
+    val openSettings: () -> Unit = {},
+    val snoozeInsight: (id: Long, forMs: Long) -> Unit = { _, _ -> },
+    val dismissInsight: (id: Long) -> Unit = {},
+    val insightAction: (ActionId, Insight) -> Unit = { _, _ -> },
 )
 
 /** Charging's column on wide windows, as Now's (ADR-0034). */
@@ -86,9 +116,15 @@ internal fun ChargingContent(
     actions: ChargingActions,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
+    targetAlarm: Boolean = false,
+    insights: List<ShownInsight> = emptyList(),
 ) {
     val formats = rememberFormats()
     var table by rememberSaveable { mutableStateOf<String?>(null) }
+    // The insight whose "Why am I seeing this?" is open, by id.
+    var why by rememberSaveable { mutableStateOf<Long?>(null) }
+    val resources = LocalResources.current
+    val copy = remember(resources, formats, zone) { InsightCopy(resources, formats, zone) }
     Column(
         modifier
             .fillMaxSize()
@@ -129,9 +165,10 @@ internal fun ChargingContent(
                         Hero(now, formats)
                         LevelScale(now, formats, zone, onViewTable = { table = SCALE_TABLE })
                         Times(now, formats)
+                        ActInsights(insights, copy, actions, onWhy = { why = it })
                         Readings(now, formats)
                         Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
-                        Target(now.targetPct, formats, actions.setTarget)
+                        Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings)
                     }
                 }
             }
@@ -144,6 +181,44 @@ internal fun ChargingContent(
         when (table) {
             CURVE_TABLE -> DataTableSheet(curveTable(shown, formats, zone), onDismiss = { table = null })
             SCALE_TABLE -> DataTableSheet(scaleTable(shown, formats, zone), onDismiss = { table = null })
+        }
+    }
+    insights.firstOrNull { it.insight.id == why }?.let { asked ->
+        val nowMs = remember(asked.insight.id) { System.currentTimeMillis() }
+        DataTableSheet(copy.evidence(asked.insight, zone, nowMs), onDismiss = { why = null })
+    }
+}
+
+/**
+ * The open insights that ask for action, on their cards as on Now (DESIGN.md: cards stack 12 dp
+ * apart). Charging stands where Now does while plugged in, so without this "the battery is hot
+ * while charging" could not be read during the charge it is about.
+ */
+@Composable
+private fun ActInsights(
+    insights: List<ShownInsight>,
+    copy: InsightCopy,
+    actions: ChargingActions,
+    onWhy: (id: Long) -> Unit,
+) {
+    if (insights.isEmpty()) return
+    Column(Modifier.padding(top = currentSectionGap()), verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space12)) {
+        for (shown in insights) {
+            val id = shown.insight.id
+            key(id) {
+                InsightCard(
+                    severity = shown.insight.severity,
+                    text = copy.text(shown.insight, shown.appLabel),
+                    actions =
+                        InsightCardActions(
+                            why = { onWhy(id) },
+                            snoozeDay = { actions.snoozeInsight(id, InsightStore.SNOOZE_DAY_MS) },
+                            snoozeWeek = { actions.snoozeInsight(id, InsightStore.SNOOZE_WEEK_MS) },
+                            dismiss = { actions.dismissInsight(id) },
+                        ),
+                    action = insightAction(Rules.actions(shown.insight.rule), shown.insight, onAction = actions.insightAction),
+                )
+            }
         }
     }
 }

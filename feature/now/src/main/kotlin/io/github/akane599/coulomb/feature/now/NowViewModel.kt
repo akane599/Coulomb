@@ -61,6 +61,8 @@ public class NowViewModel
         /** True from a pull until the window it asked for arrives, or [REFRESH_WAIT_MS] at most. */
         internal val isRefreshing: StateFlow<Boolean> = refreshing.asStateFlow()
 
+        private val allInsights = MutableStateFlow(false)
+
         private val windows = drains.sinceUnplugged
 
         internal val state: StateFlow<NowUiState> =
@@ -79,8 +81,8 @@ public class NowViewModel
                         }
                     }.combine(access.state.map { it.issue }.distinctUntilChanged()) { ready, issue ->
                         ready?.copy(issue = issue)
-                    }.combine(shownInsights()) { ready, shown ->
-                        ready?.copy(insights = shown) ?: NowUiState.Loading
+                    }.combine(shownInsights()) { ready, (shown, more) ->
+                        ready?.copy(insights = shown, moreInsights = more) ?: NowUiState.Loading
                     }.catch { emit(NowUiState.Error) }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), NowUiState.Loading)
 
@@ -104,11 +106,19 @@ public class NowViewModel
          * The insights Now shows. This flow runs only while Now is on screen, so what passes through
          * it has been shown: a new insight becomes seen (SPEC 9.4).
          */
-        private fun shownInsights(): Flow<List<ShownInsight>> =
-            insights.observeShown(NowUiState.MAX_INSIGHTS).onEach { shown ->
+        private fun shownInsights(): Flow<Pair<List<ShownInsight>, Int>> =
+            combine(insights.observeShown(Int.MAX_VALUE), allInsights) { open, all ->
+                val shown = if (all) open else open.take(NowUiState.MAX_INSIGHTS)
+                shown to open.size - shown.size
+            }.onEach { (shown, _) ->
                 val now = System.currentTimeMillis()
                 shown.forEach { insights.seen(it.insight, now) }
             }
+
+        /** "Show N more": every open insight, until Now is left. A digest names up to five; Now starts with two. */
+        internal fun showAllInsights() {
+            allInsights.value = true
+        }
 
         /** Snoozes the insight for [forMs] ([InsightStore.SNOOZE_DAY_MS], [InsightStore.SNOOZE_WEEK_MS]). */
         internal fun snoozeInsight(

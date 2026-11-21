@@ -5,7 +5,7 @@
     <string name="charging_title">Charging</string>
     <string name="charging_loading">Reading the charge</string>
     <string name="charging_error_title">Couldn’t read the charge</string>
-    <string name="charging_error_body">Coulomb couldn’t read its records just now. Your history stays on this phone. Try again; if it keeps happening, restart the app.</string>
+    <string name="charging_error_body">Coulomb couldn’t read its records just now. Nothing was lost. Try again; if it keeps happening, restart the app.</string>
     <string name="charging_error_action">Try again</string>
     <string name="charging_unplugged">Unplugged.</string>
     <string name="charging_power_calibrating">Power shows once Coulomb has calibrated this phone’s current reading.</string>
@@ -26,7 +26,7 @@
     <string name="charging_to_level">%1$s in %2$s</string>
     <string name="charging_full_in">Full in %1$s</string>
     <string name="charging_times_holding">The level is holding, as at a charge limit, so there is no time to give.</string>
-    <string name="charging_times_held_target">Holding at the target.</string>
+    <string name="charging_times_held_target">Holding at %1$s.</string>
     <string name="charging_readings">Live readings</string>
     <string name="charging_current">Current</string>
     <string name="charging_current_in">into the battery</string>
@@ -47,7 +47,10 @@
     <string name="charging_column_level">Level</string>
     <string name="charging_column_power">Power</string>
     <string name="charging_target">Target</string>
-    <string name="charging_target_note">Moves the mark on the level bar and the time to it. There is no alert at the target yet.</string>
+    <string name="charging_target_note">Moves the mark on the level bar and the time to it.</string>
+    <string name="charging_target_alarm_on">The alarm at the target is on.</string>
+    <string name="charging_target_alarm_off">The alarm at the target is off.</string>
+    <string name="charging_open_settings">Alerts in Settings</string>
     <string name="charging_scale_description">Level %1$s from the battery fuel gauge, target %2$s.</string>
     <string name="charging_scale_description_time">Level %1$s from the battery fuel gauge, target %2$s, estimated to be reached at %3$s.</string>
     <string name="charging_phase_drawing">drawing from the battery</string>

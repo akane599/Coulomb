@@ -53,7 +53,7 @@
     <string name="night_timeline_sources">The level is %1$s; the tracks are %2$s.</string>
     <string name="night_no_history">Android’s battery history for this stretch is not stored, so it has no timeline.</string>
     <string name="night_timeline_summary">The level went from %1$s to %2$s. The phone woke %3$s times and was awake for %4$s.</string>
-    <string name="night_timeline_caption">The phone woke %1$s times an hour. An outlined span is a run of wakeups too close to draw one by one.</string>
+    <string name="night_timeline_caption">On Awake, Wakelocks and the radios, an outlined span is a run of events too close to draw one by one. On Doze, outlined is light Doze.</string>
     <string name="night_culprits">What kept it awake</string>
     <string name="night_no_records">The records for this stretch are no longer stored.</string>
     <string name="night_wakeup_reasons">Wakeup reasons</string>

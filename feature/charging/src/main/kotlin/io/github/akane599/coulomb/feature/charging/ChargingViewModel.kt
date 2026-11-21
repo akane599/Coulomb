@@ -11,6 +11,9 @@ import io.github.akane599.coulomb.core.collect.Collector
 import io.github.akane599.coulomb.core.collect.engine.VisibleScreen
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.data.ChargingRepository
+import io.github.akane599.coulomb.core.insights.InsightStore
+import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.model.InsightSeverity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -50,6 +54,7 @@ public class ChargingViewModel
     constructor(
         private val charging: ChargingRepository,
         private val collector: Collector,
+        private val insights: InsightStore,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
 
@@ -65,6 +70,39 @@ public class ChargingViewModel
                     SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS, replayExpirationMillis = 0),
                     ChargingUiState.Loading,
                 )
+
+        /** The alarm at the target as Settings has it; false until read, and when the read fails. */
+        internal val targetAlarm: StateFlow<Boolean> =
+            charging.targetAlarm
+                .catch { emit(false) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
+        /**
+         * The open insights that ask for action (SPEC 9.2 Act), which Charging shows because it
+         * stands in Now's place while plugged in: "the battery is hot" is about this very charge.
+         * The flow runs only while Charging is on screen, so what passes through it has been shown.
+         */
+        internal val actInsights: StateFlow<List<ShownInsight>> =
+            insights
+                .observeShown(Int.MAX_VALUE)
+                .map { open -> open.filter { it.insight.severity == InsightSeverity.ACT }.take(MAX_INSIGHTS) }
+                .onEach { shown ->
+                    val now = System.currentTimeMillis()
+                    shown.forEach { insights.seen(it.insight, now) }
+                }.catch { emit(emptyList()) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+        /** Snoozes the insight for [forMs] ([InsightStore.SNOOZE_DAY_MS], [InsightStore.SNOOZE_WEEK_MS]). */
+        internal fun snoozeInsight(
+            id: Long,
+            forMs: Long,
+        ) {
+            viewModelScope.launch { insights.snooze(id, System.currentTimeMillis(), forMs) }
+        }
+
+        internal fun dismissInsight(id: Long) {
+            viewModelScope.launch { insights.dismiss(id, System.currentTimeMillis()) }
+        }
 
         /** After [ChargingUiState.Error]: reads everything again. */
         internal fun retry() {
@@ -86,5 +124,6 @@ public class ChargingViewModel
 
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
+            const val MAX_INSIGHTS = 2
         }
     }

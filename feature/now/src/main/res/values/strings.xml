@@ -39,6 +39,10 @@
     <string name="now_drains_collecting">Per-app drain appears with the first snapshot after the unplug.</string>
 
     <string name="now_insights">Insights</string>
+    <plurals name="now_insights_more">
+        <item quantity="one">Show %1$s more</item>
+        <item quantity="other">Show %1$s more</item>
+    </plurals>
     <string name="now_live_current">Live current</string>
     <string name="now_live_caption">Last 10 minutes. Updates while this screen is open.</string>
     <string name="now_live_waiting">Waiting for the first reading.</string>

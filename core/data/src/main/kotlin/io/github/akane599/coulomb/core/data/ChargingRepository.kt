@@ -76,6 +76,9 @@ public class ChargingRepository
                 )
             }.flowOn(dispatchers.io)
 
+        /** Whether the alarm at the charge target is on (SPEC 12.3), for the note under the target. */
+        public val targetAlarm: Flow<Boolean> = settings.settings.map { it.chargeAlarm }.distinctUntilChanged()
+
         /** The charge target, held to SPEC 14.4's range. */
         public suspend fun setTarget(pct: Int): Unit = settings.chargeTarget(pct)
 

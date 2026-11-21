@@ -175,7 +175,7 @@ internal fun LogDetails(
         }
         record.revertCommand?.let {
             Fact(stringResource(R.string.actions_undo), stringResource(R.string.actions_undo_log))
-            CommandBlock(it, Modifier.padding(top = CoulombSpacing.Space8))
+            CommandBlock(it, Modifier.padding(top = CoulombSpacing.Space8), copyLabel = R.string.actions_copy_undo)
         }
         Column(Modifier.padding(top = CoulombSpacing.Space8)) {
             if (record.active) {

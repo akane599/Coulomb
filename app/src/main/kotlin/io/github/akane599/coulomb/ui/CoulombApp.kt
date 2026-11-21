@@ -255,11 +255,20 @@ class AppScreens(
                             onSeeAllDrains = { navigator.select(Destination.Drain) },
                             onOpenPrivileges = { navigator.open(Route.Privileges) },
                             onInsightAction = onInsightAction,
+                            // The detail belongs to Drain's list: back from it shows the list the row is in.
+                            onOpenApp = {
+                                navigator.select(Destination.Drain)
+                                navigator.openDetail(Route.AppDetail(it))
+                            },
                         )
                     }
                 },
                 plugged = { rememberPlugged() },
-                charging = { ChargingScreen() },
+                charging = { navigator ->
+                    InsightLinks(navigator) { onInsightAction ->
+                        ChargingScreen(onOpenSettings = { navigator.open(Route.Settings) }, onInsightAction = onInsightAction)
+                    }
+                },
                 drain = { navigator ->
                     DrainScreen(
                         onOpenApp = { navigator.openDetail(Route.AppDetail(it)) },

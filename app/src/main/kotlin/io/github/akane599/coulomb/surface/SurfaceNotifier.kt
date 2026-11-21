@@ -193,14 +193,14 @@ class SurfaceNotifier
         fun insight(
             id: Long,
             text: InsightText,
-        ) = manager.notify(INSIGHT_BASE_ID + (id % INSIGHT_IDS).toInt(), text(ALERTS, text.title, text.body).build())
+        ) = manager.notify(INSIGHT_BASE_ID + (id % INSIGHT_IDS).toInt(), text(ALERTS, text.title, text.body, OpenRequest.NOW).build())
 
         /** The day's digest (SPEC 9.4): one notification for all new insights, their titles as its lines. */
         fun digest(insights: List<InsightText>) {
             val first = insights.firstOrNull() ?: return
             val builder =
                 if (insights.size == 1) {
-                    text(INSIGHTS, first.title, first.body)
+                    text(INSIGHTS, first.title, first.body, OpenRequest.NOW)
                 } else {
                     val title =
                         context.resources.getQuantityString(
@@ -210,7 +210,7 @@ class SurfaceNotifier
                         )
                     val lines = NotificationCompat.InboxStyle()
                     insights.take(DIGEST_LINES).forEach { lines.addLine(it.title) }
-                    base(INSIGHTS, HERE).setContentTitle(title).setContentText(first.title).setStyle(lines)
+                    base(INSIGHTS, OpenRequest.NOW).setContentTitle(title).setContentText(first.title).setStyle(lines)
                 }
             manager.notify(DIGEST_ID, builder.setAutoCancel(true).build())
         }
@@ -230,8 +230,16 @@ class SurfaceNotifier
             }
             val notification =
                 base(PRIVILEGES, OpenRequest.PRIVILEGES)
-                    .setContentTitle(context.getString(R.string.surface_privileges_title))
-                    .setContentText(context.getString(words))
+                    // A stopped Shizuku takes no permission away (PRODUCT principle 5): only the other two are a loss.
+                    .setContentTitle(
+                        context.getString(
+                            if (issue == PrivilegeIssue.MANAGER_STOPPED) {
+                                R.string.surface_privileges_stopped_title
+                            } else {
+                                R.string.surface_privileges_title
+                            },
+                        ),
+                    ).setContentText(context.getString(words))
                     .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(words)))
                     .setAutoCancel(true)
                     .build()
@@ -242,7 +250,9 @@ class SurfaceNotifier
             channel: String,
             title: String,
             text: String,
-        ) = base(channel, HERE)
+            // An insight is on Now, wherever the app was left; an alarm opens the app as it is.
+            open: String = HERE,
+        ) = base(channel, open)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

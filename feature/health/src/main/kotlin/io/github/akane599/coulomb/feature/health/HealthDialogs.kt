@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.theme.CoulombRadius
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.DesignCapacity
@@ -42,8 +43,8 @@ import io.github.akane599.coulomb.core.model.DesignCapacitySource
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import kotlin.math.roundToInt
 
-private val DialogShape = RoundedCornerShape(28.dp)
-private val FieldShape = RoundedCornerShape(12.dp)
+private val DialogShape = RoundedCornerShape(CoulombRadius.Large)
+private val FieldShape = RoundedCornerShape(CoulombRadius.Row)
 
 /** The longest name a charger keeps (ADR-0044 §6). */
 private const val MAX_NAME = 40

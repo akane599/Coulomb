@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -59,6 +60,7 @@ import java.time.ZoneId
  *
  * @param onSeeAllDrains opens Drain with the same window.
  * @param onOpenPrivileges opens Privileges, where a missing capability is fixed.
+ * @param onOpenApp opens an app's detail for the same window.
  */
 @Composable
 public fun NowScreen(
@@ -66,6 +68,7 @@ public fun NowScreen(
     onOpenPrivileges: () -> Unit,
     modifier: Modifier = Modifier,
     onInsightAction: (ActionId, Insight) -> Unit = { _, _ -> },
+    onOpenApp: (Int) -> Unit = {},
     viewModel: NowViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -84,9 +87,15 @@ public fun NowScreen(
                     onSeeAllDrains()
                 },
                 openPrivileges = onOpenPrivileges,
+                openApp = { uid ->
+                    // The same window as the row came from, as "Everything else" does.
+                    viewModel.seeAllDrains()
+                    onOpenApp(uid)
+                },
                 icon = viewModel::icon,
                 snoozeInsight = viewModel::snoozeInsight,
                 dismissInsight = viewModel::dismissInsight,
+                showAllInsights = viewModel::showAllInsights,
                 insightAction = onInsightAction,
             ),
         modifier = modifier,
@@ -104,6 +113,8 @@ internal class NowActions(
     val dismissInsight: (id: Long) -> Unit = {},
     /** The button of an insight's card: where it leads is the app's to say. */
     val insightAction: (ActionId, Insight) -> Unit = { _, _ -> },
+    val openApp: (uid: Int) -> Unit = {},
+    val showAllInsights: () -> Unit = {},
 )
 
 /** What the Macrobenchmark waits for: Now's content once the verdict shows (SPEC 16.5). */
@@ -129,7 +140,7 @@ internal fun NowContent(
     // The insight whose "Why am I seeing this?" is open, by id.
     var why by rememberSaveable { mutableStateOf<Long?>(null) }
     val resources = LocalResources.current
-    val copy = remember(resources, formats) { InsightCopy(resources, formats) }
+    val copy = remember(resources, formats, zone) { InsightCopy(resources, formats, zone) }
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = actions.refresh, modifier = modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -161,7 +172,19 @@ internal fun NowContent(
                             Hero(state, formats, zone, onViewTable = { table = OpenTable.LEVEL })
                             if (state.discharge != null) SessionStrip(state.discharge, formats)
                             TopDrains(state, formats, zone, actions)
-                            Insights(state.insights, copy, actions, onWhy = { why = it })
+                            val more = state.moreInsights
+                            Insights(
+                                state.insights,
+                                copy,
+                                actions,
+                                onWhy = { why = it },
+                                more =
+                                    if (more > 0) {
+                                        pluralStringResource(R.plurals.now_insights_more, more, formats.integer(more.toLong()))
+                                    } else {
+                                        null
+                                    },
+                            )
                             LiveCurrent(state, formats, onViewTable = { table = OpenTable.CURRENT })
                         }
                     }

@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.collect.actions.ActionBlock
 import io.github.akane599.coulomb.core.collect.actions.ActionPreview
 import io.github.akane599.coulomb.core.collect.actions.ActionRecord
+import io.github.akane599.coulomb.core.collect.actions.ActionRequest
 import io.github.akane599.coulomb.core.collect.actions.ActionType
 import io.github.akane599.coulomb.core.collect.actions.DozeOwner
 import io.github.akane599.coulomb.core.collect.actions.DozeState
@@ -433,12 +434,19 @@ private fun LogSection(
 @Composable
 private fun blockedWords(
     preview: ActionPreview,
-    idleAfter: Long?,
+    doze: DozeState?,
     formats: Formats,
-): String? =
-    when (val block = preview.block) {
+): String? {
+    val idleAfter = doze?.idleAfterMs
+    return when (val block = preview.block) {
         null -> {
             null
+        }
+
+        // The applied profile's own row says so; "return to stock first" is for the other one.
+        ActionBlock.PROFILE_ACTIVE -> {
+            val own = (preview.request as? ActionRequest.ApplyDozeProfile)?.profile == doze?.profile
+            stringResource(if (own) R.string.actions_block_profile_own else ActionWords.block(block))
         }
 
         ActionBlock.NO_WORKER -> {
@@ -454,6 +462,7 @@ private fun blockedWords(
             stringResource(ActionWords.block(block))
         }
     }
+}
 
 /** One profile: what it is for, how soon the phone would doze with it, or why it cannot be applied. */
 @Composable
@@ -468,7 +477,7 @@ private fun ProfileRow(
     val idleAfter = doze?.idleAfterMs
     // The two keys whose sum is the time to deep Doze; what the profile takes off them comes off the sum.
     val gain = preview.dozeChanges.filter { it.key in IDLE_KEYS }.sumOf { it.fromMs - it.toMs }
-    val blocked = blockedWords(preview, idleAfter, formats)
+    val blocked = blockedWords(preview, doze, formats)
     // What the profile is for, unless on this phone it leaves the time to deep Doze as it is.
     val same = preview.block == null && idleAfter != null && gain <= 0
     val words = if (same) stringResource(R.string.actions_doze_same_time, formats.held(idleAfter)) else stringResource(detail)

@@ -56,7 +56,7 @@
     <string name="drain_scale">Ölçülene ölçekle</string>
     <string name="drain_shares_of_measured">Paylar ölçülen %1$s üzerinden.</string>
     <string name="drain_shares_of_modeled">Paylar Android’in modellediği %1$s üzerinden.</string>
-    <string name="drain_scaled_caption">Ölçülen %1$s değerine ölçeklendi; ölçeklenen değerler Türetilmiş.</string>
+    <string name="drain_scaled_caption">Ölçülen %1$s değerine ölçeklendi; ölçeklenen değerler Türetilen.</string>
     <string name="drain_lower_bound">Daha kısa aralıklardan toplandı; her uygulamanın değeri biraz düşük olabilir.</string>
     <plurals name="drain_more_apps">
         <item quantity="one">%1$s uygulama daha</item>

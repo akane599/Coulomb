@@ -6,6 +6,7 @@ package io.github.akane599.coulomb.core.collect.android
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -194,7 +195,12 @@ public class CollectorService : Service() {
                 .setSmallIcon(R.drawable.ic_collector)
                 .setContentTitle(context.getString(R.string.collector_notification))
                 .setContentText(text)
-                .setOngoing(true)
+                // A tap opens Coulomb as it was left; this module does not know the app's activity by name.
+                .setContentIntent(
+                    context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+                        PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                    },
+                ).setOngoing(true)
                 .setSilent(true)
                 .setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_SERVICE)

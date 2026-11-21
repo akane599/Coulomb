@@ -52,7 +52,7 @@
     <string name="night_timeline_sources">Seviye: %1$s. Şeritler: %2$s.</string>
     <string name="night_no_history">Android’in bu süreye ait pil geçmişi saklı değil; bu yüzden zaman çizelgesi yok.</string>
     <string name="night_timeline_summary">Seviye %1$s değerinden %2$s değerine indi. Telefon %3$s kez uyandı ve %4$s uyanık kaldı.</string>
-    <string name="night_timeline_caption">Telefon saatte %1$s kez uyandı. Çerçeveli aralık, her biri ayrı çizilemeyecek kadar sık uyanmaları gösterir.</string>
+    <string name="night_timeline_caption">Uyanık, Uyanık tutma ve radyo şeritlerinde çerçeveli bölüm, her biri ayrı çizilemeyecek kadar sık olayları gösterir. Doze şeridinde çerçeveli bölüm hafif Doze’dur.</string>
     <string name="night_culprits">Uyanık tutanlar</string>
     <string name="night_no_records">Bu sürenin kayıtları artık saklı değil.</string>
     <string name="night_wakeup_reasons">Uyandırma nedenleri</string>
@@ -62,7 +62,7 @@
     <string name="night_column_reason">Neden</string>
     <string name="night_column_wakelock">Uyanık tutma</string>
     <string name="night_column_app">Uygulama</string>
-    <string name="night_column_count">Kez</string>
+    <string name="night_column_count">Sayı</string>
     <string name="night_column_held">Süre</string>
     <string name="night_column_wakeups">Uyandırma</string>
     <string name="night_none">Kayıt yok.</string>

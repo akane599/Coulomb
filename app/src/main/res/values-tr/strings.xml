@@ -36,7 +36,8 @@
         <item quantity="other">%1$s yeni içgörü</item>
     </plurals>
     <string name="surface_privileges_title">Coulomb erişimini kaybetti</string>
-    <string name="surface_privileges_stopped">Shizuku durduğu için Coulomb yalnızca temel veriyi okuyor. Yeniden başlatmak için Yetkiler’i aç.</string>
+    <string name="surface_privileges_stopped_title">Shizuku durdu</string>
+    <string name="surface_privileges_stopped">Coulomb’un Shizuku üzerinden okudukları, Shizuku yeniden çalışana kadar bekler. Daha önce verdiğin izinler çalışmaya devam eder. Başlatmak için Yetkiler’i aç.</string>
     <string name="surface_privileges_revoked">Coulomb’a verilen izinler geri alındı. Yeniden vermek için Yetkiler’i aç.</string>
     <string name="surface_privileges_denied">Shizuku artık Coulomb’a yetki vermiyor. Yeniden izin vermek için Yetkiler’i aç.</string>
 </resources>

@@ -42,6 +42,7 @@ import io.github.akane599.coulomb.core.designsystem.component.CoulombFigure
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFigureStrip
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
@@ -339,7 +340,6 @@ private fun NightTimeline(
             amps = { formats.signedCurrent(it).joined() },
         )
     val awake = timeline.tracks[TimelineTrack.AWAKE].orEmpty()
-    val hours = night.durationMs / MS_PER_HOUR
     val summary =
         stringResource(
             R.string.night_timeline_summary,
@@ -360,9 +360,8 @@ private fun NightTimeline(
             viewTableLabel = stringResource(UiR.string.page_view_table),
             onViewTable = onViewTable,
         )
-        if (awake.isNotEmpty() && hours > 0) {
-            Note(stringResource(R.string.night_timeline_caption, formats.decimal(awake.size / hours)))
-        }
+        // The Timeline's own sentence for the same quantity, and what an outlined span is on each track.
+        wakeSentence(timeline, formats)?.let { Note(it + " " + stringResource(R.string.night_timeline_caption)) }
         // The chart's two sources, in words: the level between readings is the last one reported.
         Note(
             stringResource(
@@ -374,8 +373,6 @@ private fun NightTimeline(
         ViewTableButton(onViewTable)
     }
 }
-
-private const val MS_PER_HOUR = 3_600_000.0
 
 /** The tracks as a table: how long each was on and in how many stretches. */
 @Composable
@@ -467,6 +464,7 @@ private fun Culprits(
             stringResource(R.string.night_open_drain),
             onOpenDrain,
             Modifier.padding(top = CoulombSpacing.Space8),
+            trailingIcon = CoulombIcons.ChevronRight,
             edge = ButtonEdge.Start,
         )
     }

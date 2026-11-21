@@ -473,7 +473,21 @@ private fun ColumnScope.Matrix(
             val today = Instant.ofEpochMilli(device.nowMs).atZone(device.zone).toLocalDate()
             stringResource(R.string.privileges_last_probe, if (day == today) formats.clock(at, device.zone) else formats.day(day, today))
         }
-    SectionTitle(stringResource(R.string.privileges_matrix), provenance = null, first = besideFirst, caption = checked)
+    // The rows below say "re-run probes"; the way to do it is at the matrix's head, not a long page further down.
+    SectionTitle(
+        stringResource(R.string.privileges_matrix),
+        provenance = null,
+        first = besideFirst,
+        caption = checked,
+        action = {
+            CoulombTextButton(
+                stringResource(if (state.probing) R.string.privileges_probing else R.string.privileges_rerun),
+                actions.rerun,
+                enabled = !state.probing,
+                edge = ButtonEdge.End,
+            )
+        },
+    )
     MatrixStatus(state)
     state.groups.forEachIndexed { index, (tier, rows) ->
         // The first group sits a head's gap under the title, unless a note stands between them.
@@ -486,17 +500,8 @@ private fun ColumnScope.Matrix(
             HorizontalDivider(thickness = Hairline, color = CoulombTheme.colors.hairline)
         }
     }
-    FlowRow(
-        Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space16),
-        horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
-        verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
-    ) {
-        CoulombOutlinedButton(
-            stringResource(if (state.probing) R.string.privileges_probing else R.string.privileges_rerun),
-            actions.rerun,
-            enabled = !state.probing,
-        )
-        if (state.capabilities.isNotEmpty()) CoulombOutlinedButton(stringResource(R.string.privileges_export), actions.export)
+    if (state.capabilities.isNotEmpty()) {
+        CoulombOutlinedButton(stringResource(R.string.privileges_export), actions.export, Modifier.padding(top = CoulombSpacing.Space16))
     }
     state.export?.let {
         Note(

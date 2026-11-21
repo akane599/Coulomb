@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(projects.core.data)
     implementation(projects.core.collect)
+    implementation(projects.core.insights)
 
     testImplementation(libs.truth)
 }
