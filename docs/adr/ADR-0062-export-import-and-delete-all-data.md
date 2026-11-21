@@ -79,19 +79,40 @@ main recommendations are taken.
     that can export), loads the rows by bound parameters, and opens it through
     `CoulombDatabase.configured`, which migrates and validates it like any database. A newer schema
     or an unknown format major is refused with "written by a newer Coulomb".
-11. **The bundle is treated as hostile.** Entries are read by their expected names only; sizes are
-    counted while inflating, not taken from the zip's header; the manifest's tables and columns must
-    equal the app's schema for that version, and no SQL is built from a bundle's text; every row is
-    checked for length and type and inserted with ABORT, and a coded column's value must be one of
-    its codes, so an unknown code fails here and not on a screen later; counts must equal
-    `end.json`. After the load: `foreign_key_check`, `integrity_check`, every `bootSeq` present in
-    `boot`, and Room's own validation when the file is opened. Any failure rejects the whole
-    bundle: a skipped row would read as a real gap. The bundle's id must be a UUID before it names
-    a folder, and the archive appears by one directory rename. Every imported boot is marked
-    `imported`, so it is never the base of this phone's numbering.
+11. **The bundle is treated as hostile.** Entries are read by their expected names only. An entry
+    this build does not know is damage, unless the manifest's minor version is ahead of this
+    build's: a later minor may add entries, and they are passed over. Sizes are counted while
+    inflating, not taken from the zip's header: the file at most 1 GiB, what it inflates to at most
+    4 GiB, a small entry 1 MB, a row 8 MB; and the load stops while the phone still has 256 MB
+    free, because the collector writes to the same storage. The manifest's tables and columns must
+    equal the app's schema for that version, its lists of codes must agree with this build's as far
+    as both go, and no SQL is built from a bundle's text. The manifest, the settings and the
+    closing entry must be strict JSON no deeper than eight levels before a recursive parser sees
+    them; a row is read token by token as one flat array with nothing after it. Every value is
+    checked for length and type and inserted with ABORT; counts must equal `end.json`.
+    After the load: `foreign_key_check`, `integrity_check`, every `bootSeq` present in `boot`, and
+    Room's own validation when the file is opened. Then the values a reader would throw on
+    instead of showing: a position-coded column holds one of its codes, an enum stored by name one
+    of its names, a column with a code of its own (privilege mode, breakdown, kernel coverage) a
+    known one; an id that points at a lookup row without a foreign key finds it; every kernel log
+    event reads back; every history chunk decodes whole, to kinds and changes this build knows, in
+    boots that are there. A test finds the entity classes and holds every enum column to one of
+    these lists. Free text that only its own parser reads (a kernel read's gaps and causes, an
+    insight's evidence) is not checked: whatever reads an archive takes a failure there as an
+    unreadable row.
+    Any failure rejects the whole bundle: a skipped row would read as a real gap. The reason is
+    told apart: not a bundle, newer, too old, unfinished (also a file cut short), damaged, too
+    large, already here, or failed (no room, or the file could not be read), which is not the
+    bundle's fault. The bundle's id must be a UUID before it names a folder, and the archive
+    appears by one directory rename. An archive's `window_stat` is rebuilt without a rowid, the
+    stored form. Every imported boot is marked `imported`, so it is never the base of this phone's
+    numbering. One import, export or deletion runs at a time, and what a killed one left is
+    removed when Coulomb next starts.
 12. **Settings travel as named keys and only neutral ones are applied**, and only when the user
-    asks: show system apps, scale to measured, the charge target, the temperature threshold, the
-    digest time, theme, units and the screen-on sampling interval. The rest are written for the
+    asks: show system apps, scale to measured, the charge target, the temperature threshold (a file
+    sets the threshold and never switches the alarm off), the digest time, theme, units and the
+    screen-on sampling interval. The file is read as one flat object; anything nested is not a
+    settings file. The rest are written for the
     record and never applied: the Action Center, the automation API, the charge alarm, the digest
     switch, the component breakdown, Lite mode and the longer retention each stand for a grant, a
     permission or a consent given on the old phone. `onboarded` and the developer console are not
@@ -125,11 +146,23 @@ main recommendations are taken.
   bundle of the version before it is kept as a golden under "every migration tested" (SPEC 8).
 - The exported schema files ship in the APK as assets (about 100 kB a version before compression).
 
+## Reviewed
+
+One independent review of the engine (2026-11-21) found three things above minor, all in the
+import of a file built to do harm, and they are fixed in §11: a manifest or row of nested brackets
+ended the process with a stack overflow; only the file's size was bounded, not what it inflates
+to; and values Room's converters and Coulomb's own decoders throw on were accepted. Open, minor:
+the dump reads a table through one cursor, which re-steps from the first row at each window and
+is slow on a table of millions of rows (estimated, not measured); `device_profile` rows get new
+rowids, and one query of the collector orders by rowid, which no archive is read by.
+
 ## Not verified yet
 
 - Battery Historian with the raw bundle's two files.
-- A bundle of the owner's real database round-tripped on the phone (a phone test; it waits with the
-  others, ADR-0053). The round trip is tested on the build server with a synthetic database.
+- A bundle round-tripped on the phone itself (a phone test; it waits with the others, ADR-0053).
+  On the build server the round trip is tested with a synthetic database, and `CaptureBundleTest`
+  ran it on the database pulled from the phone on 2026-11-21: 39 tables and 230,561 rows went out
+  as a 3.3 MB bundle and came back table for table, past every check of §11.
 
 ## Reverting
 

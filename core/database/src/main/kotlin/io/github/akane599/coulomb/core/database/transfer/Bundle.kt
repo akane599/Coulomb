@@ -4,9 +4,13 @@
 package io.github.akane599.coulomb.core.database.transfer
 
 import android.util.Base64
+import android.util.JsonReader
+import android.util.JsonToken
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.IOException
+import java.io.StringReader
 
 /** Why a file was not imported (ADR-0062 §10, §11). */
 public enum class BundleProblem {
@@ -30,6 +34,9 @@ public enum class BundleProblem {
 
     /** This bundle is already an archive on this phone. */
     ALREADY_IMPORTED,
+
+    /** Not the bundle's fault: the phone has no room for it, or the file could not be read. */
+    FAILED,
 }
 
 /** A bundle that is refused whole; nothing of it is kept. [detail] is for the log and tests, not for the screen. */
@@ -45,6 +52,38 @@ internal fun refuse(
     detail: String,
     cause: Throwable? = null,
 ): Nothing = throw BundleRejectedException(problem, detail, cause)
+
+/**
+ * True when [text] is strict JSON that nests no deeper than [limit]. A bundle's small entries are
+ * held to this before `org.json` reads them: its parser is lenient and recursive, so a few
+ * kilobytes of opening brackets would end the process with a stack overflow. This reader is
+ * neither.
+ */
+internal fun strictJson(
+    text: String,
+    limit: Int,
+): Boolean {
+    val reader = JsonReader(StringReader(text))
+    var depth = 0
+    return try {
+        while (depth <= limit) {
+            when (reader.peek()) {
+                JsonToken.BEGIN_ARRAY -> reader.beginArray().also { depth++ }
+                JsonToken.BEGIN_OBJECT -> reader.beginObject().also { depth++ }
+                JsonToken.END_ARRAY -> reader.endArray().also { depth-- }
+                JsonToken.END_OBJECT -> reader.endObject().also { depth-- }
+                JsonToken.NAME -> reader.nextName()
+                JsonToken.END_DOCUMENT -> break
+                else -> reader.skipValue()
+            }
+        }
+        depth <= limit
+    } catch (_: IOException) {
+        false
+    } catch (_: IllegalStateException) {
+        false
+    }
+}
 
 /** The names and numbers of the bundle's container (ADR-0062 §1 to §3). Never change a name; a new form is a new major. */
 public object BundleFormat {
@@ -63,6 +102,9 @@ public object BundleFormat {
     public const val ROWS: String = ".ndjson"
 
     public const val MIME: String = "application/zip"
+
+    /** Deeper than anything in a bundle's manifest, settings or closing entry. */
+    internal const val MAX_DEPTH: Int = 8
 }
 
 /**
@@ -128,11 +170,13 @@ public data class BundleManifest(
          * for anything that is not one, [BundleProblem.NEWER] for a format ahead of this build's.
          */
         public fun parse(text: String): BundleManifest {
+            if (!strictJson(text, BundleFormat.MAX_DEPTH)) refuse(BundleProblem.NOT_A_BUNDLE, "not strict JSON")
             try {
                 val root = JSONObject(text)
                 if (root.optString("format") != BundleFormat.NAME) refuse(BundleProblem.NOT_A_BUNDLE, "format")
                 val version = root.getJSONObject("formatVersion")
                 if (version.getInt("major") > BundleFormat.MAJOR) refuse(BundleProblem.NEWER, "format major")
+                sameCodes(root.optJSONObject("codes"))
                 return read(root, version)
             } catch (e: JSONException) {
                 refuse(BundleProblem.NOT_A_BUNDLE, e.message.orEmpty(), e)
@@ -166,6 +210,20 @@ public data class BundleManifest(
                 formatMajor = version.getInt("major"),
                 formatMinor = version.getInt("minor"),
             )
+        }
+
+        /**
+         * A list of codes only ever grows at its end (ADR-0040), so the bundle's lists and this
+         * build's must agree as far as both go: a code that stood for another name would relabel
+         * every row that holds it.
+         */
+        private fun sameCodes(codes: JSONObject?) {
+            for ((column, names) in CodedColumns.NAMES) {
+                val theirs = codes?.optJSONArray(column) ?: continue
+                for (code in 0 until minOf(theirs.length(), names.size)) {
+                    if (theirs.optString(code) != names[code]) refuse(BundleProblem.DAMAGED, "$column: code $code is another name")
+                }
+            }
         }
 
         private fun table(json: JSONObject): DumpTable {
@@ -208,40 +266,79 @@ internal object JsonRows {
         out.append(']')
     }
 
-    /** The values of [line] for [table]'s columns, each checked against its column. Throws [BundleRejectedException]. */
+    /**
+     * The values of [line] for [table]'s columns, each checked against its column. Throws
+     * [BundleRejectedException]. The line is read strictly and token by token: exactly one flat
+     * array of as many values as the table has columns, with nothing nested and nothing after it.
+     */
     fun decode(
         line: String,
         table: DumpTable,
     ): Array<Any?> {
-        val values =
-            try {
-                JSONArray(line)
-            } catch (e: JSONException) {
-                refuse(BundleProblem.DAMAGED, "${table.name}: not a row", e)
-            }
-        if (values.length() != table.columns.size) damaged(table, "${values.length()} values for ${table.columns.size} columns")
-        return Array(table.columns.size) { index -> value(values.get(index), table.columns[index], table) }
+        val reader = JsonReader(StringReader(line))
+        try {
+            reader.beginArray()
+            val row = Array(table.columns.size) { index -> value(reader, table.columns[index], table) }
+            reader.endArray()
+            if (reader.peek() != JsonToken.END_DOCUMENT) damaged(table, "text after a row")
+            return row
+        } catch (e: IOException) {
+            refuse(BundleProblem.DAMAGED, "${table.name}: not a row", e)
+        } catch (e: IllegalStateException) {
+            // Fewer or more values than columns: the reader met another token than the one asked for.
+            refuse(BundleProblem.DAMAGED, "${table.name}: not a row of ${table.columns.size} values", e)
+        }
     }
 
     private fun value(
-        json: Any,
+        reader: JsonReader,
         column: DumpColumn,
         table: DumpTable,
     ): Any? {
-        if (json == JSONObject.NULL) {
-            if (column.notNull) damaged(table, "null in ${column.name}")
-            return null
-        }
-        val value =
-            when (column.type) {
-                "INTEGER" -> (json as? Int)?.toLong() ?: json as? Long
-                "REAL" -> (json as? Number)?.toDouble() ?: (json as? String)?.let(::unbounded)
-                "TEXT" -> (json as? String)?.takeIf { it.length <= MAX_TEXT }
-                "BLOB" -> (json as? String)?.let(::blob)
-                else -> null
+        val value: Any? =
+            when (reader.peek()) {
+                JsonToken.NULL -> {
+                    reader.nextNull()
+                    if (column.notNull) damaged(table, "null in ${column.name}")
+                    return null
+                }
+
+                JsonToken.NUMBER -> {
+                    number(reader.nextString(), column.type)
+                }
+
+                JsonToken.STRING -> {
+                    text(reader.nextString(), column.type)
+                }
+
+                else -> {
+                    null
+                }
             }
         return value ?: damaged(table, "${column.name} is not ${column.type}")
     }
+
+    /** A number as it is written: an integer column takes no fraction, and a real column any finite number. */
+    private fun number(
+        literal: String,
+        type: String,
+    ): Any? =
+        when (type) {
+            "INTEGER" -> literal.toLongOrNull()
+            "REAL" -> literal.toDoubleOrNull()?.takeIf { it.isFinite() }
+            else -> null
+        }
+
+    private fun text(
+        text: String,
+        type: String,
+    ): Any? =
+        when (type) {
+            "REAL" -> unbounded(text)
+            "TEXT" -> text.takeIf { it.length <= MAX_TEXT }
+            "BLOB" -> blob(text)
+            else -> null
+        }
 
     private fun unbounded(name: String): Double? = name.toDoubleOrNull()?.takeIf { !it.isFinite() }
 

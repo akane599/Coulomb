@@ -44,7 +44,7 @@ class SettingsTransferTest {
             old.showSystemApps(true)
             old.scaleToMeasured(true)
             old.chargeTarget(90)
-            old.temperatureAlarm(null)
+            old.temperatureAlarm(450)
             old.insightsDigestMinute(7 * 60 + 30)
             old.theme(ThemeChoice.BLACK)
             old.fahrenheit(true)
@@ -69,7 +69,7 @@ class SettingsTransferTest {
                     showSystemApps = true,
                     scaleToMeasured = true,
                     chargeTargetPct = 90,
-                    temperatureAlarmDeciC = null,
+                    temperatureAlarmDeciC = 450,
                     insightsDigestMinute = 7 * 60 + 30,
                     theme = ThemeChoice.BLACK,
                     fahrenheit = true,
@@ -93,5 +93,18 @@ class SettingsTransferTest {
             assertThat(SettingsTransfer(store).apply(edited)).isTrue()
             assertThat(store.settings.first()).isEqualTo(UserSettings())
             assertThat(SettingsTransfer(store).apply("not json")).isFalse()
+        }
+
+    @Test
+    fun aFileNeverTurnsTheTemperatureAlarmOffAndNestingIsNotASettingsFile() =
+        runTest(UnconfinedTestDispatcher()) {
+            val store = store(folder.root.resolve("b.pb"))
+            assertThat(SettingsTransfer(store).apply("""{"temperature_alarm_deci_c": null, "fahrenheit": true}""")).isTrue()
+            assertThat(store.settings.first()).isEqualTo(UserSettings(fahrenheit = true))
+            // Brackets enough to overflow a recursive parser, a nested value, and text after the object.
+            assertThat(SettingsTransfer(store).apply("{\"theme\":" + "[".repeat(20_000))).isFalse()
+            assertThat(SettingsTransfer(store).apply("""{"theme": {"name": "DARK"}}""")).isFalse()
+            assertThat(SettingsTransfer(store).apply("""{"theme": "DARK"} x""")).isFalse()
+            assertThat(store.settings.first()).isEqualTo(UserSettings(fahrenheit = true))
         }
 }

@@ -12,7 +12,7 @@ android {
     testOptions.unitTests.all {
         // Robolectric reaches FileDescriptor internals on API 36 (as in :core:database).
         it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED")
-        // CaptureRatesTest reads a validation capture only when given one (ADR-0049).
+        // CaptureRatesTest and CaptureBundleTest read a validation capture only when given one (ADR-0049, ADR-0062).
         for (name in listOf("coulomb.capture", "coulomb.captureOut", "coulomb.captureDb")) {
             providers.gradleProperty(name).orNull?.let { value -> it.systemProperty(name, value) }
         }

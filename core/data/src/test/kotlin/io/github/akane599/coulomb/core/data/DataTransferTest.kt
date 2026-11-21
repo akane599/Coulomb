@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.database.CoulombDatabase
+import io.github.akane599.coulomb.core.database.transfer.CodedColumns
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -34,6 +35,14 @@ class DataTransferTest {
             "INSERT INTO boot (bootSeq, rawBootCount, fingerprint, firstWallMs, firstElapsedNs, historyOffsetMs, imported) " +
                 "VALUES (1, 7, 'lab', 1000, 5, NULL, 0)",
         )
+        // Two charges and one discharge, by the codes the schema stores.
+        val kinds = checkNotNull(CodedColumns.names("session", "kind"))
+        for ((id, kind) in listOf(1 to "CHARGE", 2 to "DISCHARGE", 3 to "CHARGE")) {
+            db.openHelper.writableDatabase.execSQL(
+                "INSERT INTO session (id, kind, bootSeq, startElapsedNs, startWall, startLevel, maxTempDeciC, quality) " +
+                    "VALUES ($id, ${kinds.indexOf(kind)}, 1, ${id * 1000}, ${id * 1000}, 50, 300, 1.0)",
+            )
+        }
     }
 
     @After
@@ -59,6 +68,8 @@ class DataTransferTest {
             assertThat(imported.settings).isEqualTo("{}")
             assertThat(transfer.archives.value).containsExactly(imported.archive)
             assertThat(imported.archive.exportedAtWallMs).isEqualTo(1_800_000_000_000)
+            assertThat(imported.archive.discharges).isEqualTo(1)
+            assertThat(imported.archive.charges).isEqualTo(2)
             // This phone's own tables did not grow by the import.
             assertThat(boots(db)).isEqualTo(1)
             transfer.open(imported.archive.id)!!.let { archive ->

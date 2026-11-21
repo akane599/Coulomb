@@ -4,10 +4,16 @@
 package io.github.akane599.coulomb.core.database
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.util.Base64
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
+import io.github.akane599.coulomb.core.database.entity.HistoryChunkCodec
+import io.github.akane599.coulomb.core.database.entity.HistoryChunkEntity
+import io.github.akane599.coulomb.core.database.entity.PackedEvent
 import io.github.akane599.coulomb.core.database.transfer.BundleFormat
 import io.github.akane599.coulomb.core.database.transfer.BundleImporter
 import io.github.akane599.coulomb.core.database.transfer.BundleOrigin
@@ -17,11 +23,15 @@ import io.github.akane599.coulomb.core.database.transfer.BundleWriter
 import io.github.akane599.coulomb.core.database.transfer.CodedColumns
 import io.github.akane599.coulomb.core.database.transfer.CsvExport
 import io.github.akane599.coulomb.core.database.transfer.DatabaseCopy
+import io.github.akane599.coulomb.core.database.transfer.ImportLimits
+import io.github.akane599.coulomb.core.database.transfer.NamedColumns
 import io.github.akane599.coulomb.core.database.transfer.TableDump
+import io.github.akane599.coulomb.core.database.transfer.ValueChecks
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.history.HistoryChange
 import io.github.akane599.coulomb.core.model.history.HistoryKind
 import kotlinx.coroutines.test.runTest
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Rule
 import org.junit.Test
@@ -30,6 +40,9 @@ import org.junit.runner.RunWith
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.lang.reflect.Modifier
+import java.net.URI
+import java.util.jar.JarFile
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -308,4 +321,204 @@ class TransferTest : DatabaseTest() {
             assertThat(history).contains("\"line one\nline \"\"two\"\", with a comma   and ğüş\"")
             assertThat(history).contains(",BATTERY_LEVEL,SET,0,,,80")
         }
+
+    /** [bytes] with [change] applied to every row of [table]; a row's values are in the order of the column names given. */
+    private fun rowsEdited(
+        bytes: ByteArray,
+        table: String,
+        change: (row: JSONArray, columns: List<String>) -> Unit,
+    ): ByteArray =
+        edited(bytes) { entries ->
+            val tables = JSONObject(String(entries.getValue(BundleFormat.MANIFEST))).getJSONArray("tables")
+            val columns =
+                (0 until tables.length())
+                    .map(tables::getJSONObject)
+                    .single { it.getString("name") == table }
+                    .getJSONArray("columns")
+                    .let { all -> (0 until all.length()).map { all.getJSONObject(it).getString("name") } }
+            val name = BundleFormat.TABLES + table + BundleFormat.ROWS
+            entries[name] =
+                String(entries.getValue(name))
+                    .lines()
+                    .filter { it.isNotEmpty() }
+                    .joinToString("") { line -> JSONArray(line).also { change(it, columns) }.toString() + "\n" }
+                    .toByteArray()
+        }
+
+    @Test
+    fun aFileBuiltToBreakTheReaderIsRefused() =
+        runTest {
+            fill()
+            val good = bundle()
+            // A few kilobytes of brackets would overflow a recursive parser's stack.
+            val deep = "[".repeat(20_000)
+            val samples = BundleFormat.TABLES + "battery_sample" + BundleFormat.ROWS
+            assertThat(problem(edited(good) { it[BundleFormat.MANIFEST] = "{\"format\":$deep".toByteArray() }))
+                .isEqualTo(BundleProblem.NOT_A_BUNDLE)
+            assertThat(problem(edited(good) { it[samples] = "$deep\n".toByteArray() })).isEqualTo(BundleProblem.DAMAGED)
+            assertThat(problem(edited(good) { it[BundleFormat.END] = "{\"complete\":true,\"rows\":$deep".toByteArray() }))
+                .isEqualTo(BundleProblem.DAMAGED)
+            // What a lenient reader lets through: text after a row, a comment, a value in single quotes.
+            val row = { change: (String) -> String -> edited(good) { it[samples] = change(String(it.getValue(samples))).toByteArray() } }
+            assertThat(problem(row { it.replaceFirst("]", "] x") })).isEqualTo(BundleProblem.DAMAGED)
+            assertThat(problem(row { it.replaceFirst("[", "[/* */") })).isEqualTo(BundleProblem.DAMAGED)
+            assertThat(problem(row { it.replaceFirst("[", "['x',") })).isEqualTo(BundleProblem.DAMAGED)
+            // A file cut short did not finish.
+            assertThat(problem(good.copyOf(good.size / 2))).isEqualTo(BundleProblem.INCOMPLETE)
+            assertThat(files.root.list()!!.filter { it.startsWith("archive-") }).isEmpty()
+        }
+
+    @Test
+    fun anImportStopsBeforeItFillsThePhone() =
+        runTest {
+            fill()
+            val good = bundle()
+            val with = { limits: ImportLimits ->
+                runCatching { BundleImporter(context, limits).load(ByteArrayInputStream(good), File(files.root, "archive-limited.db")) }
+                    .exceptionOrNull()
+                    .let { (it as? BundleRejectedException)?.problem }
+            }
+            // The rows' inflated size is counted, whatever the file's own size.
+            assertThat(with(ImportLimits(maxInflated = 1_000))).isEqualTo(BundleProblem.TOO_LARGE)
+            assertThat(with(ImportLimits(free = { 0L }))).isEqualTo(BundleProblem.FAILED)
+            assertThat(files.root.list()!!.filter { it.startsWith("archive-") }).isEmpty()
+        }
+
+    @Test
+    fun aValueNoReaderCouldTakeIsRefused() =
+        runTest {
+            fill()
+            sql(
+                "INSERT INTO capability (id, state, tier, reason, fixAction, probedAtWall, fingerprint, detailJson) " +
+                    "VALUES ('s5', 'AVAILABLE', 'T1_DURABLE_GRANTS', NULL, NULL, 1, 'lab', '{}')",
+            )
+            sql(
+                "INSERT INTO history_gap " +
+                    "(startMonotonicMs, endMonotonicMs, startBootSeq, startElapsedNs, endBootSeq, endElapsedNs, reason) " +
+                    "VALUES (1, 2, 1, 1, 1, 2, 'OVERFLOW')",
+            )
+            val good = bundle()
+            import(good)
+            val set = { table: String, column: String, value: Any ->
+                problem(rowsEdited(good, table) { row, columns -> row.put(columns.indexOf(column), value) })
+            }
+            // An enum stored by name, a column with a code of its own, and an id without a foreign key.
+            assertThat(set("capability", "state", "BOGUS")).isEqualTo(BundleProblem.DAMAGED)
+            assertThat(set("snapshot", "privilegeMode", 77)).isEqualTo(BundleProblem.DAMAGED)
+            assertThat(set("history_gap", "endBootSeq", 99)).isEqualTo(BundleProblem.DAMAGED)
+            // A history chunk: bytes that are no chunk, a kind this build does not know, a boot that is not there.
+            val chunk = { boot: Int, type: Int ->
+                val packed = PackedEvent(boot, 100, type, changeCode = 0, baseline = false, uid = null, tagId = null, value = 1)
+                Base64.encodeToString(HistoryChunkCodec.encode(listOf(packed)), Base64.NO_WRAP)
+            }
+            val chunks = { data: String ->
+                problem(
+                    rowsEdited(good, "history_chunk") { row, columns ->
+                        row.put(columns.indexOf("count"), 1)
+                        row.put(columns.indexOf("data"), data)
+                    },
+                )
+            }
+            assertThat(chunks(chunk(1, 0))).isNull()
+            assertThat(chunks("AAAA")).isEqualTo(BundleProblem.DAMAGED)
+            assertThat(chunks(chunk(1, 9_999))).isEqualTo(BundleProblem.DAMAGED)
+            assertThat(chunks(chunk(9, 0))).isEqualTo(BundleProblem.DAMAGED)
+        }
+
+    @Test
+    fun anArchiveIsInTheStoredForm() =
+        runTest {
+            fill()
+            val imported = import(bundle())
+            SQLiteDatabase.openDatabase(imported.database.path, null, SQLiteDatabase.OPEN_READONLY).use { archive ->
+                archive.rawQuery("SELECT sql FROM sqlite_master WHERE name = 'window_stat'", null).use { cursor ->
+                    assertThat(cursor.moveToFirst()).isTrue()
+                    assertThat(cursor.getString(0)).contains("WITHOUT ROWID")
+                }
+            }
+        }
+
+    @Test
+    fun aLaterMinorMayAddAnEntryAndAListOfCodesMayOnlyGrow() =
+        runTest {
+            fill()
+            val good = bundle()
+            val manifest = { change: (JSONObject) -> Unit ->
+                edited(good) {
+                    it[BundleFormat.MANIFEST] =
+                        JSONObject(String(it.getValue(BundleFormat.MANIFEST))).also(change).toString().toByteArray()
+                    val end = it.remove(BundleFormat.END)!!
+                    it["extra.json"] = "{}".toByteArray()
+                    it[BundleFormat.END] = end
+                }
+            }
+            assertThat(problem(manifest { })).isEqualTo(BundleProblem.DAMAGED)
+            import(manifest { it.getJSONObject("formatVersion").put("minor", BundleFormat.MINOR + 1) })
+            val codes = { change: (JSONArray) -> Unit ->
+                edited(good) {
+                    val whole = JSONObject(String(it.getValue(BundleFormat.MANIFEST)))
+                    change(whole.getJSONObject("codes").getJSONArray("session.kind"))
+                    it[BundleFormat.MANIFEST] = whole.toString().toByteArray()
+                }
+            }
+            import(codes { it.put("A_KIND_OF_A_LATER_BUILD") })
+            assertThat(problem(codes { it.put(0, "CHARGE") })).isEqualTo(BundleProblem.DAMAGED)
+        }
+
+    /**
+     * Room's converters and Coulomb's own throw on a name or code they do not know, so every enum
+     * column must be in one of the three lists the import checks. The entity classes are found on
+     * the class path and matched to their tables by their columns.
+     */
+    @Test
+    fun everyEnumColumnOfTheEntitiesIsHeldToWhatItMayStore() {
+        val tables =
+            TableDump(db.openHelper.readableDatabase).tables().associate { table ->
+                table.columns.map { it.name }.toSet() to
+                    table.name
+            }
+        val held = HashSet<String>()
+        val matched = HashSet<String>()
+        for (type in entityClasses()) {
+            val fields = type.declaredFields.filterNot { Modifier.isStatic(it.modifiers) }
+            val table = tables[fields.map { it.name }.toSet()] ?: continue
+            matched += table
+            for (field in fields.filter { it.type.isEnum }) {
+                val key = "$table.${field.name}"
+                val names = field.type.enumConstants!!.map { (it as Enum<*>).name }
+                val listed =
+                    NamedColumns.NAMES[key] == names ||
+                        CodedColumns.NAMES[key]?.toSet() == names.toSet() ||
+                        key in ValueChecks.SELF_CODED
+                assertWithMessage(key).that(listed).isTrue()
+                held += key
+            }
+        }
+        // The two tables of S4's energies hold an embedded row of numbers: their classes' fields are not their columns.
+        assertThat(tables.values - matched).containsExactly("uid_component_power", "window_component")
+        // And no list names a column that is not there: a coverage is a class of its own, so it is held by name.
+        assertThat(held).containsAtLeastElementsIn(NamedColumns.NAMES.keys + CodedColumns.NAMES.keys)
+        val columns =
+            TableDump(db.openHelper.readableDatabase).tables().flatMap { table ->
+                table.columns.map { "${table.name}.${it.name}" }
+            }
+        assertThat(columns).containsAtLeastElementsIn(ValueChecks.SELF_CODED.keys)
+    }
+
+    /** Every class of the entity package, from the directory or the jar the entities were loaded from. */
+    private fun entityClasses(): List<Class<*>> {
+        val name = HistoryChunkEntity::class.java.packageName
+        val folder = name.replace('.', '/')
+        val one = ClassLoader.getSystemResource("$folder/${HistoryChunkEntity::class.java.simpleName}.class")
+        val files =
+            if (one.protocol == "file") {
+                File(one.toURI()).parentFile!!.list()!!.toList()
+            } else {
+                val jar = File(URI(one.path.substringBefore("!")))
+                JarFile(jar).use { it.entries().toList().map { entry -> entry.name } }.filter { it.startsWith("$folder/") }
+            }
+        return files
+            .filter { it.endsWith(".class") }
+            .map { Class.forName(name + "." + it.substringAfterLast('/').removeSuffix(".class")) }
+    }
 }

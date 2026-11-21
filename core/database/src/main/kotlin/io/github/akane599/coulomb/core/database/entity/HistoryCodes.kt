@@ -167,6 +167,12 @@ public object HistoryCodes {
     @TypeConverter
     public fun kind(code: Int): HistoryKind = KINDS.getOrNull(code) ?: error("Unknown history kind code $code")
 
+    /** True when both codes are ones this build reads back; [kind] and [change] throw on any other. */
+    internal fun known(
+        kindCode: Int,
+        changeCode: Int,
+    ): Boolean = kindCode in KINDS.indices && changeCode in CHANGES.indices
+
     @TypeConverter
     public fun changeCode(change: HistoryChange): Int = CHANGES.indexOf(change)
 

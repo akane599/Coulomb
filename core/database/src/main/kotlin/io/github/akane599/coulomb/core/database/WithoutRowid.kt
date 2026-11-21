@@ -30,6 +30,25 @@ internal object WithoutRowid {
     /** Rebuilds [TABLES] without a rowid, keeping every row. Rows go in in key order. */
     fun rebuild(db: SupportSQLiteDatabase) = windowStat().forEach(db::execSQL)
 
+    /**
+     * Rebuilds a table of [TABLES] that still has its rowid. An imported bundle's database is
+     * created from the exported schema, which cannot show the clause, and without Room's callback.
+     */
+    fun ensure(db: SupportSQLiteDatabase) {
+        val stored =
+            db.query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'window_stat'").use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else return
+            }
+        if (stored.contains("WITHOUT ROWID")) return
+        db.beginTransaction()
+        try {
+            rebuild(db)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     /** A new database gets the same form as a migrated one. The tables are still empty. */
     object Callback : RoomDatabase.Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) = rebuild(db)

@@ -4,23 +4,33 @@
 package io.github.akane599.coulomb.core.data
 
 import android.content.Context
+import android.database.SQLException
+import android.database.sqlite.SQLiteDatabase
 import android.os.Build
+import android.util.Log
 import androidx.room.Room
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.database.CoulombDatabase
+import io.github.akane599.coulomb.core.database.entity.CorruptChunkException
 import io.github.akane599.coulomb.core.database.transfer.BundleImporter
 import io.github.akane599.coulomb.core.database.transfer.BundleManifest
 import io.github.akane599.coulomb.core.database.transfer.BundleOrigin
 import io.github.akane599.coulomb.core.database.transfer.BundleRejectedException
 import io.github.akane599.coulomb.core.database.transfer.BundleWriter
+import io.github.akane599.coulomb.core.database.transfer.CodedColumns
 import io.github.akane599.coulomb.core.database.transfer.CsvExport
 import io.github.akane599.coulomb.core.database.transfer.DatabaseCopy
 import io.github.akane599.coulomb.core.database.transfer.ImportedBundle
+import io.github.akane599.coulomb.core.model.SessionKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.json.JSONException
+import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -39,6 +49,9 @@ public data class Archive(
     val lastWallMs: Long?,
     val exportedAtWallMs: Long,
     val sizeBytes: Long,
+    /** How many discharge and charge sessions it holds; null for an archive that kept no count. */
+    val discharges: Long? = null,
+    val charges: Long? = null,
 )
 
 /** Why a file was not imported, in the words a screen needs (ADR-0062 §10, §11). */
@@ -88,20 +101,42 @@ public class DataTransfer
         private val scratch: File get() = context.cacheDir.resolve(SCRATCH)
         private val listed = MutableStateFlow<List<Archive>?>(null)
 
+        /** One import, export or deletion at a time: each owns the staging and scratch folders while it runs. */
+        private val busy = Mutex()
+
         /** The archives on this phone, newest export first; null until first read by [refresh]. */
         public val archives: StateFlow<List<Archive>?> = listed.asStateFlow()
 
         /** Reads the archive folders again, and removes what an interrupted import or export left. */
-        public suspend fun refresh(): Unit =
+        public suspend fun refresh() {
+            sweep()
+            withContext(dispatchers.io) { list() }
+        }
+
+        /**
+         * Removes what a killed import or export left behind: a half-loaded bundle can be large.
+         * Called when Coulomb starts and from [refresh]; while an import or export runs, its files
+         * are its own and nothing is removed.
+         */
+        public suspend fun sweep(): Unit =
             withContext(dispatchers.io) {
-                archiveRoot.listFiles { file -> file.name.startsWith(STAGING) }?.forEach { it.deleteRecursively() }
-                listed.value =
-                    archiveRoot
-                        .listFiles()
-                        ?.mapNotNull(::archive)
-                        .orEmpty()
-                        .sortedByDescending { it.exportedAtWallMs }
+                if (!busy.tryLock()) return@withContext
+                try {
+                    archiveRoot.listFiles { file -> file.name.startsWith(STAGING) }?.forEach { it.deleteRecursively() }
+                    scratch.deleteRecursively()
+                } finally {
+                    busy.unlock()
+                }
             }
+
+        private fun list() {
+            listed.value =
+                archiveRoot
+                    .listFiles()
+                    ?.mapNotNull(::archive)
+                    .orEmpty()
+                    .sortedByDescending { it.exportedAtWallMs }
+        }
 
         /** A name for an export's file: "coulomb-SM-S938B-20261121-1420.zip". [kind] is "bundle", "csv" or "raw". */
         public fun fileName(
@@ -158,25 +193,33 @@ public class DataTransfer
             progress: (rows: Long) -> Unit = {},
         ): ImportResult =
             withContext(dispatchers.io) {
-                val staging = archiveRoot.resolve(STAGING + UUID.randomUUID())
-                try {
-                    staging.mkdirs()
-                    val bundle = BundleImporter(context).load(input, staging.resolve(DATABASE), progress)
-                    val id = bundle.manifest.bundleId
-                    when {
-                        // The id becomes a folder's name, and it came from the file.
-                        !ID.matches(id) -> ImportResult.Refused(ImportProblem.DAMAGED)
+                busy.withLock {
+                    val staging = archiveRoot.resolve(STAGING + UUID.randomUUID())
+                    try {
+                        staging.mkdirs()
+                        val bundle = BundleImporter(context).load(input, staging.resolve(DATABASE), progress)
+                        val id = bundle.manifest.bundleId
+                        when {
+                            // The id becomes a folder's name, and it came from the file.
+                            !ID.matches(id) -> ImportResult.Refused(ImportProblem.DAMAGED)
 
-                        archiveRoot.resolve(id).exists() -> ImportResult.Refused(ImportProblem.ALREADY_IMPORTED)
+                            archiveRoot.resolve(id).exists() -> ImportResult.Refused(ImportProblem.ALREADY_IMPORTED)
 
-                        else -> place(staging, bundle)
+                            else -> place(staging, bundle)
+                        }
+                    } catch (e: BundleRejectedException) {
+                        // The problem only: a parser's message can quote the other phone's file.
+                        Log.w(TAG, "bundle refused: ${e.problem}")
+                        ImportResult.Refused(ImportProblem.valueOf(e.problem.name))
+                    } catch (e: IOException) {
+                        Log.w(TAG, "archive not written", e)
+                        ImportResult.Refused(ImportProblem.FAILED)
+                    } catch (e: SQLException) {
+                        Log.w(TAG, "archive not read back", e)
+                        ImportResult.Refused(ImportProblem.FAILED)
+                    } finally {
+                        staging.deleteRecursively()
                     }
-                } catch (e: BundleRejectedException) {
-                    ImportResult.Refused(ImportProblem.valueOf(e.problem.name))
-                } catch (_: IOException) {
-                    ImportResult.Refused(ImportProblem.FAILED)
-                } finally {
-                    staging.deleteRecursively()
                 }
             }
 
@@ -187,16 +230,19 @@ public class DataTransfer
         ): ImportResult {
             val home = archiveRoot.resolve(bundle.manifest.bundleId)
             staging.resolve(MANIFEST).writeText(bundle.manifest.toJson())
+            staging.resolve(SUMMARY).writeText(summary(bundle.database).toString())
             if (!staging.renameTo(home)) return ImportResult.Refused(ImportProblem.FAILED)
-            refresh()
+            list()
             return archive(home)?.let { ImportResult.Imported(it, bundle.settings) } ?: ImportResult.Refused(ImportProblem.FAILED)
         }
 
         /** Removes one archive for good. */
         public suspend fun deleteArchive(id: String): Unit =
             withContext(dispatchers.io) {
-                if (ID.matches(id)) archiveRoot.resolve(id).deleteRecursively()
-                refresh()
+                busy.withLock {
+                    if (ID.matches(id)) archiveRoot.resolve(id).deleteRecursively()
+                    list()
+                }
             }
 
         /** [id]'s archive opened as a database of its own, for reading; the caller closes it. Null when it is gone. */
@@ -215,28 +261,41 @@ public class DataTransfer
          */
         public suspend fun deleteAll(): Unit =
             withContext(dispatchers.io) {
-                database.clearAllTables()
-                context.noBackupFilesDir.resolve(SNAPSHOTS).deleteRecursively()
-                archiveRoot.deleteRecursively()
-                scratch.deleteRecursively()
-                refresh()
+                busy.withLock {
+                    database.clearAllTables()
+                    context.noBackupFilesDir.resolve(SNAPSHOTS).deleteRecursively()
+                    archiveRoot.deleteRecursively()
+                    scratch.deleteRecursively()
+                    list()
+                }
             }
 
+        /**
+         * Runs [block] on a copy of the database. The copy needs about the database's size in the
+         * cache directory; a phone without that room, or a stored row the export cannot read, ends
+         * the export as an [IOException] like any other failed write.
+         */
         private suspend fun withCopy(block: (CoulombDatabase) -> Unit): Unit =
             withContext(dispatchers.io) {
-                scratch.deleteRecursively()
-                scratch.mkdirs()
-                val file = scratch.resolve(UUID.randomUUID().toString() + ".db")
-                try {
-                    DatabaseCopy.copy(database, file)
-                    val copy = CoulombDatabase.configured(Room.databaseBuilder(context, CoulombDatabase::class.java, file.path))
-                    try {
-                        block(copy)
-                    } finally {
-                        copy.close()
-                    }
-                } finally {
+                busy.withLock {
                     scratch.deleteRecursively()
+                    scratch.mkdirs()
+                    val file = scratch.resolve(UUID.randomUUID().toString() + ".db")
+                    try {
+                        DatabaseCopy.copy(database, file)
+                        val copy = CoulombDatabase.configured(Room.databaseBuilder(context, CoulombDatabase::class.java, file.path))
+                        try {
+                            block(copy)
+                        } finally {
+                            copy.close()
+                        }
+                    } catch (e: SQLException) {
+                        throw IOException("The database could not be copied or read", e)
+                    } catch (e: CorruptChunkException) {
+                        throw IOException("A stored history chunk could not be read", e)
+                    } finally {
+                        scratch.deleteRecursively()
+                    }
                 }
             }
 
@@ -247,11 +306,44 @@ public class DataTransfer
             return try {
                 val read = BundleManifest.parse(manifest.readText())
                 val size = folder.listFiles()?.sumOf { it.length() } ?: 0L
-                Archive(folder.name, read.model.take(MAX_MODEL), read.firstWallMs, read.lastWallMs, read.exportedAtWallMs, size)
+                val counts = counts(folder.resolve(SUMMARY))
+                Archive(
+                    id = folder.name,
+                    model = read.model.take(MAX_MODEL),
+                    firstWallMs = read.firstWallMs,
+                    lastWallMs = read.lastWallMs,
+                    exportedAtWallMs = read.exportedAtWallMs,
+                    sizeBytes = size,
+                    discharges = counts?.optLong(DISCHARGES),
+                    charges = counts?.optLong(CHARGES),
+                )
             } catch (_: BundleRejectedException) {
                 null
             }
         }
+
+        /** The sessions of a loaded archive by kind, counted once so that listing it never opens its database. */
+        private fun summary(database: File): JSONObject {
+            val kinds = CodedColumns.names("session", "kind").orEmpty()
+
+            fun count(
+                db: SQLiteDatabase,
+                kind: SessionKind,
+            ): Long =
+                db.rawQuery("SELECT COUNT(*) FROM session WHERE kind = ?", arrayOf(kinds.indexOf(kind.name).toString())).use { rows ->
+                    if (rows.moveToFirst()) rows.getLong(0) else 0L
+                }
+            return SQLiteDatabase.openDatabase(database.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+                JSONObject().put(DISCHARGES, count(db, SessionKind.DISCHARGE)).put(CHARGES, count(db, SessionKind.CHARGE))
+            }
+        }
+
+        private fun counts(file: File): JSONObject? =
+            try {
+                file.takeIf { it.isFile }?.let { JSONObject(it.readText()) }
+            } catch (_: JSONException) {
+                null
+            }
 
         private fun version(): Pair<String, Long> {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -262,9 +354,13 @@ public class DataTransfer
             const val ARCHIVES = "archives"
             const val SNAPSHOTS = "snapshots"
             const val SCRATCH = "transfer"
+            const val TAG = "DataTransfer"
             const val STAGING = ".staging-"
             const val DATABASE = "coulomb.db"
             const val MANIFEST = "manifest.json"
+            const val SUMMARY = "summary.json"
+            const val DISCHARGES = "discharges"
+            const val CHARGES = "charges"
 
             /** A model name is shown as plain text; one from a file is cut to a line. */
             const val MAX_MODEL = 64

@@ -7,6 +7,7 @@ import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 import io.github.akane599.coulomb.core.collect.CapabilityStore
 import io.github.akane599.coulomb.core.common.AppScope
+import io.github.akane599.coulomb.core.data.DataTransfer
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
@@ -35,6 +36,8 @@ class CoulombApplication : Application() {
 
     @Inject lateinit var previews: WidgetPreviews
 
+    @Inject lateinit var transfer: DataTransfer
+
     override fun onCreate() {
         super.onCreate()
         // SPEC 4.1: T1 grants are re-verified at every start; Shizuku listeners attach here.
@@ -56,6 +59,8 @@ class CoulombApplication : Application() {
                 .collect(privilegeNotifications::onIssue)
         }
         scope.launch { previews.publishIfNew() }
+        // What a killed import or export left behind can be large; it goes at the next start (ADR-0062 §11).
+        scope.launch { transfer.sweep() }
     }
 }
 
