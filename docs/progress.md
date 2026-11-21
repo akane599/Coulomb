@@ -242,6 +242,11 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
 - **Whole-app design gate, run 8 (2026-11-22). Clean:** audit and critique both 0 critical, 0
   major. With run 7, two consecutive clean runs: **the whole-app design gate passes** (SPEC 11.12,
   ADR-0069 §12). Run 8's minors are recorded open in its gate files.
+- **P6 status (2026-11-22).** Everything SPEC 18 asks that the build server can prove is done. What
+  is left waits on a device or the owner (the table below): the queued emulator runs (a resizable
+  window, the Automation API with a caller app, Settings' new rows and Lite mode on a device), which
+  wait because the emulator host was offline on 2026-11-22; the deferred phone runs; the Action
+  Center's first writes; and the release key and first release.
 
 ### SPEC 18 status (2026-11-22)
 
