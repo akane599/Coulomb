@@ -130,6 +130,7 @@
     <string name="drain_wake_kernel">Kernel wakelocks</string>
     <string name="drain_wake_reasons">Wakeup reasons</string>
     <string name="drain_wake_alarms">Alarms</string>
+    <string name="drain_alarm_rate">%1$s an hour</string>
     <plurals name="drain_times">
         <item quantity="one">%1$s time</item>
         <item quantity="other">%1$s times</item>

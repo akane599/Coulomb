@@ -124,6 +124,7 @@
     <string name="drain_wake_partial">Kısmi uyanık tutmalar</string>
     <string name="drain_wake_kernel">Çekirdek uyanık tutmaları</string>
     <string name="drain_wake_reasons">Uyandırma nedenleri</string>
+    <string name="drain_alarm_rate">Saatte %1$s</string>
     <string name="drain_wake_alarms">Alarmlar</string>
     <plurals name="drain_times">
         <item quantity="one">%1$s kez</item>

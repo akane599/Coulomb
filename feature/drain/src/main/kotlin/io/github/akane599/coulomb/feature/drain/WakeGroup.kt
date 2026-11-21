@@ -198,7 +198,7 @@ private fun LazyListScope.alarmItems(
         toggle = { lists.toggleGroup(ALARMS_BIT) },
         formats = formats,
         rowKey = { "alarm-${it.uid}" },
-    ) { alarm, first -> AlarmRow(alarm, alarm.wakeups / alarmWakeups, first, formats) }
+    ) { alarm, first -> AlarmRow(alarm, alarm.wakeups / alarmWakeups, report.basisMs(WakeBasis.ALARMS), first, formats) }
 }
 
 /** A run of a Wakeups group's rows; [subsystem] heads it in the Kernel group and is null elsewhere. */
@@ -432,15 +432,18 @@ private fun WakeRow(
 private fun AlarmRow(
     entry: AlarmEntry,
     share: Double,
+    basisMs: Long,
     first: Boolean,
     formats: Formats,
 ) {
     val value = pluralStringResource(R.plurals.drain_alarm_wakeups, entry.wakeups.toQuantity(), formats.integer(entry.wakeups))
+    // SPEC 2, "per hour": S5 counts them only with the screen off on battery, the group's basis line.
+    val rate = basisMs.takeIf { it >= MIN_RATE_MS }?.let { entry.wakeups / (it / MS_PER_HOUR) }
     RecordRow(
         if (entry.smallApps) stringResource(R.string.drain_small_apps) else formats.appName(entry.label, entry.uid),
         tag = null,
         meaning = null,
-        facts = null,
+        facts = rate?.let { stringResource(R.string.drain_alarm_rate, formats.decimal(it)) },
         value = value,
         share = share,
         first = first,
