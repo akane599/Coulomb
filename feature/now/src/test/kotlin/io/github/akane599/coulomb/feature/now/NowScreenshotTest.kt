@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
@@ -29,10 +30,17 @@ import io.github.akane599.coulomb.core.data.LevelPoint
 import io.github.akane599.coulomb.core.data.StateRate
 import io.github.akane599.coulomb.core.data.WindowDrains
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.model.InsightState
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.Insight
+import io.github.akane599.coulomb.core.model.insight.RuleId
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -110,6 +118,41 @@ class NowScreenshotTest {
     @Test
     @Config(qualifiers = "w412dp-h2000dp-xhdpi")
     fun dischargingWholePageLargeText() = shoot("discharging-page-200", discharging(), fontScale = 2f)
+
+    /** SPEC 10.2 insights: two cards between the top drains and the live current, most severe first. */
+    @Test
+    @Config(qualifiers = "w412dp-h2000dp-xhdpi")
+    fun insights() = shoot("insights", withInsights())
+
+    @Test
+    @Config(qualifiers = "w412dp-h2000dp-night-xhdpi")
+    fun insightsDark() = shoot("insights-dark", withInsights(), dark = true)
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h2000dp-xhdpi")
+    fun insightsTurkish() = shoot("insights-tr", withInsights())
+
+    @Test
+    @Config(qualifiers = "w412dp-h3000dp-xhdpi")
+    fun insightsLargeText() = shoot("insights-200", withInsights(), fontScale = 2f)
+
+    @Test
+    @Config(qualifiers = "w1000dp-h1400dp-xhdpi")
+    fun insightsExpanded() = shoot("insights-expanded", withInsights())
+
+    /** "Why am I seeing this?": the rule, what was measured, its threshold and the period. */
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun insightEvidence() {
+        val state = withInsights()
+        compose.setContent {
+            CoulombTheme {
+                val copy = InsightCopy(LocalResources.current, rememberFormats())
+                DataTableSheet(copy.evidence(state.insights.first().insight, ZoneOffset.UTC, NOW), onDismiss = {})
+            }
+        }
+        captureScreenRoboImage("src/test/screenshots/now-insight-evidence.png")
+    }
 
     @Test
     fun loading() = shoot("loading", NowUiState.Loading)
@@ -255,6 +298,25 @@ private fun discharging() =
         live = live(),
         issue = null,
     )
+
+/** An app that held the phone awake (Act) and a night that drained faster than usual (Watch). */
+private fun withInsights(): NowUiState.Ready {
+    fun insight(
+        id: Long,
+        rule: RuleId,
+        uid: Int?,
+        evidence: Evidence,
+    ) = Insight(id, rule, rule.severity, InsightState.SEEN, null, uid, null, evidence, NOW)
+    val day = Evidence(2.57, 2.0, EvidenceUnit.HOURS, NOW - 24 * HOUR, NOW)
+    val night = Evidence(1.24, 1.0, EvidenceUnit.PERCENT_PER_HOUR, NOW - 11 * HOUR, NOW - 8 * HOUR, mapOf("median" to 0.5))
+    return discharging().copy(
+        insights =
+            listOf(
+                ShownInsight(insight(1, RuleId.EXCESSIVE_WAKELOCK, 10_123, day), "Halcyon"),
+                ShownInsight(insight(2, RuleId.HIGH_SCREEN_OFF_DRAIN, null, night), null),
+            ),
+    )
+}
 
 private fun hardened(): NowUiState.Ready {
     val base = discharging()

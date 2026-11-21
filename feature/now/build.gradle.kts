@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(projects.core.data)
     implementation(projects.core.collect)
+    implementation(projects.core.insights)
     implementation(projects.core.privileged)
     implementation(libs.androidx.activity.compose)
 }

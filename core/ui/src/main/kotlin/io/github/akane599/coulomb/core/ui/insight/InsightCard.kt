@@ -12,10 +12,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,9 +33,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombFilledButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombIconButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.component.hangVertically
 import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombRadius
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
@@ -61,6 +62,9 @@ public class InsightAction(
 private val ChipHeight = 28.dp
 private val ChipPadding = 10.dp
 
+/** The 48 dp overflow target takes the chip's 28 dp in the head, 10 dp hanging out above and below. */
+private val OverflowHang = 10.dp
+
 /** A severity as a chip: Act is `critical`, Watch `caution`, Info `text-primary` on `surface-raised` (DESIGN.md, Chips). */
 @Composable
 public fun SeverityChip(
@@ -76,10 +80,11 @@ public fun SeverityChip(
         }
     Box(
         modifier
-            .height(ChipHeight)
+            // At least 28 dp: large text makes the chip taller instead of cutting its label.
+            .heightIn(min = ChipHeight)
             .clip(RoundedCornerShape(CoulombRadius.Chip))
             .background(background)
-            .padding(horizontal = ChipPadding),
+            .padding(horizontal = ChipPadding, vertical = CoulombSpacing.Space4),
         contentAlignment = Alignment.Center,
     ) {
         Text(stringResource(label), color = content, style = CoulombTheme.typography.label, maxLines = 1, softWrap = false)
@@ -115,10 +120,10 @@ public fun InsightCard(
             ),
     ) {
         // The chip sets the head's height; the 48 dp overflow target hangs into the card's padding.
-        Row(Modifier.fillMaxWidth().height(ChipHeight), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = ChipHeight), verticalAlignment = Alignment.CenterVertically) {
             SeverityChip(severity)
             Spacer(Modifier.weight(1f))
-            Overflow(actions, Modifier.wrapContentHeight(unbounded = true).offset(x = CoulombSpacing.Space12))
+            Overflow(actions, Modifier.hangVertically(OverflowHang).offset(x = CoulombSpacing.Space12))
         }
         Text(
             text.title,
@@ -133,7 +138,12 @@ public fun InsightCard(
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             if (action != null) CoulombFilledButton(action.label, action.run)
-            CoulombTextButton(stringResource(R.string.insight_why), actions.why)
+            // Alone, the question starts where the text above it starts; after a button it keeps its own padding.
+            CoulombTextButton(
+                stringResource(R.string.insight_why),
+                actions.why,
+                edge = if (action == null) ButtonEdge.Start else ButtonEdge.None,
+            )
         }
     }
 }

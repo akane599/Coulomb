@@ -284,7 +284,9 @@ public class InsightCopy(
 
     private fun smallPercent(percent: Double): String = resources.getString(R.string.insight_percent_decimal, formats.decimal(percent))
 
-    private fun rate(pctPerHour: Double): String = resources.getString(R.string.insight_rate, formats.rate(pctPerHour), formats.rateUnit)
+    /** The rate with its unit; a word joiner after the slash keeps "%/h" on one line in a sentence. */
+    private fun rate(pctPerHour: Double): String =
+        resources.getString(R.string.insight_rate, formats.rate(pctPerHour), formats.rateUnit.replace("/", "/\u2060"))
 
     private fun celsius(degrees: Double): String = formats.celsius(degrees * DECI).joined()
 

@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.InsightDao
 import io.github.akane599.coulomb.core.database.entity.InsightEntity
 import io.github.akane599.coulomb.core.model.InsightSeverity
@@ -10,7 +11,14 @@ import io.github.akane599.coulomb.core.model.InsightState
 import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.model.insight.RuleId
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+
+/** An open insight with the name of the app it is about or points at; null when it has none or the name is not known. */
+public data class ShownInsight(
+    val insight: Insight,
+    val appLabel: String?,
+)
 
 /**
  * The stored insights: what the rules found, through the lifecycle (SPEC 9.1, 9.4), and what the
@@ -19,6 +27,7 @@ import kotlinx.coroutines.flow.map
  */
 public class InsightStore(
     private val dao: InsightDao,
+    private val devices: DeviceDao,
 ) {
     /**
      * Applies [candidates] as of [nowWallMs]: opens an insight, raises or refreshes the open one, or
@@ -59,6 +68,13 @@ public class InsightStore(
     public fun observeOpen(): Flow<List<Insight>> =
         dao.observeInState(listOf(InsightState.NEW, InsightState.SEEN)).map { rows ->
             rows.mapNotNull(::read).sortedWith(compareByDescending<Insight> { it.severity }.thenByDescending { it.createdWallMs })
+        }
+
+    /** The first [limit] of [observeOpen], each with its app's name: what a screen shows. */
+    public fun observeShown(limit: Int): Flow<List<ShownInsight>> =
+        combine(observeOpen(), devices.observeUidMeta()) { open, meta ->
+            val labels = meta.associate { it.uid to it.label }
+            open.take(limit).map { insight -> ShownInsight(insight, insight.uid?.let(labels::get)?.takeIf { it.isNotBlank() }) }
         }
 
     /** The insight was shown on screen. */

@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.entity.InsightEntity
+import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.model.InsightSeverity
 import io.github.akane599.coulomb.core.model.InsightState
 import io.github.akane599.coulomb.core.model.insight.Evidence
@@ -33,7 +34,7 @@ class InsightStoreTest {
     @Before
     fun open() {
         db = CoulombDatabase.inMemory(ApplicationProvider.getApplicationContext<Context>())
-        store = InsightStore(db.insightDao())
+        store = InsightStore(db.insightDao(), db.deviceDao())
     }
 
     @After
@@ -119,6 +120,23 @@ class InsightStoreTest {
             assertThat(shown()).isEmpty()
             assertThat(store.record(listOf(found(RuleId.HOT_BATTERY, null, 48.0, InsightSeverity.ACT)), now + 24 * hour)).isEmpty()
             assertThat(store.record(listOf(found(RuleId.HOT_BATTERY, null, 48.0, InsightSeverity.ACT)), now + 25 * hour)).hasSize(1)
+        }
+
+    @Test
+    fun shownInsightsCarryTheirAppsNameAndStopAtTheLimit() =
+        runTest {
+            db.deviceDao().upsertUidMeta(
+                listOf(UidMetaEntity(10_123, "[\"com.example.halcyon\"]", "Halcyon", false, "com.example.halcyon", now)),
+            )
+            store.record(listOf(found(RuleId.SCAN_HEAVY, null, 30.0)), now)
+            store.record(listOf(found(RuleId.JOB_CHURN, Subject.app(10_123), 80.0)), now + 1)
+            // The app a device insight points at has no stored name yet.
+            store.record(listOf(found(RuleId.HOT_BATTERY, null, 46.0, relatedUid = 10_999)), now + 2)
+
+            val all = store.observeShown(10).first()
+            assertThat(all.associate { it.insight.rule to it.appLabel })
+                .containsExactly(RuleId.SCAN_HEAVY, null, RuleId.JOB_CHURN, "Halcyon", RuleId.HOT_BATTERY, null)
+            assertThat(store.observeShown(2).first().map { it.insight }).isEqualTo(shown().take(2))
         }
 
     @Test

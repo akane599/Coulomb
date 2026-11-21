@@ -10,6 +10,7 @@ import io.github.akane599.coulomb.core.data.CurrentPoint
 import io.github.akane599.coulomb.core.data.DischargeSummary
 import io.github.akane599.coulomb.core.data.LevelPoint
 import io.github.akane599.coulomb.core.data.WindowDrains
+import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
 
 /** What Now shows (SPEC 10.2), in the states of SPEC 10.11. */
@@ -31,6 +32,8 @@ internal sealed interface NowUiState {
         val live: List<CurrentPoint>,
         /** A missing capability to explain inline (SPEC 10.11 partial), or null. */
         val issue: PrivilegeIssue?,
+        /** The open insights Now shows: at most [MAX_INSIGHTS], highest severity first (SPEC 10.2). */
+        val insights: List<ShownInsight> = emptyList(),
     ) : NowUiState {
         /** The three largest drains (SPEC 10.2). */
         val topDrains: List<AppDrain> get() = drains?.apps.orEmpty().take(TOP_DRAINS)
@@ -45,5 +48,6 @@ internal sealed interface NowUiState {
 
     companion object {
         const val TOP_DRAINS = 3
+        const val MAX_INSIGHTS = 2
     }
 }

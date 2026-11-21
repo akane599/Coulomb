@@ -56,6 +56,8 @@ import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
+import io.github.akane599.coulomb.core.insights.InsightStore
+import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.AppDrainRow
 import io.github.akane599.coulomb.core.ui.FigureText
@@ -66,6 +68,9 @@ import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.format.Affixed
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.Rounding
+import io.github.akane599.coulomb.core.ui.insight.InsightCard
+import io.github.akane599.coulomb.core.ui.insight.InsightCardActions
+import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
 import java.time.ZoneId
@@ -420,6 +425,39 @@ private fun StripFigure(figure: Affixed) {
 @Composable
 private fun Collecting() {
     Text(stringResource(R.string.now_collecting), color = CoulombTheme.colors.textSecondary, style = CoulombTheme.typography.data)
+}
+
+/**
+ * SPEC 10.2 insights: at most two, highest severity first, each on its card (DESIGN.md: cards
+ * stack 12 dp apart). Nothing when none is open: an empty section would only say "nothing here".
+ */
+@Composable
+internal fun Insights(
+    insights: List<ShownInsight>,
+    copy: InsightCopy,
+    actions: NowActions,
+    onWhy: (id: Long) -> Unit,
+) {
+    if (insights.isEmpty()) return
+    Column(Modifier.padding(top = currentSectionGap()), verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space12)) {
+        CoulombSectionHead(title = stringResource(R.string.now_insights))
+        for (shown in insights) {
+            val id = shown.insight.id
+            key(id) {
+                InsightCard(
+                    severity = shown.insight.severity,
+                    text = copy.text(shown.insight, shown.appLabel),
+                    actions =
+                        InsightCardActions(
+                            why = { onWhy(id) },
+                            snoozeDay = { actions.snoozeInsight(id, InsightStore.SNOOZE_DAY_MS) },
+                            snoozeWeek = { actions.snoozeInsight(id, InsightStore.SNOOZE_WEEK_MS) },
+                            dismiss = { actions.dismissInsight(id) },
+                        ),
+                )
+            }
+        }
+    }
 }
 
 /** SPEC 10.2 top drains: three rows and "See all". */

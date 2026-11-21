@@ -14,9 +14,12 @@ import io.github.akane599.coulomb.core.data.BatteryRepository
 import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.insights.InsightStore
+import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +31,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -41,6 +45,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 public class NowViewModel
     @Inject
+    @Suppress("LongParameterList") // One source for each thing Now shows; Hilt supplies them.
     constructor(
         battery: BatteryRepository,
         drains: DrainRepository,
@@ -48,6 +53,7 @@ public class NowViewModel
         private val icons: AppIcons,
         private val collector: Collector,
         private val window: ChosenWindow,
+        private val insights: InsightStore,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
         private val refreshing = MutableStateFlow(false)
@@ -72,7 +78,9 @@ public class NowViewModel
                             )
                         }
                     }.combine(access.state.map { it.issue }.distinctUntilChanged()) { ready, issue ->
-                        ready?.copy(issue = issue) ?: NowUiState.Loading
+                        ready?.copy(issue = issue)
+                    }.combine(shownInsights()) { ready, shown ->
+                        ready?.copy(insights = shown) ?: NowUiState.Loading
                     }.catch { emit(NowUiState.Error) }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), NowUiState.Loading)
 
@@ -90,6 +98,28 @@ public class NowViewModel
                 withTimeoutOrNull(REFRESH_WAIT_MS) { windows.drop(1).first() }
                 refreshing.value = false
             }
+        }
+
+        /**
+         * The insights Now shows. This flow runs only while Now is on screen, so what passes through
+         * it has been shown: a new insight becomes seen (SPEC 9.4).
+         */
+        private fun shownInsights(): Flow<List<ShownInsight>> =
+            insights.observeShown(NowUiState.MAX_INSIGHTS).onEach { shown ->
+                val now = System.currentTimeMillis()
+                shown.forEach { insights.seen(it.insight, now) }
+            }
+
+        /** Snoozes the insight for [forMs] ([InsightStore.SNOOZE_DAY_MS], [InsightStore.SNOOZE_WEEK_MS]). */
+        internal fun snoozeInsight(
+            id: Long,
+            forMs: Long,
+        ) {
+            viewModelScope.launch { insights.snooze(id, System.currentTimeMillis(), forMs) }
+        }
+
+        internal fun dismissInsight(id: Long) {
+            viewModelScope.launch { insights.dismiss(id, System.currentTimeMillis()) }
         }
 
         /** "See all": Drain opens on the window Now shows. */

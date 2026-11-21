@@ -35,7 +35,10 @@ import javax.inject.Singleton
 object InsightsModule {
     @Provides
     @Singleton
-    fun store(dao: InsightDao): InsightStore = InsightStore(dao)
+    fun store(
+        dao: InsightDao,
+        devices: DeviceDao,
+    ): InsightStore = InsightStore(dao, devices)
 
     /** Reads the bundled thresholds on first use, off the main thread: the collector asks for it. */
     @Provides

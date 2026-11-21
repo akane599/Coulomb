@@ -31,11 +31,14 @@ class InsightCopyTest {
         return InsightCopy(resources, Formats(resources, Locale.forLanguageTag(language), "HH:mm", "HH:mm:ss"))
     }
 
-    /** The text with its no-break spaces as plain ones, so expectations stay readable. */
+    /** The text with its no-break spaces as plain ones and without word joiners, so expectations stay readable. */
     private fun InsightCopy.plain(
         insight: Insight,
         appName: String?,
-    ): InsightText = text(insight, appName).let { InsightText(it.title.replace('\u00A0', ' '), it.body.replace('\u00A0', ' ')) }
+    ): InsightText {
+        fun plain(text: String) = text.replace('\u00A0', ' ').replace("\u2060", "")
+        return text(insight, appName).let { InsightText(plain(it.title), plain(it.body)) }
+    }
 
     private fun insight(
         rule: RuleId,

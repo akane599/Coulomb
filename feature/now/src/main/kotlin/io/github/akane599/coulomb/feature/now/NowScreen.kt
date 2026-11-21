@@ -21,11 +21,13 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -46,11 +48,12 @@ import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.page.ErrorState
 import java.time.ZoneId
 
 /**
- * Now (SPEC 10.2): the three-second answer. Insights join in P5 (SPEC 17).
+ * Now (SPEC 10.2): the three-second answer.
  *
  * @param onSeeAllDrains opens Drain with the same window.
  * @param onOpenPrivileges opens Privileges, where a missing capability is fixed.
@@ -79,6 +82,8 @@ public fun NowScreen(
                 },
                 openPrivileges = onOpenPrivileges,
                 icon = viewModel::icon,
+                snoozeInsight = viewModel::snoozeInsight,
+                dismissInsight = viewModel::dismissInsight,
             ),
         modifier = modifier,
     )
@@ -91,6 +96,8 @@ internal class NowActions(
     val seeAllDrains: () -> Unit,
     val openPrivileges: () -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
+    val snoozeInsight: (id: Long, forMs: Long) -> Unit = { _, _ -> },
+    val dismissInsight: (id: Long) -> Unit = {},
 )
 
 /** What the Macrobenchmark waits for: Now's content once the verdict shows (SPEC 16.5). */
@@ -113,6 +120,10 @@ internal fun NowContent(
 ) {
     val formats = rememberFormats()
     var table by rememberSaveable { mutableStateOf<OpenTable?>(null) }
+    // The insight whose "Why am I seeing this?" is open, by id.
+    var why by rememberSaveable { mutableStateOf<Long?>(null) }
+    val resources = LocalResources.current
+    val copy = remember(resources, formats) { InsightCopy(resources, formats) }
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = actions.refresh, modifier = modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -144,6 +155,7 @@ internal fun NowContent(
                             Hero(state, formats, zone, onViewTable = { table = OpenTable.LEVEL })
                             if (state.discharge != null) SessionStrip(state.discharge, formats)
                             TopDrains(state, formats, zone, actions)
+                            Insights(state.insights, copy, actions, onWhy = { why = it })
                             LiveCurrent(state, formats, onViewTable = { table = OpenTable.CURRENT })
                         }
                     }
@@ -155,6 +167,11 @@ internal fun NowContent(
     val open = table
     if (ready != null && open != null) {
         DataTableSheet(table = tableOf(open, ready, formats, zone), onDismiss = { table = null })
+    }
+    // An insight that left the list while its sheet was open closes the sheet with it.
+    val asked = ready?.insights?.firstOrNull { it.insight.id == why }
+    if (ready != null && asked != null) {
+        DataTableSheet(table = copy.evidence(asked.insight, zone, ready.battery.wallMs), onDismiss = { why = null })
     }
 }
 
