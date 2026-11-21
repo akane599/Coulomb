@@ -81,3 +81,16 @@ accurate, cheaper, easier-to-revert option and record it. Every number below liv
   protection setting, standby buckets).
 - Until those additions land, R15 and R16 find nothing and R10 sees job counts only. That is the
   honest result of decision 4, not a defect in the rules.
+
+## Gate amendments (2026-11-21)
+
+From the P5 per-screen gates (`docs/design-gates/2026-11-21-gates-wake-source-insight-cards-widgets.md`).
+
+1. **A card's title names its period** where the rule counts over a day (R01, R06, R09: "in a
+   day"), so it cannot be read as the window Drain or App detail is showing.
+2. **A time shown with evidence carries its day**: the clock alone today, weekday and clock within
+   a week, date and clock from the seventh day back. The Action Center's log uses the same rule.
+3. **No effect is promised**: a body says an action "usually lowers" a figure, never that it stops
+   it; nothing was measured.
+4. **Snooze and Dismiss act on one tap, without an undo.** The app has no snackbar. Whether it
+   gets one is decided for all screens in the whole-app pass.

@@ -97,3 +97,25 @@ data pulled from the phone on 2026-11-21 showed four more things the spec does n
 
 The read models are additive: `NightRepository`, `TimelineRepository` and `DrainSpan.Night` can be
 removed without a schema change. Nothing is written to the database.
+
+## Gate amendments (2026-11-21)
+
+From the P5 per-screen gates (`docs/design-gates/2026-11-21-gates-timeline-night-report.md`).
+
+1. **The Timeline's view model reads the privilege state** (`:feature:timeline` depends on
+   `:core:privileged`, as Drain does). Access lost shows SPEC 4.5's block; Basic mode shows one
+   sentence and "Open Privileges". Stored history is still drawn in either case.
+2. **A read has three outcomes on the page**: running ("Reading this range…"), failed (a line and
+   "Try again" above what was read before) and done. "No history" is said only for the last.
+3. **The window moves without a gesture.** "Earlier" and "Later" beside the readout move it half
+   its length; the chart exposes both as accessibility actions; a sideways wheel or trackpad
+   scroll moves it and Ctrl with the wheel zooms about the pointer. A plain wheel stays the page's.
+4. **The night's chart has no header mark.** It draws a Modeled level and Measured tracks; a line
+   under it names both.
+5. **Wakeups are counted as exactly as the data is**: a count under an hour of history, a whole
+   "about N an hour" over more.
+6. **Band tap targets stay 22 dp.** A tap picks by band and the details name the track; 48 dp
+   bands would double the chart's height.
+7. **The scrub haptic is `SegmentFrequentTick`**, the platform's constant for a control crossing
+   a step, where SPEC 11.6 names `CLOCK_TICK`.
+8. **A scrub clears the pick**, so the side panel never describes marks the cursor has left.

@@ -69,3 +69,18 @@ Glance cuts text that does not fit at a character, not at a word.
 ## Reverting
 
 Remove the receivers, the tile service and the `refresh` call. Nothing is stored.
+
+## Gate amendments (2026-11-21)
+
+From the P5 per-screen gates (`docs/design-gates/2026-11-21-gates-wake-source-insight-cards-widgets.md`).
+
+1. **Every widget picks its lines by fit.** Text widths are estimated from the character count,
+   the text size and the font scale; a line that would not fit is left out or takes its short
+   form, in a fixed order per widget. Nothing is cut at the declared minimum or at 200% text.
+   Level's minimum height is 50 dp.
+2. **Health shows the estimate's range**: the low and high bounds, or "± N" where they do not
+   fit, before health and cycles.
+3. **The first layout is static**: the app's ground colour, light and dark, in place of Glance's
+   spinner.
+4. **Top drains is titled "Share of drain since unplugged"**, and the night's end always carries
+   its weekday, since a widget is not redrawn at midnight.

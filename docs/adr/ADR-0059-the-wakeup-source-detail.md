@@ -57,3 +57,15 @@ do. It does not say what "correlate" means, which sessions, or where the page li
 ## Reverting
 
 Remove the route, the screen and `WakeSourceRepository`. Nothing is stored.
+
+## Gate amendments (2026-11-21)
+
+From the P5 per-screen gates (`docs/design-gates/2026-11-21-gates-wake-source-insight-cards-widgets.md`).
+
+1. **Advice follows what the page shows.** A line that points at "an app above" is used only
+   when the apps table is shown; otherwise it points to Partial wakelocks and Alarms in Drain.
+2. **A cause Coulomb did not observe is "usually"**, not a statement.
+3. **A night collected in part reads "at least N"**, and a section without a figure has no mark.
+4. **Names break after `,` and `-` too**, so device-tree names wrap between their parts.
+5. **Night rows do not open the night.** A feature module cannot reach another's screen
+   (SPEC 15.2), and the count per night is the row's whole content.

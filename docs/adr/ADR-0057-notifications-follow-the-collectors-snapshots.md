@@ -77,3 +77,16 @@ may be told.
 
 Remove the `surface` package and bind the insight runner as a `SnapshotObserver` again. The four
 proto fields can stay unused.
+
+## Gate amendments (2026-11-21)
+
+From the P5 per-screen gates (`docs/design-gates/2026-11-21-gates-action-center-settings.md`).
+
+1. **Settings asks for the notification permission** when an alarm or the digest is turned on
+   while Coulomb may not post. While one is on and notifications are off, the Alerts section says
+   so and offers "Allow notifications": the system's prompt, or the app's notification page after
+   a refusal. The switch still stores its value; the screen reads the permission on every return.
+2. **The temperature alarm's note says it is checked while the phone is awake**, which is what
+   "Consequences" above records.
+3. **Thresholds and digest times are presets**, where SPEC 14.4 gives a range and "Time": five
+   temperatures and six times, and a stored value outside them joins its group.

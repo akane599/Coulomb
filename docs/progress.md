@@ -112,6 +112,15 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   - **Nothing here has run on a device.** The engine is tested against an in-memory phone
     (32 tests); the first real writes wait for the owner's yes, also on the emulator
     (`docs/questions.md`).
+- **Per-screen `/impeccable` gates (SPEC 11.12), 2026-11-21.** Three independent reviews, each with
+  all eight command references, covered the P5 screens: the wakeup source detail, insight cards and
+  widgets; the Action Center, app actions and Settings' new rows; the Timeline and the Night Report.
+  No critical finding; 15 major, all fixed (`docs/design-gates/2026-11-21-gates-*.md`, with every
+  minor's disposition). The larger ones: the Timeline now says locked, reading and failed apart
+  from "no history" and can be moved without two fingers; Settings asks for the notification
+  permission when an alarm is turned on; the Health widget shows its range and every widget picks
+  its lines by fit; a no-helper preview says how to undo; the Action Center's Turkish is in "sen".
+  - Next: the whole-app audit and critique, repeated until two runs in a row find nothing above minor.
 
 ## P4 Core screens (gate deferred: protocol C)
 

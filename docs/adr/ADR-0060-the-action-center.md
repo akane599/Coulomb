@@ -187,3 +187,22 @@ taken unless a section says otherwise.
 
 Remove the `actions` package, the worker's action methods and the feature's screens. The action
 log table stays as it was.
+
+## Gate amendments (2026-11-21)
+
+From the P5 per-screen gates (`docs/design-gates/2026-11-21-gates-action-center-settings.md`).
+
+1. **Without the worker a preview still says how to undo**, where the inverse does not depend on
+   a value read from the phone (restrict background, the Doze allowlist, battery saver), and
+   that a change run by hand is not in the log and cannot be reverted by Coulomb. Where the
+   inverse needs the value, the preview says so. A Doze profile's rows are inert there (§25).
+2. **A profile row says what this phone would get**: "to N" only when the profile shortens the
+   time to deep Doze; otherwise what it changes and that the time stays.
+3. **A command is shown with break points after commas and spaces and is not selectable**; the
+   copy button copies the raw line. A selection would carry the break marks into a terminal.
+4. **A result is said where it happened**: a revert's under the Log's title, any other at the
+   top, brought into view, with the confirm or reject haptic of SPEC 11.6.
+5. **State rows read "Now: …"**, so a row's value is never mistaken for what the action sets.
+6. **The log is one eager list.** Rows come only from the user's own actions.
+7. **Risk stays a word.** Severity chips are the insights' vocabulary; the one irreversible
+   action has its second confirmation.
