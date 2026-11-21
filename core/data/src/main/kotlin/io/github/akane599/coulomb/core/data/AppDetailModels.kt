@@ -27,6 +27,12 @@ public data class AppDetailReport(
     /** Its wake records, longest first, from [report]'s, with [report]'s coverage. */
     val wakes: List<WakeEntry>,
     val counters: AppCounters,
+    /**
+     * The longest single hold of each of the app's partial wakelocks, by tag, as Android's
+     * statistics had it at the span's end: since those statistics began, on battery, so a hold may
+     * lie before the span. Empty when that snapshot's wakelock rows are no longer kept. Measured.
+     */
+    val longestHolds: Map<String, Long> = emptyMap(),
     /** The last 14 local days, oldest first, today last. */
     val trend: List<DayUse>,
     /** The app's last update, from the platform, when it falls in [trend]'s days (ADR-0041 §5). */
@@ -89,21 +95,46 @@ public data class AppCounters(
      * line). The per-tag rows overlap, so their sum is not this (ADR-0039 §4).
      */
     val partialWakelockMs: Long? = null,
+    /** Processor time in the app's own code. Measured. */
+    val cpuUserMs: Long? = null,
+    /** Processor time the kernel spent on the app's calls. Measured. */
+    val cpuSystemMs: Long? = null,
+    /**
+     * The app's share of the time the mobile radio was active. Android splits that time among the
+     * apps by their packets (BatteryStatsImpl, android-16.0.0_r4 L12250-12266, android-17.0.0_r1
+     * L11840-11859), so it is Modeled, not a time the app held the radio.
+     */
+    val radioActiveMs: Long? = null,
+    /** Time its syncs ran. Measured. */
+    val syncMs: Long? = null,
+    /** Jobs Android stopped as abandoned (Android 16 and later); null where S5 does not report it. */
+    val jobsAbandoned: Long? = null,
 ) {
+    /** Both halves of the processor time, when either was recorded. */
+    val cpuMs: Long? get() = if (cpuUserMs == null && cpuSystemMs == null) null else (cpuUserMs ?: 0) + (cpuSystemMs ?: 0)
+
     /** Every counter, a missing one as 0: for an app whose records were all read. */
     internal fun zeroFilled(): AppCounters =
         AppCounters(
-            alarmWakeups = alarmWakeups ?: 0,
-            jobCount = jobCount ?: 0,
-            jobRuntimeMs = jobRuntimeMs ?: 0,
-            mobileRxBytes = mobileRxBytes ?: 0,
-            mobileTxBytes = mobileTxBytes ?: 0,
-            wifiRxBytes = wifiRxBytes ?: 0,
-            wifiTxBytes = wifiTxBytes ?: 0,
-            foregroundActivityMs = foregroundActivityMs ?: 0,
-            foregroundServiceMs = foregroundServiceMs ?: 0,
-            partialWakelockMs = partialWakelockMs ?: 0,
+            alarmWakeups = alarmWakeups.orZero(),
+            jobCount = jobCount.orZero(),
+            jobRuntimeMs = jobRuntimeMs.orZero(),
+            mobileRxBytes = mobileRxBytes.orZero(),
+            mobileTxBytes = mobileTxBytes.orZero(),
+            wifiRxBytes = wifiRxBytes.orZero(),
+            wifiTxBytes = wifiTxBytes.orZero(),
+            foregroundActivityMs = foregroundActivityMs.orZero(),
+            foregroundServiceMs = foregroundServiceMs.orZero(),
+            partialWakelockMs = partialWakelockMs.orZero(),
+            cpuUserMs = cpuUserMs.orZero(),
+            cpuSystemMs = cpuSystemMs.orZero(),
+            radioActiveMs = radioActiveMs.orZero(),
+            syncMs = syncMs.orZero(),
+            // Not every build reports abandoned stops, so a missing count stays unknown.
+            jobsAbandoned = jobsAbandoned,
         )
+
+    private fun Long?.orZero(): Long = this ?: 0
 }
 
 /**

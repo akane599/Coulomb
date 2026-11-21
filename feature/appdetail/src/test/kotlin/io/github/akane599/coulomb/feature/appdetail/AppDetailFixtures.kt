@@ -58,6 +58,7 @@ internal fun labWakes(): List<WakeEntry> =
         WakeEntry(WakeKind.PARTIAL, UID, "Halcyon", PACKAGE, "*job*r/$PACKAGE/.sync.FeedPrefetchJob", 22 * MINUTE, 31, 1.0, null),
         WakeEntry(WakeKind.PARTIAL, UID, "Halcyon", PACKAGE, "HalcyonPush:NotificationWakeLock", 9 * MINUTE, 41, 0.95, null),
         WakeEntry(WakeKind.PARTIAL, UID, "Halcyon", PACKAGE, "ExoPlayer:WakeLockManager", 6 * MINUTE, 2, 0.0, null),
+        WakeEntry(WakeKind.PARTIAL, UID, "Halcyon", PACKAGE, "*sync*/app.halcyon.feeds/app.halcyon", 4 * MINUTE, 12, 0.75, null),
     )
 
 internal fun labReport(drains: WindowDrains = labDrains()): DrainReport =
@@ -119,6 +120,16 @@ internal fun labDetail(
         processStates = if (brokenDown && used) ProcessStates(236.0, 98.0, 51.0, 17.0, null) else null,
         wakes = if (used) labWakes() else emptyList(),
         counters = if (used) counters else AppCounters(),
+        longestHolds =
+            if (used) {
+                mapOf(
+                    "*job*r/$PACKAGE/.sync.FeedPrefetchJob" to 3 * MINUTE,
+                    "HalcyonPush:NotificationWakeLock" to 2 * MINUTE,
+                    "ExoPlayer:WakeLockManager" to 4 * MINUTE,
+                )
+            } else {
+                emptyMap()
+            },
         trend = trend,
         updatedWallMs = UPDATED.atTime(9, 0).toInstant(ZoneOffset.UTC).toEpochMilli(),
     )
@@ -136,4 +147,8 @@ internal fun labCounters(): AppCounters =
         foregroundServiceMs = 18 * MINUTE,
         // Its three wakelock rows (9, 6 and 22 min) overlap: the app's own total is less than their sum.
         partialWakelockMs = 24 * MINUTE,
+        cpuUserMs = 38 * MINUTE,
+        cpuSystemMs = 9 * MINUTE,
+        radioActiveMs = 33 * MINUTE,
+        syncMs = 5 * MINUTE,
     )

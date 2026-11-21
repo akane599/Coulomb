@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.dao.SessionDao
+import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
@@ -79,6 +80,7 @@ internal abstract class DrainDbTest {
         plugType: Int = 0,
         level: Int = 80,
         kind: SnapshotKind = SnapshotKind.HEAVY,
+        rows: SnapshotRows = SnapshotRows(),
     ): Long =
         snapshots.insert(
             SnapshotEntity(
@@ -104,6 +106,7 @@ internal abstract class DrainDbTest {
                 countersPruned = false,
                 durationMs = 900,
             ),
+            rows,
         )
 
     protected suspend fun wall(id: Long): Long = checkNotNull(snapshots.snapshot(id)).wallMs

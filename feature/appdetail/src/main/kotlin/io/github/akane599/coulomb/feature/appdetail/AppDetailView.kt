@@ -27,10 +27,12 @@ internal class AppDetailView(
     /** What the share divides by: the measured total, or the modeled one (ADR-0036 §17). */
     val denominator: Double,
     val provenance: Provenance,
-    /** The app's wakelocks other than jobs, longest first. */
+    /** The app's wakelocks other than jobs and syncs, longest first. */
     val wakelocks: List<WakeEntry>,
     /** Its jobs, from their wakelocks, longest first. */
     val jobs: List<JobRow>,
+    /** Its syncs, from their wakelocks, longest first. */
+    val syncs: List<JobRow> = emptyList(),
 ) {
     val mah: Double? get() = detail.app?.mah?.let { it * factor }
 
@@ -46,7 +48,8 @@ internal class AppDetailView(
             val drains = detail.report.drains
             val measured = drains.measuredMah?.takeIf { it > 0 && !drains.estimated }
             val scaleTo = measured?.takeIf { scaled && drains.modeledMah > 0 }
-            val (jobs, wakelocks) = detail.wakes.partition { JOB_TAG.containsMatchIn(it.tag) }
+            val (jobs, rest) = detail.wakes.partition { JOB_TAG.containsMatchIn(it.tag) }
+            val (syncs, wakelocks) = rest.partition { it.tag.startsWith(SYNC_PREFIX) }
             return AppDetailView(
                 detail = detail,
                 factor = scaleTo?.let { it / drains.modeledMah } ?: 1.0,
@@ -55,9 +58,36 @@ internal class AppDetailView(
                 wakelocks = wakelocks.sortedByDescending { it.totalMs },
                 jobs =
                     jobs
-                        .map { JobRow(jobName(it.tag, detail.iconPackage), it.count, it.totalMs, it.screenOffShare) }
+                        .map {
+                            JobRow(
+                                jobName(it.tag, detail.iconPackage),
+                                it.count,
+                                it.totalMs,
+                                it.screenOffShare,
+                                detail.longestHolds[it.tag],
+                            )
+                        }.sortedByDescending { it.totalMs },
+                syncs =
+                    syncs
+                        .map { JobRow(syncName(it.tag), it.count, it.totalMs, it.screenOffShare, detail.longestHolds[it.tag]) }
                         .sortedByDescending { it.totalMs },
             )
+        }
+
+        /**
+         * A sync's wakelock tag: `*sync*` and a slash, then the provider's authority and the account type
+         * (SyncManager.getSyncWakeLock and SyncOperation.wakeLockName, android-16.0.0_r4
+         * SyncManager.java 211, SyncOperation.java 586-592; android-17.0.0_r1 SyncManager.java 212,
+         * 3352-3362, SyncOperation.java 705-711). No account name is in it.
+         */
+        const val SYNC_PREFIX = "*sync*/"
+
+        /** A sync's name as shown: its provider's authority, then the account type after a dot. */
+        fun syncName(tag: String): String {
+            val parts = tag.removePrefix(SYNC_PREFIX)
+            if ('/' !in parts) return parts
+            val type = parts.substringAfterLast('/')
+            return if (type.isEmpty()) parts.substringBeforeLast('/') else "${parts.substringBeforeLast('/')} · $type"
         }
 
         /**
@@ -96,6 +126,8 @@ internal data class JobRow(
     val runs: Long,
     val totalMs: Long,
     val screenOffShare: Double?,
+    /** Its longest single run since Android's statistics began, where recorded. */
+    val longestMs: Long? = null,
 )
 
 /**

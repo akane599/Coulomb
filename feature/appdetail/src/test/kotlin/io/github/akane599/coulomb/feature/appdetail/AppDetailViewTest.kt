@@ -19,6 +19,22 @@ class AppDetailViewTest {
     }
 
     @Test
+    fun syncNameIsTheProviderAndTheAccountType() {
+        assertEquals("com.android.contacts · com.google", AppDetailView.syncName("*sync*/com.android.contacts/com.google"))
+        // A provider authority may hold no slash; a tag without the account type keeps what it has.
+        assertEquals("app.feeds", AppDetailView.syncName("*sync*/app.feeds"))
+        assertEquals("app.feeds", AppDetailView.syncName("*sync*/app.feeds/"))
+    }
+
+    @Test
+    fun syncsAreTheirOwnTableNotWakelocks() {
+        val view = AppDetailView.of(labDetail(), scaled = false)
+        assertEquals(listOf("app.halcyon.feeds · app.halcyon"), view.syncs.map { it.name })
+        assertEquals(listOf(12L), view.syncs.map { it.runs })
+        assertEquals(false, view.wakelocks.any { it.tag.startsWith(AppDetailView.SYNC_PREFIX) })
+    }
+
+    @Test
     fun jobNameDropsTheTraceTagAndNamespace() {
         assertEquals(".Sync", AppDetailView.jobName("*job*r/#feed#@media@$PACKAGE/.Sync", PACKAGE))
         assertEquals(".Sync", AppDetailView.jobName("*job*r/@media@$PACKAGE/.Sync", PACKAGE))

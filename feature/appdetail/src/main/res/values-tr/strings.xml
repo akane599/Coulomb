@@ -62,7 +62,7 @@
     </plurals>
     <string name="appdetail_jobs_none">Coulomb’un bu aralık için sakladığı en uzun çalışmalar arasında yok.</string>
 
-    <string name="appdetail_network">Ağ ve ön plan süresi</string>
+    <string name="appdetail_network">Ağ ve kullanım süresi</string>
     <string name="appdetail_mobile">Mobil veri</string>
     <string name="appdetail_wifi">Wi-Fi</string>
     <string name="appdetail_foreground">Ön planda</string>
@@ -71,6 +71,23 @@
     <string name="appdetail_traffic_up_only">%1$s yükleme; indirme kaydedilmedi</string>
     <string name="appdetail_foreground_service">Ön plan hizmeti %1$s</string>
     <string name="appdetail_not_recorded">Kaydedilmedi</string>
+    <string name="appdetail_none">Yok</string>
+    <string name="appdetail_radio">Mobil radyo</string>
+    <string name="appdetail_radio_note">Radyonun etkin olduğu sürede, trafiğine göre payı</string>
+    <string name="appdetail_cpu">İşlemci süresi</string>
+    <string name="appdetail_cpu_split">%1$s uygulamada, %2$s onun için sistemde</string>
+    <string name="appdetail_syncs">Eşitlemeler</string>
+    <string name="appdetail_syncs_definition">Bir hesabın verisini, örneğin kişileri ya da takvimi güncelleyen çalışma.</string>
+    <string name="appdetail_column_sync">Eşitleme</string>
+    <string name="appdetail_syncs_none">Coulomb’un bu aralık için sakladığı en uzun tutmalar arasında yok.</string>
+    <string name="appdetail_syncs_total">Eşitlemeler toplam %1$s sürdü.</string>
+    <string name="appdetail_longest">en uzun tutma %1$s</string>
+    <string name="appdetail_note_separator">" · "</string>
+    <string name="appdetail_longest_note">En uzun tutma, Android’in istatistikleri başladığından beri tek seferdeki en uzun olanıdır. Bu aralıktan önce de olmuş olabilir.</string>
+    <plurals name="appdetail_jobs_abandoned">
+        <item quantity="one">Android, uygulamanın yarıda bıraktığı %1$s işi durdurdu.</item>
+        <item quantity="other">Android, uygulamanın yarıda bıraktığı %1$s işi durdurdu.</item>
+    </plurals>
 
     <string name="appdetail_trend">Son 14 gün</string>
     <string name="appdetail_trend_axis">Günde mAh</string>

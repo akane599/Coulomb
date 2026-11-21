@@ -126,6 +126,7 @@ internal class DrainReader
                             it
                         }
                     },
+                longestHolds = snapshots.longestHolds(bounds.to.id, uid).associate { it.tag to it.maxMs },
                 trend = trend(uid, nowWallMs),
             )
         }
@@ -156,6 +157,11 @@ internal class DrainReader
                 foregroundActivityMs = value(UidKeys.FOREGROUND_ACTIVITY_MS),
                 foregroundServiceMs = value(UidKeys.FOREGROUND_SERVICE_MS),
                 partialWakelockMs = value(UidKeys.PARTIAL_WAKELOCK_MS),
+                cpuUserMs = value(UidKeys.CPU_USER_MS),
+                cpuSystemMs = value(UidKeys.CPU_SYSTEM_MS),
+                radioActiveMs = value(UidKeys.RADIO_ACTIVE_MS),
+                syncMs = value(UidKeys.SYNC_MS),
+                jobsAbandoned = value(UidKeys.JOB_ABANDONED),
             )
         }
 

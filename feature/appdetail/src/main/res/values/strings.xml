@@ -68,7 +68,7 @@
     <string name="appdetail_jobs_none">None among the longest runs Coulomb keeps for this window.</string>
 
     <!-- Network and foreground time (SPEC 10.4 item 6). -->
-    <string name="appdetail_network">Network and foreground time</string>
+    <string name="appdetail_network">Network and time in use</string>
     <string name="appdetail_mobile">Mobile data</string>
     <string name="appdetail_wifi">Wi-Fi</string>
     <string name="appdetail_foreground">Foreground</string>
@@ -77,6 +77,23 @@
     <string name="appdetail_traffic_up_only">%1$s up; received not recorded</string>
     <string name="appdetail_foreground_service">Foreground service %1$s</string>
     <string name="appdetail_not_recorded">Not recorded</string>
+    <string name="appdetail_none">None</string>
+    <string name="appdetail_radio">Mobile radio</string>
+    <string name="appdetail_radio_note">Its share of the time the radio was active, by traffic</string>
+    <string name="appdetail_cpu">CPU time</string>
+    <string name="appdetail_cpu_split">%1$s in the app, %2$s in the system for it</string>
+    <string name="appdetail_syncs">Syncs</string>
+    <string name="appdetail_syncs_definition">A run that brings an account’s data up to date, such as contacts or a calendar.</string>
+    <string name="appdetail_column_sync">Sync</string>
+    <string name="appdetail_syncs_none">None among the longest holds Coulomb keeps for this window.</string>
+    <string name="appdetail_syncs_total">Syncs ran %1$s in all.</string>
+    <string name="appdetail_longest">longest hold %1$s</string>
+    <string name="appdetail_note_separator">" · "</string>
+    <string name="appdetail_longest_note">The longest hold is the longest single one since Android’s statistics began. It can be from before this window.</string>
+    <plurals name="appdetail_jobs_abandoned">
+        <item quantity="one">Android stopped %1$s job the app abandoned.</item>
+        <item quantity="other">Android stopped %1$s jobs the app abandoned.</item>
+    </plurals>
 
     <!-- The 14-day trend (SPEC 10.4 item 7). -->
     <string name="appdetail_trend">Last 14 days</string>

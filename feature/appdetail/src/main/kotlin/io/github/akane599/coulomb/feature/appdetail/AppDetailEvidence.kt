@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.appdetail
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
@@ -23,6 +24,7 @@ import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.FigureText
+import io.github.akane599.coulomb.core.ui.ProvenanceMark
 import io.github.akane599.coulomb.core.ui.affixed
 import io.github.akane599.coulomb.core.ui.breakdown.label
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -94,25 +96,52 @@ internal fun Woke(
         if (coverage == Coverage.PARTIAL && alarms != null) Note(stringResource(R.string.appdetail_alarms_partial))
         Subhead(stringResource(R.string.appdetail_wakelocks), definition = stringResource(R.string.appdetail_wakelocks_definition))
         when {
-            coverage == Coverage.NONE -> StandIn(stringResource(R.string.appdetail_wakelocks_not_recorded))
+            coverage == Coverage.NONE -> {
+                StandIn(stringResource(R.string.appdetail_wakelocks_not_recorded))
+            }
 
             // A window keeps only its longest holds (WindowBuilder.MAX_WAKES_PER_KIND), so none
             // listed is not none held.
-            view.wakelocks.isEmpty() -> StandIn(stringResource(R.string.appdetail_wakelocks_none))
+            view.wakelocks.isEmpty() -> {
+                StandIn(stringResource(R.string.appdetail_wakelocks_none))
+            }
 
-            else -> WakelockTable(view, formats)
+            else -> {
+                WakelockTable(view, formats)
+            }
         }
-        Subhead(stringResource(R.string.appdetail_jobs), definition = stringResource(R.string.appdetail_jobs_definition))
-        when {
-            coverage == Coverage.NONE -> StandIn(stringResource(R.string.appdetail_jobs_not_recorded))
-            view.jobs.isEmpty() -> StandIn(stringResource(R.string.appdetail_jobs_none))
-            else -> JobTable(view, formats)
-        }
-        val runs = counters.jobCount
-        val runtime = counters.jobRuntimeMs
-        if (runs != null && runtime != null && runs > 0) {
-            Note(pluralStringResource(R.plurals.appdetail_jobs_total, runs.toQuantity(), formats.integer(runs), formats.held(runtime)))
-        }
+        Jobs(view, formats)
+        Syncs(view, formats)
+        // Once for the tables, under the last one that shows a longest hold.
+        val longest =
+            view.wakelocks.any { (detail.longestHolds[it.tag] ?: 0) > 0 } ||
+                (view.jobs + view.syncs).any { (it.longestMs ?: 0) > 0 }
+        LongestNote(coverage != Coverage.NONE && longest)
+    }
+}
+
+/** The app's jobs (SPEC 10.4 item 5): their table, their totals, and the abandoned ones. */
+@Composable
+private fun Jobs(
+    view: AppDetailView,
+    formats: Formats,
+) {
+    val counters = view.detail.counters
+    Subhead(stringResource(R.string.appdetail_jobs), definition = stringResource(R.string.appdetail_jobs_definition))
+    when {
+        view.detail.report.wakeCoverage.batteryStats == Coverage.NONE -> StandIn(stringResource(R.string.appdetail_jobs_not_recorded))
+        view.jobs.isEmpty() -> StandIn(stringResource(R.string.appdetail_jobs_none))
+        else -> JobTable(view.jobs, R.string.appdetail_column_job, formats)
+    }
+    val runs = counters.jobCount
+    val runtime = counters.jobRuntimeMs
+    if (runs != null && runtime != null && runs > 0) {
+        Note(pluralStringResource(R.plurals.appdetail_jobs_total, runs.toQuantity(), formats.integer(runs), formats.held(runtime)))
+    }
+    // SPEC 2, "stop reasons including Android 16 abandoned jobs": said only when there were any.
+    val abandoned = counters.jobsAbandoned
+    if (abandoned != null && abandoned > 0) {
+        Note(pluralStringResource(R.plurals.appdetail_jobs_abandoned, abandoned.toQuantity(), formats.integer(abandoned)))
     }
 }
 
@@ -127,7 +156,7 @@ private fun WakelockTable(
                 it.tag,
                 listOf(formats.held(it.totalMs), formats.integer(it.count)),
                 mono = true,
-                note = screenOffNote(it.screenOffShare, formats),
+                note = rowNote(it.screenOffShare, view.detail.longestHolds[it.tag], formats),
             )
         }
     InlineTable(
@@ -142,30 +171,75 @@ private fun WakelockTable(
     )
 }
 
+/**
+ * The app's syncs (SPEC 2, "jobs and syncs"), only when it has any: their table from their
+ * wakelocks, and S5's total time for them.
+ */
 @Composable
-private fun JobTable(
+private fun Syncs(
     view: AppDetailView,
     formats: Formats,
 ) {
+    val total = view.detail.counters.syncMs
+    if (view.syncs.isEmpty() && (total == null || total == 0L)) return
+    Subhead(stringResource(R.string.appdetail_syncs), definition = stringResource(R.string.appdetail_syncs_definition))
+    if (view.syncs.isEmpty()) {
+        StandIn(stringResource(R.string.appdetail_syncs_none))
+    } else {
+        JobTable(view.syncs, R.string.appdetail_column_sync, formats)
+    }
+    if (total != null && total > 0) Note(stringResource(R.string.appdetail_syncs_total, formats.held(total)))
+}
+
+@Composable
+private fun JobTable(
+    jobs: List<JobRow>,
+    @StringRes nameColumn: Int,
+    formats: Formats,
+) {
     val rows =
-        view.jobs.map {
+        jobs.map {
             TableRow(
                 it.name,
                 listOf(formats.integer(it.runs), formats.held(it.totalMs)),
                 mono = true,
-                note = screenOffNote(it.screenOffShare, formats),
+                note = rowNote(it.screenOffShare, it.longestMs, formats),
             )
         }
     InlineTable(
         columns =
             listOf(
-                stringResource(R.string.appdetail_column_job),
+                stringResource(nameColumn),
                 stringResource(R.string.appdetail_column_runs),
                 stringResource(R.string.appdetail_column_time),
             ),
         rows = rows,
         shown = SHOWN,
     )
+}
+
+/**
+ * A row's note: when it was held, then its longest single hold (SPEC 2, "max hold"). The longest
+ * hold is Android's own figure since its statistics began, which [LongestNote] says once.
+ */
+@Composable
+private fun rowNote(
+    share: Double?,
+    longestMs: Long?,
+    formats: Formats,
+): String? {
+    val parts =
+        listOfNotNull(
+            screenOffNote(share, formats),
+            longestMs?.takeIf { it > 0 }?.let { stringResource(R.string.appdetail_longest, formats.held(it)) },
+        )
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(stringResource(R.string.appdetail_note_separator))
+}
+
+/** Says once what "longest" counts, under a table that shows any. */
+@Composable
+private fun LongestNote(shown: Boolean) {
+    if (shown) Note(stringResource(R.string.appdetail_longest_note))
 }
 
 /** When a record was held: wholly with the screen off or on, or its share off (Derived; lab `.note`). */
@@ -191,8 +265,10 @@ private const val SHOWN = 5
 private fun Long.toQuantity(): Int = coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
 /**
- * Network and foreground time (SPEC 10.4 item 6) as a figure strip: mobile data and Wi-Fi, received
- * plus sent, and time with an activity in the foreground. Measured, marked once on the heading; a
+ * Network and time in use (SPEC 10.4 item 6, and SPEC 2's radio active time and CPU time) as a figure
+ * strip: mobile data and Wi-Fi, received plus sent, the app's share of the radio's active time, time
+ * with an activity in the foreground, and processor time. Measured, marked once on the
+ * heading, but for the radio share, which is Android's split and carries its own Modeled mark; a
  * counter with no row reads "Not recorded", never zero (ADR-0041 §1).
  */
 @Composable
@@ -203,26 +279,47 @@ internal fun Network(
     val counters = view.detail.counters
     // One source, so one mark on the heading (SPEC 10.1), once any of its figures was recorded.
     val recorded =
-        listOf(counters.mobileRxBytes, counters.mobileTxBytes, counters.wifiRxBytes, counters.wifiTxBytes, counters.foregroundActivityMs)
-            .any { it != null }
+        listOf(
+            counters.mobileRxBytes,
+            counters.mobileTxBytes,
+            counters.wifiRxBytes,
+            counters.wifiTxBytes,
+            counters.foregroundActivityMs,
+            counters.cpuMs,
+        ).any { it != null }
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.appdetail_network), Provenance.MEASURED.takeIf { recorded })
         CoulombFigureStrip {
             Traffic(stringResource(R.string.appdetail_mobile), counters.mobileRxBytes, counters.mobileTxBytes, formats)
             Traffic(stringResource(R.string.appdetail_wifi), counters.wifiRxBytes, counters.wifiTxBytes, formats)
+            // Android's split of the radio's active time by packets: Modeled, so it carries its own mark.
+            Time(
+                stringResource(R.string.appdetail_radio),
+                counters.radioActiveMs,
+                formats,
+                caption = stringResource(R.string.appdetail_radio_note),
+                provenance = Provenance.MODELED,
+            )
             val foreground = counters.foregroundActivityMs
             val service =
                 counters.foregroundServiceMs
                     ?.takeIf {
                         it > 0
                     }?.let { stringResource(R.string.appdetail_foreground_service, formats.held(it)) }
-            CoulombFigure(stringResource(R.string.appdetail_foreground), caption = service) {
-                if (foreground != null) {
-                    Text(formats.held(foreground), color = CoulombTheme.colors.textPrimary, style = CoulombTheme.typography.title)
-                } else {
-                    NotRecorded()
-                }
-            }
+            Time(stringResource(R.string.appdetail_foreground), foreground, formats, caption = service)
+            val user = counters.cpuUserMs
+            val system = counters.cpuSystemMs
+            Time(
+                stringResource(R.string.appdetail_cpu),
+                counters.cpuMs,
+                formats,
+                caption =
+                    if (user != null && system != null && user + system > 0) {
+                        stringResource(R.string.appdetail_cpu_split, formats.held(user), formats.held(system))
+                    } else {
+                        null
+                    },
+            )
         }
     }
 }
@@ -267,6 +364,33 @@ private fun Traffic(
                 numberStyle = type.title,
                 unitStyle = type.label,
             )
+        }
+    }
+}
+
+/** A time figure: "None" for zero, which "<1 min" would not say; "Not recorded" without a row. */
+@Composable
+private fun Time(
+    label: String,
+    ms: Long?,
+    formats: Formats,
+    caption: String? = null,
+    provenance: Provenance? = null,
+) {
+    CoulombFigure(label, caption = caption.takeIf { ms != null && ms > 0 }) {
+        when {
+            ms == null -> {
+                NotRecorded()
+            }
+
+            else -> {
+                Text(
+                    if (ms == 0L) stringResource(R.string.appdetail_none) else formats.held(ms),
+                    color = CoulombTheme.colors.textPrimary,
+                    style = CoulombTheme.typography.title,
+                )
+                if (provenance != null && ms > 0) ProvenanceMark(provenance)
+            }
         }
     }
 }

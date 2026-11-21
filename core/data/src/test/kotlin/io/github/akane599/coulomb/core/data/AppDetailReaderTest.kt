@@ -5,10 +5,12 @@ package io.github.akane599.coulomb.core.data
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
 import io.github.akane599.coulomb.core.database.entity.PowerColumns
+import io.github.akane599.coulomb.core.database.entity.WakeStatEntity
 import io.github.akane599.coulomb.core.database.entity.WindowComponentEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.AutoReference
@@ -54,6 +56,9 @@ internal class AppDetailReaderTest : DrainDbTest() {
                                 stat(APP, UidKeys.WIFI_RX_BYTES, 1_000_000),
                                 stat(APP, UidKeys.FOREGROUND_ACTIVITY_MS, 0),
                                 stat(APP, UidKeys.PARTIAL_WAKELOCK_MS, 3_500),
+                                stat(APP, UidKeys.CPU_USER_MS, 60_000),
+                                stat(APP, UidKeys.CPU_SYSTEM_MS, 20_000),
+                                stat(APP, UidKeys.RADIO_ACTIVE_MS, 45_000),
                             ),
                     ),
                 )
@@ -80,10 +85,66 @@ internal class AppDetailReaderTest : DrainDbTest() {
                         foregroundServiceMs = 0,
                         // Less than the 4,000 ms of its one wakelock row could be: the app's own total, not a sum of rows.
                         partialWakelockMs = 3_500,
+                        cpuUserMs = 60_000,
+                        cpuSystemMs = 20_000,
+                        radioActiveMs = 45_000,
+                        syncMs = 0,
+                        // Not every build reports abandoned stops: no row stays unknown, not zero.
+                        jobsAbandoned = null,
                     ),
                 )
+            assertThat(detail.counters.cpuMs).isEqualTo(80_000)
+            assertThat(detail.longestHolds).isEmpty()
             assertThat(detail.components).isNull()
             assertThat(detail.processStates).isNull()
+        }
+
+    /**
+     * SPEC 2, "max hold": the longest single hold of each of the app's partial wakelocks is the one
+     * the span's last snapshot recorded, per tag; other apps' and kernel rows are left out.
+     */
+    @Test
+    fun theLongestHoldsAreTheLastSnapshotsPerTag() =
+        runTest {
+            fun held(
+                uid: Int?,
+                tag: String,
+                kind: WakeKind,
+                maxMs: Long?,
+            ) = WakeStatEntity(
+                snapshotId = 0,
+                uid = uid,
+                tag = tag,
+                kind = kind,
+                totalMs = 9_000,
+                count = 3,
+                maxMs = maxMs,
+                screenOffMs = null,
+            )
+
+            val a = heavy(1_000, rows = SnapshotRows(wakeStats = listOf(held(APP, "*sync*", WakeKind.PARTIAL, 1_000))))
+            val c =
+                heavy(
+                    3_000,
+                    rows =
+                        SnapshotRows(
+                            wakeStats =
+                                listOf(
+                                    held(APP, "*sync*", WakeKind.PARTIAL, 2_500),
+                                    held(APP, "push", WakeKind.PARTIAL, null),
+                                    held(OTHER_APP, "*sync*", WakeKind.PARTIAL, 70_000),
+                                    held(null, "wlan", WakeKind.KERNEL, 80_000),
+                                ),
+                        ),
+                )
+            val reference = reference(AutoReference.SINCE_UNPLUGGED, a)
+            val stored = store(window(a, c, WindowKind.REFERENCE), WindowRows(uids = listOf(uid(APP, 100.0))))
+            val session = sessions.insert(discharge(a))
+            val inputs = DrainInputs(listOf(stored), listOf(reference), sessions.byId(session), meta)
+
+            val detail = checkNotNull(reader.readApp(DrainSpan.SinceUnplugged, APP, inputs, wall(c)))
+
+            assertThat(detail.longestHolds).containsExactly("*sync*", 2_500L)
         }
 
     /** Without a stored window the counters are the chain's sums. */

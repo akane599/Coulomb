@@ -47,6 +47,12 @@ public data class SnapshotRows(
     val componentPower: List<UidComponentPowerEntity> = emptyList(),
 )
 
+/** One partial wakelock's longest single hold, in ms. */
+public data class LongestHold(
+    val tag: String,
+    val maxMs: Long,
+)
+
 /**
  * What one snapshot read from the root kernel sources (ADR-0029 §3). [events] are the S27 records of
  * the read, all under [read]'s kernel boot; the suspend entry and exit lines are not stored
@@ -506,6 +512,19 @@ public abstract class SnapshotDao {
 
     @Query("SELECT * FROM wake_stat WHERE snapshotId = :snapshotId ORDER BY id")
     protected abstract suspend fun wakeStats(snapshotId: Long): List<WakeStatEntity>
+
+    /**
+     * The longest single hold of each of [uid]'s partial wakelocks as [snapshotId] recorded it
+     * (S5's `max_duration_ms`: since the statistics began). Empty once the rows are pruned.
+     */
+    @Query(
+        "SELECT tag, MAX(maxMs) AS maxMs FROM wake_stat " +
+            "WHERE snapshotId = :snapshotId AND uid = :uid AND kind = 'PARTIAL' AND maxMs IS NOT NULL GROUP BY tag",
+    )
+    public abstract suspend fun longestHolds(
+        snapshotId: Long,
+        uid: Int,
+    ): List<LongestHold>
 
     @Query("SELECT * FROM alarm_stat WHERE snapshotId = :snapshotId")
     protected abstract suspend fun alarmStats(snapshotId: Long): List<AlarmStatEntity>
