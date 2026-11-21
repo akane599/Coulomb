@@ -7,6 +7,7 @@ plugins {
 }
 
 dependencies {
+    implementation(projects.core.collect)
     implementation(projects.core.data)
     implementation(projects.core.datastore)
     implementation(projects.core.insights)

@@ -6,8 +6,10 @@ package io.github.akane599.coulomb.feature.appdetail
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
@@ -38,6 +40,7 @@ import io.github.akane599.coulomb.core.model.insight.Evidence
 import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
 import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.model.insight.RuleId
+import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -60,6 +63,19 @@ class AppDetailScreenshotTest {
 
     @Test
     fun labLight() = shoot("lab-light", ready())
+
+    /** What the app has scheduled now (S13, S10), as the sheet shows it once read. */
+    @Test
+    fun scheduledNow() {
+        compose.setContent {
+            CoulombTheme {
+                Column(Modifier.fillMaxSize().background(CoulombTheme.colors.surfaceRaised).padding(horizontal = 16.dp)) {
+                    ScheduledBody(ScheduledState.Read(ScheduledNow.of(UID, PACKAGE, labJobs(), labAlarms())), rememberFormats())
+                }
+            }
+        }
+        compose.onRoot().captureRoboImage("src/test/screenshots/appdetail-scheduled.png")
+    }
 
     /** ADR-0026 §3: an open Act insight ends the story, as its card, before the evidence. */
     @Test

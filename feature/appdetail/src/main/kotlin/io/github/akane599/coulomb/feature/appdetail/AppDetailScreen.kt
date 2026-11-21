@@ -116,6 +116,7 @@ public fun AppDetailScreen(
                 dismissInsight = viewModel::dismissInsight,
                 insightAction = onInsightAction,
                 actionsSection = actionsSection,
+                readScheduled = viewModel::readScheduled,
             )
         }
     AppDetailContent(state, actions, modifier)
@@ -133,6 +134,8 @@ internal class AppDetailActions(
     val insightAction: (ActionId, Insight) -> Unit = { _, _ -> },
     /** SPEC 10.4 item 8: the Action Center's actions for this app, which the app supplies. */
     val actionsSection: @Composable () -> Unit = {},
+    /** S13 and S10 on demand; null where there is nothing to read with. */
+    val readScheduled: (suspend (packageName: String?) -> ScheduledNow?)? = null,
 )
 
 /** The two tables a chart opens ("View as table", SPEC 11.8). */
@@ -269,6 +272,13 @@ private class Sections(
         besideFirst: Boolean = false,
     ) {
         scope.item(key = "woke", contentType = "woke") { Woke(view, formats, besideFirst) }
+        actions.readScheduled?.let { read ->
+            scope.item(key = "scheduled", contentType = "link") {
+                var open by rememberSaveable { mutableStateOf(false) }
+                ScheduledRow { open = true }
+                if (open) ScheduledSheet(read = { read(view.detail.iconPackage) }, onDismiss = { open = false })
+            }
+        }
         scope.item(key = "network", contentType = "network") { Network(view, formats) }
         scope.item(key = "trend", contentType = "trend") { Trend(view, formats, zone) { viewTable(AppTable.TREND) } }
         scope.item(key = "actions", contentType = "actions") { actions.actionsSection() }

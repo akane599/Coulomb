@@ -12,6 +12,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.akane599.coulomb.core.collect.LiveReads
 import io.github.akane599.coulomb.core.data.AppDetailReport
 import io.github.akane599.coulomb.core.data.AppIcons
 import io.github.akane599.coulomb.core.data.ChosenWindow
@@ -21,6 +22,8 @@ import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +70,7 @@ internal sealed interface AppDetailUiState {
 @HiltViewModel(assistedFactory = AppDetailViewModel.Factory::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 public class AppDetailViewModel
+    @Suppress("LongParameterList") // The UID, then one source for each thing the page shows; Hilt supplies them.
     @AssistedInject
     constructor(
         @Assisted public val uid: Int,
@@ -75,8 +79,21 @@ public class AppDetailViewModel
         settings: SettingsStore,
         private val icons: AppIcons,
         private val insights: InsightStore,
+        private val live: LiveReads,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
+
+        /**
+         * S13 and S10 on demand (ADR-0068), both dumps at once; null when neither could be read.
+         * [packageName] adds the app's own pending alarms when it has delivered none since boot.
+         */
+        internal suspend fun readScheduled(packageName: String?): ScheduledNow? =
+            coroutineScope {
+                val jobs = async { live.jobs() }
+                val alarms = async { live.alarms() }
+                val (j, a) = jobs.await() to alarms.await()
+                if (j == null && a == null) null else ScheduledNow.of(uid, packageName, j, a)
+            }
 
         internal val state: StateFlow<AppDetailUiState> =
             attempt
