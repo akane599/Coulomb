@@ -67,4 +67,37 @@
     <string name="night_none">None recorded.</string>
     <string name="night_small_apps">Small apps together</string>
     <string name="night_open_drain">Open this stretch in Drain</string>
+
+    <string name="night_report_title">Night Report</string>
+    <string name="timeline_see_all">See all</string>
+    <string name="timeline_toolbar">Timeline controls</string>
+    <string name="timeline_range_15_min">15 min</string>
+    <string name="timeline_range_6_h">6 h</string>
+    <string name="timeline_range_24_h">24 h</string>
+    <string name="timeline_range_7_d">7 d</string>
+    <string name="timeline_choose_tracks">Choose tracks</string>
+    <string name="timeline_now">Now</string>
+    <string name="timeline_tracks_title">Tracks</string>
+    <string name="timeline_panel_hint">Tap a mark on a track to see what it was.</string>
+    <string name="timeline_no_history">Coulomb has no battery history for this range.</string>
+    <string name="timeline_readout">%1$s · %2$s</string>
+    <string name="timeline_unknown_at">No history at this time</string>
+    <string name="timeline_screen_on">Screen on</string>
+    <string name="timeline_screen_off">Screen off</string>
+    <string name="timeline_state_doze_light">light Doze</string>
+    <string name="timeline_state_doze_deep">deep Doze</string>
+    <string name="timeline_state_charging">charging</string>
+    <string name="timeline_summary_range">From %1$s to %2$s.</string>
+    <string name="timeline_summary_level">The level went from %1$s to %2$s.</string>
+    <string name="timeline_caption_wakeups">The phone woke %1$s times an hour in this range.</string>
+    <string name="timeline_caption_density">An outlined span is a run of events too close to draw one by one; zoom in to see each.</string>
+    <string name="timeline_caption_signal">Signal runs from none to great.</string>
+    <string name="timeline_caption_temperature">Temperature runs from %1$s to %2$s.</string>
+    <string name="timeline_event_one">%1$s to %2$s · %3$s</string>
+    <plurals name="timeline_event_many">
+        <item quantity="one">%1$s stretch from %2$s to %3$s · %4$s in all</item>
+        <item quantity="other">%1$s stretches from %2$s to %3$s · %4$s in all</item>
+    </plurals>
+    <string name="timeline_event_name">Name</string>
+    <string name="timeline_event_open_app">Open %1$s</string>
 </resources>

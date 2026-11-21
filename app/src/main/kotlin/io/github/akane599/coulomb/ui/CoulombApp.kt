@@ -79,6 +79,8 @@ import io.github.akane599.coulomb.feature.settings.PrivilegesScreen
 import io.github.akane599.coulomb.feature.settings.SettingsScreen
 import io.github.akane599.coulomb.feature.timeline.NightReportScreen
 import io.github.akane599.coulomb.feature.timeline.NightScreen
+import io.github.akane599.coulomb.feature.timeline.TimelineLinks
+import io.github.akane599.coulomb.feature.timeline.TimelineScreen
 import io.github.akane599.coulomb.feature.timeline.nightViewModel
 import io.github.akane599.coulomb.navigation.AppNavigator
 import io.github.akane599.coulomb.navigation.Destination
@@ -209,8 +211,9 @@ class AppScreens(
     /** App detail for a UID; its title slot reads the same entry's model. */
     val appDetail: @Composable (AppNavigator, uid: Int) -> Unit,
     val appDetailTitle: @Composable (uid: Int) -> String,
-    /** The Timeline destination: for now the Night Report's list (ADR-0056 §1). */
     val timeline: @Composable (AppNavigator) -> Unit,
+    /** The Night Report's list, below Timeline (ADR-0056 §1). */
+    val nights: @Composable (AppNavigator) -> Unit,
     val night: @Composable (AppNavigator, id: Long) -> Unit,
     val health: @Composable (AppNavigator) -> Unit,
     val chargeSessions: @Composable (AppNavigator) -> Unit,
@@ -243,6 +246,19 @@ class AppScreens(
                 appDetail = { _, uid -> AppDetailScreen(appDetailViewModel(uid)) },
                 appDetailTitle = { uid -> appDetailTitle(appDetailViewModel(uid)) },
                 timeline = { navigator ->
+                    TimelineScreen(
+                        TimelineLinks(
+                            onOpenNights = { navigator.openList(Route.NightReport) },
+                            // The night opens beside its list, so back from it returns to the list.
+                            onOpenNight = {
+                                navigator.openList(Route.NightReport)
+                                navigator.openDetail(Route.Night(it))
+                            },
+                            onOpenApp = { navigator.openDetail(Route.AppDetail(it)) },
+                        ),
+                    )
+                },
+                nights = { navigator ->
                     NightReportScreen(
                         onOpenNight = { navigator.openDetail(Route.Night(it)) },
                         // Shown only while the night is beside the list.
@@ -299,8 +315,9 @@ private fun appEntries(
         entry<Route.AppDetail>(metadata = ListDetailStrategy.detail) { key ->
             InnerScreen(screens.appDetailTitle(key.uid), navigator::back, pane = true) { screens.appDetail(navigator, key.uid) }
         }
-        entry<Route.Timeline>(metadata = ListDetailStrategy.list) {
-            DestinationScreen(Destination.Timeline, navigator::open) { screens.timeline(navigator) }
+        entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { screens.timeline(navigator) } }
+        entry<Route.NightReport>(metadata = ListDetailStrategy.list) {
+            InnerScreen(stringResource(TimelineR.string.night_report_title), navigator::back) { screens.nights(navigator) }
         }
         entry<Route.Night>(metadata = ListDetailStrategy.detail) { key ->
             InnerScreen(stringResource(TimelineR.string.night_title), navigator::back, pane = true) { screens.night(navigator, key.id) }

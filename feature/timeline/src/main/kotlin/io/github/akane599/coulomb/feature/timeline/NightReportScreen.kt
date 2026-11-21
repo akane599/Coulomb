@@ -114,7 +114,7 @@ internal fun NightReportContent(
  */
 @Composable
 @Suppress("LongParameterList") // One row's data, its place and its action.
-private fun NightRow(
+internal fun NightRow(
     night: NightSummary,
     first: Boolean,
     selected: Boolean,

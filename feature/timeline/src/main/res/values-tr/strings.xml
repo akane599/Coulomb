@@ -67,4 +67,37 @@
     <string name="night_none">Kayıt yok.</string>
     <string name="night_small_apps">Küçük uygulamalar birlikte</string>
     <string name="night_open_drain">Bu süreyi Tüketim’de aç</string>
+
+    <string name="night_report_title">Gece Raporu</string>
+    <string name="timeline_see_all">Tümünü gör</string>
+    <string name="timeline_toolbar">Zaman çizelgesi denetimleri</string>
+    <string name="timeline_range_15_min">15 dk</string>
+    <string name="timeline_range_6_h">6 sa</string>
+    <string name="timeline_range_24_h">24 sa</string>
+    <string name="timeline_range_7_d">7 gün</string>
+    <string name="timeline_choose_tracks">Şeritleri seç</string>
+    <string name="timeline_now">Şimdi</string>
+    <string name="timeline_tracks_title">Şeritler</string>
+    <string name="timeline_panel_hint">Ne olduğunu görmek için bir şeritteki işarete dokun.</string>
+    <string name="timeline_no_history">Coulomb’da bu aralık için pil geçmişi yok.</string>
+    <string name="timeline_readout">%1$s · %2$s</string>
+    <string name="timeline_unknown_at">Bu an için geçmiş yok</string>
+    <string name="timeline_screen_on">Ekran açık</string>
+    <string name="timeline_screen_off">Ekran kapalı</string>
+    <string name="timeline_state_doze_light">hafif Doze</string>
+    <string name="timeline_state_doze_deep">derin Doze</string>
+    <string name="timeline_state_charging">şarj oluyor</string>
+    <string name="timeline_summary_range">%1$s ile %2$s arası.</string>
+    <string name="timeline_summary_level">Seviye %1$s değerinden %2$s değerine geldi.</string>
+    <string name="timeline_caption_wakeups">Telefon bu aralıkta saatte %1$s kez uyandı.</string>
+    <string name="timeline_caption_density">Çerçeveli aralık, her biri ayrı çizilemeyecek kadar sık olayları gösterir; her birini görmek için yakınlaştır.</string>
+    <string name="timeline_caption_signal">Sinyal, yoktan çok iyiye uzanır.</string>
+    <string name="timeline_caption_temperature">Sıcaklık %1$s ile %2$s arasındadır.</string>
+    <string name="timeline_event_one">%1$s – %2$s · %3$s</string>
+    <plurals name="timeline_event_many">
+        <item quantity="one">%2$s ile %3$s arasında %1$s aralık · toplam %4$s</item>
+        <item quantity="other">%2$s ile %3$s arasında %1$s aralık · toplam %4$s</item>
+    </plurals>
+    <string name="timeline_event_name">Ad</string>
+    <string name="timeline_event_open_app">%1$s uygulamasını aç</string>
 </resources>

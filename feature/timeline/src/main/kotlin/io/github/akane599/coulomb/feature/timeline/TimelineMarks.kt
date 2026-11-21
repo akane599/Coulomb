@@ -80,9 +80,16 @@ internal fun Timeline.series(
         level = level.map { LevelMark(it.wallMs, it.levelPct.toFloat(), it.startsSegment) },
         current = current.map { CurrentMark(it.wallMs, it.currentMa) },
         bands = bands,
-        unknown = unknown.map { TrackMark(it.fromWallMs, it.toWallMs) },
+        // Before and after what was read nothing is known either: a window dragged past it shows no ground there.
+        unknown =
+            listOf(TrackMark(fromWallMs - BEYOND_MS, fromWallMs)) +
+                unknown.map { TrackMark(it.fromWallMs, it.toWallMs) } +
+                TrackMark(toWallMs, toWallMs + BEYOND_MS),
     )
 }
+
+/** Longer than any window and the history kept (SPEC 7.7). */
+private const val BEYOND_MS = 60L * 24 * 60 * 60 * 1000
 
 private fun marks(
     track: TimelineTrack,

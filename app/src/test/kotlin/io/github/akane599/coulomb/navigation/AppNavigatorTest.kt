@@ -98,14 +98,16 @@ class AppNavigatorTest {
     @Test
     fun anotherNightReplacesTheOneBesideTheList() {
         navigator.select(Destination.Timeline)
+        navigator.openList(Route.NightReport)
         navigator.openDetail(Route.Night(41))
         assertThat(navigator.openNight(Destination.Timeline)).isEqualTo(41)
 
         navigator.openDetail(Route.Night(40))
 
-        assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.Night(40)).inOrder()
+        assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.NightReport, Route.Night(40)).inOrder()
         navigator.back()
         assertThat(navigator.openNight(Destination.Timeline)).isNull()
+        assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.NightReport).inOrder()
     }
 
     @Test

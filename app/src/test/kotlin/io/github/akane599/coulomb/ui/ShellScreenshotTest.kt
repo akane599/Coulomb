@@ -142,6 +142,7 @@ private val StandIns =
         chargeSessions = {},
         chargeSession = { _, _ -> },
         timeline = {},
+        nights = {},
         night = { _, _ -> },
         privileges = {},
         settings = {},

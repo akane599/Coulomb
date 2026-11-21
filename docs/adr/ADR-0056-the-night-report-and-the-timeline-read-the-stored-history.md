@@ -25,8 +25,8 @@ data pulled from the phone on 2026-11-21 showed four more things the spec does n
 1. **Where the Night Report lives.** SPEC 15.2 fixes the feature modules and has none for nights.
    The Night Report is a view of the same history as the Timeline, so it is built in
    `:feature:timeline` and reached from the Timeline destination: the list, and one night beside
-   it (`Route.Night`) in the list-detail scene. Until the Timeline screen lands, the destination
-   shows the list.
+   it (`Route.Night`) in the list-detail scene. The Timeline shows the latest night under its
+   chart, with "See all".
 2. **A night's dates come from its boot's latest clock.** The session's start and end are stored
    as elapsed time in a boot. They are placed on the wall clock by that boot's latest snapshot, so a
    clock set right later in the boot dates the whole boot right. The stored wall times are used
@@ -61,6 +61,27 @@ data pulled from the phone on 2026-11-21 showed four more things the spec does n
    culprits are the first five of each kind with "Show all"; the kernel tables use S5's records
    where the window has them and the root-only records otherwise, as Drain does. A text button
    opens the same window in Drain.
+
+10. **The Timeline's window.** It is 15 minutes to 7 days long (SPEC 10.6), never past now and
+    never before the 30 days history is kept. Two fingers zoom about the point between them and
+    drag; a range preset keeps the window's end, and "Now" moves the end to now and clears the
+    cursor. A window that ends at now moves along when a snapshot brings more history.
+11. **What is read.** One read covers the window and a window's length on each side, so a drag
+    has something to show. Another read follows when the window leaves it, when it is more than
+    8 windows long (the current's 2,000 points would be too thin), or when a snapshot is stored;
+    during a gesture it waits 150 ms for the fingers to settle. Reads run only while the screen
+    is shown: a destination's model outlives its screen, and a read nobody sees is self-drain.
+    The chart places only the marks that touch the window.
+12. **The cursor and a tap.** One finger dragged sideways moves the cursor; the readout names
+    that moment, or without a cursor the latest known moment in view. A haptic tick marks each
+    stretch of a shown track that begins under the moving cursor. A tap on a band picks what lies
+    within a sixtieth of the window to each side: one stretch that is longer than that under the
+    finger, else every stretch in reach, which is what a density span stands for. Their details
+    open in a bottom sheet, or in a side panel from 840 dp (SPEC 10.10), with a link to the app
+    when the stretch belongs to one.
+13. **Tracks.** All eleven are shown at first; the toolbar's tracks sheet turns each off. The
+    choice lasts as long as the screen's model and is not stored: SPEC 10.6 asks only that a
+    track can be toggled.
 
 ## Consequences
 

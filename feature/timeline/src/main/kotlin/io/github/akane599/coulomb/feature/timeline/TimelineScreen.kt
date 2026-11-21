@@ -1,0 +1,391 @@
+// SPDX-FileCopyrightText: The Coulomb contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package io.github.akane599.coulomb.feature.timeline
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.akane599.coulomb.core.data.Timeline
+import io.github.akane599.coulomb.core.data.TimelineTrack
+import io.github.akane599.coulomb.core.data.TrackSpan
+import io.github.akane599.coulomb.core.designsystem.chart.TimelineChart
+import io.github.akane599.coulomb.core.designsystem.chart.TimelineGestures
+import io.github.akane599.coulomb.core.designsystem.chart.TimelineLabels
+import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
+import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
+import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
+import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.ui.DataTableSheet
+import io.github.akane599.coulomb.core.ui.MarkedText
+import io.github.akane599.coulomb.core.ui.format.Formats
+import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.Note
+import io.github.akane599.coulomb.core.ui.page.SectionTitle
+import io.github.akane599.coulomb.core.ui.page.StandIn
+import io.github.akane599.coulomb.core.ui.page.ViewTableButton
+import java.time.ZoneId
+import io.github.akane599.coulomb.core.ui.R as UiR
+
+/** Where the Timeline leads: the Night Report, one night, and an app's detail. */
+@Immutable
+public class TimelineLinks(
+    public val onOpenNights: () -> Unit,
+    public val onOpenNight: (Long) -> Unit,
+    public val onOpenApp: (Int) -> Unit,
+)
+
+/** What the Timeline's controls do; the view model's functions, or nothing in a test. */
+@Immutable
+internal class TimelineActions(
+    val transform: (zoom: Float, focus: Float, pan: Float) -> Unit = { _, _, _ -> },
+    val scrub: (Long) -> Unit = {},
+    val tap: (TimelineTrack?, Long) -> Unit = { _, _ -> },
+    val dismissPicked: () -> Unit = {},
+    val setRange: (Long) -> Unit = {},
+    val jumpToNow: () -> Unit = {},
+    val setTrack: (TimelineTrack, Boolean) -> Unit = { _, _ -> },
+    val retry: () -> Unit = {},
+)
+
+/**
+ * The Timeline (SPEC 10.6): the level, the current and one band per track over a window of 15
+ * minutes to 7 days. Two fingers zoom and move it, one finger scrubs, a tap on a mark says what it
+ * was. The readout above the chart names the moment under the cursor.
+ */
+@Composable
+public fun TimelineScreen(
+    links: TimelineLinks,
+    modifier: Modifier = Modifier,
+    viewModel: TimelineViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val actions =
+        remember(viewModel) {
+            TimelineActions(
+                transform = viewModel::transform,
+                scrub = viewModel::scrub,
+                tap = viewModel::tap,
+                dismissPicked = viewModel::dismissPicked,
+                setRange = viewModel::setRange,
+                jumpToNow = viewModel::jumpToNow,
+                setTrack = viewModel::setTrack,
+                retry = viewModel::retry,
+            )
+        }
+    TimelineContent(state, actions, links, modifier)
+}
+
+private val WideFrom = 840.dp
+private val PanelWidth = 320.dp
+private val ToolbarLift = 16.dp
+
+/** The page ends this far under its last line, so the toolbar never covers it. */
+private val ToolbarRoom = 96.dp
+
+@Composable
+internal fun TimelineContent(
+    state: TimelineUiState,
+    actions: TimelineActions,
+    links: TimelineLinks,
+    modifier: Modifier = Modifier,
+    zone: ZoneId = remember { ZoneId.systemDefault() },
+) {
+    val formats = rememberFormats()
+    val gutter = currentGutter()
+    var tracks by rememberSaveable { mutableStateOf(false) }
+    var table by rememberSaveable { mutableStateOf(false) }
+    val timeline = state.timeline
+    // What is on screen: the table, the caption and the summary speak of this, not of all that was read.
+    val visible = remember(timeline, state.window) { timeline?.cut(state.window) }
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // SPEC 10.10: on expanded widths a tapped mark's details sit beside the chart, not over it.
+        val wide = maxWidth >= WideFrom
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = gutter, end = gutter, bottom = ToolbarRoom),
+                ) {
+                    when {
+                        timeline == null && state.failed -> ReadError(actions.retry)
+                        timeline == null || visible == null -> PageSkeleton()
+                        else -> Page(state, timeline, visible, actions, links, zone, formats) { table = true }
+                    }
+                }
+                // Over the chart's column, not over the side panel.
+                TimelineToolbar(
+                    spanMs = state.window.spanMs,
+                    onRange = actions.setRange,
+                    onTracks = { tracks = true },
+                    onNow = actions.jumpToNow,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(start = gutter, end = gutter, bottom = ToolbarLift),
+                )
+            }
+            if (wide) {
+                Box(Modifier.width(1.dp).fillMaxHeight().background(CoulombTheme.colors.hairline))
+                Column(
+                    Modifier
+                        .width(PanelWidth)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(gutter),
+                ) {
+                    val picked = state.picked
+                    if (picked == null) {
+                        StandIn(stringResource(R.string.timeline_panel_hint), top = 0.dp)
+                    } else {
+                        EventDetails(picked, state.labels, zone, formats, links.onOpenApp)
+                    }
+                }
+            }
+        }
+        val picked = state.picked
+        if (!wide && picked != null) {
+            EventSheet(picked, state.labels, zone, formats, links.onOpenApp, actions.dismissPicked)
+        }
+    }
+    if (tracks) TracksSheet(state.tracks, actions.setTrack) { tracks = false }
+    if (table && visible != null) DataTableSheet(tracksTable(visible, state.shown, formats), onDismiss = { table = false })
+}
+
+@Composable
+@Suppress("LongParameterList") // The state, what was read, what is in view, and the page's controls.
+private fun Page(
+    state: TimelineUiState,
+    timeline: Timeline,
+    visible: Timeline,
+    actions: TimelineActions,
+    links: TimelineLinks,
+    zone: ZoneId,
+    formats: Formats,
+    onViewTable: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        // Without a cursor the readout is the latest moment in view that the history knows.
+        val at = state.cursorMs ?: (minOf(state.window.toMs, visible.knownUntilWallMs ?: state.window.toMs) - 1)
+        val moment = remember(timeline, at) { timeline.moment(at) }
+        Readout(moment, state.nowMs, zone, formats)
+        if (visible.knownMs == 0L) {
+            StandIn(stringResource(R.string.timeline_no_history), top = CoulombSpacing.Space16)
+        }
+        Chart(state, timeline, visible, actions, zone, formats, onViewTable)
+        caption(state, visible, formats)?.let { Note(it) }
+        ViewTableButton(onViewTable)
+        state.latestNight?.let { night ->
+            SectionTitle(
+                stringResource(R.string.night_report_title),
+                provenance = null,
+                action = { CoulombTextButton(stringResource(R.string.timeline_see_all), links.onOpenNights, edge = ButtonEdge.End) },
+            )
+            NightRow(night, first = true, selected = false, fastest = 0.0, nowMs = state.nowMs, zone = zone, formats = formats) {
+                links.onOpenNight(night.id)
+            }
+        }
+    }
+}
+
+/**
+ * The moment under the cursor (design lab `.tl-read`): when and the level in Title, then the
+ * phone's state and the current in Data. TalkBack hears it change while the cursor moves.
+ */
+@Composable
+private fun Readout(
+    moment: Moment,
+    nowMs: Long,
+    zone: ZoneId,
+    formats: Formats,
+) {
+    val colors = CoulombTheme.colors
+    val type = CoulombTheme.typography
+    val whenText = startedAt(moment.atMs, nowMs, zone, formats)
+    Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite }) {
+        val level = moment.levelPct
+        if (level != null) {
+            // The level between two readings is the last one reported: Modeled, as on Now.
+            MarkedText(
+                stringResource(R.string.timeline_readout, whenText, formats.percent(level)),
+                Provenance.MODELED,
+                type.title,
+                colors.textPrimary,
+            )
+        } else {
+            Text(whenText, color = colors.textPrimary, style = type.title)
+        }
+        val separator = stringResource(R.string.night_separator)
+        val words =
+            if (!moment.known) {
+                listOf(stringResource(R.string.timeline_unknown_at))
+            } else {
+                listOfNotNull(
+                    moment.screenOn?.let { stringResource(if (it) R.string.timeline_screen_on else R.string.timeline_screen_off) },
+                    when (moment.doze) {
+                        TrackSpan.DOZE_LIGHT -> stringResource(R.string.timeline_state_doze_light)
+                        TrackSpan.DOZE_DEEP -> stringResource(R.string.timeline_state_doze_deep)
+                        else -> null
+                    },
+                    stringResource(R.string.timeline_state_charging).takeIf { moment.charging == true },
+                )
+            }
+        val current = moment.currentMa?.let { formats.current(kotlin.math.abs(it)).joined() }
+        val line = (words + listOfNotNull(current)).joinToString(separator)
+        if (current != null) {
+            MarkedText(line, Provenance.MEASURED, type.data, colors.textSecondary)
+        } else {
+            Text(line, color = colors.textSecondary, style = type.data)
+        }
+    }
+}
+
+@Composable
+@Suppress("LongParameterList") // The state, what was read, what is in view, and the chart's controls.
+private fun Chart(
+    state: TimelineUiState,
+    timeline: Timeline,
+    visible: Timeline,
+    actions: TimelineActions,
+    zone: ZoneId,
+    formats: Formats,
+    onViewTable: () -> Unit,
+) {
+    val resources = LocalResources.current
+    val haptics = LocalHapticFeedback.current
+    val shown = state.shown
+    val series = remember(timeline, shown, resources) { timeline.series(shown) { resources.getString(it.label) } }
+    val window = state.window
+    val ticks = remember(window, zone, formats) { timeTicks(window.fromMs, window.toMs, zone, formats) }
+    val labels =
+        TimelineLabels(
+            level = stringResource(R.string.timeline_level),
+            current = stringResource(R.string.timeline_current),
+            percent = formats::percent,
+            amps = { formats.signedCurrent(it).joined() },
+        )
+    // The last scrub position: a stretch that begins between it and the next is one tick (SPEC 10.6).
+    val last = remember { longArrayOf(Long.MIN_VALUE) }
+    val gestures =
+        TimelineGestures(
+            onTransform = actions.transform,
+            onScrub = { at ->
+                if (last[0] != Long.MIN_VALUE && timeline.crosses(last[0], at, shown)) {
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                }
+                last[0] = at
+                actions.scrub(at)
+            },
+            onTap = { band, at ->
+                last[0] = at
+                actions.tap(band?.let(shown::getOrNull), at)
+            },
+        )
+    TimelineChart(
+        series = series,
+        fromMs = window.fromMs,
+        toMs = window.toMs,
+        ticks = ticks,
+        labels = labels,
+        summary = summary(state, visible, zone, formats),
+        viewTableLabel = stringResource(UiR.string.page_view_table),
+        onViewTable = onViewTable,
+        modifier = Modifier.padding(top = CoulombSpacing.Space16),
+        cursorMs = state.cursorMs,
+        gestures = gestures,
+    )
+}
+
+/** What TalkBack reads for the chart: the range, the level at its ends, and how often the phone woke. */
+@Composable
+private fun summary(
+    state: TimelineUiState,
+    visible: Timeline,
+    zone: ZoneId,
+    formats: Formats,
+): String {
+    val range =
+        stringResource(
+            R.string.timeline_summary_range,
+            formats.clock(state.window.fromMs, zone, state.nowMs),
+            formats.clock(state.window.toMs, zone, state.nowMs),
+        )
+    val first = visible.level.firstOrNull()
+    val last = visible.level.lastOrNull()
+    val level =
+        if (first != null && last != null) {
+            stringResource(R.string.timeline_summary_level, formats.percent(first.levelPct), formats.percent(last.levelPct))
+        } else {
+            stringResource(R.string.timeline_no_history)
+        }
+    val wakeups = visible.wakeupsPerHour()?.let { stringResource(R.string.timeline_caption_wakeups, formats.decimal(it)) }
+    return listOfNotNull(range, level, wakeups).joinToString(" ")
+}
+
+/**
+ * The caption under the chart: the wakeup rate, which a density span cannot show mark by mark
+ * (ADR-0023), what an outlined span is, and the scales of the two value lines.
+ */
+@Composable
+private fun caption(
+    state: TimelineUiState,
+    visible: Timeline,
+    formats: Formats,
+): String? {
+    val shown = state.tracks
+    val rate = visible.wakeupsPerHour()?.takeIf { TimelineTrack.AWAKE in shown }
+    val low = visible.temperature.minOfOrNull { it.deciC }
+    // One reading has no range to give.
+    val high = visible.temperature.maxOfOrNull { it.deciC }?.takeIf { low != null && it > low }
+    val parts =
+        listOfNotNull(
+            rate?.let { stringResource(R.string.timeline_caption_wakeups, formats.decimal(it)) },
+            stringResource(R.string.timeline_caption_density).takeIf { rate != null && state.window.spanMs > DENSE_FROM_MS },
+            stringResource(R.string.timeline_caption_signal).takeIf {
+                TimelineTrack.SIGNAL in shown && !visible.tracks[TimelineTrack.SIGNAL].isNullOrEmpty()
+            },
+            if (TimelineTrack.TEMPERATURE in shown && low != null && high != null) {
+                stringResource(
+                    R.string.timeline_caption_temperature,
+                    formats.celsius(low.toDouble()).number,
+                    formats.celsius(high.toDouble()).joined(),
+                )
+            } else {
+                null
+            },
+        )
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" ")
+}
+
+/** Past this length, wakeups are usually too close to draw one by one (design lab: "Zoom to 6 h to see each"). */
+private const val DENSE_FROM_MS = 6 * 60 * 60 * 1000L
