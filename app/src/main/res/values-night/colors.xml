@@ -4,4 +4,7 @@
 <resources>
     <!-- `bg` dark from DESIGN.md (ColorTokens.kt DarkColors). -->
     <color name="window_background">#0C1015</color>
+    <!-- The Charging Live Update's bar: `accent` and `hairline` dark (ColorTokens.kt DarkColors). -->
+    <color name="surface_accent">#E99355</color>
+    <color name="surface_quiet">#2E333B</color>
 </resources>

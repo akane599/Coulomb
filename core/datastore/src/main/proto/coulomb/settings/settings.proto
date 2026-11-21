@@ -20,4 +20,12 @@ message Settings {
   int32 charge_target_pct = 4;
   // Onboarding finished (ADR-0047 §1); until then the app opens onboarding.
   bool onboarded = 5;
+  // "Charge target alarm" (SPEC 12.3, 14.4): Off.
+  bool charge_alarm = 6;
+  // "Temperature alarm" (SPEC 14.4) in tenths of a degree, 380-500; 0 is the default 42 °C, -1 is off.
+  sint32 temperature_alarm_deci_c = 7;
+  // "Insights digest" (SPEC 14.4): On, so the field stores "off".
+  bool insights_digest_off = 8;
+  // The digest's minute of the day plus one; 0 is the default 09:00.
+  int32 insights_digest_minute_plus_one = 9;
 }

@@ -13,4 +13,37 @@
     <string name="screen_settings">Settings</string>
     <!-- Shown on a screen whose phase has not shipped yet (SPEC 17). -->
     <string name="screen_not_built">Not built yet.</string>
+    <!-- The notification channels of SPEC 12.1; Monitor is the collector's. -->
+    <string name="surface_channel_charging">Charging</string>
+    <string name="surface_channel_charging_about">Level, power and time to your target while the phone charges.</string>
+    <string name="surface_channel_alerts">Alerts</string>
+    <string name="surface_channel_alerts_about">Charge target reached, and a hot battery.</string>
+    <string name="surface_channel_insights">Insights</string>
+    <string name="surface_channel_insights_about">New insights, at most once a day.</string>
+    <string name="surface_channel_privileges">Privileges</string>
+    <string name="surface_channel_privileges_about">When Coulomb loses the access it reads battery data with.</string>
+    <!-- The Monitor notification's line: a rate and how long it covers. -->
+    <string name="surface_monitor_off">%1$s · screen off %2$s</string>
+    <string name="surface_monitor_on">%1$s · screen on %2$s</string>
+    <string name="surface_monitor_charging">Charging · %1$s</string>
+    <!-- The Charging Live Update (SPEC 12.2). -->
+    <string name="surface_charging_title">Charging · %1$s</string>
+    <string name="surface_charging_status">%1$s · %2$s</string>
+    <string name="surface_charging_to_target">%1$s in %2$s</string>
+    <string name="surface_charge_ended_title">Charge ended</string>
+    <string name="surface_charge_ended_power">%1$s in %2$s, average %3$s</string>
+    <string name="surface_charge_ended">%1$s in %2$s</string>
+    <!-- Alerts (SPEC 12.3). -->
+    <string name="surface_target_title">Charged to %1$s</string>
+    <string name="surface_target_text">The battery reached your charge target. Unplug to stop there.</string>
+    <string name="surface_hot_title">Battery at %1$s</string>
+    <string name="surface_hot_text">Heat ages a battery. Take the phone out of the sun or off the charger and let it cool.</string>
+    <plurals name="surface_digest_title">
+        <item quantity="one">%1$s new insight</item>
+        <item quantity="other">%1$s new insights</item>
+    </plurals>
+    <string name="surface_privileges_title">Coulomb lost its access</string>
+    <string name="surface_privileges_stopped">Shizuku is stopped, so Coulomb reads basic data only. Open Privileges to start it again.</string>
+    <string name="surface_privileges_revoked">The permissions Coulomb was granted were taken back. Open Privileges to grant them again.</string>
+    <string name="surface_privileges_denied">Shizuku no longer authorizes Coulomb. Open Privileges to allow it again.</string>
 </resources>

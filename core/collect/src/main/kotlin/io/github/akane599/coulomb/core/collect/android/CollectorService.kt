@@ -86,6 +86,7 @@ public class CollectorService : Service() {
     }
 
     override fun onDestroy() {
+        running = false
         unregisterReceiver(events)
         collector.detach()
         super.onDestroy()
@@ -162,23 +163,42 @@ public class CollectorService : Service() {
                 setShowBadge(false)
             },
         )
-        val notification =
-            NotificationCompat
-                .Builder(this, CHANNEL)
-                .setSmallIcon(R.drawable.ic_collector)
-                .setContentTitle(getString(R.string.collector_notification))
-                .setOngoing(true)
-                .setSilent(true)
-                .setCategory(Notification.CATEGORY_SERVICE)
-                .build()
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(this, null), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        running = true
     }
 
     public companion object {
         /** A [SnapshotTrigger] name for the snapshot the start asks for. */
         public const val EXTRA_TRIGGER: String = "io.github.akane599.coulomb.collect.TRIGGER"
-        private const val CHANNEL = "collector"
-        private const val NOTIFICATION_ID = 1
+
+        /** The Monitor channel of SPEC 12.1. */
+        public const val CHANNEL: String = "collector"
+        public const val NOTIFICATION_ID: Int = 1
+
+        /** True while the service is in the foreground: only then may its notification be updated. */
+        @Volatile
+        public var running: Boolean = false
+            private set
+
+        /**
+         * The Monitor notification (SPEC 12.1): silent and ongoing, with [text] as its one line, such
+         * as the drain rate. The app posts it again under [NOTIFICATION_ID] when a snapshot changes
+         * the line; this module does not know the read models that line comes from.
+         */
+        public fun notification(
+            context: Context,
+            text: String?,
+        ): Notification =
+            NotificationCompat
+                .Builder(context, CHANNEL)
+                .setSmallIcon(R.drawable.ic_collector)
+                .setContentTitle(context.getString(R.string.collector_notification))
+                .setContentText(text)
+                .setOngoing(true)
+                .setSilent(true)
+                .setOnlyAlertOnce(true)
+                .setCategory(Notification.CATEGORY_SERVICE)
+                .build()
 
         /** Starts the service in the foreground with [trigger] as its first snapshot. */
         public fun start(

@@ -12,7 +12,11 @@ import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeState
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
+import io.github.akane599.coulomb.surface.PrivilegeNotifications
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,6 +30,8 @@ class CoulombApplication : Application() {
 
     @Inject lateinit var scope: AppScope
 
+    @Inject lateinit var privilegeNotifications: PrivilegeNotifications
+
     override fun onCreate() {
         super.onCreate()
         // SPEC 4.1: T1 grants are re-verified at every start; Shizuku listeners attach here.
@@ -36,6 +42,15 @@ class CoulombApplication : Application() {
             if (!settings.settings.first().onboarded) return@launch
             privileged.state.first { it.settled() }
             capabilities.probeIfStale()
+        }
+        scope.launch {
+            // SPEC 12.1: a lost access is told once. The state changes with the manager's own events; nothing polls.
+            settings.settings.first { it.onboarded }
+            privileged.state
+                .filter { it.settled() }
+                .map { it.issue }
+                .distinctUntilChanged()
+                .collect(privilegeNotifications::onIssue)
         }
     }
 }

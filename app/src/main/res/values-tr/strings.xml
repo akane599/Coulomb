@@ -10,4 +10,34 @@
     <string name="screen_privileges">Yetkiler</string>
     <string name="screen_settings">Ayarlar</string>
     <string name="screen_not_built">Henüz yapılmadı.</string>
+    <!-- The notification channels of SPEC 12.1; Monitor is the collector's. -->
+    <string name="surface_channel_charging">Şarj</string>
+    <string name="surface_channel_charging_about">Telefon şarj olurken seviye, güç ve hedefine kalan süre.</string>
+    <string name="surface_channel_alerts">Uyarılar</string>
+    <string name="surface_channel_alerts_about">Şarj hedefine ulaşıldığında ve pil ısındığında.</string>
+    <string name="surface_channel_insights">İçgörüler</string>
+    <string name="surface_channel_insights_about">Yeni içgörüler, günde en çok bir kez.</string>
+    <string name="surface_channel_privileges">Yetkiler</string>
+    <string name="surface_channel_privileges_about">Coulomb, pil verisini okuduğu erişimi kaybettiğinde.</string>
+    <string name="surface_monitor_off">%1$s · ekran kapalı %2$s</string>
+    <string name="surface_monitor_on">%1$s · ekran açık %2$s</string>
+    <string name="surface_monitor_charging">Şarj oluyor · %1$s</string>
+    <string name="surface_charging_title">Şarj oluyor · %1$s</string>
+    <string name="surface_charging_status">%1$s · %2$s</string>
+    <string name="surface_charging_to_target">%2$s içinde %1$s</string>
+    <string name="surface_charge_ended_title">Şarj bitti</string>
+    <string name="surface_charge_ended_power">%2$s içinde %1$s, ortalama %3$s</string>
+    <string name="surface_charge_ended">%2$s içinde %1$s</string>
+    <string name="surface_target_title">%1$s seviyesine şarj oldu</string>
+    <string name="surface_target_text">Pil şarj hedefine ulaştı. Orada kalması için fişten çek.</string>
+    <string name="surface_hot_title">Pil %1$s</string>
+    <string name="surface_hot_text">Isı pili yıpratır. Telefonu güneşten ya da şarjdan al ve soğumaya bırak.</string>
+    <plurals name="surface_digest_title">
+        <item quantity="one">%1$s yeni içgörü</item>
+        <item quantity="other">%1$s yeni içgörü</item>
+    </plurals>
+    <string name="surface_privileges_title">Coulomb erişimini kaybetti</string>
+    <string name="surface_privileges_stopped">Shizuku durduğu için Coulomb yalnızca temel veriyi okuyor. Yeniden başlatmak için Yetkiler’i aç.</string>
+    <string name="surface_privileges_revoked">Coulomb’a verilen izinler geri alındı. Yeniden vermek için Yetkiler’i aç.</string>
+    <string name="surface_privileges_denied">Shizuku artık Coulomb’a yetki vermiyor. Yeniden izin vermek için Yetkiler’i aç.</string>
 </resources>

@@ -23,9 +23,23 @@ public data class UserSettings(
     val chargeTargetPct: Int = DEFAULT_CHARGE_TARGET,
     /** Onboarding finished (ADR-0047 §1). */
     val onboarded: Boolean = false,
+    /** "Charge target alarm" (SPEC 12.3): Off; it fires at [chargeTargetPct]. */
+    val chargeAlarm: Boolean = false,
+    /** "Temperature alarm" in tenths of a degree (SPEC 14.4): 42 °C, 38–50 °C; null is off. */
+    val temperatureAlarmDeciC: Int? = DEFAULT_TEMPERATURE_ALARM,
+    /** "Insights digest" (SPEC 14.4): On. */
+    val insightsDigest: Boolean = true,
+    /** The minute of the local day from which the digest may post: 09:00. */
+    val insightsDigestMinute: Int = DEFAULT_DIGEST_MINUTE,
 ) {
     public companion object {
         public const val DEFAULT_CHARGE_TARGET: Int = 80
+        public const val DEFAULT_TEMPERATURE_ALARM: Int = 420
+
+        /** SPEC 14.4's range for the temperature alarm, in tenths of a degree. */
+        public val TEMPERATURE_ALARMS: IntRange = 380..500
+        public const val DEFAULT_DIGEST_MINUTE: Int = 9 * 60
+        public const val MINUTES_PER_DAY: Int = 24 * 60
 
         /** SPEC 14.4's range for the charge target. */
         public val CHARGE_TARGETS: IntRange = 50..100
@@ -51,6 +65,17 @@ public class SettingsStore
                             it.charge_target_pct.takeIf { pct -> pct in UserSettings.CHARGE_TARGETS }
                                 ?: UserSettings.DEFAULT_CHARGE_TARGET,
                         onboarded = it.onboarded,
+                        chargeAlarm = it.charge_alarm,
+                        temperatureAlarmDeciC =
+                            when (val stored = it.temperature_alarm_deci_c) {
+                                ALARM_OFF -> null
+                                in UserSettings.TEMPERATURE_ALARMS -> stored
+                                else -> UserSettings.DEFAULT_TEMPERATURE_ALARM
+                            },
+                        insightsDigest = !it.insights_digest_off,
+                        insightsDigestMinute =
+                            (it.insights_digest_minute_plus_one - 1).takeIf { minute -> minute in 0 until UserSettings.MINUTES_PER_DAY }
+                                ?: UserSettings.DEFAULT_DIGEST_MINUTE,
                     )
                 }.distinctUntilChanged()
 
@@ -71,9 +96,34 @@ public class SettingsStore
             store.updateData { it.copy(onboarded = true) }
         }
 
+        public suspend fun chargeAlarm(on: Boolean) {
+            store.updateData { it.copy(charge_alarm = on) }
+        }
+
+        /** Stores the alarm's threshold, held to [UserSettings.TEMPERATURE_ALARMS]; null turns the alarm off. */
+        public suspend fun temperatureAlarm(deciC: Int?) {
+            val stored = deciC?.coerceIn(UserSettings.TEMPERATURE_ALARMS) ?: ALARM_OFF
+            store.updateData { it.copy(temperature_alarm_deci_c = stored) }
+        }
+
+        public suspend fun insightsDigest(on: Boolean) {
+            store.updateData { it.copy(insights_digest_off = !on) }
+        }
+
+        /** Stores the minute of the day from which the digest may post. */
+        public suspend fun insightsDigestMinute(minute: Int) {
+            val held = minute.coerceIn(0, UserSettings.MINUTES_PER_DAY - 1)
+            store.updateData { it.copy(insights_digest_minute_plus_one = held + 1) }
+        }
+
         /** Stores [pct], held to [UserSettings.CHARGE_TARGETS]. */
         public suspend fun chargeTarget(pct: Int) {
             val held = pct.coerceIn(UserSettings.CHARGE_TARGETS)
             store.updateData { it.copy(charge_target_pct = held) }
+        }
+
+        private companion object {
+            /** The stored value of a temperature alarm that is off. */
+            const val ALARM_OFF = -1
         }
     }

@@ -63,6 +63,29 @@ class SettingsStoreTest {
         }
 
     @Test
+    fun theAlarmsAndTheDigestKeepTheirDefaultsUntilSet() =
+        runTest(UnconfinedTestDispatcher()) {
+            val store = store(folder.root.resolve("d.pb"))
+            assertThat(store.settings.first().temperatureAlarmDeciC).isEqualTo(420)
+            assertThat(store.settings.first().insightsDigestMinute).isEqualTo(9 * 60)
+
+            store.temperatureAlarm(null)
+            store.insightsDigest(false)
+            store.insightsDigestMinute(0)
+            store.chargeAlarm(true)
+
+            val set = store.settings.first()
+            assertThat(set.temperatureAlarmDeciC).isNull()
+            assertThat(set.insightsDigest).isFalse()
+            // Midnight is a time, not "unset".
+            assertThat(set.insightsDigestMinute).isEqualTo(0)
+            assertThat(set.chargeAlarm).isTrue()
+
+            store.temperatureAlarm(999)
+            assertThat(store.settings.first().temperatureAlarmDeciC).isEqualTo(500)
+        }
+
+    @Test
     fun anUnreadableFileGivesTheDefaults() =
         runTest(UnconfinedTestDispatcher()) {
             val file = folder.root.resolve("c.pb").apply { writeBytes(byteArrayOf(0x0A, 0x7F)) }

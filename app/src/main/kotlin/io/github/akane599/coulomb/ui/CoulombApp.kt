@@ -30,13 +30,17 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -104,7 +108,17 @@ fun CoulombApp(
     modifier: Modifier = Modifier,
     navigator: AppNavigator = rememberAppNavigator(),
     screens: AppScreens = AppScreens.Default,
+    asked: Route? = null,
+    onOpen: () -> Unit = {},
 ) {
+    val opened by rememberUpdatedState(onOpen)
+    // A notification's tap asks for a screen (SPEC 12.1): open it once, unless it is already on top.
+    LaunchedEffect(asked) {
+        if (asked != null) {
+            if (navigator.backStack.lastOrNull() != asked) navigator.open(asked)
+            opened()
+        }
+    }
     val rail = currentWindowWidth() != WindowWidth.Compact
     val provider = remember(navigator, screens) { appEntries(navigator, screens) }
     val entries =

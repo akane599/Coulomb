@@ -7,14 +7,11 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
-import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import dagger.multibindings.IntoSet
-import io.github.akane599.coulomb.core.collect.SnapshotObserver
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.InsightDao
 import io.github.akane599.coulomb.core.database.dao.SampleDao
@@ -29,7 +26,7 @@ import io.github.akane599.coulomb.core.insights.RuleContextLoader
 import io.github.akane599.coulomb.core.insights.Thresholds
 import javax.inject.Singleton
 
-/** The insight engine's wiring (SPEC 9): it runs after each heavy snapshot (SPEC 7.5, step 6). */
+/** The insight engine's wiring (SPEC 9). `SurfaceObserver` runs it after each heavy snapshot (SPEC 7.5, step 6). */
 @Module
 @InstallIn(SingletonComponent::class)
 object InsightsModule {
@@ -91,10 +88,4 @@ object InsightsModule {
         engine: InsightEngine,
         store: InsightStore,
     ): InsightRunner = InsightRunner(RuleContextLoader(snapshots, windows, sessions, samples, ports), engine, store)
-
-    /** Rules read windows, which only a heavy snapshot adds. */
-    @Provides
-    @IntoSet
-    fun insightsAfterSnapshots(runner: Lazy<InsightRunner>): SnapshotObserver =
-        SnapshotObserver { heavy -> if (heavy) runner.get().run(System.currentTimeMillis()) }
 }

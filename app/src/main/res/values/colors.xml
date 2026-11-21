@@ -4,4 +4,7 @@
 <resources>
     <!-- `bg` light from DESIGN.md (ColorTokens.kt LightColors), for the window before Compose draws. -->
     <color name="window_background">#F8FAFD</color>
+    <!-- The Charging Live Update's bar (SPEC 12.2): `accent` up to the target, `hairline` past it (ColorTokens.kt LightColors). -->
+    <color name="surface_accent">#C06325</color>
+    <color name="surface_quiet">#D3D8DE</color>
 </resources>

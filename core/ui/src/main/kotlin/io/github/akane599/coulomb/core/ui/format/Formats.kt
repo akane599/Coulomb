@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.ui.format
 
+import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.os.Process
@@ -141,6 +142,9 @@ public class Formats(
 
     /** A power to 0.1 W (SPEC 6.7). */
     public fun watts(value: Double): Figure = Figure(oneDecimal.format(value), resources.getString(R.string.unit_w))
+
+    /** A power in whole watts, as SPEC 12.2 writes it where there is room for little: "18 W". */
+    public fun wholeWatts(value: Double): Figure = Figure(integer.format(value.roundToLong()), resources.getString(R.string.unit_w))
 
     /** Net power with a true minus sign when it leaves the battery: "−1.2 W" (Charging while drawing). */
     public fun signedWatts(value: Double): Figure {
@@ -403,22 +407,37 @@ public fun rememberFormats(): Formats {
     val context = LocalContext.current
     val locale = stringsLocale(configuration, resources)
     val is24Hour = DateFormat.is24HourFormat(context)
-    return remember(configuration, resources, locale, is24Hour) {
-        val hours = if (is24Hour) "H" else "h"
-        Formats(
-            resources = resources,
-            locale = locale,
-            clockPattern = DateFormat.getBestDateTimePattern(locale, "${hours}m"),
-            secondsPattern = DateFormat.getBestDateTimePattern(locale, "${hours}ms"),
-            // A tick needs no minutes in the 12-hour setting ("12 PM"); 24-hour keeps "12:00".
-            hourPattern = DateFormat.getBestDateTimePattern(locale, if (is24Hour) "Hm" else "h"),
-            dayClockPattern = DateFormat.getBestDateTimePattern(locale, "EEE${hours}m"),
-            weekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEE"),
-            dayPattern = DateFormat.getBestDateTimePattern(locale, "MMMd"),
-            dayYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMdyyyy"),
-            monthPattern = DateFormat.getBestDateTimePattern(locale, "LLL"),
-            monthYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMyyyy"),
-            fullWeekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEEE"),
-        )
-    }
+    return remember(configuration, resources, locale, is24Hour) { formats(resources, locale, is24Hour) }
+}
+
+/**
+ * [Formats] outside a composition, for a notification, a widget or the tile (SPEC 12): the same
+ * figures as on screen, in the language of [context]'s strings.
+ */
+public fun formatsFor(context: Context): Formats {
+    val resources = context.resources
+    return formats(resources, stringsLocale(resources.configuration, resources), DateFormat.is24HourFormat(context))
+}
+
+private fun formats(
+    resources: Resources,
+    locale: Locale,
+    is24Hour: Boolean,
+): Formats {
+    val hours = if (is24Hour) "H" else "h"
+    return Formats(
+        resources = resources,
+        locale = locale,
+        clockPattern = DateFormat.getBestDateTimePattern(locale, "${hours}m"),
+        secondsPattern = DateFormat.getBestDateTimePattern(locale, "${hours}ms"),
+        // A tick needs no minutes in the 12-hour setting ("12 PM"); 24-hour keeps "12:00".
+        hourPattern = DateFormat.getBestDateTimePattern(locale, if (is24Hour) "Hm" else "h"),
+        dayClockPattern = DateFormat.getBestDateTimePattern(locale, "EEE${hours}m"),
+        weekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEE"),
+        dayPattern = DateFormat.getBestDateTimePattern(locale, "MMMd"),
+        dayYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMdyyyy"),
+        monthPattern = DateFormat.getBestDateTimePattern(locale, "LLL"),
+        monthYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMyyyy"),
+        fullWeekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEEE"),
+    )
 }
