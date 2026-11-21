@@ -56,6 +56,15 @@ The fourth gate run found where §1 and §2 did not reach (`docs/design-gates/20
    widget puts the time in the state's place and never drops it on one line, stepping the level
    down to title size if it must.
 
+## Run 5 (2026-11-22)
+
+9. **Charging and Now's verdict follow §8 too.** With an old reading Charging leaves out the
+   times to target and to full and every projection, draws its power in ink rather than copper,
+   heads its strip "Readings", and words its note by mode. Now's verdict names its end ("from the
+   unplug to the last reading") instead of counting "ago" to a reading that is not now. The stale
+   notes are polite live regions, the tile is not lit from an old reading, and a section caption
+   wraps only when it would take more than half the row.
+
 ## Verified
 
 Unit tests (sample counts, the 0.0 filter, the import threshold), every golden re-recorded and
