@@ -33,6 +33,7 @@ import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
 import io.github.akane599.coulomb.core.database.entity.BootEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
+import io.github.akane599.coulomb.core.database.entity.RailEnergyEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.database.entity.UidMetaEntity
 import io.github.akane599.coulomb.core.model.AutoReference
@@ -63,6 +64,7 @@ internal class CollectorEngine(
     private val labels: AppLabels,
     private val settings: CollectorSettings = CollectorSettings { false },
     private val health: HealthSource = HealthSource.None,
+    private val rails: RailSource = RailSource.None,
 ) {
     private val writer = SnapshotWriter(db)
     private val retention = Retention(db, blobs)
@@ -280,6 +282,9 @@ internal class CollectorEngine(
      * mode says why. S4 comes right after S5 when the setting turns it on ([usage]); however it
      * goes, it never makes the snapshot partial (ADR-0035 §3).
      */
+    private suspend fun railRows(): List<RailEnergyEntity> =
+        rails.read().map { RailEnergyEntity(snapshotId = 0, rail = it.rail, energyUws = it.energyUws, readElapsedNs = it.readElapsedNs) }
+
     private suspend fun snapshot(
         trigger: SnapshotTrigger,
         read: Read,
@@ -301,7 +306,8 @@ internal class CollectorEngine(
         val kernel = KernelSnapshot.combine(files, log, liveMode)
         val ingest = (history as? HistoryOutcome.Read)?.result
         val statuses = statuses(stats, usage, history, kernel)
-        val rows = dump?.let { counterRows(it, usage) } ?: SnapshotRows()
+        // S16 only beside S5: a window's rails are read between two heavy snapshots.
+        val rows = dump?.let { counterRows(it, usage).copy(railEnergy = railRows()) } ?: SnapshotRows()
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
         val blob = stats?.let { writeBlob(trigger, reading, boot, it, usage?.raw, kind == SnapshotKind.HEAVY) }

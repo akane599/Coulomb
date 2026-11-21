@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.collect.android.AndroidAppLabels
 import io.github.akane599.coulomb.core.collect.android.AndroidDeviceIdentity
 import io.github.akane599.coulomb.core.collect.android.AndroidHealthSource
 import io.github.akane599.coulomb.core.collect.android.AndroidLightSource
+import io.github.akane599.coulomb.core.collect.android.AndroidRailSource
 import io.github.akane599.coulomb.core.collect.android.CollectorService
 import io.github.akane599.coulomb.core.collect.android.FileBlobStore
 import io.github.akane599.coulomb.core.collect.android.LiteWorker
@@ -73,6 +74,7 @@ public class Collector
                 labels = AndroidAppLabels(context),
                 settings = settings,
                 health = AndroidHealthSource(context, access),
+                rails = AndroidRailSource(context),
             )
         private val actor = CollectorActor(engine, scope, observers)
         private val device = MutableStateFlow(DeviceFlags(plugged = false, screenOn = false))

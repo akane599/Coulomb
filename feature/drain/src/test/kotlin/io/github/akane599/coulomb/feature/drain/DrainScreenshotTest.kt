@@ -140,6 +140,11 @@ class DrainScreenshotTest {
     @Config(qualifiers = "w412dp-h1600dp-xhdpi")
     fun componentsCoarse() = shoot("components-coarse", ready(), lens = Lens.COMPONENTS)
 
+    /** With power monitors (S16): the rails, Measured, then the maker's consumers. */
+    @Test
+    @Config(qualifiers = "w412dp-h2400dp-xhdpi")
+    fun componentsRails() = shoot("components-rails", ready(report(rails = labRails())), lens = Lens.COMPONENTS)
+
     @Test
     @Config(qualifiers = "w412dp-h1600dp-xhdpi")
     fun componentsFull() = shoot("components-full", ready(report(components = fullComponents())), lens = Lens.COMPONENTS)

@@ -551,7 +551,7 @@ public abstract class SnapshotDao {
     protected abstract suspend fun netStats(snapshotId: Long): List<NetStatEntity>
 
     @Query("SELECT * FROM rail_energy WHERE snapshotId = :snapshotId")
-    protected abstract suspend fun railEnergy(snapshotId: Long): List<RailEnergyEntity>
+    public abstract suspend fun railEnergy(snapshotId: Long): List<RailEnergyEntity>
 
     @Query("SELECT * FROM uid_stat WHERE snapshotId = :snapshotId")
     protected abstract suspend fun uidStats(snapshotId: Long): List<UidStatEntity>

@@ -23,6 +23,7 @@ import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.ChargeSource
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.RailNames
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.WindowKind
@@ -261,7 +262,30 @@ internal class DrainReader
                 breakdown = s4.apps.takeIf { it.isNotEmpty() }?.let(::SpanBreakdown),
                 breakdownOff = totals.offWindows > 0,
                 signal = signal(rows, chain),
+                rails = rails(from, to, bases.onBatteryMs, totals.screenOnMs + totals.screenOffMs),
             )
+        }
+
+        /**
+         * Each monitor's energy between the two snapshots. Both read since boot and count plugged-in
+         * energy too (PowerMonitorReadings.java, android-16.0.0_r4 and android-17.0.0_r1 L92-96), so
+         * a span across a reboot, or with time on the charger, has none.
+         */
+        private suspend fun rails(
+            from: SnapshotEntity,
+            to: SnapshotEntity,
+            onBatteryMs: Long,
+            spanMs: Long,
+        ): List<RailDrain>? {
+            if (from.bootSeq != to.bootSeq || onBatteryMs < spanMs - RAIL_SLACK_MS) return null
+            val start = snapshots.railEnergy(from.id).associate { it.rail to it.energyUws }
+            return snapshots
+                .railEnergy(to.id)
+                .mapNotNull { end ->
+                    val delta = start[end.rail]?.let { end.energyUws - it }
+                    delta?.takeIf { it >= 0 }?.let { RailDrain(RailNames.name(end.rail), RailNames.isRail(end.rail), it) }
+                }.sortedByDescending { it.energyUws }
+                .takeIf { list -> list.any { it.energyUws > 0 } }
         }
 
         /**
@@ -665,6 +689,9 @@ internal class DrainReader
 
             /** A chain covers a stored window when their times differ by at most a minute. */
             const val COVER_SLACK_MS: Long = 60_000L
+
+            /** A minute's rounding between the time on battery and the span's own length. */
+            private const val RAIL_SLACK_MS = 60_000L
 
             /**
              * The share of the window `[fromWallMs, toWallMs)` in each local day from [first] to

@@ -75,6 +75,23 @@ internal interface HealthSource {
     }
 }
 
+/** One power monitor's reading (S16): its name with [RailNames]' type prefix, energy since boot. */
+internal data class RailReading(
+    val rail: String,
+    val energyUws: Long,
+    val readElapsedNs: Long,
+)
+
+/** S16, read with each heavy snapshot when the device has power monitors (SPEC 5, ADR-0068). */
+internal interface RailSource {
+    suspend fun read(): List<RailReading>
+
+    /** No power monitors: tests that are not about them, and devices without any. */
+    object None : RailSource {
+        override suspend fun read(): List<RailReading> = emptyList()
+    }
+}
+
 /**
  * The settings the collector follows. `:core:collect` may not depend on `:core:datastore`
  * (SPEC 15.2), so the app binds this to the stored settings.

@@ -126,6 +126,13 @@
     <string name="drain_column_component">Bileşen</string>
     <string name="drain_column_energy">Enerji</string>
     <string name="drain_column_share">Pay</string>
+    <string name="drain_rails">Güç ölçerler</string>
+    <string name="drain_rails_definition">Telefonun içinde, her güç hattının taşıdığı enerjiyi sayan ölçerler. Bu telefonda var; çoğu telefonda yok.</string>
+    <string name="drain_rails_caption">Aralık boyunca telefonun kendi ölçerlerinin saydığı enerji. Adlar üreticinindir; Coulomb her birinin neyi beslediğini tahmin etmez.</string>
+    <string name="drain_rails_consumers">Enerji tüketicileri üreticinin gruplarıdır; bazıları ölçülür, bazıları modellenir.</string>
+    <string name="drain_column_rail">Hat</string>
+    <string name="drain_column_consumer">Enerji tüketicisi</string>
+    <string name="drain_rail_mwh">%1$s\u00A0mWh</string>
     <string name="drain_column_signal">Sinyal</string>
     <string name="drain_column_time">Süre</string>
     <string name="drain_signal">Sinyal gücü</string>

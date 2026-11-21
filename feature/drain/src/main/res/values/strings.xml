@@ -130,6 +130,13 @@
     <string name="drain_column_component">Component</string>
     <string name="drain_column_energy">Energy</string>
     <string name="drain_column_share">Share</string>
+    <string name="drain_rails">Power monitors</string>
+    <string name="drain_rails_definition">Meters inside the phone that count the energy each power rail carries. The phone has them; most phones do not.</string>
+    <string name="drain_rails_caption">Energy over the window, as the phone’s own meters counted it. The names are the maker’s, so Coulomb does not guess what each one powers.</string>
+    <string name="drain_rails_consumers">Energy consumers are the maker’s groupings; some are measured, some are modeled.</string>
+    <string name="drain_column_rail">Rail</string>
+    <string name="drain_column_consumer">Energy consumer</string>
+    <string name="drain_rail_mwh">%1$s\u00A0mWh</string>
     <string name="drain_column_signal">Signal</string>
     <string name="drain_column_time">Time</string>
     <string name="drain_signal">Signal strength</string>

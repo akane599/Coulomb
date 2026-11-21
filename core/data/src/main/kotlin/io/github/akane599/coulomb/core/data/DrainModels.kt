@@ -124,7 +124,28 @@ public data class DrainReport(
     val breakdownOff: Boolean = false,
     /** The time on battery by the phone's signal strength (SPEC 2); null when S5 recorded none. */
     val signal: SignalTime? = null,
+    /**
+     * S16's power monitors over the span, largest first; null without monitors, across a reboot
+     * (their energy counts from boot) or when part of the span was on the charger (it counts that
+     * too). Measured for rails; a consumer may be modeled by the maker ([RailDrain.rail]).
+     */
+    val rails: List<RailDrain>? = null,
 )
+
+/** One S16 power monitor over a span: its name as the device gives it, and the energy it counted. */
+public data class RailDrain(
+    val name: String,
+    /** A directly measured rail; false for an energy consumer the maker may model. */
+    val rail: Boolean,
+    val energyUws: Long,
+) {
+    /** Milliwatt-hours. */
+    val mwh: Double get() = energyUws / UWS_PER_MWH
+
+    private companion object {
+        const val UWS_PER_MWH = 3_600_000.0
+    }
+}
 
 /**
  * The time on battery in each of Android's five signal strengths, none or unknown (0) to great

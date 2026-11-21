@@ -9,6 +9,7 @@ import io.github.akane599.coulomb.core.data.ComponentApp
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.RailDrain
 import io.github.akane599.coulomb.core.data.SignalTime
 import io.github.akane599.coulomb.core.data.SpanBreakdown
 import io.github.akane599.coulomb.core.data.WakeCoverage
@@ -172,6 +173,7 @@ internal fun report(
     components: List<ComponentDrain> = coarseComponents(),
     wakeCoverage: WakeCoverage = SHELL_COVERAGE,
     signal: SignalTime? = labSignal(),
+    rails: List<RailDrain>? = null,
 ) = DrainReport(
     span = span,
     drains = drains,
@@ -189,7 +191,19 @@ internal fun report(
     alarms = alarms(),
     components = components,
     signal = signal,
+    rails = rails,
 )
+
+/** A phone with power monitors: four rails and two of the maker's energy consumers. */
+internal fun labRails() =
+    listOf(
+        RailDrain("VSYS_PWR_DISPLAY", rail = true, energyUws = 4_320_000_000),
+        RailDrain("S2M_VDD_CPUCL2", rail = true, energyUws = 1_980_000_000),
+        RailDrain("VSYS_PWR_MODEM", rail = true, energyUws = 1_260_000_000),
+        RailDrain("S9S_VDD_AOC", rail = true, energyUws = 310_000_000),
+        RailDrain("GPU", rail = false, energyUws = 540_000_000),
+        RailDrain("WIFI_BT", rail = false, energyUws = 0),
+    )
 
 /** Mostly good signal, a stretch at poor and three minutes searching. */
 internal fun labSignal() = SignalTime(listOf(4 * MINUTE, 26 * MINUTE, 68 * MINUTE, 112 * MINUTE, 41 * MINUTE), 3 * MINUTE)

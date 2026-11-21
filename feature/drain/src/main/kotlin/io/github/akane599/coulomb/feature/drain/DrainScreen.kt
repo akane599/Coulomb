@@ -400,6 +400,7 @@ private fun LazyListScope.lensItems(
         Lens.COMPONENTS -> {
             componentItems(report, formats, onViewTable = { viewTable(DrainTable.COMPONENTS) })
             signalItem(report, formats)
+            railsItem(report, formats)
         }
 
         Lens.WAKEUPS -> {
