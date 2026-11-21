@@ -112,10 +112,10 @@ fun CoulombApp(
     onOpen: () -> Unit = {},
 ) {
     val opened by rememberUpdatedState(onOpen)
-    // A notification's tap asks for a screen (SPEC 12.1): open it once, unless it is already on top.
+    // A notification, a widget or the tile asks for a screen (SPEC 12): open it once.
     LaunchedEffect(asked) {
         if (asked != null) {
-            if (navigator.backStack.lastOrNull() != asked) navigator.open(asked)
+            navigator.show(asked)
             opened()
         }
     }

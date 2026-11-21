@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="widget_level_name">Seviye ve özet</string>
+    <string name="widget_level_about">Pil seviyesi, şarj olup olmadığı ve fişten çekildiğinden beri olanlar tek satırda.</string>
+    <string name="widget_drains_name">En çok tüketenler</string>
+    <string name="widget_drains_about">Fişten çekildiğinden beri en çok pil kullanan üç uygulama.</string>
+    <string name="widget_night_name">Dün gece</string>
+    <string name="widget_night_about">Ekranın kapalı kaldığı son uzun süre: ne kadar sürdü, ne hızla tüketti, ne kadarı derin uykuydu.</string>
+    <string name="widget_health_name">Pil sağlığı</string>
+    <string name="widget_health_about">Kapasite tahmini, tasarım kapasitesine göre sağlık ve şarj döngüleri.</string>
+    <string name="widget_state_battery">Pilde</string>
+    <string name="widget_state_charging">Şarj oluyor</string>
+    <string name="widget_state_full">Dolu</string>
+    <string name="widget_state_plugged">Fişe takılı</string>
+    <string name="widget_level_empty">Henüz okuma yok. Coulomb’u bir kez aç.</string>
+    <string name="widget_drains_title">Fişten çekildiğinden beri</string>
+    <string name="widget_drains_empty">Henüz gösterilecek tüketim yok. Pilde biraz zaman geçince görünür.</string>
+    <string name="widget_night_title">Dün gece</string>
+    <string name="widget_night_ended">%1$s bitti</string>
+    <string name="widget_night_charged">Şarjdaydı</string>
+    <string name="widget_night_lost">%1$s azaldı</string>
+    <string name="widget_night_duration">Süre</string>
+    <string name="widget_night_deep_sleep">Derin uyku</string>
+    <string name="widget_night_empty">Henüz gece yok. Ekran bir saat kapalı kalınca görünür.</string>
+    <string name="widget_health_title">Kapasite</string>
+    <string name="widget_health_health">Sağlık</string>
+    <string name="widget_health_cycles">Döngü</string>
+    <string name="widget_health_empty">Veri toplanıyor. Tahmin birkaç şarjdan sonra görünür.</string>
+    <string name="widget_figure_spoken">%1$s, %2$s</string>
+    <string name="tile_label">Pil</string>
+    <string name="tile_rate_on">%1$s · ekran açık</string>
+    <string name="tile_rate_off">%1$s · ekran kapalı</string>
+    <string name="tile_spoken">Pil %1$s. %2$s</string>
+</resources>

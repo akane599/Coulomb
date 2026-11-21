@@ -132,4 +132,26 @@ class AppNavigatorTest {
 
         assertThat(navigator.backStack).containsExactly(Route.Drain, Route.DrainCompare, Route.AppDetail(10_123)).inOrder()
     }
+
+    @Test
+    fun aTapOutsideTheAppShowsItsScreen() {
+        // A widget's destination: selected, at its first screen.
+        navigator.select(Destination.Drain)
+        navigator.open(Route.DrainCompare)
+        navigator.show(Route.Health)
+        assertThat(navigator.current).isEqualTo(Destination.Health)
+        navigator.show(Route.Drain)
+        assertThat(navigator.backStack).containsExactly(Route.Drain)
+
+        // The Night Report lives under Timeline, and a second tap does not stack it.
+        navigator.show(Route.NightReport)
+        navigator.show(Route.NightReport)
+        assertThat(navigator.current).isEqualTo(Destination.Timeline)
+        assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.NightReport).inOrder()
+
+        // Privileges opens over wherever the user is, once.
+        navigator.show(Route.Privileges)
+        navigator.show(Route.Privileges)
+        assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.NightReport, Route.Privileges).inOrder()
+    }
 }

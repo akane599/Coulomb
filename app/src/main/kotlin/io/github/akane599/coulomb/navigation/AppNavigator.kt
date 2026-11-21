@@ -43,6 +43,30 @@ class AppNavigator internal constructor(
         }
     }
 
+    /**
+     * Shows [route] as a tap outside the app asks for it (SPEC 12): a destination's first screen by
+     * selecting the destination, the Night Report under Timeline where it lives (ADR-0056 §1), and
+     * anything else on top of the current stack unless it is there already.
+     */
+    fun show(route: Route) {
+        val destination = Destination.entries.firstOrNull { it.root == route }
+        when {
+            destination != null -> {
+                current = destination
+                popToFirst(backStack)
+            }
+
+            route == Route.NightReport -> {
+                current = Destination.Timeline
+                if (backStack.lastOrNull() != route) openList(route)
+            }
+
+            backStack.lastOrNull() != route -> {
+                open(route)
+            }
+        }
+    }
+
     /** Opens [route] on top of the current destination's stack. */
     fun open(route: Route) {
         backStack.add(route)

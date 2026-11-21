@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- SPEC 12.4. Exported so the launcher can bind them; they take only the platform's widget broadcasts. -->
+        <receiver
+            android:name=".LevelWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_level_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_level_info" />
+        </receiver>
+        <receiver
+            android:name=".DrainsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_drains_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_drains_info" />
+        </receiver>
+        <receiver
+            android:name=".NightWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_night_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_night_info" />
+        </receiver>
+        <receiver
+            android:name=".HealthWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_health_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_health_info" />
+        </receiver>
+
+        <!-- SPEC 12.5. Only the system may bind a tile service. -->
+        <service
+            android:name=".BatteryTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_battery_android_frame_5"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

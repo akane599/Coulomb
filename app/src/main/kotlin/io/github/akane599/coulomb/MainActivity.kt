@@ -5,6 +5,7 @@ package io.github.akane599.coulomb
 
 import android.content.Intent
 import android.os.Bundle
+import android.service.quicksettings.TileService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,10 +15,10 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.akane599.coulomb.core.collect.Collector
 import io.github.akane599.coulomb.core.collect.android.CollectorService
 import io.github.akane599.coulomb.core.collect.engine.VisibleScreen
+import io.github.akane599.coulomb.core.common.OpenRequest
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.navigation.Route
-import io.github.akane599.coulomb.surface.SurfaceNotifier
 import io.github.akane599.coulomb.ui.CoulombRoot
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
@@ -53,10 +54,13 @@ class MainActivity : ComponentActivity() {
         open.value = requested(intent)
     }
 
+    /** The screen a notification, a widget or the tile asks for (SPEC 12); a plain launch asks for none. */
     private fun requested(intent: Intent?): Route? =
-        when (intent?.getStringExtra(EXTRA_OPEN)) {
-            SurfaceNotifier.OPEN_PRIVILEGES -> Route.Privileges
-            else -> null
+        if (intent?.action == TileService.ACTION_QS_TILE_PREFERENCES) {
+            // A long press on the tile (SPEC 12.5).
+            Route.Settings
+        } else {
+            OPENS[intent?.getStringExtra(OpenRequest.EXTRA)]
         }
 
     override fun onResume() {
@@ -69,8 +73,14 @@ class MainActivity : ComponentActivity() {
         super.onPause()
     }
 
-    companion object {
-        /** A notification's tap names the screen to open (`SurfaceNotifier.OPEN_*`). */
-        const val EXTRA_OPEN = "io.github.akane599.coulomb.OPEN"
+    private companion object {
+        val OPENS =
+            mapOf(
+                OpenRequest.NOW to Route.Now,
+                OpenRequest.DRAIN to Route.Drain,
+                OpenRequest.NIGHT to Route.NightReport,
+                OpenRequest.HEALTH to Route.Health,
+                OpenRequest.PRIVILEGES to Route.Privileges,
+            )
     }
 }

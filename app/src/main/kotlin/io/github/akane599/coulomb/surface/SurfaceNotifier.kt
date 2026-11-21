@@ -15,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.akane599.coulomb.MainActivity
 import io.github.akane599.coulomb.R
 import io.github.akane599.coulomb.core.collect.android.CollectorService
+import io.github.akane599.coulomb.core.common.OpenRequest
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -111,7 +112,7 @@ class SurfaceNotifier
             bar.targetAt?.let { style.addProgressPoint(NotificationCompat.ProgressStyle.Point(it).setColor(copper)) }
             val status = status(now, formats)
             val notification =
-                base(CHARGING, OPEN_APP)
+                base(CHARGING, HERE)
                     .setContentTitle(context.getString(R.string.surface_charging_title, status))
                     .setContentText(timeToTarget(now, formats))
                     .setShortCriticalText(status)
@@ -154,7 +155,7 @@ class SurfaceNotifier
                     ?.let { context.getString(R.string.surface_charge_ended_power, gained, time, formats.wholeWatts(it).joined()) }
                     ?: context.getString(R.string.surface_charge_ended, gained, time)
             val notification =
-                base(CHARGING, OPEN_APP)
+                base(CHARGING, HERE)
                     .setContentTitle(context.getString(R.string.surface_charge_ended_title))
                     .setContentText(text)
                     .setSilent(true)
@@ -209,7 +210,7 @@ class SurfaceNotifier
                         )
                     val lines = NotificationCompat.InboxStyle()
                     insights.take(DIGEST_LINES).forEach { lines.addLine(it.title) }
-                    base(INSIGHTS, OPEN_APP).setContentTitle(title).setContentText(first.title).setStyle(lines)
+                    base(INSIGHTS, HERE).setContentTitle(title).setContentText(first.title).setStyle(lines)
                 }
             manager.notify(DIGEST_ID, builder.setAutoCancel(true).build())
         }
@@ -228,7 +229,7 @@ class SurfaceNotifier
                 return
             }
             val notification =
-                base(PRIVILEGES, OPEN_PRIVILEGES)
+                base(PRIVILEGES, OpenRequest.PRIVILEGES)
                     .setContentTitle(context.getString(R.string.surface_privileges_title))
                     .setContentText(context.getString(words))
                     .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(words)))
@@ -241,7 +242,7 @@ class SurfaceNotifier
             channel: String,
             title: String,
             text: String,
-        ) = base(channel, OPEN_APP)
+        ) = base(channel, HERE)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -258,7 +259,7 @@ class SurfaceNotifier
                     context,
                     open.hashCode(),
                     Intent(context, MainActivity::class.java)
-                        .putExtra(MainActivity.EXTRA_OPEN, open)
+                        .putExtra(OpenRequest.EXTRA, open)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                 ),
@@ -270,9 +271,8 @@ class SurfaceNotifier
             const val INSIGHTS = "insights"
             const val PRIVILEGES = "privileges"
 
-            /** What a tap opens: the app where it is, or the Privileges screen. */
-            const val OPEN_APP = "app"
-            const val OPEN_PRIVILEGES = "privileges"
+            /** A tap that opens the app where it is: no request the activity knows. */
+            private const val HERE = ""
 
             // 1 is the collector's.
             private const val CHARGING_ID = 2

@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 // and run `python3 -I tools/design/tokens.py`. DesignTokensTest checks the two agree.
 
 /** SPEC 11.4 tokens for the light theme, in sRGB. */
-internal val LightColors: CoulombColors =
+public val LightColors: CoulombColors =
     CoulombColors(
         bg = Color(0xFFF8FAFD),
         surface = Color(0xFFF1F4F7),
@@ -37,7 +37,7 @@ internal val LightColors: CoulombColors =
     )
 
 /** SPEC 11.4 tokens for the default dark theme: tinted near-black (SPEC 11.11). */
-internal val DarkColors: CoulombColors =
+public val DarkColors: CoulombColors =
     CoulombColors(
         bg = Color(0xFF0C1015),
         surface = Color(0xFF14191F),

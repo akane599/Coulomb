@@ -66,10 +66,23 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   (a sheet, or a side panel from 840 dp), the floating toolbar with range presets, tracks and "Now",
   and "View as table". A day of the phone's history reads in about 0.1 s on the build server.
   - Not measured yet: 60 fps while panning on the S25 Ultra (SPEC 10.6). Pending real device.
-- **Still to build in P5:** the daily digest and the other notifications, the Charging Live Update,
-  widgets and the Quick Settings tile, the Action Center, the wakeup source detail (SPEC 10.5),
-  and three collector additions: job stop reasons (R10), the battery protection
-  setting (R15), standby buckets and last launch (R16).
+- **Notifications (SPEC 12.1 to 12.3, ADR-0057).** The Monitor line ("0.7 %/h · screen off 6 h"),
+  the Charging Live Update (`ProgressStyle`, asks to be promoted), the charge target and
+  temperature alarms, one insights digest a day with R11/R12 told at once, and a lost access told
+  once with a tap to Privileges. All of it follows the collector's stored snapshots; nothing is
+  scheduled and nothing samples.
+  - Not verified yet: the Live Update in One UI 9's Now Bar, and its promoted look. Pending real device.
+  - No screen sets the charge alarm, the temperature threshold or the digest's time yet: the
+    fields are stored, and Settings (SPEC 14.4) gets its rows with the rest of that screen.
+- **Widgets and the tile (SPEC 12.4, 12.5, ADR-0058).** Four Glance widgets (level and verdict, top
+  drains, last night, health) and the Quick Settings tile, read once per stored snapshot and only
+  while a widget is placed. A sentence is shown only where all of it fits, never cut. Unit tests
+  draw the widgets' `RemoteViews` at fixed sizes.
+  - Not verified yet: cell sizes and looks on One UI 9's launcher and panel. Pending real device.
+  - The wallpaper-colour option waits for the Theme setting (P6).
+- **Still to build in P5:** the Action Center, the wakeup source detail (SPEC 10.5), the Settings
+  rows for the alarms and the digest, and three collector additions: job stop reasons (R10), the
+  battery protection setting (R15), standby buckets and last launch (R16).
 
 ## P4 Core screens (gate deferred: protocol C)
 

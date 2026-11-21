@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeState
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import io.github.akane599.coulomb.surface.PrivilegeNotifications
+import io.github.akane599.coulomb.surface.WidgetPreviews
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -31,6 +32,8 @@ class CoulombApplication : Application() {
     @Inject lateinit var scope: AppScope
 
     @Inject lateinit var privilegeNotifications: PrivilegeNotifications
+
+    @Inject lateinit var previews: WidgetPreviews
 
     override fun onCreate() {
         super.onCreate()
@@ -52,6 +55,7 @@ class CoulombApplication : Application() {
                 .distinctUntilChanged()
                 .collect(privilegeNotifications::onIssue)
         }
+        scope.launch { previews.publishIfNew() }
     }
 }
 

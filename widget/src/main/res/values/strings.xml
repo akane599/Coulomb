@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- The widget picker (SPEC 12.4). -->
+    <string name="widget_level_name">Level and verdict</string>
+    <string name="widget_level_about">The battery level, whether it is charging, and what happened since unplugging in one line.</string>
+    <string name="widget_drains_name">Top drains</string>
+    <string name="widget_drains_about">The three apps that used the most battery since unplugging.</string>
+    <string name="widget_night_name">Last night</string>
+    <string name="widget_night_about">The last long screen-off stretch: how long, how fast it drained, how much of it was deep sleep.</string>
+    <string name="widget_health_name">Battery health</string>
+    <string name="widget_health_about">The capacity estimate, health against the design capacity, and charge cycles.</string>
+    <!-- Level and verdict. -->
+    <string name="widget_state_battery">On battery</string>
+    <string name="widget_state_charging">Charging</string>
+    <string name="widget_state_full">Full</string>
+    <string name="widget_state_plugged">Plugged in</string>
+    <string name="widget_level_empty">No reading yet. Open Coulomb once.</string>
+    <!-- Top drains. -->
+    <string name="widget_drains_title">Since unplugged</string>
+    <string name="widget_drains_empty">No drain to show yet. It appears after some time on battery.</string>
+    <!-- Last night. -->
+    <string name="widget_night_title">Last night</string>
+    <string name="widget_night_ended">ended %1$s</string>
+    <string name="widget_night_charged">On the charger</string>
+    <string name="widget_night_lost">%1$s lost</string>
+    <string name="widget_night_duration">Duration</string>
+    <string name="widget_night_deep_sleep">Deep sleep</string>
+    <string name="widget_night_empty">No night yet. One shows after the screen stays off for an hour.</string>
+    <!-- Health. -->
+    <string name="widget_health_title">Capacity</string>
+    <string name="widget_health_health">Health</string>
+    <string name="widget_health_cycles">Cycles</string>
+    <string name="widget_health_empty">Collecting. The estimate shows after a few charges.</string>
+    <!-- A figure with its provenance, for TalkBack: "74%, Modeled". -->
+    <string name="widget_figure_spoken">%1$s, %2$s</string>
+    <!-- The Quick Settings tile (SPEC 12.5). -->
+    <string name="tile_label">Battery</string>
+    <string name="tile_rate_on">%1$s · screen on</string>
+    <string name="tile_rate_off">%1$s · screen off</string>
+    <string name="tile_spoken">Battery %1$s. %2$s</string>
+</resources>

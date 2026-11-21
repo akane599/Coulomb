@@ -29,6 +29,7 @@ import io.github.akane599.coulomb.core.model.insight.RuleId
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.formatsFor
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
+import io.github.akane599.coulomb.widget.WidgetStore
 import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.time.ZoneId
@@ -38,7 +39,7 @@ import javax.inject.Singleton
 /**
  * Keeps the surfaces outside the app current (SPEC 12): after each stored snapshot it runs the
  * insight engine (SPEC 7.5, step 6), then updates the Monitor line, the Charging Live Update, the
- * alerts and the digest. It runs on the collector's coroutine and reads stored state only, so it
+ * alerts, the digest and the widgets. It runs on the collector's coroutine and reads stored state only, so it
  * adds no wakeup and no sampling of its own.
  */
 @Singleton
@@ -53,6 +54,7 @@ class SurfaceObserver
         private val settings: SettingsStore,
         private val runner: Lazy<InsightRunner>,
         private val insights: InsightStore,
+        private val widgets: WidgetStore,
     ) : SnapshotObserver {
         private val chargingUpdates = ChargingUpdates()
         private val alerts = AlertRules()
@@ -72,6 +74,8 @@ class SurfaceObserver
             thermal(fresh, nowMs, copy)
             if (reading != null) alerts(reading, nowMs, set)
             digest(nowMs, set, copy)
+            // Last: a widget that fails to draw must not hold back a notification.
+            widgets.refresh(heavy)
         }
 
         /** "0.7 %/h · screen off 6 h" (SPEC 12.1): the rate of the state with the most to say, or the level on the charger. */
@@ -215,6 +219,32 @@ class PrivilegeNotifications
 
         private companion object {
             const val KEY_TOLD = "privilege_issue_told"
+        }
+    }
+
+/**
+ * Gives the launcher the widgets' previews (SPEC 12.4) once per app version and language: the
+ * platform limits how often an app may set them, and they change only with the layouts or the words.
+ */
+@Singleton
+class WidgetPreviews
+    @Inject
+    constructor(
+        @ApplicationContext private val context: Context,
+        private val widgets: WidgetStore,
+    ) {
+        private val memory = context.getSharedPreferences(SurfaceObserver.MEMORY, Context.MODE_PRIVATE)
+
+        suspend fun publishIfNew() {
+            val version = context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
+            val made = "$version ${context.resources.configuration.locales.toLanguageTags()}"
+            if (memory.getString(KEY_PREVIEWS, null) == made) return
+            // Refused (the platform's limit): the next start tries again.
+            if (widgets.publishPreviews()) memory.edit { putString(KEY_PREVIEWS, made) }
+        }
+
+        private companion object {
+            const val KEY_PREVIEWS = "widget_previews"
         }
     }
 
