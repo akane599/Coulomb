@@ -55,14 +55,25 @@ internal data class Temperatures(
 ) {
     companion object {
         fun of(dump: ThermalDump): Temperatures {
-            val current = dump.currentTemperatures.filter { it.deciC != null }
-            val sensors = current.ifEmpty { dump.cachedTemperatures.filter { it.deciC != null } }
+            val current = reported(dump.currentTemperatures)
+            val sensors = current.ifEmpty { reported(dump.cachedTemperatures) }
             return Temperatures(
                 status = dump.status,
                 overridden = dump.statusOverridden == true,
                 sensors = sensors.sortedByDescending { it.deciC },
                 cached = current.isEmpty() && sensors.isNotEmpty(),
             )
+        }
+
+        /**
+         * The readings with a value. An exact 0.0 °C beside readings above it is a sensor the HAL
+         * lists but does not read: the S25 Ultra's sub-battery prints `mValue=0.0` next to the main
+         * battery's 33.9 °C (fixtures/sm-s938b/S938BXXSDDZJ1/thermal.txt), so it is left out.
+         */
+        private fun reported(readings: List<ThermalReading>): List<ThermalReading> {
+            val valued = readings.filter { it.deciC != null }
+            val warm = valued.any { it.deciC!! > 0 }
+            return valued.filterNot { warm && it.deciC == 0 }
         }
     }
 }
@@ -206,6 +217,8 @@ private fun typeName(type: Int): Int? =
         2 -> R.string.charging_sensor_battery
         3 -> R.string.charging_sensor_skin
         4 -> R.string.charging_sensor_usb
+        5 -> R.string.charging_sensor_pa
+        9 -> R.string.charging_sensor_npu
         11 -> R.string.charging_sensor_display
         12 -> R.string.charging_sensor_modem
         13 -> R.string.charging_sensor_soc

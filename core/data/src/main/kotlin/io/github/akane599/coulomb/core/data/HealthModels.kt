@@ -107,7 +107,7 @@ public data class ChargeSessionRow(
     val quality: Double,
 )
 
-/** One closed discharge session (SPEC 2, session history): from unplug to plug, levels Measured. */
+/** One closed discharge session (SPEC 2, session history): from unplug to plug; its levels are the fuel gauge's, Modeled (SPEC 6.7). */
 public data class DischargeSessionRow(
     val id: Long,
     val startWallMs: Long,

@@ -22,6 +22,7 @@ import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.HealthRepository
 import io.github.akane599.coulomb.core.data.NightRepository
 import io.github.akane599.coulomb.core.data.WindowDrains
+import io.github.akane599.coulomb.core.datastore.SettingsStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,6 +68,7 @@ class WidgetStore
         private val drains: DrainRepository,
         private val nights: NightRepository,
         private val health: HealthRepository,
+        private val settings: SettingsStore,
     ) {
         private val data = MutableStateFlow(WidgetData())
         internal val state: StateFlow<WidgetData> = data.asStateFlow()
@@ -101,7 +103,8 @@ class WidgetStore
             when (kind) {
                 WidgetKind.LEVEL -> {
                     val reading = battery.reading.first()
-                    val level = reading?.let { WidgetFacts.level(it, window()) }
+                    val lite = settings.settings.first().liteMode
+                    val level = reading?.let { WidgetFacts.level(it, window(), lite, System.currentTimeMillis()) }
                     data.update { it.copy(level = level) }
                 }
 

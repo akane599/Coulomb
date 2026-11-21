@@ -50,14 +50,18 @@ public class SettingsTransfer
         /**
          * Applies the neutral settings of [json], a bundle's `settings.json`; a key that is missing
          * or not of its type is left as it is here. Returns false when [json] is not a settings file.
-         * The temperature alarm takes a threshold from a file and is never switched off by one.
+         * The temperature alarm takes a file's threshold only while it is already on here: a threshold
+         * means on, and alarms stay as they are here (the import's offer says so).
          */
         public suspend fun apply(json: String): Boolean {
             val file = flat(json) ?: return false
             (file[SHOW_SYSTEM_APPS] as? Boolean)?.let { store.showSystemApps(it) }
             (file[SCALE_TO_MEASURED] as? Boolean)?.let { store.scaleToMeasured(it) }
             (file[CHARGE_TARGET_PCT] as? Int)?.takeIf { it in UserSettings.CHARGE_TARGETS }?.let { store.chargeTarget(it) }
-            (file[TEMPERATURE_ALARM_DECI_C] as? Int)?.takeIf { it in UserSettings.TEMPERATURE_ALARMS }?.let { store.temperatureAlarm(it) }
+            val alarmOn = store.settings.first().temperatureAlarmDeciC != null
+            (file[TEMPERATURE_ALARM_DECI_C] as? Int)
+                ?.takeIf { alarmOn && it in UserSettings.TEMPERATURE_ALARMS }
+                ?.let { store.temperatureAlarm(it) }
             (file[INSIGHTS_DIGEST_MINUTE] as? Int)
                 ?.takeIf { it in 0 until UserSettings.MINUTES_PER_DAY }
                 ?.let { store.insightsDigestMinute(it) }

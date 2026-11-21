@@ -129,7 +129,7 @@
     <string name="settings_mode_full">Full</string>
     <string name="settings_mode_lite">Lite</string>
     <string name="settings_mode_full_note">Coulomb keeps recording while it is closed: live current, exact sessions, the charge and temperature alarms.</string>
-    <string name="settings_mode_lite_note">Nothing runs in the background. Coulomb reads Android’s statistics when you open it and every 6 hours, so every app’s use is still counted. There is no live current, session times are less exact, and the charge and temperature alarms do not ring.</string>
+    <string name="settings_mode_lite_note">No service runs in the background. Coulomb reads Android’s statistics when you open it and every 6 hours, so every app’s use is still counted. There is no live current, session times are less exact, and the charge and temperature alarms do not ring.</string>
     <string name="settings_sampling">Reading interval while Coulomb is open</string>
     <!-- %1$s: a number of seconds. -->
     <string name="settings_sampling_seconds">%1$s s</string>
@@ -173,7 +173,7 @@
     <string name="settings_action_center_open">Open the Action Center</string>
     <!-- SPEC 12.7, 14.4. The note names everything an allowed app can do and read (ADR-0065 §7). -->
     <string name="settings_automation">Automation API</string>
-    <string name="settings_automation_note">Apps you allow can ask for a snapshot, set the charge target and re-apply a Doze profile you have applied. They can read the battery level, drain rates, last night’s report and the names of the three apps that use the most battery.</string>
+    <string name="settings_automation_note">Apps you allow can ask for a snapshot, set the charge target and re-apply a Doze profile you have applied or return it to stock, while the Action Center is on. They can read the battery level, drain rates, last night’s report and the names of the three apps that use the most battery.</string>
     <string name="settings_automation_apps">Apps allowed</string>
     <string name="settings_automation_apps_none">None yet. An app asks for the permission “automate Coulomb”, and you allow it in Android’s settings for that app.</string>
     <string name="settings_automation_apps_joined">%1$s, %2$s</string>
@@ -247,4 +247,5 @@
         <item quantity="other">%1$s changes made through the Action Center are still in force. Deleting their log would leave nothing to revert them with. Revert them in the Action Center first.</item>
     </plurals>
     <string name="data_delete_blocked_open">Open Action Center</string>
+    <string name="settings_alerts_lite">Lite mode does not ring the charge and temperature alarms; your choices are kept for Full mode. The digest still comes with the first reading after its time.</string>
 </resources>

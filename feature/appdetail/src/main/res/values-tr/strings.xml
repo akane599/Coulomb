@@ -122,7 +122,8 @@
     <string name="appdetail_empty_discharge">Pilde geçen bu süre için artık kayıt yok.</string>
     <string name="appdetail_empty_last_night">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı bir süre yok.</string>
     <string name="appdetail_empty_days">O günler için kayıtlı bir şey yok.</string>
-    <string name="appdetail_empty_between">Bu referanstan sonra kaydedilmiş bir anlık görüntü henüz yok.</string>
+    <string name="appdetail_empty_between">Bu referanstan sonra kaydedilmiş bir anlık kayıt henüz yok.</string>
+    <string name="appdetail_empty_between_old">Bu referans, Coulomb’un ayrıntısını tuttuğu 30 günden eski; artık okunamaz.</string>
     <string name="appdetail_error_title">Coulomb pil kayıtlarını okuyamadı</string>
     <string name="appdetail_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="appdetail_error_action">Yeniden dene</string>
@@ -130,7 +131,7 @@
     <string name="appdetail_scheduled">Şu an zamanlananlar</string>
     <string name="appdetail_scheduled_caption">Bunu açtığında Android’den okundu; saklanmaz.</string>
     <string name="appdetail_scheduled_reading">Okunuyor…</string>
-    <string name="appdetail_scheduled_failed">Android’in iş zamanlayıcısı ve alarm yöneticisi okunamadı. Ayrıcalıklar nedenini gösterir.</string>
+    <string name="appdetail_scheduled_failed">Android’in iş zamanlayıcısı ve alarm yöneticisi okunamadı. Yetkiler nedenini gösterir.</string>
     <string name="appdetail_scheduled_again">Yeniden oku</string>
     <string name="appdetail_scheduled_jobs">İşler</string>
     <string name="appdetail_scheduled_jobs_unread">İş zamanlayıcısı bütün okunamadı.</string>
@@ -173,7 +174,7 @@
     <string name="appdetail_bucket_active">Etkin</string>
     <string name="appdetail_bucket_working_set">Çalışma kümesi</string>
     <string name="appdetail_bucket_frequent">Sık</string>
-    <string name="appdetail_bucket_rare">Seyrek</string>
+    <string name="appdetail_bucket_rare">Nadir</string>
     <string name="appdetail_bucket_never">Hiç</string>
     <string name="appdetail_bucket_restricted">Kısıtlı</string>
     <string name="appdetail_bucket_exempted">Muaf</string>

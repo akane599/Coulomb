@@ -25,7 +25,7 @@
     <string name="drain_range_title">Günleri seç</string>
     <string name="drain_references">Referanslar</string>
     <string name="drain_references_detail">Adlandırdığın anlar: birinden beri ya da ikisi arası</string>
-    <string name="drain_references_body">Referans bu anı bir adla işaretler, örneğin bir uygulama güncellemesinden önce. Tüketim’i birinden beri okumak için birini, ikisi arasını okumak için ikisini seç. Tüketim 30 günün ayrıntısını tutar; daha önce başlayan bir aralık yalnızca tutulanı gösterir.</string>
+    <string name="drain_references_body">Referans bu anı bir adla işaretler, örneğin bir uygulama güncellemesinden önce. Tüketim’i birinden beri okumak için birini, ikisi arasını okumak için ikisini seç. Tüketim 30 günün ayrıntısını tutar; bundan eski bir referans artık okunamaz.</string>
     <string name="drain_references_when">%1$s %2$s</string>
     <string name="drain_references_mark">Bu anı işaretle</string>
     <string name="drain_references_none">Henüz referans yok.</string>
@@ -46,7 +46,8 @@
     <string name="drain_references_delete_body">Yalnızca ad ve işaret gider. Tüketim tüm pencereleri eskisi gibi tutar.</string>
     <string name="drain_since_reference">Beri: %1$s</string>
     <string name="drain_between_references">%1$s – %2$s</string>
-    <string name="drain_empty_between">Bu referanstan sonrası için kayıt yok: ya ondan sonra henüz anlık görüntü alınmadı ya da başlangıcı Tüketim’in tuttuğu 30 günden eski.</string>
+    <string name="drain_empty_between">Bu referanstan sonra kaydedilmiş bir anlık kayıt henüz yok.</string>
+    <string name="drain_empty_between_old">Bu referans, Tüketim’in ayrıntısını tuttuğu 30 günden eski; artık okunamaz.</string>
     <string name="drain_range_confirm">Göster</string>
     <string name="drain_range_cancel">İptal</string>
 
@@ -130,7 +131,7 @@
     <string name="drain_held_now">Şu an tutulanlar</string>
     <string name="drain_held_now_caption">İşlemciyi şu an uyanık tutan uyanık tutmalar; bunu açtığında Android’den okundu. Saklanmazlar.</string>
     <string name="drain_held_now_reading">Okunuyor…</string>
-    <string name="drain_held_now_failed">Android’in güç yöneticisi okunamadı. Ayrıcalıklar nedenini gösterir.</string>
+    <string name="drain_held_now_failed">Android’in güç yöneticisi okunamadı. Yetkiler nedenini gösterir.</string>
     <string name="drain_held_now_unlisted">Android uyanık tutmaları listeledi ama satırları bütün okunamadı, bu yüzden hiçbiri gösterilmiyor.</string>
     <string name="drain_held_now_none">Şu an hiçbir uygulama işlemciyi uyanık tutmuyor.</string>
     <string name="drain_held_now_partial">İşlemciyi uyanık tutanlar</string>
@@ -138,14 +139,16 @@
     <string name="drain_held_now_column_held">Süre</string>
     <string name="drain_held_now_long">Android’in beklediğinden uzun tutuluyor</string>
     <string name="drain_held_now_ignored">Android yok sayıyor</string>
-    <string name="drain_held_now_just_now">Az önce</string>
+    <string name="drain_held_now_just_now">Belirtilmemiş</string>
     <string name="drain_held_now_saver_on">Pil tasarrufu açık.</string>
     <string name="drain_held_now_saver_off">Pil tasarrufu kapalı.</string>
     <string name="drain_held_now_again">Yeniden oku</string>
     <string name="drain_rails">Güç ölçerler</string>
     <string name="drain_rails_definition">Telefonun içinde, her güç hattının taşıdığı enerjiyi sayan ölçerler. Bu telefonda var; çoğu telefonda yok.</string>
     <string name="drain_rails_caption">Aralık boyunca telefonun kendi ölçerlerinin saydığı enerji. Adlar üreticinindir; Coulomb her birinin neyi beslediğini tahmin etmez.</string>
-    <string name="drain_rails_consumers">Enerji tüketicileri üreticinin gruplarıdır; bazıları ölçülür, bazıları modellenir.</string>
+    <string name="drain_rails_consumers">Aralık boyunca üreticinin kendi gruplarına göre enerji. Android hangilerini üreticinin ölçtüğünü, hangilerini modellediğini söylemez; bu yüzden Coulomb hepsini Modellenmiş olarak işaretler.</string>
+    <string name="drain_consumers">Enerji tüketicileri</string>
+    <string name="drain_consumers_definition">Üreticinin gruplayıp enerjisini bildirdiği parçalar, örneğin ekran ya da GPU. Bazı üreticiler bunları ölçer, bazıları bir modelden hesaplar.</string>
     <string name="drain_column_rail">Hat</string>
     <string name="drain_column_consumer">Enerji tüketicisi</string>
     <string name="drain_rail_mwh">%1$s\u00A0mWh</string>

@@ -19,6 +19,13 @@ class TemperaturesTest {
         assertEquals(1, t.status)
     }
 
+    /** As the S25 Ultra's HAL prints its sub-battery: listed, 0.0, beside readings above it. */
+    @Test
+    fun anExactZeroBesideWarmReadingsIsNotReported() {
+        val dump = labThermal().copy(currentTemperatures = labThermal().currentTemperatures + ThermalReading("SUBBAT", 2, 0, 0))
+        assertEquals(listOf("cpu-big", "skin", "battery"), Temperatures.of(dump).sensors.map { it.name })
+    }
+
     @Test
     fun withoutCurrentReadingsTheCachedOnesAreShownAndSaidToBe() {
         val t = Temperatures.of(labThermal().copy(currentTemperatures = emptyList()))

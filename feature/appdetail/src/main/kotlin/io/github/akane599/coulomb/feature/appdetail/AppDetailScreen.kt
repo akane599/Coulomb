@@ -320,14 +320,44 @@ private fun Skeleton() {
 private fun Empty(span: DrainSpan) {
     val text =
         when (span) {
-            DrainSpan.SinceUnplugged -> R.string.appdetail_empty_since_unplugged
-            DrainSpan.Today -> R.string.appdetail_empty_today
-            DrainSpan.Last24Hours -> R.string.appdetail_empty_last_24h
-            DrainSpan.LastNight -> R.string.appdetail_empty_last_night
-            is DrainSpan.Night -> R.string.appdetail_empty_night
-            is DrainSpan.Discharge -> R.string.appdetail_empty_discharge
-            is DrainSpan.Days -> R.string.appdetail_empty_days
-            is DrainSpan.Between -> R.string.appdetail_empty_between
+            DrainSpan.SinceUnplugged -> {
+                R.string.appdetail_empty_since_unplugged
+            }
+
+            DrainSpan.Today -> {
+                R.string.appdetail_empty_today
+            }
+
+            DrainSpan.Last24Hours -> {
+                R.string.appdetail_empty_last_24h
+            }
+
+            DrainSpan.LastNight -> {
+                R.string.appdetail_empty_last_night
+            }
+
+            is DrainSpan.Night -> {
+                R.string.appdetail_empty_night
+            }
+
+            is DrainSpan.Discharge -> {
+                R.string.appdetail_empty_discharge
+            }
+
+            is DrainSpan.Days -> {
+                R.string.appdetail_empty_days
+            }
+
+            is DrainSpan.Between -> {
+                if (span.beyondKept(
+                        System.currentTimeMillis(),
+                    )
+                ) {
+                    R.string.appdetail_empty_between_old
+                } else {
+                    R.string.appdetail_empty_between
+                }
+            }
         }
     Text(
         stringResource(text),

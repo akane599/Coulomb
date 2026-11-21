@@ -27,7 +27,7 @@
     <string name="drain_range_title">Choose days</string>
     <string name="drain_references">References</string>
     <string name="drain_references_detail">Moments you named, to read since one or between two</string>
-    <string name="drain_references_body">A reference marks this moment by name, such as before an app update. Choose one to read Drain since it, or two to read between them. Drain keeps the detail of 30 days, so a span that starts earlier shows only what is kept.</string>
+    <string name="drain_references_body">A reference marks this moment by name, such as before an app update. Choose one to read Drain since it, or two to read between them. Drain keeps the detail of 30 days, so a reference older than that can no longer be read.</string>
     <string name="drain_references_when">%1$s, %2$s</string>
     <string name="drain_references_mark">Mark this moment</string>
     <string name="drain_references_none">No references yet.</string>
@@ -48,7 +48,8 @@
     <string name="drain_references_delete_body">Only the name and its mark go. Drain keeps every window as before.</string>
     <string name="drain_since_reference">Since %1$s</string>
     <string name="drain_between_references">%1$s to %2$s</string>
-    <string name="drain_empty_between">Nothing is stored from this reference on: no snapshot came after it yet, or its start is older than the 30 days Drain keeps.</string>
+    <string name="drain_empty_between">No snapshot after this reference is stored yet.</string>
+    <string name="drain_empty_between_old">This reference is older than the 30 days of detail Drain keeps, so it can no longer be read.</string>
     <string name="drain_range_confirm">Show</string>
     <string name="drain_range_cancel">Cancel</string>
 
@@ -142,14 +143,16 @@
     <string name="drain_held_now_column_held">Held for</string>
     <string name="drain_held_now_long">Held longer than Android expects</string>
     <string name="drain_held_now_ignored">Ignored by Android</string>
-    <string name="drain_held_now_just_now">Just now</string>
+    <string name="drain_held_now_just_now">Not given</string>
     <string name="drain_held_now_saver_on">Battery saver is on.</string>
     <string name="drain_held_now_saver_off">Battery saver is off.</string>
     <string name="drain_held_now_again">Read again</string>
     <string name="drain_rails">Power monitors</string>
-    <string name="drain_rails_definition">Meters inside the phone that count the energy each power rail carries. The phone has them; most phones do not.</string>
+    <string name="drain_rails_definition">Meters inside the phone that count the energy each power rail carries. This phone has them; most phones do not.</string>
     <string name="drain_rails_caption">Energy over the window, as the phone’s own meters counted it. The names are the maker’s, so Coulomb does not guess what each one powers.</string>
-    <string name="drain_rails_consumers">Energy consumers are the maker’s groupings; some are measured, some are modeled.</string>
+    <string name="drain_rails_consumers">Energy over the window by the maker’s own groupings. Android does not say which of them the maker measures and which it models, so Coulomb marks them all Modeled.</string>
+    <string name="drain_consumers">Energy consumers</string>
+    <string name="drain_consumers_definition">Parts of the phone the maker groups and reports energy for, such as the display or the GPU. Some makers measure them, others compute them from a model.</string>
     <string name="drain_column_rail">Rail</string>
     <string name="drain_column_consumer">Energy consumer</string>
     <string name="drain_rail_mwh">%1$s\u00A0mWh</string>

@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,6 +37,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
@@ -53,6 +55,7 @@ import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.page.ErrorState
+import io.github.akane599.coulomb.core.ui.page.Note
 import java.time.ZoneId
 
 /**
@@ -100,6 +103,7 @@ public fun NowScreen(
             ),
         modifier = modifier,
         screen = rememberScreenContext(),
+        nowMs = rememberResumedNowMs(),
     )
 }
 
@@ -136,6 +140,8 @@ internal fun NowContent(
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     screen: ScreenContext? = null,
+    // Null where the reading's age is not judged (previews and goldens).
+    nowMs: Long? = null,
 ) {
     val formats = rememberFormats()
     var table by rememberSaveable { mutableStateOf<OpenTable?>(null) }
@@ -172,6 +178,9 @@ internal fun NowContent(
                     FadeInOnce {
                         Column(Modifier.testTag(NOW_VERDICT_TAG)) {
                             Hero(state, formats, zone, onViewTable = { table = OpenTable.LEVEL })
+                            val staleSince =
+                                nowMs?.takeIf { state.battery.isStale(it) }?.let { formats.clock(state.battery.wallMs, zone, it) }
+                            staleSince?.let { Note(stringResource(R.string.now_as_of, it)) }
                             if (state.discharge != null) {
                                 SessionStrip(state.discharge, formats)
                                 screen?.let { ScreenContextNote(it, formats) }
@@ -190,7 +199,7 @@ internal fun NowContent(
                                         null
                                     },
                             )
-                            LiveCurrent(state, formats, onViewTable = { table = OpenTable.CURRENT })
+                            LiveCurrent(state, formats, onViewTable = { table = OpenTable.CURRENT }, staleSince = staleSince)
                         }
                     }
                 }
@@ -281,4 +290,15 @@ private fun Skeleton() {
             }
         }
     }
+}
+
+/** The wall clock, read again each time the screen resumes: enough to judge a reading's age (ADR-0069). */
+@Composable
+internal fun rememberResumedNowMs(): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LifecycleResumeEffect(Unit) {
+        now = System.currentTimeMillis()
+        onPauseOrDispose {}
+    }
+    return now
 }

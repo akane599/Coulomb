@@ -79,6 +79,9 @@ public class ChargingRepository
         /** Whether the alarm at the charge target is on (SPEC 12.3), for the note under the target. */
         public val targetAlarm: Flow<Boolean> = settings.settings.map { it.chargeAlarm }.distinctUntilChanged()
 
+        /** Lite mode, in which the alarm does not ring (ADR-0064 §5). */
+        public val lite: Flow<Boolean> = settings.settings.map { it.liteMode }.distinctUntilChanged()
+
         /** The charge target, held to SPEC 14.4's range. */
         public suspend fun setTarget(pct: Int): Unit = settings.chargeTarget(pct)
 

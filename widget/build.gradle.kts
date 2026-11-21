@@ -13,6 +13,7 @@ dependencies {
     implementation(projects.core.common)
     implementation(projects.core.analytics)
     implementation(projects.core.data)
+    implementation(projects.core.datastore)
     implementation(projects.core.insights)
     implementation(projects.core.designsystem)
     implementation(projects.core.ui)

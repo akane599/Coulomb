@@ -172,7 +172,14 @@ private fun WindowChoice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CheckLead(chosen, ink)
-            Text(label, style = CoulombTheme.typography.label, color = ink, softWrap = false)
+            // A long name (a span between two named references) wraps between words rather than
+            // clipping, and the icon keeps its room beside the last line (SPEC 11.3).
+            Text(
+                label,
+                Modifier.weight(1f, fill = false).padding(vertical = CoulombSpacing.Space8),
+                style = CoulombTheme.typography.label,
+                color = ink,
+            )
             if (trailingIcon != null) {
                 Spacer(Modifier.width(IconGap))
                 Icon(painterResource(trailingIcon), contentDescription = null, modifier = Modifier.size(IconSize), tint = ink)

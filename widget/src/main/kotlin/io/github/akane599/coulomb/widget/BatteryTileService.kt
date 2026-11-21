@@ -20,6 +20,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -67,7 +68,7 @@ class BatteryTileService : TileService() {
             tile.contentDescription = name
             tile.state = Tile.STATE_INACTIVE
         } else {
-            val words = TileWords.of(reading, formatsFor(this), resources)
+            val words = TileWords.of(reading, formatsFor(this), resources, System.currentTimeMillis())
             tile.label = words.level
             tile.subtitle = words.detail
             tile.contentDescription = getString(R.string.tile_spoken, words.level, words.detail)
@@ -93,8 +94,15 @@ internal data class TileWords(
             reading: BatteryReading,
             formats: Formats,
             resources: Resources,
+            nowMs: Long = reading.battery.wallMs,
         ): TileWords {
             val state = PowerState.of(reading.battery)
+            // An old reading says when it was taken, not a rate as if it were now (ADR-0069).
+            if (reading.battery.isStale(nowMs)) {
+                val at = formats.clock(reading.battery.wallMs, ZoneId.systemDefault(), nowMs)
+                val detail = resources.getString(R.string.widget_state_as_of, resources.getString(state.label()), at)
+                return TileWords(formats.percent(reading.battery.levelPct), detail, state)
+            }
             val discharge = reading.discharge.takeIf { state == PowerState.ON_BATTERY }
             val on = discharge?.screenOn?.takeIf { it.ready }
             val off = discharge?.screenOff?.takeIf { it.ready }

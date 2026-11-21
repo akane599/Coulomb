@@ -120,7 +120,9 @@ class NightScreenshotTest {
     @Test
     fun nightNoRate() = shoot("night-no-rate") { Night(NightDetail(labNights()[2], report = null, timeline = null)) }
 
+    // Tall enough to reach the wakeup lines these guard, below the Doze strip (ADR-0063 §2).
     @Test
+    @Config(qualifiers = "w412dp-h1800dp-xhdpi")
     fun nightNotCollected() =
         shoot("night-not-collected") {
             // Basic mode or a failed read: nothing was collected, which is not "none recorded".
@@ -129,7 +131,9 @@ class NightScreenshotTest {
             Night(labDetail().copy(report = report))
         }
 
+    // Tall enough to reach the wakeup lines these guard, below the Doze strip (ADR-0063 §2).
     @Test
+    @Config(qualifiers = "w412dp-h1800dp-xhdpi")
     fun nightPartlyCollected() =
         shoot("night-partly-collected") {
             val partly = WakeCoverage(Coverage.PARTIAL, Coverage.NONE, Coverage.NONE)

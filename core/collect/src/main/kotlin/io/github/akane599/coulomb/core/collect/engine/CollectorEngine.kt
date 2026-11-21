@@ -334,6 +334,9 @@ internal class CollectorEngine(
                 if (dump != null) recordPackages(dump, reading) else emptyMap()
             }.let { changed -> recordLabels(changed, reading) }
         afterCommit(history, ingest, boot, reading)
+        // The snapshot's own reading is a sample too: in Lite mode no sampler runs, and the
+        // screens read the battery from the latest sample (ADR-0069).
+        storeSample(reading, boot)
     }
 
     /**

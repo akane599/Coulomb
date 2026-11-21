@@ -6,11 +6,11 @@
     <string name="actions_loading">Loading</string>
 
     <string name="actions_off_title">The Action Center is off</string>
-    <string name="actions_off_body">With it on, Coulomb can change a few settings of the phone and of single apps. Each change is shown before it runs, is logged with the value it replaced, and can be reverted. Nothing runs without your tap.</string>
+    <string name="actions_off_body">With it on, Coulomb can change a few settings of the phone and of single apps. Each change is shown before it runs, is logged with the value it replaced, and can be reverted. Nothing runs without your tap, except an app you allow under Automation repeating a Doze profile you applied, or returning it to stock.</string>
     <string name="actions_off_grant">With its helper process running, turning it on also gives Coulomb the permission to write system settings (WRITE_SECURE_SETTINGS). The permission stays when you turn the Action Center off.</string>
     <string name="actions_turn_on">Turn on the Action Center</string>
     <string name="actions_switch">Action Center</string>
-    <string name="actions_switch_note">Nothing runs without your tap.</string>
+    <string name="actions_switch_note">Nothing runs without your tap, except an app you allow under Automation repeating a Doze profile you applied, or returning it to stock.</string>
     <string name="actions_save_failed">Couldn’t save that change. Try again.</string>
     <string name="actions_doze_needs_worker">A profile is built from values only the helper process can read.</string>
     <string name="actions_no_worker">Coulomb’s helper process is not running, so nothing can be changed from here. Each action except a Doze profile still shows its command, which you can run over adb.</string>

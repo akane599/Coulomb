@@ -45,6 +45,13 @@ public sealed interface DrainSpan {
         init {
             require(to == null || to.wallMs > from.wallMs) { "a span runs from the older mark to the newer" }
         }
+
+        /** [from] is older than the consecutive windows kept (ADR-0021), so Drain cannot read it (ADR-0068 §1). */
+        public fun beyondKept(nowMs: Long): Boolean = nowMs - from.wallMs > CUSTOM_DAYS * DAY_MS
+
+        private companion object {
+            const val DAY_MS: Long = 86_400_000L
+        }
     }
 
     /** A named reference: the heavy snapshot it pins, its name and the snapshot's wall time. */

@@ -110,10 +110,11 @@ class CollectorEngineTest {
             assertThat(window.kind).isEqualTo(WindowKind.SESSION)
             assertThat(window.measuredMah).isWithin(1e-6).of(160.0)
             assertThat(window.detailPruned).isTrue()
-            // Three heavy snapshots, two consecutive windows; the level changes are samples only.
+            // Three heavy snapshots, two consecutive windows; the level changes are samples only, and
+            // each snapshot's own reading is a sample too (ADR-0069).
             assertThat(db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()).hasSize(2)
             assertThat(count("SELECT COUNT(*) FROM snapshot")).isEqualTo(3)
-            assertThat(count("SELECT COUNT(*) FROM battery_sample")).isEqualTo(3)
+            assertThat(count("SELECT COUNT(*) FROM battery_sample")).isEqualTo(3 + 3)
             val screenOff = checkNotNull(db.snapshotDao().autoReference(AutoReference.SINCE_SCREEN_OFF))
             assertThat(screenOff.snapshotId).isEqualTo(night.startSnapshotId)
         }
@@ -597,7 +598,8 @@ class CollectorEngineTest {
                 assertThat(engine.handle(SnapshotTrigger.LEVEL_CHANGED)).isEqualTo(Action.SAMPLE)
             }
             assertThat(count("SELECT COUNT(*) FROM snapshot")).isEqualTo(1)
-            assertThat(count("SELECT COUNT(*) FROM battery_sample")).isEqualTo(4)
+            // The four level changes and the light snapshot's own reading (ADR-0069).
+            assertThat(count("SELECT COUNT(*) FROM battery_sample")).isEqualTo(4 + 1)
         }
 
     @Test

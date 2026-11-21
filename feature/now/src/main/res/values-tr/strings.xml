@@ -64,7 +64,9 @@
     <string name="now_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="now_error_action">Yeniden dene</string>
     <string name="now_screen_context">Ekran şu an: %1$s.</string>
-    <string name="now_screen_hz">%1$s Hz</string>
+    <string name="now_screen_hz">%1$s\u00A0Hz</string>
     <string name="now_screen_auto_brightness">otomatik parlaklık</string>
     <string name="now_screen_manual_brightness">elle ayarlı parlaklık</string>
+    <string name="now_as_of">Son okuma %1$s. Coulomb pili şu an okumuyor; Hafif modda yalnızca açtığında ve altı saatte bir okur.</string>
+    <string name="now_live_stale">%1$s sonrasında okuma yok, bu yüzden gösterilecek canlı akım yok.</string>
 </resources>

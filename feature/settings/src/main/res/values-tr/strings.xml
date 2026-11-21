@@ -122,7 +122,7 @@
     <string name="settings_mode_full">Tam</string>
     <string name="settings_mode_lite">Hafif</string>
     <string name="settings_mode_full_note">Coulomb kapalıyken de kaydeder: anlık akım, kesin oturumlar, şarj ve sıcaklık alarmları.</string>
-    <string name="settings_mode_lite_note">Arka planda hiçbir şey çalışmaz. Coulomb, Android’in istatistiklerini uygulamayı açtığında ve 6 saatte bir okur; her uygulamanın kullanımı yine sayılır. Anlık akım yoktur, oturum saatleri daha az kesindir, şarj ve sıcaklık alarmları çalmaz.</string>
+    <string name="settings_mode_lite_note">Arka planda hiçbir hizmet çalışmaz. Coulomb, Android’in istatistiklerini uygulamayı açtığında ve 6 saatte bir okur; her uygulamanın kullanımı yine sayılır. Anlık akım yoktur, oturum saatleri daha az kesindir, şarj ve sıcaklık alarmları çalmaz.</string>
     <string name="settings_sampling">Coulomb açıkken okuma aralığı</string>
     <string name="settings_sampling_seconds">%1$s sn</string>
     <string name="settings_sampling_note">Pildeyken. Başka bir uygulamanın arkasında Coulomb en sık 30 sn’de bir okur; şarj olurken aralık sabittir.</string>
@@ -161,7 +161,7 @@
     <string name="settings_action_center_note">Coulomb’un senin için yapabileceği değişiklikler; her biri önce gösterilir ve geri alınabilir.</string>
     <string name="settings_action_center_open">Eylem Merkezi’ni aç</string>
     <string name="settings_automation">Otomasyon API’si</string>
-    <string name="settings_automation_note">İzin verdiğin uygulamalar anlık kayıt isteyebilir, şarj hedefini ayarlayabilir ve senin uyguladığın bir Doze profilini yeniden uygulayabilir. Pil seviyesini, tüketim hızlarını, dün gecenin raporunu ve en çok pil kullanan üç uygulamanın adını okuyabilir.</string>
+    <string name="settings_automation_note">İzin verdiğin uygulamalar anlık kayıt isteyebilir, şarj hedefini ayarlayabilir ve Eylem Merkezi açıkken senin uyguladığın bir Doze profilini yeniden uygulayabilir ya da varsayılana döndürebilir. Pil seviyesini, tüketim hızlarını, dün gecenin raporunu ve en çok pil kullanan üç uygulamanın adını okuyabilir.</string>
     <string name="settings_automation_apps">İzin verilen uygulamalar</string>
     <string name="settings_automation_apps_none">Henüz yok. Bir uygulama “Coulomb’u otomatikleştirme” iznini ister; sen de Android’in o uygulamaya ait ayarlarından izin verirsin.</string>
     <string name="settings_automation_apps_joined">%1$s, %2$s</string>
@@ -234,4 +234,5 @@
         <item quantity="other">Eylem Merkezi üzerinden yapılan %1$s değişiklik hâlâ yürürlükte. Kayıtları silinirse onları geri alacak bir şey kalmaz. Önce Eylem Merkezi’nde geri al.</item>
     </plurals>
     <string name="data_delete_blocked_open">Eylem Merkezi’ni aç</string>
+    <string name="settings_alerts_lite">Hafif mod şarj ve sıcaklık alarmlarını çalmaz; seçimlerin Tam mod için saklanır. Özet yine saatinden sonraki ilk okumayla gelir.</string>
 </resources>

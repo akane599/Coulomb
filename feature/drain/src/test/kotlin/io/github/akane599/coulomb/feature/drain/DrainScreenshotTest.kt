@@ -263,6 +263,18 @@ class DrainScreenshotTest {
         shoot("between-references", ready(report().copy(span = between)))
     }
 
+    /** Two names of the longest kept length at 200%: the chip wraps between words and keeps its chevron (SPEC 11.3). */
+    @Test
+    fun betweenLongReferences200() {
+        val (newer, older) = labReferences().map { it.mark }.take(2)
+        val between =
+            DrainSpan.Between(
+                older.copy(name = "Before the system update to version two"),
+                newer.copy(name = "A week after the new charger arrived ok"),
+            )
+        shoot("between-long-references-200", ready(report().copy(span = between)), fontScale = 2f)
+    }
+
     /** The reconcile bar's "View as table" action opens its table in a sheet (ADR-0036 §25). */
     @OptIn(ExperimentalRoborazziApi::class, ExperimentalTestApi::class)
     @Test

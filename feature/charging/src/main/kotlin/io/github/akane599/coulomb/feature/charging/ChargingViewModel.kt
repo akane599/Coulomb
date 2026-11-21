@@ -90,6 +90,12 @@ public class ChargingViewModel
                 .catch { emit(false) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
+        /** Lite mode; false until read. */
+        internal val lite: StateFlow<Boolean> =
+            charging.lite
+                .catch { emit(false) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
         private val allInsights = MutableStateFlow(false)
 
         /**

@@ -625,10 +625,12 @@ internal fun LiveCurrent(
     state: NowUiState.Ready,
     formats: Formats,
     onViewTable: () -> Unit,
+    staleSince: String? = null,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
-    val current = state.battery.currentMa
+    // An old reading is not live current (ADR-0069).
+    val current = state.battery.currentMa.takeIf { staleSince == null }
     Column(Modifier.padding(top = currentSectionGap())) {
         CoulombSectionHead(
             title = stringResource(R.string.now_live_current),
@@ -642,6 +644,15 @@ internal fun LiveCurrent(
                     }
                 },
         )
+        if (staleSince != null) {
+            Text(
+                stringResource(R.string.now_live_stale, staleSince),
+                Modifier.padding(top = CoulombSpacing.Space12),
+                color = colors.textSecondary,
+                style = type.body,
+            )
+            return@Column
+        }
         val live = state.live
         if (live.isEmpty()) {
             Text(

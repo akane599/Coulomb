@@ -71,9 +71,15 @@ class SurfaceObserver
             val set = settings.settings.first()
             val reading = battery.reading.first()
             notifier.monitor(reading?.let { monitorLine(it, formats) })
-            charge(nowMs, reading?.battery?.levelPct)
+            // Lite gives up the Live Update and the two alarms (ADR-0064 §5): with no service, nothing
+            // would end a charge's update at the unplug, and an alarm would ring hours late (ADR-0069).
+            if (set.liteMode) {
+                notifier.cancelCharging()
+            } else {
+                charge(nowMs, reading?.battery?.levelPct)
+            }
             thermal(fresh, nowMs, copy)
-            if (reading != null) alerts(reading, nowMs, set)
+            if (reading != null && !set.liteMode) alerts(reading, nowMs, set)
             digest(nowMs, set, copy)
             // Last: a widget that fails to draw must not hold back a notification.
             widgets.refresh(heavy)

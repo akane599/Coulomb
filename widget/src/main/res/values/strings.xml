@@ -50,4 +50,5 @@
     <string name="tile_rate_on">%1$s · screen on</string>
     <string name="tile_rate_off">%1$s · screen off</string>
     <string name="tile_spoken">Battery %1$s. %2$s</string>
+    <string name="widget_state_as_of">%1$s at %2$s</string>
 </resources>

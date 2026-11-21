@@ -505,6 +505,7 @@ internal fun Target(
     formats: Formats,
     onSelect: (Int) -> Unit,
     onOpenSettings: () -> Unit,
+    lite: Boolean = false,
 ) {
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.charging_target), provenance = null)
@@ -518,7 +519,13 @@ internal fun Target(
         // SPEC 10.9: the selector links to the alarm. The note says what the alarm is set to, not what it could be.
         Note(
             stringResource(R.string.charging_target_note) + " " +
-                stringResource(if (alarm) R.string.charging_target_alarm_on else R.string.charging_target_alarm_off),
+                stringResource(
+                    when {
+                        alarm && lite -> R.string.charging_target_alarm_lite
+                        alarm -> R.string.charging_target_alarm_on
+                        else -> R.string.charging_target_alarm_off
+                    },
+                ),
         )
         CoulombTextButton(
             stringResource(R.string.charging_open_settings),

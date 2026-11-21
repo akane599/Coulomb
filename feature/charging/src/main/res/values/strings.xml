@@ -81,7 +81,7 @@
     <string name="charging_temperatures_overridden">This status was set by hand with a developer command, so it is not what the sensors say.</string>
     <string name="charging_temperatures_none">The thermal service reported no sensor readings.</string>
     <string name="charging_temperatures_sensors">Sensors</string>
-    <string name="charging_temperatures_cached">The last values Android kept, from when the throttling status last changed. They can be many degrees old.</string>
+    <string name="charging_temperatures_cached">The last values Android kept, from when the throttling status last changed. They can be long out of date.</string>
     <string name="charging_temperatures_column_sensor">Sensor</string>
     <string name="charging_temperatures_column_temp">Temperature</string>
     <string name="charging_thermal_none">none</string>
@@ -99,4 +99,8 @@
     <string name="charging_sensor_display">Display</string>
     <string name="charging_sensor_modem">Modem</string>
     <string name="charging_sensor_soc">Chip</string>
+    <string name="charging_as_of">Last reading at %1$s. Coulomb is not reading the battery now, so these figures are from then.</string>
+    <string name="charging_target_alarm_lite">The alarm at the target is on, but Lite mode does not ring it.</string>
+    <string name="charging_sensor_pa">Power amplifier</string>
+    <string name="charging_sensor_npu">Neural processor</string>
 </resources>

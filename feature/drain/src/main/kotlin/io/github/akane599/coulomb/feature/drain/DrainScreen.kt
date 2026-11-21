@@ -488,14 +488,37 @@ internal fun LensTabs(
 private fun EmptyWindow(chosen: DrainSpan) {
     val text =
         when (chosen) {
-            DrainSpan.SinceUnplugged -> R.string.drain_empty_since_unplugged
-            DrainSpan.Today -> R.string.drain_empty_today
-            DrainSpan.Last24Hours -> R.string.drain_empty_last_24h
-            DrainSpan.LastNight -> R.string.drain_empty_last_night
-            is DrainSpan.Night -> R.string.drain_empty_night
-            is DrainSpan.Discharge -> R.string.drain_empty_discharge
-            is DrainSpan.Days -> R.string.drain_empty_days
-            is DrainSpan.Between -> R.string.drain_empty_between
+            DrainSpan.SinceUnplugged -> {
+                R.string.drain_empty_since_unplugged
+            }
+
+            DrainSpan.Today -> {
+                R.string.drain_empty_today
+            }
+
+            DrainSpan.Last24Hours -> {
+                R.string.drain_empty_last_24h
+            }
+
+            DrainSpan.LastNight -> {
+                R.string.drain_empty_last_night
+            }
+
+            is DrainSpan.Night -> {
+                R.string.drain_empty_night
+            }
+
+            is DrainSpan.Discharge -> {
+                R.string.drain_empty_discharge
+            }
+
+            is DrainSpan.Days -> {
+                R.string.drain_empty_days
+            }
+
+            is DrainSpan.Between -> {
+                if (chosen.beyondKept(System.currentTimeMillis())) R.string.drain_empty_between_old else R.string.drain_empty_between
+            }
         }
     Text(
         stringResource(text),

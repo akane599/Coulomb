@@ -95,6 +95,16 @@ class SettingsTransferTest {
             assertThat(SettingsTransfer(store).apply("not json")).isFalse()
         }
 
+    /** A threshold means on: a file switched off here must not switch the alarm on (alarms stay as they are). */
+    @Test
+    fun aFileNeverTurnsTheTemperatureAlarmOn() =
+        runTest(UnconfinedTestDispatcher()) {
+            val store = store(folder.root.resolve("c.pb"))
+            store.temperatureAlarm(null)
+            assertThat(SettingsTransfer(store).apply("""{"temperature_alarm_deci_c": 450}""")).isTrue()
+            assertThat(store.settings.first().temperatureAlarmDeciC).isNull()
+        }
+
     @Test
     fun aFileNeverTurnsTheTemperatureAlarmOffAndNestingIsNotASettingsFile() =
         runTest(UnconfinedTestDispatcher()) {

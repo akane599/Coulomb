@@ -66,7 +66,9 @@
     <string name="now_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
     <string name="now_error_action">Try again</string>
     <string name="now_screen_context">Screen now: %1$s.</string>
-    <string name="now_screen_hz">%1$s Hz</string>
+    <string name="now_screen_hz">%1$s\u00A0Hz</string>
     <string name="now_screen_auto_brightness">automatic brightness</string>
     <string name="now_screen_manual_brightness">brightness set by hand</string>
+    <string name="now_as_of">Last reading at %1$s. Coulomb is not reading the battery now; in Lite mode it reads only when you open it and every six hours.</string>
+    <string name="now_live_stale">No reading since %1$s, so there is no live current to show.</string>
 </resources>

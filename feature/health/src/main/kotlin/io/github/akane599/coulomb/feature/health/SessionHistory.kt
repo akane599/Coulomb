@@ -136,8 +136,8 @@ internal fun DischargeRow(
         detail = dischargeLine(row, formats),
         detailMark = Provenance.DERIVED.takeIf { row.pctPerHour != null },
         value = formats.signedShare(-fell / FULL),
-        // The level is the platform's reading at each end (SPEC 6.7).
-        mark = Provenance.MEASURED,
+        // The level is the fuel gauge's at each end: Modeled, as on the charges tab (SPEC 6.7).
+        mark = Provenance.MODELED,
         share = fell / FULL,
         first = first,
         onClick = onClick,

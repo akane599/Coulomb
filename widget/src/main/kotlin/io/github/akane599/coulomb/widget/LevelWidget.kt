@@ -27,9 +27,11 @@ import androidx.glance.layout.width
 import androidx.glance.text.Text
 import io.github.akane599.coulomb.core.common.OpenRequest
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.formatsFor
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.story.StoryCopy
+import java.time.ZoneId
 
 /** Level and verdict, 2×1 (SPEC 12.4). */
 internal class LevelWidget : GlanceAppWidget() {
@@ -98,7 +100,7 @@ internal fun LevelContent(level: LevelFacts?) {
         }
         val formats = formatsFor(context)
         val percent = formats.percent(level.levelPct)
-        val state = context.getString(level.state.label())
+        val state = stateLine(context, level, formats)
         val scale = context.resources.configuration.fontScale
         val inner = DpSize(size.width - WidgetPadding * 2, size.height - WidgetPadding * 2)
         if (!stacked) {
@@ -138,4 +140,15 @@ internal fun LevelContent(level: LevelFacts?) {
         Spacer(GlanceModifier.height(VerdictGap))
         Text(verdict, style = WidgetType.caption, maxLines = lines)
     }
+}
+
+/** The state in words, with the reading's time when it may not be now (ADR-0069). */
+private fun stateLine(
+    context: Context,
+    level: LevelFacts,
+    formats: Formats,
+): String {
+    val word = context.getString(level.state.label())
+    val at = level.asOfWallMs ?: return word
+    return context.getString(R.string.widget_state_as_of, word, formats.clock(at, ZoneId.systemDefault(), System.currentTimeMillis()))
 }

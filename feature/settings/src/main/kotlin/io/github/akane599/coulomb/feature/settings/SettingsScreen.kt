@@ -212,6 +212,7 @@ internal fun SettingsContent(
         SectionTitle(stringResource(R.string.settings_alerts), provenance = null)
         val posts = settings.chargeAlarm || settings.temperatureAlarmDeciC != null || settings.insightsDigest
         if (posts && !notificationsAllowed) NotificationsOff(actions.allowNotifications)
+        if (settings.liteMode) Note(stringResource(R.string.settings_alerts_lite))
         Setting(
             stringResource(R.string.settings_charge_alarm),
             settings.chargeAlarm,

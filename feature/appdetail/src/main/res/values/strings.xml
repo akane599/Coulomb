@@ -132,6 +132,7 @@
     <string name="appdetail_empty_last_night">No screen-off stretch of an hour or more in the last day.</string>
     <string name="appdetail_empty_days">Nothing is stored for those days.</string>
     <string name="appdetail_empty_between">No snapshot after this reference is stored yet.</string>
+    <string name="appdetail_empty_between_old">This reference is older than the 30 days of detail Coulomb keeps, so it can no longer be read.</string>
     <string name="appdetail_error_title">Coulomb couldn’t read its battery records</string>
     <string name="appdetail_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
     <string name="appdetail_error_action">Try again</string>

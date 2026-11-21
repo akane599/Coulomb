@@ -43,6 +43,11 @@ internal data class LevelFacts(
     val state: PowerState,
     /** The Drain Story since unplugging, whose one line is the verdict; null on the charger. */
     val story: Story?,
+    /**
+     * The reading's time when it may not be now: in Lite mode, where the widget is drawn only at a
+     * snapshot hours apart, or when the reading was already old (ADR-0069). Null otherwise.
+     */
+    val asOfWallMs: Long? = null,
 )
 
 internal data class DrainRow(
@@ -86,6 +91,8 @@ internal object WidgetFacts {
     fun level(
         reading: BatteryReading,
         window: WindowDrains?,
+        lite: Boolean = false,
+        nowMs: Long = reading.battery.wallMs,
     ): LevelFacts {
         val battery = reading.battery
         val discharge = reading.discharge.takeUnless { battery.plugged }
@@ -110,7 +117,8 @@ internal object WidgetFacts {
                     ),
                 )
             }
-        return LevelFacts(battery.levelPct, PowerState.of(battery), story)
+        val asOf = battery.wallMs.takeIf { lite || battery.isStale(nowMs) }
+        return LevelFacts(battery.levelPct, PowerState.of(battery), story, asOf)
     }
 
     /** The three largest apps with their share of the window; null without a window or a drain in it. */

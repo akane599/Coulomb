@@ -19,7 +19,18 @@ public data class BatteryNow(
     val voltageMv: Int,
     val screenOn: Boolean,
     val wallMs: Long,
-)
+) {
+    /**
+     * Older than [STALE_MS] at [nowMs]: the collector is stopped (Lite mode) or has not read since,
+     * so a screen shows the reading's time beside it rather than pass it off as now (ADR-0069).
+     */
+    public fun isStale(nowMs: Long): Boolean = nowMs - wallMs > STALE_MS
+
+    public companion object {
+        /** Full mode reads every 2 to 60 s while the screen is on; a quarter-hour is no longer now. */
+        public const val STALE_MS: Long = 15 * 60_000L
+    }
+}
 
 /** One sample's read of the battery (SPEC 10.2). */
 public data class BatteryReading(

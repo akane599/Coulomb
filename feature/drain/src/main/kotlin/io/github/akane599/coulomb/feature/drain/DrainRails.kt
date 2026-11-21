@@ -42,16 +42,25 @@ private fun Rails(
 ) {
     val (rails, consumers) = all.partition { it.rail }
     Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space16)) {
-        Subhead(
-            stringResource(R.string.drain_rails),
-            definition = stringResource(R.string.drain_rails_definition),
-            provenance = Provenance.MEASURED.takeIf { rails.isNotEmpty() },
-        )
-        Note(stringResource(R.string.drain_rails_caption), top = 0.dp)
-        if (rails.isNotEmpty()) RailTable(R.string.drain_column_rail, rails, formats)
+        if (rails.isNotEmpty()) {
+            Subhead(
+                stringResource(R.string.drain_rails),
+                definition = stringResource(R.string.drain_rails_definition),
+                provenance = Provenance.MEASURED,
+            )
+            Note(stringResource(R.string.drain_rails_caption), top = 0.dp)
+            RailTable(R.string.drain_column_rail, rails, formats)
+        }
+        // Each table under its own head: Android does not say which consumers the maker measures,
+        // so they never sit under the rails' Measured mark (SPEC 6.7).
         if (consumers.isNotEmpty()) {
+            Subhead(
+                stringResource(R.string.drain_consumers),
+                definition = stringResource(R.string.drain_consumers_definition),
+                provenance = Provenance.MODELED,
+            )
+            Note(stringResource(R.string.drain_rails_consumers), top = 0.dp)
             RailTable(R.string.drain_column_consumer, consumers, formats)
-            Note(stringResource(R.string.drain_rails_consumers))
         }
     }
 }

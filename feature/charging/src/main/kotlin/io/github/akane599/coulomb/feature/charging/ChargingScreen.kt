@@ -19,6 +19,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.akane599.coulomb.core.data.BatteryNow
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
@@ -63,6 +65,7 @@ import io.github.akane599.coulomb.core.ui.insight.InsightCardActions
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.insight.insightAction
 import io.github.akane599.coulomb.core.ui.page.ErrorState
+import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.StandIn
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -81,6 +84,7 @@ public fun ChargingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val alarm by viewModel.targetAlarm.collectAsStateWithLifecycle()
+    val lite by viewModel.lite.collectAsStateWithLifecycle()
     val insights by viewModel.shownInsights.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {
         viewModel.visible(true)
@@ -100,7 +104,16 @@ public fun ChargingScreen(
                 readThermal = viewModel::readThermal,
             )
         }
-    ChargingContent(state, actions, modifier, targetAlarm = alarm, insights = insights.shown, moreInsights = insights.more)
+    ChargingContent(
+        state,
+        actions,
+        modifier,
+        targetAlarm = alarm,
+        lite = lite,
+        insights = insights.shown,
+        moreInsights = insights.more,
+        nowMs = rememberResumedNowMs(),
+    )
 }
 
 /** What Charging's controls do; the screen itself holds no logic. */
@@ -127,8 +140,11 @@ internal fun ChargingContent(
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     targetAlarm: Boolean = false,
+    lite: Boolean = false,
     insights: List<ShownInsight> = emptyList(),
     moreInsights: Int = 0,
+    // Null where the reading's age is not judged (previews and goldens).
+    nowMs: Long? = null,
 ) {
     var thermalOpen by rememberSaveable { mutableStateOf(false) }
     val formats = rememberFormats()
@@ -175,6 +191,10 @@ internal fun ChargingContent(
                     Column {
                         val now = state.now
                         Hero(now, formats)
+                        // An old reading says when it was taken (ADR-0069).
+                        nowMs?.takeIf { it - now.wallMs > BatteryNow.STALE_MS }?.let {
+                            Note(stringResource(R.string.charging_as_of, formats.clock(now.wallMs, zone, it)))
+                        }
                         LevelScale(now, formats, zone, onViewTable = { table = SCALE_TABLE })
                         Times(now, formats)
                         Insights(
@@ -196,7 +216,7 @@ internal fun ChargingContent(
                         Readings(now, formats)
                         actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
                         Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
-                        Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings)
+                        Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings, lite)
                     }
                 }
             }
@@ -365,4 +385,15 @@ private fun Skeleton() {
         SkeletonBlock(20.dp, Modifier.padding(top = CoulombSpacing.Space16).width(240.dp))
         SkeletonBlock(80.dp, Modifier.padding(top = currentSectionGap()).fillMaxWidth())
     }
+}
+
+/** The wall clock, read again each time the screen resumes: enough to judge a reading's age (ADR-0069). */
+@Composable
+private fun rememberResumedNowMs(): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LifecycleResumeEffect(Unit) {
+        now = System.currentTimeMillis()
+        onPauseOrDispose {}
+    }
+    return now
 }

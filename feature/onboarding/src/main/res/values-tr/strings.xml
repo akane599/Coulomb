@@ -33,7 +33,7 @@
     <string name="onboarding_allowed">İzin verildi</string>
 
     <string name="onboarding_shizuku_title">Shizuku’yu bağla</string>
-    <string name="onboarding_shizuku_lede">Shizuku, Coulomb’un Android’in kendine sakladığı pil ayrıntılarını okumasını sağlar. Coulomb sen dokunmadan hiçbir ayarı değiştirmez.</string>
+    <string name="onboarding_shizuku_lede">Shizuku, Coulomb’un Android’in kendine sakladığı pil ayrıntılarını okumasını sağlar. Coulomb bir ayarı yalnızca sen dokunduğunda ya da izin verdiğin bir uygulama senin yaptığın bir değişikliği yinelediğinde değiştirir.</string>
     <string name="onboarding_shizuku_checking">Shizuku aranıyor…</string>
     <string name="onboarding_shizuku_missing_title">Shizuku yüklü değil</string>
     <string name="onboarding_shizuku_missing_body">thedjchi’ninki gibi bir Shizuku çatalı ya da rootlu bir telefonda Sui yükle. Başlat, sonra buraya dön.</string>
