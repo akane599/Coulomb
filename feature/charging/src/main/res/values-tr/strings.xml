@@ -99,7 +99,8 @@
     <string name="charging_sensor_display">Ekran</string>
     <string name="charging_sensor_modem">Modem</string>
     <string name="charging_sensor_soc">Yonga</string>
-    <string name="charging_as_of">Son okuma %1$s. Coulomb pili şu an okumuyor; bu değerler o ana ait.</string>
+    <string name="charging_as_of">Son okuma %1$s; bu değerler o ana ait. Coulomb o zamandan beri pili okumadı; şimdi okumak için aşağı çek.</string>
+    <string name="charging_as_of_lite">Son okuma %1$s; bu değerler o ana ait. Hafif modda Coulomb pili açtığında ve 6 saatte bir okur; şimdi okumak için aşağı çek.</string>
     <string name="charging_target_alarm_lite">Hedefteki alarm açık, ama Hafif mod onu çalmaz.</string>
     <string name="charging_sensor_pa">Güç yükselteci</string>
     <string name="charging_sensor_npu">Yapay zekâ işlemcisi</string>

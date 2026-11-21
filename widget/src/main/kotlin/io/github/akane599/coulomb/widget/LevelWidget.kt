@@ -160,9 +160,11 @@ private fun OneLine(
     scale: Float,
 ) {
     // One line: the level at the size the height holds, and its state where the width holds both.
-    // An old reading's time is never left out (ADR-0069): it is the bare clock here, and the
+    // An old reading's time is never left out (ADR-0069): it is the short "at 2:30 PM" here, and the
     // level steps down to title size to make room for it.
-    val line = level.asOfWallMs?.let { formats.clock(it, zone) } ?: state
+    val line =
+        level.asOfWallMs?.let { LocalContext.current.getString(R.string.widget_at, formats.clock(it, zone, System.currentTimeMillis())) }
+            ?: state
     val lineWidth = WidgetFit.width(line, WidgetLine.LABEL_SP, scale)
 
     fun fits(hero: Boolean) =

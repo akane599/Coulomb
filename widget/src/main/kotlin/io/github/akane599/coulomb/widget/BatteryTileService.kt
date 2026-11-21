@@ -73,7 +73,9 @@ class BatteryTileService : TileService() {
             tile.subtitle = words.detail
             tile.contentDescription = getString(R.string.tile_spoken, words.level, words.detail)
             // Lit while the battery takes charge; nothing here switches anything.
-            tile.state = if (words.state == PowerState.CHARGING) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+            // Not lit from an old reading: the charge it saw may have ended (ADR-0069).
+            val fresh = !reading.battery.isStale(System.currentTimeMillis())
+            tile.state = if (words.state == PowerState.CHARGING && fresh) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         }
         tile.updateTile()
     }

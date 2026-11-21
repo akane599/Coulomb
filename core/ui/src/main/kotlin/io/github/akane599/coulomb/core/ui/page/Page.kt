@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.ui.page
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,11 +14,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -62,18 +66,25 @@ public fun SectionTitle(
     }
     if (caption != null) {
         // A caption, such as the window a section covers, sits on the title's first baseline.
-        // Neither crushes the other: a long caption (a span between two named references) wraps
-        // within a third of the row, and the title keeps the rest (SPEC 11.3).
-        Row(block, horizontalArrangement = Arrangement.SpaceBetween) {
-            text(Modifier.weight(2f, fill = false).alignByBaseline())
-            Spacer(Modifier.width(CoulombSpacing.Space16))
-            Text(
-                caption,
-                Modifier.weight(1f, fill = false).alignByBaseline(),
-                color = colors.textSecondary,
-                style = type.caption,
-                textAlign = TextAlign.End,
-            )
+        // One that fits in half the row keeps its own width on one line, as before; a longer one
+        // (a span between two named references) wraps within a third of it, so neither crushes
+        // the other (SPEC 11.3).
+        val measurer = rememberTextMeasurer()
+        BoxWithConstraints(block) {
+            val captionPx = remember(caption, type.caption) { measurer.measure(caption, type.caption).size.width }
+            val short = with(LocalDensity.current) { captionPx.toDp() } <= maxWidth / 2
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                text((if (short) Modifier.weight(1f) else Modifier.weight(2f, fill = false)).alignByBaseline())
+                Spacer(Modifier.width(CoulombSpacing.Space16))
+                Text(
+                    caption,
+                    (if (short) Modifier else Modifier.weight(1f, fill = false)).alignByBaseline(),
+                    color = colors.textSecondary,
+                    style = type.caption,
+                    textAlign = TextAlign.End,
+                    softWrap = !short,
+                )
+            }
         }
         return
     }

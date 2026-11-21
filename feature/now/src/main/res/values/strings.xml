@@ -69,8 +69,9 @@
     <string name="now_screen_hz">%1$s\u00A0Hz</string>
     <string name="now_screen_auto_brightness">automatic brightness</string>
     <string name="now_screen_manual_brightness">brightness set by hand</string>
-    <string name="now_as_of">Last reading at %1$s. In Lite mode Coulomb reads the battery when you open it and every six hours; pull down to read it now.</string>
+    <string name="now_as_of">Last reading at %1$s. In Lite mode Coulomb reads the battery when you open it and every 6 hours; pull down to read it now.</string>
     <string name="now_as_of_full">Last reading at %1$s. Coulomb has not read the battery since; pull down to read it now.</string>
     <string name="now_live_lite">Lite mode does not follow live current. Full mode, in Settings, does.</string>
     <string name="now_live_stale">No reading since %1$s, so there is no live current to show.</string>
+    <string name="now_verdict_stale">From the unplug to the last reading, %1$s, the battery fell %2$s.</string>
 </resources>

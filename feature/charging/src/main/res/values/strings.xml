@@ -99,7 +99,8 @@
     <string name="charging_sensor_display">Display</string>
     <string name="charging_sensor_modem">Modem</string>
     <string name="charging_sensor_soc">Chip</string>
-    <string name="charging_as_of">Last reading at %1$s. Coulomb is not reading the battery now, so these figures are from then.</string>
+    <string name="charging_as_of">Last reading at %1$s, so these figures are from then. Coulomb has not read the battery since; pull down to read it now.</string>
+    <string name="charging_as_of_lite">Last reading at %1$s, so these figures are from then. In Lite mode Coulomb reads the battery when you open it and every 6 hours; pull down to read it now.</string>
     <string name="charging_target_alarm_lite">The alarm at the target is on, but Lite mode does not ring it.</string>
     <string name="charging_sensor_pa">Power amplifier</string>
     <string name="charging_sensor_npu">Neural processor</string>

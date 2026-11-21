@@ -52,4 +52,5 @@
     <string name="tile_spoken">Battery %1$s. %2$s</string>
     <string name="widget_state_as_of">%1$s at %2$s</string>
     <string name="widget_as_of">As of %1$s</string>
+    <string name="widget_at">at %1$s</string>
 </resources>

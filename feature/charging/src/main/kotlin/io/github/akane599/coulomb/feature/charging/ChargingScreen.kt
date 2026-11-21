@@ -31,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -202,14 +204,9 @@ internal fun ChargingContent(
                 is ChargingUiState.Ready -> {
                     FadeInOnce {
                         Column {
-                            val now = state.now
-                            Hero(now, formats)
-                            // An old reading says when it was taken (ADR-0069).
-                            nowMs?.takeIf { it - now.wallMs > BatteryNow.STALE_MS }?.let {
-                                Note(stringResource(R.string.charging_as_of, formats.clock(now.wallMs, zone, it)))
-                            }
-                            LevelScale(now, formats, zone, onViewTable = { table = SCALE_TABLE })
-                            Times(now, formats)
+                            val stale = state.now.isStaleAt(nowMs)
+                            val now = state.now.shown(stale)
+                            Top(now, stale, nowMs, lite, formats, zone, onViewScale = { table = SCALE_TABLE })
                             Insights(
                                 insights,
                                 copy,
@@ -226,7 +223,7 @@ internal fun ChargingContent(
                                         null
                                     },
                             )
-                            Readings(now, formats, lite)
+                            Readings(now, formats, lite || stale)
                             actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
                             Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
                             Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings, lite)
@@ -420,4 +417,32 @@ private fun rememberResumedNowMs(changesAt: Long?): Long {
         }
     }
     return now
+}
+
+/** Older than [BatteryNow.STALE_MS] at [nowMs]; never without a clock (ADR-0069). */
+private fun ChargingNow.isStaleAt(nowMs: Long?): Boolean = nowMs != null && nowMs - wallMs > BatteryNow.STALE_MS
+
+/** An old reading projects nothing: its times would count from then, not now (ADR-0069). */
+private fun ChargingNow.shown(stale: Boolean): ChargingNow = if (stale) copy(toTarget = null, toFull = null) else this
+
+/** The hero, an old reading's note, the level scale and the times to target and full. */
+@Composable
+private fun Top(
+    now: ChargingNow,
+    stale: Boolean,
+    nowMs: Long?,
+    lite: Boolean,
+    formats: Formats,
+    zone: ZoneId,
+    onViewScale: () -> Unit,
+) {
+    Hero(now, formats, stale = stale)
+    if (stale && nowMs != null) {
+        Note(
+            stringResource(if (lite) R.string.charging_as_of_lite else R.string.charging_as_of, formats.clock(now.wallMs, zone, nowMs)),
+            Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+    }
+    LevelScale(now, formats, zone, onViewTable = onViewScale)
+    if (!stale) Times(now, formats)
 }

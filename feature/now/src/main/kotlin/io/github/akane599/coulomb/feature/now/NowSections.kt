@@ -26,8 +26,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
@@ -158,7 +160,8 @@ internal fun Hero(
                 BatteryState(stateText, measured = state.battery.currentMa != null && !stale)
             }
         }
-        staleNote?.let { Note(it, top = 0.dp) }
+        // Polite: a reading that turns old with the screen open is announced (ADR-0069).
+        staleNote?.let { Note(it, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, top = 0.dp) }
         if (discharge != null) Projection(state, discharge, formats, zone, onViewTable, stale)
     }
 }
@@ -177,7 +180,27 @@ private fun Projection(
     stale: Boolean,
 ) {
     if (discharge.timeLeft != null && !stale) Scale(state, discharge, formats, zone, onViewTable)
-    Verdict(state, discharge, formats)
+    if (stale) StaleVerdict(state, discharge, formats) else Verdict(state, discharge, formats)
+}
+
+/**
+ * The verdict of an old reading: the story's "ago" would count to the reading, not to now, so the
+ * sentence names its end instead, as Drain's note does (ADR-0069).
+ */
+@Composable
+private fun StaleVerdict(
+    state: NowUiState.Ready,
+    discharge: DischargeSummary,
+    formats: Formats,
+) {
+    val minutes = ((state.battery.wallMs - discharge.startWallMs) / MS_PER_MINUTE).coerceAtLeast(0)
+    val fell = (discharge.startLevel - state.battery.levelPct).coerceAtLeast(0)
+    Text(
+        stringResource(R.string.now_verdict_stale, formats.duration(minutes), formats.percent(fell)),
+        Modifier.widthIn(max = VerdictMeasure),
+        color = CoulombTheme.colors.textPrimary,
+        style = CoulombTheme.typography.body,
+    )
 }
 
 @Composable

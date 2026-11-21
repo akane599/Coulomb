@@ -74,6 +74,8 @@ private const val PERCENT = 100.0
 internal fun Hero(
     now: ChargingNow,
     formats: Formats,
+    // An old reading's power is not drawn as the charge happening now (ADR-0069).
+    stale: Boolean = false,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -89,7 +91,7 @@ internal fun Hero(
             Row(baseline.semantics(mergeDescendants = true) {}) {
                 if (watts != null) {
                     // Copper means charging (DESIGN.md): net power out of the battery is signed, in ink.
-                    val ink = if (watts < 0) colors.textPrimary else colors.accent
+                    val ink = if (watts < 0 || stale) colors.textPrimary else colors.accent
                     FigureText(
                         formats.signedWatts(watts).affixed(),
                         numberStyle = type.display,
