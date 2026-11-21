@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.collect.engine
 
 import android.util.Log
+import io.github.akane599.coulomb.core.collect.SnapshotObserver
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import kotlinx.coroutines.CancellationException
@@ -33,6 +34,7 @@ internal sealed interface CollectorEvent {
 internal class CollectorActor(
     private val engine: CollectorEngine,
     scope: CoroutineScope,
+    private val observers: Set<SnapshotObserver> = emptySet(),
 ) {
     // Unlimited: triggers are rare and must not be dropped; samples are at most one a second.
     private val events = Channel<CollectorEvent>(Channel.UNLIMITED)
@@ -41,11 +43,13 @@ internal class CollectorActor(
         scope.launch {
             for (event in events) {
                 try {
-                    when (event) {
-                        is CollectorEvent.Trigger -> engine.handle(event.trigger)
-                        is CollectorEvent.Sample -> engine.sample(event.reading)
-                        CollectorEvent.PrivilegesChanged -> engine.privilegesChanged()
-                    }
+                    val action =
+                        when (event) {
+                            is CollectorEvent.Trigger -> engine.handle(event.trigger)
+                            is CollectorEvent.Sample -> engine.sample(event.reading).let { null }
+                            CollectorEvent.PrivilegesChanged -> engine.privilegesChanged()
+                        }
+                    if (action == Action.LIGHT || action == Action.HEAVY) notify(heavy = action == Action.HEAVY)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (
@@ -56,6 +60,21 @@ internal class CollectorActor(
                 }
             }
         }
+
+    /** SPEC 7.5: what follows a stored snapshot. One observer's failure is not the others' or the collector's. */
+    private suspend fun notify(heavy: Boolean) {
+        for (observer in observers) {
+            try {
+                observer.onSnapshot(heavy)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (
+                @Suppress("TooGenericExceptionCaught") e: Exception,
+            ) {
+                Log.w(TAG, "snapshot observer failed", e)
+            }
+        }
+    }
 
     fun post(event: CollectorEvent) {
         events.trySend(event)

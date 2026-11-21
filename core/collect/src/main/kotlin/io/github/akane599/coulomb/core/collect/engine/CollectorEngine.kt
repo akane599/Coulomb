@@ -143,9 +143,9 @@ internal class CollectorEngine(
     )
 
     /** Takes the heavy snapshot owed since dumps were unavailable, once they work (SPEC 7.2). */
-    suspend fun privilegesChanged() {
+    suspend fun privilegesChanged(): Action? {
         val owed = owedTrigger
-        if (heavyOwed && owed != null && heavy.available()) handle(owed)
+        return if (heavyOwed && owed != null && heavy.available()) handle(owed) else null
     }
 
     /** Stores a sampler's reading (SPEC 7.3). */

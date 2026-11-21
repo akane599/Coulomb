@@ -51,6 +51,7 @@ public class Collector
         db: CoulombDatabase,
         private val access: PrivilegedAccess,
         settings: CollectorSettings,
+        observers: Set<@JvmSuppressWildcards SnapshotObserver>,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         private val light = AndroidLightSource(context, SystemCollectorClock)
@@ -66,7 +67,7 @@ public class Collector
                 settings = settings,
                 health = AndroidHealthSource(context, access),
             )
-        private val actor = CollectorActor(engine, scope)
+        private val actor = CollectorActor(engine, scope, observers)
         private val device = MutableStateFlow(DeviceFlags(plugged = false, screenOn = false))
         private val screen = MutableStateFlow(VisibleScreen.NONE)
         private var attached: Job? = null
