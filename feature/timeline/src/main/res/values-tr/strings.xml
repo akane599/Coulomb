@@ -49,6 +49,7 @@
     <string name="night_doze_reached">Ulaşıldı</string>
     <string name="night_awake">Uyanık</string>
     <string name="night_timeline">Zaman çizelgesi</string>
+    <string name="night_timeline_sources">Seviye: %1$s. Şeritler: %2$s.</string>
     <string name="night_no_history">Android’in bu süreye ait pil geçmişi saklı değil; bu yüzden zaman çizelgesi yok.</string>
     <string name="night_timeline_summary">Seviye %1$s değerinden %2$s değerine indi. Telefon %3$s kez uyandı ve %4$s uyanık kaldı.</string>
     <string name="night_timeline_caption">Telefon saatte %1$s kez uyandı. Çerçeveli aralık, her biri ayrı çizilemeyecek kadar sık uyanmaları gösterir.</string>
@@ -79,7 +80,12 @@
     <string name="timeline_now">Şimdi</string>
     <string name="timeline_tracks_title">Şeritler</string>
     <string name="timeline_panel_hint">Ne olduğunu görmek için bir şeritteki işarete dokun.</string>
-    <string name="timeline_no_history">Coulomb’da bu aralık için pil geçmişi yok.</string>
+    <string name="timeline_no_history">Coulomb’da bu aralık için pil geçmişi yok. Şimdi, en son geçmişe döner.</string>
+    <string name="timeline_reading">Bu aralık okunuyor…</string>
+    <string name="timeline_read_failed">Coulomb bu aralığı okuyamadı.</string>
+    <string name="timeline_locked">Zaman çizelgesi Android’in pil geçmişinden çizilir; Coulomb onu yalnızca Shizuku üzerinden okuyabilir. Shizuku olmadan buraya bir şey eklenmez.</string>
+    <string name="timeline_earlier">Daha önce</string>
+    <string name="timeline_later">Daha sonra</string>
     <string name="timeline_readout">%1$s · %2$s</string>
     <string name="timeline_unknown_at">Bu an için geçmiş yok</string>
     <string name="timeline_screen_on">Ekran açık</string>
@@ -89,8 +95,13 @@
     <string name="timeline_state_charging">şarj oluyor</string>
     <string name="timeline_summary_range">%1$s ile %2$s arası.</string>
     <string name="timeline_summary_level">Seviye %1$s değerinden %2$s değerine geldi.</string>
-    <string name="timeline_caption_wakeups">Telefon bu aralıkta saatte %1$s kez uyandı.</string>
-    <string name="timeline_caption_density">Çerçeveli aralık, her biri ayrı çizilemeyecek kadar sık olayları gösterir; her birini görmek için yakınlaştır.</string>
+    <string name="timeline_caption_wakeups">Telefon bu aralıkta saatte yaklaşık %1$s kez uyandı.</string>
+    <plurals name="timeline_caption_woke">
+        <item quantity="one">Telefon bu aralıkta %1$s kez uyandı.</item>
+        <item quantity="other">Telefon bu aralıkta %1$s kez uyandı.</item>
+    </plurals>
+    <string name="timeline_caption_density">Uyanık, Uyanık tutma ve radyo şeritlerinde çerçeveli bölüm, her biri ayrı çizilemeyecek kadar sık olayları gösterir; her birini görmek için yakınlaştır. Doze şeridinde çerçeveli bölüm hafif Doze’dur.</string>
+    <string name="timeline_caption_current">Akım, ekran açıkken ya da telefon şarj olurken örneklenir.</string>
     <string name="timeline_caption_signal">Sinyal, yoktan çok iyiye uzanır.</string>
     <string name="timeline_caption_temperature">Sıcaklık %1$s ile %2$s arasındadır.</string>
     <string name="timeline_event_one">%1$s – %2$s · %3$s</string>

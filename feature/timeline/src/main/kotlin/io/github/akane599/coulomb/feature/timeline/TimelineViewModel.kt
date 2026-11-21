@@ -12,6 +12,9 @@ import io.github.akane599.coulomb.core.data.NightSummary
 import io.github.akane599.coulomb.core.data.Timeline
 import io.github.akane599.coulomb.core.data.TimelineRepository
 import io.github.akane599.coulomb.core.data.TimelineTrack
+import io.github.akane599.coulomb.core.model.AccessTier
+import io.github.akane599.coulomb.core.model.PrivilegeIssue
+import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +46,12 @@ internal data class TimelineUiState(
     val picked: Picked? = null,
     val latestNight: NightSummary? = null,
     val labels: Map<Int, String> = emptyMap(),
+    /** A read for [window] is due or running: what shows of it is not yet what there is. */
+    val pending: Boolean = false,
+    /** Coulomb cannot read the battery history now (SPEC 5, S7 needs the worker). */
+    val locked: Boolean = false,
+    /** SPEC 4.5's row, when access was lost rather than never set up. */
+    val issue: PrivilegeIssue? = null,
 ) {
     /** The tracks shown, in the order of SPEC 10.6. */
     val shown: List<TimelineTrack> get() = TimelineTrack.entries.filter { it in tracks }
@@ -60,6 +69,7 @@ public class TimelineViewModel
     constructor(
         private val timelines: TimelineRepository,
         nights: NightRepository,
+        access: PrivilegedAccess,
     ) : ViewModel() {
         /** What a read is for: the snapshots stored and the retries asked for when it ran. */
         private data class Stamp(
@@ -91,14 +101,17 @@ public class TimelineViewModel
                 }
                 // New history, or the screen shown again: a window that ended at now moves along to now.
                 launch { snapshots.collect { follow() } }
+                val read =
+                    combine(view, loaded, failed) { view, loaded, failed ->
+                        view.copy(timeline = loaded?.timeline, failed = failed, pending = !failed && loaded?.covers(view.window) != true)
+                    }
                 combine(
-                    view,
-                    loaded,
-                    failed,
+                    read,
                     nights.nights.map { it.firstOrNull() }.catch { emit(null) },
                     timelines.labels.catch { emit(emptyMap()) },
-                ) { view, loaded, failed, night, labels ->
-                    view.copy(timeline = loaded?.timeline, failed = failed, latestNight = night, labels = labels)
+                    access.state.map { it.issue to (it.tier < AccessTier.T2_PRIVILEGED_WORKER) }.distinctUntilChanged(),
+                ) { state, night, labels, (issue, locked) ->
+                    state.copy(latestNight = night, labels = labels, issue = issue, locked = locked)
                 }.collect { send(it) }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), view.value)
 
@@ -139,7 +152,11 @@ public class TimelineViewModel
             view.update { it.copy(window = it.window.moved(zoom, focus, pan, nowMs), nowMs = nowMs) }
         }
 
-        internal fun scrub(atMs: Long) = view.update { it.copy(cursorMs = atMs) }
+        /** Moves the window by [windows] of its length, earlier below zero: the way without two fingers. */
+        internal fun shift(windows: Float) = transform(zoom = 1f, focus = 0f, pan = -windows)
+
+        // A scrub leaves the last pick behind: the panel would otherwise describe marks the cursor has left.
+        internal fun scrub(atMs: Long) = view.update { it.copy(cursorMs = atMs, picked = null) }
 
         /** A tap moves the cursor and picks what is under it on [track]; above the bands it only moves the cursor. */
         internal fun tap(

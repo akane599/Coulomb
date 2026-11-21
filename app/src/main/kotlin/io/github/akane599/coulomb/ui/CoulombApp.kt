@@ -300,6 +300,7 @@ class AppScreens(
                                 navigator.openDetail(Route.Night(it))
                             },
                             onOpenApp = { navigator.openDetail(Route.AppDetail(it)) },
+                            onOpenPrivileges = { navigator.open(Route.Privileges) },
                         ),
                     )
                 },

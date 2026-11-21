@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,7 +35,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.data.TimelineTrack
 import io.github.akane599.coulomb.core.designsystem.component.CoulombIconButton
@@ -87,7 +87,7 @@ internal fun TimelineToolbar(
         horizontalArrangement = Arrangement.spacedBy(ButtonGap),
     ) {
         Row(
-            Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()),
+            Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()).selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(ButtonGap),
         ) {
             TimeWindow.PRESETS_MS.forEachIndexed { index, preset ->
@@ -125,12 +125,8 @@ private fun RangeButton(
         horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space4, Alignment.CenterHorizontally),
     ) {
         if (chosen) Icon(painterResource(CoulombIcons.Check), contentDescription = null, Modifier.size(CheckSize), tint = content)
-        Text(
-            text,
-            color = content,
-            style = CoulombTheme.typography.label.copy(fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Medium),
-            maxLines = 1,
-        )
+        // The chosen range keeps its weight (DESIGN.md): the fill and the check say it.
+        Text(text, color = content, style = CoulombTheme.typography.label, maxLines = 1)
     }
 }
 

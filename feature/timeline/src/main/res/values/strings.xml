@@ -49,6 +49,8 @@
     <string name="night_doze_reached">Reached</string>
     <string name="night_awake">Awake</string>
     <string name="night_timeline">Timeline</string>
+    <!-- %1$s, %2$s: provenance names. -->
+    <string name="night_timeline_sources">The level is %1$s; the tracks are %2$s.</string>
     <string name="night_no_history">Android’s battery history for this stretch is not stored, so it has no timeline.</string>
     <string name="night_timeline_summary">The level went from %1$s to %2$s. The phone woke %3$s times and was awake for %4$s.</string>
     <string name="night_timeline_caption">The phone woke %1$s times an hour. An outlined span is a run of wakeups too close to draw one by one.</string>
@@ -79,7 +81,12 @@
     <string name="timeline_now">Now</string>
     <string name="timeline_tracks_title">Tracks</string>
     <string name="timeline_panel_hint">Tap a mark on a track to see what it was.</string>
-    <string name="timeline_no_history">Coulomb has no battery history for this range.</string>
+    <string name="timeline_no_history">Coulomb has no battery history for this range. Now returns to the latest.</string>
+    <string name="timeline_reading">Reading this range…</string>
+    <string name="timeline_read_failed">Coulomb couldn’t read this range.</string>
+    <string name="timeline_locked">The Timeline is drawn from Android’s battery history, which Coulomb can read only through Shizuku. Without it, nothing is added here.</string>
+    <string name="timeline_earlier">Earlier</string>
+    <string name="timeline_later">Later</string>
     <string name="timeline_readout">%1$s · %2$s</string>
     <string name="timeline_unknown_at">No history at this time</string>
     <string name="timeline_screen_on">Screen on</string>
@@ -89,8 +96,13 @@
     <string name="timeline_state_charging">charging</string>
     <string name="timeline_summary_range">From %1$s to %2$s.</string>
     <string name="timeline_summary_level">The level went from %1$s to %2$s.</string>
-    <string name="timeline_caption_wakeups">The phone woke %1$s times an hour in this range.</string>
-    <string name="timeline_caption_density">An outlined span is a run of events too close to draw one by one; zoom in to see each.</string>
+    <string name="timeline_caption_wakeups">The phone woke about %1$s times an hour in this range.</string>
+    <plurals name="timeline_caption_woke">
+        <item quantity="one">The phone woke %1$s time in this range.</item>
+        <item quantity="other">The phone woke %1$s times in this range.</item>
+    </plurals>
+    <string name="timeline_caption_density">On Awake, Wakelocks and the radios, an outlined span is a run of events too close to draw one by one; zoom in to see each. On Doze, outlined is light Doze.</string>
+    <string name="timeline_caption_current">Current is sampled while the screen is on or the phone charges.</string>
     <string name="timeline_caption_signal">Signal runs from none to great.</string>
     <string name="timeline_caption_temperature">Temperature runs from %1$s to %2$s.</string>
     <string name="timeline_event_one">%1$s to %2$s · %3$s</string>

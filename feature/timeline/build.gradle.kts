@@ -9,4 +9,5 @@ plugins {
 dependencies {
     implementation(projects.core.data)
     implementation(projects.core.insights)
+    implementation(projects.core.privileged)
 }

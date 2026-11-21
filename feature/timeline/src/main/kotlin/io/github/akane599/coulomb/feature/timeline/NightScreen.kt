@@ -178,7 +178,8 @@ private fun Night(
         item(key = "figures", contentType = "figures") { NightFigures(detail.night, timeline, formats) }
         item(key = "timeline", contentType = "timeline") {
             Column(Modifier.fillMaxWidth()) {
-                SectionTitle(stringResource(R.string.night_timeline), provenance = Provenance.MEASURED)
+                // Two sources in one chart: no one mark can head it (DESIGN.md); the line under it names both.
+                SectionTitle(stringResource(R.string.night_timeline), provenance = null)
                 if (timeline == null) {
                     StandIn(stringResource(R.string.night_no_history), top = 0.dp)
                 } else {
@@ -362,6 +363,14 @@ private fun NightTimeline(
         if (awake.isNotEmpty() && hours > 0) {
             Note(stringResource(R.string.night_timeline_caption, formats.decimal(awake.size / hours)))
         }
+        // The chart's two sources, in words: the level between readings is the last one reported.
+        Note(
+            stringResource(
+                R.string.night_timeline_sources,
+                stringResource(UiR.string.provenance_modeled),
+                stringResource(UiR.string.provenance_measured),
+            ),
+        )
         ViewTableButton(onViewTable)
     }
 }
@@ -414,7 +423,8 @@ private fun Culprits(
     onOpenDrain: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
-        SectionTitle(stringResource(R.string.night_culprits), provenance = Provenance.MEASURED)
+        // The mark is for figures: a section that only says why it has none carries no mark.
+        SectionTitle(stringResource(R.string.night_culprits), provenance = report?.let { Provenance.MEASURED })
         if (report == null) {
             StandIn(stringResource(R.string.night_no_records), top = 0.dp)
             return@Column

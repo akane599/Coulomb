@@ -28,9 +28,11 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombRadius
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
+import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.page.InlineTable
 import io.github.akane599.coulomb.core.ui.page.TableRow
+import java.time.Instant
 import java.time.ZoneId
 
 /** The names table of a run of marks shows this many rows before "Show all". */
@@ -45,6 +47,7 @@ internal fun EventSheet(
     labels: Map<Int, String>,
     zone: ZoneId,
     formats: Formats,
+    nowMs: Long,
     onOpenApp: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -61,7 +64,7 @@ internal fun EventSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(start = currentGutter(), end = currentGutter(), bottom = CoulombSpacing.Space24),
         ) {
-            EventDetails(picked, labels, zone, formats) { uid ->
+            EventDetails(picked, labels, zone, formats, nowMs) { uid ->
                 onDismiss()
                 onOpenApp(uid)
             }
@@ -80,6 +83,7 @@ internal fun EventDetails(
     labels: Map<Int, String>,
     zone: ZoneId,
     formats: Formats,
+    nowMs: Long,
     onOpenApp: (Int) -> Unit,
 ) {
     val colors = CoulombTheme.colors
@@ -87,6 +91,17 @@ internal fun EventDetails(
     val one = picked.spans.singleOrNull()
     Column(Modifier.fillMaxWidth()) {
         Text(title(picked.track, one), Modifier.semantics { heading() }, color = colors.textPrimary, style = type.title)
+        // A clock time alone reads as today's: on another day the day comes first.
+        val day = Instant.ofEpochMilli(picked.fromMs).atZone(zone).toLocalDate()
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+        if (day != today) {
+            Text(
+                formats.day(day, today),
+                Modifier.padding(top = CoulombSpacing.Space4),
+                color = colors.textSecondary,
+                style = type.label,
+            )
+        }
         if (one != null) {
             Text(
                 stringResource(
@@ -108,7 +123,7 @@ internal fun EventDetails(
                     color = colors.textSecondary,
                     style = type.label,
                 )
-                Text(tag, color = colors.textPrimary, style = type.mono)
+                Text(breakable(tag), color = colors.textPrimary, style = type.mono)
             }
             if (uid != null && app != null) {
                 CoulombTextButton(

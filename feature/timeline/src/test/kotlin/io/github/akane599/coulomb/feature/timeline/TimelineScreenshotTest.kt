@@ -93,6 +93,18 @@ class TimelineScreenshotTest {
     @Test
     fun pastTheHistory() = shoot("past-history") { Timeline(dayState(window = TimeWindow(NOW - 5 * DAY, NOW - 4 * DAY))) }
 
+    /** The same empty range in Basic mode: why nothing is here, and where that changes. */
+    @Test
+    fun locked() = shoot("locked") { Timeline(dayState(window = TimeWindow(NOW - 5 * DAY, NOW - 4 * DAY)).copy(locked = true)) }
+
+    /** A range whose read is still running is not a range without history. */
+    @Test
+    fun reading() = shoot("reading") { Timeline(dayState(window = TimeWindow(NOW - 5 * DAY, NOW - 4 * DAY)).copy(pending = true)) }
+
+    /** A later read failed: what was read stays, and the page says so. */
+    @Test
+    fun readFailed() = shoot("read-failed") { Timeline(dayState().copy(failed = true)) }
+
     @Test
     @Config(qualifiers = "w1280dp-h800dp-xhdpi")
     fun expandedWithDetails() =
@@ -115,8 +127,8 @@ class TimelineScreenshotTest {
             val many = checkNotNull(timeline.pick(TimelineTrack.AWAKE, NOW - 3 * HOUR, reachMs = 24 * MINUTE))
             val labels = dayState().labels
             Column(Modifier.padding(currentGutter())) {
-                EventDetails(one, labels, ZoneOffset.UTC, rememberFormats()) {}
-                Box(Modifier.padding(top = currentGutter())) { EventDetails(many, labels, ZoneOffset.UTC, rememberFormats()) {} }
+                EventDetails(one, labels, ZoneOffset.UTC, rememberFormats(), NOW) {}
+                Box(Modifier.padding(top = currentGutter())) { EventDetails(many, labels, ZoneOffset.UTC, rememberFormats(), NOW) {} }
             }
         }
 

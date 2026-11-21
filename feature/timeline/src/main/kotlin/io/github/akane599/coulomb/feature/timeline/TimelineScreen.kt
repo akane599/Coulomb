@@ -25,9 +25,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -42,7 +44,10 @@ import io.github.akane599.coulomb.core.designsystem.chart.TimelineChart
 import io.github.akane599.coulomb.core.designsystem.chart.TimelineGestures
 import io.github.akane599.coulomb.core.designsystem.chart.TimelineLabels
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
+import io.github.akane599.coulomb.core.designsystem.component.CoulombIconButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
+import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
@@ -55,7 +60,9 @@ import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import io.github.akane599.coulomb.core.ui.page.StandIn
 import io.github.akane599.coulomb.core.ui.page.ViewTableButton
+import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import java.time.ZoneId
+import kotlin.math.roundToLong
 import io.github.akane599.coulomb.core.ui.R as UiR
 
 /** Where the Timeline leads: the Night Report, one night, and an app's detail. */
@@ -64,6 +71,7 @@ public class TimelineLinks(
     public val onOpenNights: () -> Unit,
     public val onOpenNight: (Long) -> Unit,
     public val onOpenApp: (Int) -> Unit,
+    public val onOpenPrivileges: () -> Unit = {},
 )
 
 /** What the Timeline's controls do; the view model's functions, or nothing in a test. */
@@ -77,6 +85,7 @@ internal class TimelineActions(
     val jumpToNow: () -> Unit = {},
     val setTrack: (TimelineTrack, Boolean) -> Unit = { _, _ -> },
     val retry: () -> Unit = {},
+    val shift: (windows: Float) -> Unit = {},
 )
 
 /**
@@ -98,6 +107,7 @@ public fun TimelineScreen(
                 scrub = viewModel::scrub,
                 tap = viewModel::tap,
                 dismissPicked = viewModel::dismissPicked,
+                shift = viewModel::shift,
                 setRange = viewModel::setRange,
                 jumpToNow = viewModel::jumpToNow,
                 setTrack = viewModel::setTrack,
@@ -143,7 +153,7 @@ internal fun TimelineContent(
                     when {
                         timeline == null && state.failed -> ReadError(actions.retry)
                         timeline == null || visible == null -> PageSkeleton()
-                        else -> Page(state, timeline, visible, actions, links, zone, formats) { table = true }
+                        else -> FadeInOnce { Page(state, timeline, visible, actions, links, zone, formats) { table = true } }
                     }
                 }
                 // Over the chart's column, not over the side panel.
@@ -168,14 +178,14 @@ internal fun TimelineContent(
                     if (picked == null) {
                         StandIn(stringResource(R.string.timeline_panel_hint), top = 0.dp)
                     } else {
-                        EventDetails(picked, state.labels, zone, formats, links.onOpenApp)
+                        EventDetails(picked, state.labels, zone, formats, state.nowMs, links.onOpenApp)
                     }
                 }
             }
         }
         val picked = state.picked
         if (!wide && picked != null) {
-            EventSheet(picked, state.labels, zone, formats, links.onOpenApp, actions.dismissPicked)
+            EventSheet(picked, state.labels, zone, formats, state.nowMs, links.onOpenApp, actions.dismissPicked)
         }
     }
     if (tracks) TracksSheet(state.tracks, actions.setTrack) { tracks = false }
@@ -198,13 +208,25 @@ private fun Page(
         // Without a cursor the readout is the latest moment in view that the history knows.
         val at = state.cursorMs ?: (minOf(state.window.toMs, visible.knownUntilWallMs ?: state.window.toMs) - 1)
         val moment = remember(timeline, at) { timeline.moment(at) }
-        Readout(moment, state.nowMs, zone, formats)
-        if (visible.knownMs == 0L) {
-            StandIn(stringResource(R.string.timeline_no_history), top = CoulombSpacing.Space16)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Readout(moment, state.nowMs, zone, formats, Modifier.weight(1f))
+            // The window without two fingers: a mouse, a switch, or one hand (SPEC 10.10).
+            // The same chevron turned round: it points towards earlier times in either reading direction.
+            CoulombIconButton(
+                CoulombIcons.ChevronRight,
+                stringResource(R.string.timeline_earlier),
+                { actions.shift(-STEP) },
+                Modifier.graphicsLayer { scaleX = -1f },
+            )
+            CoulombIconButton(CoulombIcons.ChevronRight, stringResource(R.string.timeline_later), { actions.shift(STEP) })
         }
+        // SPEC 10.11 partial: access lost, in SPEC 4.5's words, where the history it stops would be.
+        state.issue?.let { PrivilegeIssueBlock(it, links.onOpenPrivileges, Modifier.padding(top = CoulombSpacing.Space16)) }
+        Gap(state, visible, actions.retry, links.onOpenPrivileges)
         Chart(state, timeline, visible, actions, zone, formats, onViewTable)
         caption(state, visible, formats)?.let { Note(it) }
-        ViewTableButton(onViewTable)
+        // A table of nothing is not offered.
+        if (visible.knownMs > 0L) ViewTableButton(onViewTable)
         state.latestNight?.let { night ->
             SectionTitle(
                 stringResource(R.string.night_report_title),
@@ -219,6 +241,62 @@ private fun Page(
 }
 
 /**
+ * Why the chart is empty or behind: a read that failed, one that is running, history Coulomb
+ * cannot read in this mode, or none kept for the range. Each is a different thing to say (SPEC 10.11).
+ */
+@Composable
+private fun Gap(
+    state: TimelineUiState,
+    visible: Timeline,
+    retry: () -> Unit,
+    openPrivileges: () -> Unit,
+) {
+    val top = Modifier.padding(top = CoulombSpacing.Space16)
+    when {
+        state.failed -> {
+            Column(top.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }) {
+                Text(
+                    stringResource(R.string.timeline_read_failed),
+                    color = CoulombTheme.colors.textPrimary,
+                    style = CoulombTheme.typography.body,
+                )
+                CoulombTextButton(stringResource(R.string.timeline_error_action), retry, edge = ButtonEdge.Start)
+            }
+        }
+
+        visible.knownMs > 0L -> {}
+
+        state.pending -> {
+            StandIn(stringResource(R.string.timeline_reading), top = CoulombSpacing.Space16)
+        }
+
+        // Basic mode by choice has no issue to show; the reason is still owed.
+        state.locked && state.issue == null -> {
+            Column(top.fillMaxWidth()) {
+                Text(
+                    stringResource(R.string.timeline_locked),
+                    color = CoulombTheme.colors.textSecondary,
+                    style = CoulombTheme.typography.body,
+                )
+                CoulombTextButton(
+                    stringResource(UiR.string.privilege_open),
+                    openPrivileges,
+                    trailingIcon = CoulombIcons.ChevronRight,
+                    edge = ButtonEdge.Start,
+                )
+            }
+        }
+
+        else -> {
+            StandIn(stringResource(R.string.timeline_no_history), top = CoulombSpacing.Space16)
+        }
+    }
+}
+
+/** A step of "Earlier" and "Later": half the window, so what was at one edge stays in view. */
+private const val STEP = 0.5f
+
+/**
  * The moment under the cursor (design lab `.tl-read`): when and the level in Title, then the
  * phone's state and the current in Data. TalkBack hears it change while the cursor moves.
  */
@@ -228,11 +306,12 @@ private fun Readout(
     nowMs: Long,
     zone: ZoneId,
     formats: Formats,
+    modifier: Modifier = Modifier,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     val whenText = startedAt(moment.atMs, nowMs, zone, formats)
-    Column(Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite }) {
+    Column(modifier.padding(top = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite }) {
         val level = moment.levelPct
         if (level != null) {
             // The level between two readings is the last one reported: Modeled, as on Now.
@@ -260,7 +339,8 @@ private fun Readout(
                     stringResource(R.string.timeline_state_charging).takeIf { moment.charging == true },
                 )
             }
-        val current = moment.currentMa?.let { formats.current(kotlin.math.abs(it)).joined() }
+        // Signed, as the axis is: plugged in and still discharging must not read as charging at that rate.
+        val current = moment.currentMa?.let { formats.signedCurrent(it).joined() }
         val line = (words + listOfNotNull(current)).joinToString(separator)
         if (current != null) {
             MarkedText(line, Provenance.MEASURED, type.data, colors.textSecondary)
@@ -323,6 +403,11 @@ private fun Chart(
         modifier = Modifier.padding(top = CoulombSpacing.Space16),
         cursorMs = state.cursorMs,
         gestures = gestures,
+        steps =
+            listOf(
+                stringResource(R.string.timeline_earlier) to { actions.shift(-STEP) },
+                stringResource(R.string.timeline_later) to { actions.shift(STEP) },
+            ),
     )
 }
 
@@ -348,8 +433,7 @@ private fun summary(
         } else {
             stringResource(R.string.timeline_no_history)
         }
-    val wakeups = visible.wakeupsPerHour()?.let { stringResource(R.string.timeline_caption_wakeups, formats.decimal(it)) }
-    return listOfNotNull(range, level, wakeups).joinToString(" ")
+    return listOfNotNull(range, level, wakeSentence(visible, formats)).joinToString(" ")
 }
 
 /**
@@ -363,14 +447,16 @@ private fun caption(
     formats: Formats,
 ): String? {
     val shown = state.tracks
-    val rate = visible.wakeupsPerHour()?.takeIf { TimelineTrack.AWAKE in shown }
+    val rate = wakeSentence(visible, formats)?.takeIf { TimelineTrack.AWAKE in shown }
     val low = visible.temperature.minOfOrNull { it.deciC }
     // One reading has no range to give.
     val high = visible.temperature.maxOfOrNull { it.deciC }?.takeIf { low != null && it > low }
     val parts =
         listOfNotNull(
-            rate?.let { stringResource(R.string.timeline_caption_wakeups, formats.decimal(it)) },
+            rate,
             stringResource(R.string.timeline_caption_density).takeIf { rate != null && state.window.spanMs > DENSE_FROM_MS },
+            // An empty stretch of the current panel is "not sampled", not zero.
+            stringResource(R.string.timeline_caption_current).takeIf { visible.knownMs > 0L },
             stringResource(R.string.timeline_caption_signal).takeIf {
                 TimelineTrack.SIGNAL in shown && !visible.tracks[TimelineTrack.SIGNAL].isNullOrEmpty()
             },
@@ -386,6 +472,26 @@ private fun caption(
         )
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" ")
 }
+
+/**
+ * How often the phone woke, as exactly as the data is: a count under an hour of history, a whole
+ * rate over more (two wakeups in a quarter of an hour are not "8.0 an hour").
+ */
+@Composable
+private fun wakeSentence(
+    visible: Timeline,
+    formats: Formats,
+): String? {
+    val rate = visible.wakeupsPerHour() ?: return null
+    val wakeups = visible.tracks[TimelineTrack.AWAKE].orEmpty().size
+    return if (visible.knownMs < MS_PER_HOUR) {
+        pluralStringResource(R.plurals.timeline_caption_woke, wakeups, formats.integer(wakeups.toLong()))
+    } else {
+        stringResource(R.string.timeline_caption_wakeups, formats.integer(rate.roundToLong().coerceAtLeast(1)))
+    }
+}
+
+private const val MS_PER_HOUR = 3_600_000L
 
 /** Past this length, wakeups are usually too close to draw one by one (design lab: "Zoom to 6 h to see each"). */
 private const val DENSE_FROM_MS = 6 * 60 * 60 * 1000L

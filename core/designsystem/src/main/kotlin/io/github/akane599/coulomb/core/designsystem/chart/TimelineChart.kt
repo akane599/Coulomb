@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -179,6 +181,8 @@ public fun TimelineChart(
     modifier: Modifier = Modifier,
     cursorMs: Long? = null,
     gestures: TimelineGestures? = null,
+    /** Named ways to move the window without a gesture ("Earlier", "Later"): TalkBack's and a switch's actions. */
+    steps: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
     val colors = CoulombTheme.colors
     val caption = CoulombTheme.typography.caption
@@ -198,20 +202,26 @@ public fun TimelineChart(
             }
         val window = rememberUpdatedState(fromMs..toMs)
         val moves = rememberUpdatedState(gestures)
+        val place = rememberUpdatedState(layout)
         Canvas(
             with(drawIn) { Modifier.fade() }
                 .fillMaxWidth()
                 .height(with(density) { layout.height.toDp() })
                 .clearAndSetSemantics {
                     contentDescription = summary
-                    customActions = listOf(CustomAccessibilityAction(viewTableLabel) { onViewTable().let { true } })
+                    customActions =
+                        listOf(CustomAccessibilityAction(viewTableLabel) { onViewTable().let { true } }) +
+                        steps.map { (label, run) -> CustomAccessibilityAction(label) { run().let { true } } }
                 }.then(
                     if (gestures ==
                         null
                     ) {
                         Modifier
                     } else {
-                        Modifier.pointerInput(layout, rtl) { timelineGestures(layout, rtl, { window.value }) { moves.value } }
+                        // Keyed on the direction only: a read that lands mid-gesture changes the layout, and must not end the gesture.
+                        Modifier
+                            .pointerInput(rtl) { timelineGestures({ place.value }, rtl, { window.value }) { moves.value } }
+                            .pointerInput(rtl) { timelineWheel({ place.value }, rtl) { moves.value } }
                     },
                 ),
         ) {
@@ -670,7 +680,7 @@ private fun DrawScope.axis(
  * starts up or down is left to the page, which scrolls.
  */
 private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.timelineGestures(
-    layout: TimelineLayout,
+    place: () -> TimelineLayout,
     rtl: Boolean,
     window: () -> LongRange,
     gestures: () -> TimelineGestures?,
@@ -680,7 +690,7 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.timeline
         var mode = GestureMode.UNDECIDED
         do {
             val event = awaitPointerEvent()
-            val scale = TimeScale(window().first, window().last, layout.plotLeft, layout.plotRight, rtl, size.width.toFloat())
+            val scale = TimeScale(window().first, window().last, place().plotLeft, place().plotRight, rtl, size.width.toFloat())
             val pressed = event.changes.filter { it.pressed }
             if (pressed.size >= 2) {
                 mode = GestureMode.TRANSFORM
@@ -700,10 +710,46 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.timeline
             }
         } while (event.changes.any { it.pressed })
         if (mode == GestureMode.UNDECIDED) {
-            val scale = TimeScale(window().first, window().last, layout.plotLeft, layout.plotRight, rtl, size.width.toFloat())
-            gestures()?.onTap?.invoke(layout.bandAt(down.position.y), scale.at(down.position.x))
+            val scale = TimeScale(window().first, window().last, place().plotLeft, place().plotRight, rtl, size.width.toFloat())
+            gestures()?.onTap?.invoke(place().bandAt(down.position.y), scale.at(down.position.x))
         }
     }
 }
+
+/**
+ * A mouse wheel or a trackpad over the chart (SPEC 10.10): a sideways scroll moves the window, and
+ * with Ctrl held an up-and-down one zooms about the pointer. A plain up-and-down scroll is the page's.
+ */
+private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.timelineWheel(
+    place: () -> TimelineLayout,
+    rtl: Boolean,
+    gestures: () -> TimelineGestures?,
+) {
+    awaitPointerEventScope {
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull()
+            if (event.type != PointerEventType.Scroll || change == null) continue
+            val delta = change.scrollDelta
+            val layout = place()
+            val focus = ((change.position.x - layout.plotLeft) / (layout.plotRight - layout.plotLeft)).coerceIn(0f, 1f)
+            when {
+                event.keyboardModifiers.isCtrlPressed && delta.y != 0f -> {
+                    gestures()?.onTransform?.invoke(if (delta.y < 0) WHEEL_ZOOM else 1 / WHEEL_ZOOM, if (rtl) 1 - focus else focus, 0f)
+                    change.consume()
+                }
+
+                delta.x != 0f -> {
+                    gestures()?.onTransform?.invoke(1f, 0f, -delta.x * WHEEL_PAN * if (rtl) -1 else 1)
+                    change.consume()
+                }
+            }
+        }
+    }
+}
+
+/** One notch of the wheel zooms by this factor, or moves the window by this share of its width. */
+private const val WHEEL_ZOOM = 1.25f
+private const val WHEEL_PAN = 0.1f
 
 private enum class GestureMode { UNDECIDED, SCRUB, TRANSFORM, PAGE }
