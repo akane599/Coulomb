@@ -29,6 +29,26 @@ public sealed interface DrainSpan {
         val sessionId: Long,
     ) : DrainSpan
 
+    /**
+     * From the named reference [from] to [to], or to the latest heavy snapshot without one (SPEC
+     * 7.6: "compare any two"). [from] is the older of the two.
+     */
+    public data class Between(
+        val from: Mark,
+        val to: Mark?,
+    ) : DrainSpan {
+        init {
+            require(to == null || to.wallMs > from.wallMs) { "a span runs from the older mark to the newer" }
+        }
+    }
+
+    /** A named reference: the heavy snapshot it pins, its name and the snapshot's wall time. */
+    public data class Mark(
+        val snapshotId: Long,
+        val name: String,
+        val wallMs: Long,
+    )
+
     /** Whole local days from [first] to [last], within the 30 days consecutive windows are kept (ADR-0021). */
     public data class Days(
         val first: LocalDate,

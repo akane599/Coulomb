@@ -29,6 +29,7 @@ import com.github.takahirom.roborazzi.captureScreenRoboImage
 import io.github.akane599.coulomb.core.data.AppDrain
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.LevelEstimate
+import io.github.akane599.coulomb.core.data.NamedReference
 import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
@@ -221,6 +222,29 @@ class DrainScreenshotTest {
         captureScreenRoboImage("src/test/screenshots/drain-sheet.png")
     }
 
+    /** Named references (SPEC 7.6), with two chosen: a span between them. */
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun referencesSheet() {
+        shoot("references", ready(), capture = false, references = labReferences())
+        compose.onNodeWithText("More").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("References").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Before the update").performClick()
+        compose.onNodeWithText("After a week").performClick()
+        compose.waitForIdle()
+        captureScreenRoboImage("src/test/screenshots/drain-references.png")
+    }
+
+    /** Drain between two references names both in the selector. */
+    @Test
+    fun betweenReferences() {
+        val (newer, older) = labReferences().map { it.mark }.take(2)
+        val between = DrainSpan.Between(older, newer)
+        shoot("between-references", ready(report().copy(span = between)))
+    }
+
     /** The reconcile bar's "View as table" action opens its table in a sheet (ADR-0036 §25). */
     @OptIn(ExperimentalRoborazziApi::class, ExperimentalTestApi::class)
     @Test
@@ -370,6 +394,7 @@ class DrainScreenshotTest {
         lens: Lens = Lens.APPS,
         today: LocalDate = LocalDate.of(2026, 11, 8),
         capture: Boolean = true,
+        references: List<NamedReference> = emptyList(),
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
         val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -385,6 +410,7 @@ class DrainScreenshotTest {
                             zone = ZoneOffset.UTC,
                             today = today,
                             initialLens = lens,
+                            references = references,
                         )
                     }
                 }
@@ -464,4 +490,15 @@ private fun hardened(): DrainUiState.Ready {
             deviceMah = 300.0,
         )
     return ready(base.copy(drains = drains, chargedInSpan = true, lowerBound = true))
+}
+
+/** Three references, newest first, as the sheet lists them. */
+private fun labReferences(): List<NamedReference> {
+    val day = 86_400_000L
+    val base = 1_762_560_000_000L
+    return listOf(
+        NamedReference(3, DrainSpan.Mark(30, "After a week", base)),
+        NamedReference(2, DrainSpan.Mark(20, "Before the update", base - 7 * day)),
+        NamedReference(1, DrainSpan.Mark(10, "New charger", base - 12 * day)),
+    )
 }

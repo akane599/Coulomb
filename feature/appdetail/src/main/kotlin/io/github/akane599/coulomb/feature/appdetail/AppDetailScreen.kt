@@ -316,6 +316,7 @@ private fun Empty(span: DrainSpan) {
             DrainSpan.LastNight -> R.string.appdetail_empty_last_night
             is DrainSpan.Night -> R.string.appdetail_empty_night
             is DrainSpan.Days -> R.string.appdetail_empty_days
+            is DrainSpan.Between -> R.string.appdetail_empty_between
         }
     Text(
         stringResource(text),

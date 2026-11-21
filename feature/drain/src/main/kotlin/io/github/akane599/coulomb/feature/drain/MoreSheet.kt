@@ -59,7 +59,8 @@ import java.time.ZoneOffset
 
 /**
  * The More sheet of the window selector (SPEC 10.3, ADR-0023 §4): Last night, a custom range of
- * whole days within the 30 days consecutive windows are kept, and Compare two periods (ADR-0038).
+ * whole days within the 30 days consecutive windows are kept, named references (SPEC 7.6), and
+ * Compare two periods (ADR-0038).
  * Choosing the range opens the date picker in place of the sheet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +71,7 @@ internal fun MoreSheet(
     onChoose: (DrainSpan) -> Unit,
     onCompare: () -> Unit,
     onDismiss: () -> Unit,
+    onReferences: () -> Unit = {},
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
     if (picking) {
@@ -126,6 +128,17 @@ internal fun MoreSheet(
                     ),
                 chosen = chosen is DrainSpan.Days,
                 onClick = { close { picking = true } },
+            )
+            SheetChoice(
+                name = stringResource(R.string.drain_references),
+                detail = stringResource(R.string.drain_references_detail),
+                chosen = chosen is DrainSpan.Between,
+                onClick = {
+                    close {
+                        onDismiss()
+                        onReferences()
+                    }
+                },
             )
             // Opens its own screen, so it is never the chosen window.
             SheetChoice(

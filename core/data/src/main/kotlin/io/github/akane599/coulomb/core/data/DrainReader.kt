@@ -400,6 +400,10 @@ internal class DrainReader
                     night(span.sessionId)
                 }
 
+                is DrainSpan.Between -> {
+                    between(span, inputs)
+                }
+
                 is DrainSpan.Days -> {
                     val z = zone.zone()
                     val start =
@@ -450,6 +454,17 @@ internal class DrainReader
             val from = night.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
             val to = night.endSnapshotId?.let { snapshots.snapshot(it) } ?: return null
             return Bounds(from, to, windows.forSession(night.id)).takeIf { before(from, to) }
+        }
+
+        /** Between two named references' snapshots, or from one to the latest heavy snapshot (SPEC 7.6). */
+        private suspend fun between(
+            span: DrainSpan.Between,
+            inputs: DrainInputs,
+        ): Bounds? {
+            val from = snapshots.snapshot(span.from.snapshotId) ?: return null
+            val to = (span.to?.let { snapshots.snapshot(it.snapshotId) } ?: snapshots.latestHeavy()) ?: return null
+            val stored = inputs.stored.firstOrNull { it.fromSnapshotId == from.id && it.toSnapshotId == to.id }
+            return Bounds(from, to, stored).takeIf { before(from, to) }
         }
 
         private suspend fun of(window: WindowResultEntity): Bounds? {

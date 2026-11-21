@@ -47,6 +47,14 @@ public data class SnapshotRows(
     val componentPower: List<UidComponentPowerEntity> = emptyList(),
 )
 
+/** A named reference with its snapshot's wall time (SPEC 7.6). */
+public data class UserReferenceRow(
+    val id: Long,
+    val name: String?,
+    val snapshotId: Long,
+    val wallMs: Long,
+)
+
 /** One partial wakelock's longest single hold, in ms. */
 public data class LongestHold(
     val tag: String,
@@ -330,6 +338,13 @@ public abstract class SnapshotDao {
 
     @Query("SELECT * FROM reference ORDER BY createdWall DESC, id DESC")
     public abstract fun observeReferences(): Flow<List<ReferenceEntity>>
+
+    /** The references the user named (SPEC 7.6), each with its snapshot's wall time, newest first. */
+    @Query(
+        "SELECT r.id AS id, r.name AS name, r.snapshotId AS snapshotId, s.wallMs AS wallMs " +
+            "FROM reference r JOIN snapshot s ON s.id = r.snapshotId WHERE r.origin = 'USER' ORDER BY s.wallMs DESC, r.id DESC",
+    )
+    public abstract fun observeUserReferences(): Flow<List<UserReferenceRow>>
 
     /**
      * Retention (ADR-0015): deletes the counters of heavy snapshots taken before

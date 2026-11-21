@@ -8,6 +8,9 @@
     <string name="appdetail_window_night">Ekran kapalı süre</string>
     <string name="appdetail_window_last_night">Dün gece</string>
     <string name="appdetail_window_days">%1$s</string>
+    <string name="appdetail_window_reference">Beri: %1$s</string>
+    <string name="appdetail_window_references">%1$s – %2$s</string>
+    <string name="appdetail_window_unnamed">Adsız</string>
     <string name="appdetail_window_note">Aralık: %1$s. Tüketim’de değiştirebilirsin.</string>
 
     <string name="appdetail_share_of_measured">Ölçülen %2$s içinde %1$s</string>
@@ -117,6 +120,7 @@
     <string name="appdetail_empty_night">Bu ekran kapalı süre için artık kayıt yok.</string>
     <string name="appdetail_empty_last_night">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı bir süre yok.</string>
     <string name="appdetail_empty_days">O günler için kayıtlı bir şey yok.</string>
+    <string name="appdetail_empty_between">Bu referanstan sonra kaydedilmiş bir anlık görüntü henüz yok.</string>
     <string name="appdetail_error_title">Coulomb pil kayıtlarını okuyamadı</string>
     <string name="appdetail_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="appdetail_error_action">Yeniden dene</string>

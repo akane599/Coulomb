@@ -24,6 +24,30 @@
         <item quantity="other">Whole days, up to %1$s days back</item>
     </plurals>
     <string name="drain_range_title">Choose days</string>
+    <string name="drain_references">References</string>
+    <string name="drain_references_detail">Moments you named, to read since one or between two</string>
+    <string name="drain_references_body">A reference marks this moment by name, such as before an app update. Choose one to read Drain since it, or two to read between them. Drain keeps the detail of 30 days, so a span that starts earlier shows only what is kept.</string>
+    <string name="drain_references_when">%1$s, %2$s</string>
+    <string name="drain_references_mark">Mark this moment</string>
+    <string name="drain_references_none">No references yet.</string>
+    <string name="drain_references_unnamed">Unnamed</string>
+    <string name="drain_references_since">Since this one</string>
+    <string name="drain_references_between">Between these two</string>
+    <string name="drain_references_delete">Delete</string>
+    <string name="drain_references_cancel">Cancel</string>
+    <string name="drain_references_save">Mark</string>
+    <string name="drain_references_name_title">Name this moment</string>
+    <string name="drain_references_name_label">Name</string>
+    <string name="drain_references_name_hint">For example, before an update</string>
+    <string name="drain_references_name_count">%1$s/%2$s</string>
+    <plurals name="drain_references_delete_title">
+        <item quantity="one">Delete this reference?</item>
+        <item quantity="other">Delete these references?</item>
+    </plurals>
+    <string name="drain_references_delete_body">Only the name and its mark go. Drain keeps every window as before.</string>
+    <string name="drain_since_reference">Since %1$s</string>
+    <string name="drain_between_references">%1$s to %2$s</string>
+    <string name="drain_empty_between">No snapshot after this reference is stored yet.</string>
     <string name="drain_range_confirm">Show</string>
     <string name="drain_range_cancel">Cancel</string>
 

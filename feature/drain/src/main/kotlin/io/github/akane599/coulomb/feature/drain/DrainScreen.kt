@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.NamedReference
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
 import io.github.akane599.coulomb.core.designsystem.component.CoulombSwitchRow
 import io.github.akane599.coulomb.core.designsystem.component.CoulombViewTabs
@@ -84,6 +85,7 @@ public fun DrainScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val references by viewModel.references.collectAsStateWithLifecycle()
     val actions =
         remember(viewModel, onOpenApp, onOpenPrivileges, onOpenCompare, selectedApp, onOpenWake) {
             DrainActions(
@@ -99,9 +101,11 @@ public fun DrainScreen(
                 peekIcon = viewModel::peekIcon,
                 selectedApp = selectedApp,
                 openWake = onOpenWake,
+                markReference = viewModel::markReference,
+                deleteReferences = viewModel::deleteReferences,
             )
         }
-    DrainContent(state = state, actions = actions, modifier = modifier, refreshing = refreshing)
+    DrainContent(state = state, actions = actions, modifier = modifier, refreshing = refreshing, references = references)
 }
 
 /** What Drain's controls do; the screen itself holds no logic. */
@@ -121,6 +125,9 @@ internal class DrainActions(
     val openWake: ((WakeKind, String) -> Unit)? = null,
     /** The UID open in the detail pane beside the list, shown selected. */
     val selectedApp: Int? = null,
+    /** Marks this moment as a named reference (SPEC 7.6). */
+    val markReference: (String) -> Unit = {},
+    val deleteReferences: (List<Long>) -> Unit = {},
 )
 
 /** The three views of the same window (SPEC 10.3). */
@@ -185,9 +192,11 @@ internal fun DrainContent(
     today: LocalDate = remember(state, zone) { LocalDate.now(zone) },
     initialLens: Lens = Lens.APPS,
     refreshing: Boolean = false,
+    references: List<NamedReference> = emptyList(),
 ) {
     val gutter = currentGutter()
     var sheet by rememberSaveable { mutableStateOf(false) }
+    var referencesOpen by rememberSaveable { mutableStateOf(false) }
     when (state) {
         DrainUiState.Loading -> {
             BoxWithConstraints(modifier.fillMaxSize()) {
@@ -225,7 +234,18 @@ internal fun DrainContent(
             today = today,
             onChoose = actions.choose,
             onCompare = actions.openCompare,
+            onReferences = { referencesOpen = true },
             onDismiss = { sheet = false },
+        )
+    }
+    if (referencesOpen && ready != null) {
+        ReferencesSheet(
+            references = references,
+            zone = zone,
+            onMark = actions.markReference,
+            onDelete = actions.deleteReferences,
+            onChoose = actions.choose,
+            onDismiss = { referencesOpen = false },
         )
     }
 }
@@ -427,6 +447,7 @@ private fun EmptyWindow(chosen: DrainSpan) {
             DrainSpan.LastNight -> R.string.drain_empty_last_night
             is DrainSpan.Night -> R.string.drain_empty_night
             is DrainSpan.Days -> R.string.drain_empty_days
+            is DrainSpan.Between -> R.string.drain_empty_between
         }
     Text(
         stringResource(text),

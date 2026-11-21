@@ -22,6 +22,30 @@
         <item quantity="other">Tam günler, en çok %1$s gün geriye</item>
     </plurals>
     <string name="drain_range_title">Günleri seç</string>
+    <string name="drain_references">Referanslar</string>
+    <string name="drain_references_detail">Adlandırdığın anlar: birinden beri ya da ikisi arası</string>
+    <string name="drain_references_body">Referans bu anı bir adla işaretler, örneğin bir uygulama güncellemesinden önce. Tüketim’i birinden beri okumak için birini, ikisi arasını okumak için ikisini seç. Tüketim 30 günün ayrıntısını tutar; daha önce başlayan bir aralık yalnızca tutulanı gösterir.</string>
+    <string name="drain_references_when">%1$s %2$s</string>
+    <string name="drain_references_mark">Bu anı işaretle</string>
+    <string name="drain_references_none">Henüz referans yok.</string>
+    <string name="drain_references_unnamed">Adsız</string>
+    <string name="drain_references_since">Bundan beri</string>
+    <string name="drain_references_between">Bu ikisi arası</string>
+    <string name="drain_references_delete">Sil</string>
+    <string name="drain_references_cancel">İptal</string>
+    <string name="drain_references_save">İşaretle</string>
+    <string name="drain_references_name_title">Bu anı adlandır</string>
+    <string name="drain_references_name_label">Ad</string>
+    <string name="drain_references_name_hint">Örneğin, güncellemeden önce</string>
+    <string name="drain_references_name_count">%1$s/%2$s</string>
+    <plurals name="drain_references_delete_title">
+        <item quantity="one">Bu referans silinsin mi?</item>
+        <item quantity="other">Bu referanslar silinsin mi?</item>
+    </plurals>
+    <string name="drain_references_delete_body">Yalnızca ad ve işaret gider. Tüketim tüm pencereleri eskisi gibi tutar.</string>
+    <string name="drain_since_reference">Beri: %1$s</string>
+    <string name="drain_between_references">%1$s – %2$s</string>
+    <string name="drain_empty_between">Bu referanstan sonra kaydedilmiş bir anlık görüntü henüz yok.</string>
     <string name="drain_range_confirm">Göster</string>
     <string name="drain_range_cancel">İptal</string>
 

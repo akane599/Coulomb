@@ -13,6 +13,8 @@ import io.github.akane599.coulomb.core.data.AppIcons
 import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.NamedReference
+import io.github.akane599.coulomb.core.data.References
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
@@ -41,6 +43,7 @@ import javax.inject.Inject
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
 public class DrainViewModel
+    @Suppress("LongParameterList") // One source for each thing Drain shows; Hilt supplies them.
     @Inject
     constructor(
         drains: DrainRepository,
@@ -49,6 +52,7 @@ public class DrainViewModel
         private val settings: SettingsStore,
         access: PrivilegedAccess,
         private val collector: Collector,
+        private val namedReferences: References,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
         private val refreshing = MutableStateFlow(false)
@@ -74,6 +78,25 @@ public class DrainViewModel
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DrainUiState.Loading)
 
         internal fun choose(span: DrainSpan) = window.choose(span)
+
+        /** The user's named references, newest first (SPEC 7.6). */
+        internal val references: StateFlow<List<NamedReference>> =
+            namedReferences.named.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+        /**
+         * Marks this moment: a heavy snapshot first, which the collector debounces to one a minute
+         * (SPEC 7.2), so the reference is at most that old; then the name on the latest one.
+         */
+        internal fun markReference(name: String) {
+            viewModelScope.launch {
+                collector.snapshot(SnapshotTrigger.PULL_TO_REFRESH)
+                namedReferences.mark(name, System.currentTimeMillis())
+            }
+        }
+
+        internal fun deleteReferences(ids: List<Long>) {
+            viewModelScope.launch { ids.forEach { namedReferences.delete(it) } }
+        }
 
         internal fun includeSystem(include: Boolean) {
             viewModelScope.launch { settings.showSystemApps(include) }

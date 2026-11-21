@@ -63,7 +63,17 @@ internal fun spanName(
         DrainSpan.LastNight -> stringResource(R.string.drain_last_night)
         is DrainSpan.Night -> stringResource(R.string.drain_night)
         is DrainSpan.Days -> formats.days(span.first, span.last)
+        is DrainSpan.Between -> betweenName(span)
     }
+
+/** "Since Before the update", or "Before the update to After it" (SPEC 7.6). */
+@Composable
+internal fun betweenName(span: DrainSpan.Between): String {
+    val unnamed = stringResource(R.string.drain_references_unnamed)
+    val from = span.from.name.ifEmpty { unnamed }
+    return span.to?.let { stringResource(R.string.drain_between_references, from, it.name.ifEmpty { unnamed }) }
+        ?: stringResource(R.string.drain_since_reference, from)
+}
 
 /** The window selector (DESIGN.md): three presets and More, which names a sheet window while one is chosen. */
 @Composable
@@ -85,6 +95,7 @@ internal fun WindowChoice(
             DrainSpan.LastNight -> stringResource(R.string.drain_last_night)
             is DrainSpan.Night -> stringResource(R.string.drain_night)
             is DrainSpan.Days -> formats.days(chosen.first, chosen.last)
+            is DrainSpan.Between -> betweenName(chosen)
             else -> stringResource(R.string.drain_more)
         }
     CoulombWindowSelector(

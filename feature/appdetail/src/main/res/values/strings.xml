@@ -10,6 +10,9 @@
     <string name="appdetail_window_night">Screen-off stretch</string>
     <string name="appdetail_window_last_night">Last night</string>
     <string name="appdetail_window_days">%1$s</string>
+    <string name="appdetail_window_reference">Since %1$s</string>
+    <string name="appdetail_window_references">%1$s to %2$s</string>
+    <string name="appdetail_window_unnamed">Unnamed</string>
     <string name="appdetail_window_note">Window: %1$s. Change it on Drain.</string>
 
     <!-- The header's caption under the app's figure. -->
@@ -126,6 +129,7 @@
     <string name="appdetail_empty_night">Nothing is stored for this screen-off stretch any more.</string>
     <string name="appdetail_empty_last_night">No screen-off stretch of an hour or more in the last day.</string>
     <string name="appdetail_empty_days">Nothing is stored for those days.</string>
+    <string name="appdetail_empty_between">No snapshot after this reference is stored yet.</string>
     <string name="appdetail_error_title">Coulomb couldn’t read its battery records</string>
     <string name="appdetail_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
     <string name="appdetail_error_action">Try again</string>
