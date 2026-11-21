@@ -13,9 +13,14 @@ captured. Each run below needs the owner to say when; the phone must be unplugge
 | Protocol C, attribution | P4 | 1 h | 20 min video, 10 min navigation, idle; then the system's battery usage screen |
 | Protocols E and G, drift demonstration | P5 | set when P5's work is done | |
 
-- Also waiting, under five minutes: a read-only pull of Coulomb's stored data (asked for on
-  2026-11-21; the phone's adb port was closed after its service visit) and an install of the
-  current build.
+- Also waiting, under five minutes: an install of the current build (the phone runs `c1cbab7`).
+- Data pulled read-only on 2026-11-21 (owner asked), the base for P5 and P6:
+  - schema 7, `integrity_check` and `foreign_key_check` clean;
+  - 1,868 snapshots, 339,461 history events, 1,283 sessions, 2,518 windows;
+  - dense from 2026-11-06 to 11-10, sparse afterwards: the phone was away for service and off for
+    two stretches of about three days;
+  - 14 snapshots carry dates in early October: the phone's clock was wrong while it was away.
+    Order by boot and elapsed time is unaffected (SPEC 7.8); the Timeline must cope with it.
 
 ## P5 Depth (in progress)
 
