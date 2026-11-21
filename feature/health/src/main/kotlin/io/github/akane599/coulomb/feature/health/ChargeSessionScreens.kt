@@ -34,6 +34,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.data.ChargeSessionDetail
 import io.github.akane599.coulomb.core.data.ChargeSessionRow
+import io.github.akane599.coulomb.core.data.DischargeSessionRow
 import io.github.akane599.coulomb.core.designsystem.chart.ChargeCurveChart
 import io.github.akane599.coulomb.core.designsystem.chart.CurveLabels
 import io.github.akane599.coulomb.core.designsystem.chart.CurveReading
@@ -76,16 +77,36 @@ public fun chargeSessionViewModel(sessionId: Long): ChargeSessionViewModel =
         creationCallback = { it.create(sessionId) },
     )
 
-/** Every closed charge session, newest first; a tap opens one ([selected] marks the one open beside the list). */
+/** The session history's two lists (SPEC 2: charge and discharge sessions, searchable). */
+internal enum class SessionKindTab { CHARGES, DISCHARGES }
+
+/**
+ * The session history (SPEC 2): every closed charge session, newest first, a tap opening one
+ * ([selected] marks the one open beside the list); and every discharge session, a tap opening
+ * Drain on it ([onOpenDrain]). Both searchable.
+ */
 @Composable
 public fun ChargeSessionsScreen(
     onOpenSession: (Long) -> Unit,
     modifier: Modifier = Modifier,
     selected: Long? = null,
+    onOpenDrain: () -> Unit = {},
     viewModel: ChargeSessionsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ChargeSessionsContent(state, viewModel::retry, onOpenSession, modifier, selected)
+    val discharges by viewModel.discharges.collectAsStateWithLifecycle()
+    ChargeSessionsContent(
+        state,
+        viewModel::retry,
+        onOpenSession,
+        modifier,
+        selected,
+        discharges = discharges,
+        onOpenDischarge = {
+            viewModel.showInDrain(it)
+            onOpenDrain()
+        },
+    )
 }
 
 @Composable
@@ -98,9 +119,15 @@ internal fun ChargeSessionsContent(
     selected: Long? = null,
     zone: ZoneId = remember(state) { ZoneId.systemDefault() },
     nowMs: Long = remember(state) { System.currentTimeMillis() },
+    discharges: List<DischargeSessionRow>? = null,
+    onOpenDischarge: (Long) -> Unit = {},
+    initialTab: SessionKindTab = SessionKindTab.CHARGES,
+    initialQuery: String = "",
 ) {
     val gutter = currentGutter()
     val formats = rememberFormats()
+    var tab by rememberSaveable { mutableStateOf(initialTab) }
+    var query by rememberSaveable { mutableStateOf(initialQuery) }
     when (state) {
         Read.Loading -> {
             Column(modifier.fillMaxSize().padding(horizontal = gutter)) { ListSkeleton() }
@@ -118,7 +145,12 @@ internal fun ChargeSessionsContent(
         }
 
         is Read.Ready -> {
-            if (state.value.isEmpty()) {
+            val dischargesShown = tab == SessionKindTab.DISCHARGES && discharges != null
+            val charges = state.value.filter { query.isBlank() || matches(chargeText(it, nowMs, zone, formats), query) }
+            val dischargeRows =
+                discharges.orEmpty().filter { query.isBlank() || matches(dischargeText(it, nowMs, zone, formats), query) }
+            val shownEmpty = if (dischargesShown) dischargeRows.isEmpty() else charges.isEmpty()
+            if (state.value.isEmpty() && discharges.isNullOrEmpty()) {
                 Column(modifier.fillMaxSize().padding(horizontal = gutter)) {
                     StandIn(stringResource(R.string.health_no_sessions), top = CoulombSpacing.Space24)
                 }
@@ -133,9 +165,30 @@ internal fun ChargeSessionsContent(
                             bottom = CoulombSpacing.Space48,
                         ),
                 ) {
-                    itemsIndexed(state.value, key = { _, row -> row.id }, contentType = { _, _ -> "session" }) { index, row ->
-                        Box(rowMotion()) {
-                            SessionRow(row, index == 0, row.id == selected, nowMs, zone, formats) { onOpenSession(row.id) }
+                    item(key = "filters", contentType = "filters") {
+                        SessionFilters(tab, discharges != null, query, { tab = it }, { query = it })
+                    }
+                    if (shownEmpty) {
+                        item(key = "none", contentType = "none") {
+                            StandIn(
+                                when {
+                                    query.isNotBlank() -> stringResource(R.string.health_search_none, query.trim())
+                                    dischargesShown -> stringResource(R.string.health_no_discharges)
+                                    else -> stringResource(R.string.health_no_sessions)
+                                },
+                                top = CoulombSpacing.Space16,
+                            )
+                        }
+                    }
+                    if (dischargesShown) {
+                        itemsIndexed(dischargeRows, key = { _, row -> "d${row.id}" }, contentType = { _, _ -> "discharge" }) { index, row ->
+                            Box(rowMotion()) { DischargeRow(row, index == 0, nowMs, zone, formats) { onOpenDischarge(row.id) } }
+                        }
+                    } else {
+                        itemsIndexed(charges, key = { _, row -> row.id }, contentType = { _, _ -> "session" }) { index, row ->
+                            Box(rowMotion()) {
+                                SessionRow(row, index == 0, row.id == selected, nowMs, zone, formats) { onOpenSession(row.id) }
+                            }
                         }
                     }
                 }

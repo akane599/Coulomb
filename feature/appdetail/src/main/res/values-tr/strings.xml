@@ -6,6 +6,7 @@
     <string name="appdetail_window_today">Bugün</string>
     <string name="appdetail_window_last_24h">Son 24 sa</string>
     <string name="appdetail_window_night">Ekran kapalı süre</string>
+    <string name="appdetail_window_discharge">Pilde geçen süre</string>
     <string name="appdetail_window_last_night">Dün gece</string>
     <string name="appdetail_window_days">%1$s</string>
     <string name="appdetail_window_reference">Beri: %1$s</string>
@@ -118,6 +119,7 @@
     <string name="appdetail_empty_today">Bugün için henüz bir şey kaydedilmedi.</string>
     <string name="appdetail_empty_last_24h">Son 24 saat için henüz bir şey kaydedilmedi.</string>
     <string name="appdetail_empty_night">Bu ekran kapalı süre için artık kayıt yok.</string>
+    <string name="appdetail_empty_discharge">Pilde geçen bu süre için artık kayıt yok.</string>
     <string name="appdetail_empty_last_night">Son bir günde ekranın bir saat ya da daha uzun kapalı kaldığı bir süre yok.</string>
     <string name="appdetail_empty_days">O günler için kayıtlı bir şey yok.</string>
     <string name="appdetail_empty_between">Bu referanstan sonra kaydedilmiş bir anlık görüntü henüz yok.</string>

@@ -29,6 +29,11 @@ public sealed interface DrainSpan {
         val sessionId: Long,
     ) : DrainSpan
 
+    /** One closed discharge session, from the unplug to the plug, as the session history opens it. */
+    public data class Discharge(
+        val sessionId: Long,
+    ) : DrainSpan
+
     /**
      * From the named reference [from] to [to], or to the latest heavy snapshot without one (SPEC
      * 7.6: "compare any two"). [from] is the older of the two.

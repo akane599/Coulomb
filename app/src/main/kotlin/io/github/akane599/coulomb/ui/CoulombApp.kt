@@ -341,6 +341,7 @@ class AppScreens(
                     ChargeSessionsScreen(
                         onOpenSession = { navigator.openDetail(Route.ChargeSession(it)) },
                         selected = navigator.openSession(Destination.Health),
+                        onOpenDrain = { navigator.select(Destination.Drain) },
                     )
                 },
                 chargeSession = { _, id -> ChargeSessionScreen(chargeSessionViewModel(id)) },

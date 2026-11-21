@@ -140,7 +140,13 @@
     <string name="health_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="health_error_action">Yeniden dene</string>
     <string name="health_session_title">Şarj oturumu</string>
-    <string name="health_all_sessions_title">Şarj oturumları</string>
+    <string name="health_all_sessions_title">Oturumlar</string>
+    <string name="health_tab_charges">Şarjlar</string>
+    <string name="health_tab_discharges">Pilde</string>
+    <string name="health_search_label">Ara</string>
+    <string name="health_search_hint">Bir gün, saat ya da seviye, örneğin “3 Kas” veya “%80”</string>
+    <string name="health_search_none">“%1$s” ile eşleşen oturum yok.</string>
+    <string name="health_no_discharges">Pilde geçen süre henüz kayıtlı değil. Her biri şarja taktığında burada görünür.</string>
     <string name="health_curve">Seviye ve güç</string>
     <string name="health_curve_level">Seviye</string>
     <string name="health_curve_summary">%3$s ile %4$s arasında şarj: %1$s → %2$s.</string>

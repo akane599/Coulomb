@@ -15,6 +15,7 @@ import io.github.akane599.coulomb.core.data.ChargeSessionRow
 import io.github.akane599.coulomb.core.data.Charger
 import io.github.akane599.coulomb.core.data.CrossCheck
 import io.github.akane599.coulomb.core.data.Cycles
+import io.github.akane599.coulomb.core.data.DischargeSessionRow
 import io.github.akane599.coulomb.core.data.EstimateDay
 import io.github.akane599.coulomb.core.data.EstimatePoint
 import io.github.akane599.coulomb.core.data.HealthReport
@@ -88,6 +89,14 @@ internal val LAB_SESSIONS =
         ChargeSessionRow(3, at(TODAY, 0, 30), at(TODAY, 9, 8), 38, 100, 0.62, StressLevel.HIGH, 0.9),
         ChargeSessionRow(2, at(TODAY.minusDays(1), 12, 40), at(TODAY.minusDays(1), 13, 20), 55, 81, 0.26, StressLevel.LOW, 0.9),
         ChargeSessionRow(1, at(TODAY.minusDays(5), 23, 10), at(TODAY.minusDays(4), 7, 0), 31, 100, 0.69, StressLevel.MODERATE, 0.9),
+    )
+
+/** The stretches on battery between the lab charges, newest first; the last one with coarse levels. */
+internal val LAB_DISCHARGES =
+    listOf(
+        DischargeSessionRow(6, at(TODAY, 9, 8), at(TODAY, 9, 9), 100, 100, 0.9),
+        DischargeSessionRow(5, at(TODAY.minusDays(1), 13, 20), at(TODAY, 0, 30), 81, 38, 0.9),
+        DischargeSessionRow(4, at(TODAY.minusDays(4), 7, 0), at(TODAY.minusDays(1), 12, 40), 100, 55, 0.3),
     )
 
 internal val LAB_CHARGERS =

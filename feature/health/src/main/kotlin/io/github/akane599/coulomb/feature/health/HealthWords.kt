@@ -114,4 +114,4 @@ internal fun dayOf(
 ): LocalDate = Instant.ofEpochMilli(wallMs).atZone(zone).toLocalDate()
 
 private const val MS_PER_MINUTE = 60_000L
-private const val SEPARATOR = "\u00A0· "
+internal const val SEPARATOR = "\u00A0· "

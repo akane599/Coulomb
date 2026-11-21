@@ -166,6 +166,10 @@ internal fun windowName(
             stringResource(R.string.appdetail_window_night)
         }
 
+        is DrainSpan.Discharge -> {
+            stringResource(R.string.appdetail_window_discharge)
+        }
+
         is DrainSpan.Days -> {
             stringResource(R.string.appdetail_window_days, formats.days(span.first, span.last))
         }

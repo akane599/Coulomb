@@ -62,6 +62,7 @@ internal fun spanName(
         DrainSpan.Last24Hours -> stringResource(R.string.drain_last_24h)
         DrainSpan.LastNight -> stringResource(R.string.drain_last_night)
         is DrainSpan.Night -> stringResource(R.string.drain_night)
+        is DrainSpan.Discharge -> stringResource(R.string.drain_discharge)
         is DrainSpan.Days -> formats.days(span.first, span.last)
         is DrainSpan.Between -> betweenName(span)
     }
@@ -94,6 +95,7 @@ internal fun WindowChoice(
         when (chosen) {
             DrainSpan.LastNight -> stringResource(R.string.drain_last_night)
             is DrainSpan.Night -> stringResource(R.string.drain_night)
+            is DrainSpan.Discharge -> stringResource(R.string.drain_discharge)
             is DrainSpan.Days -> formats.days(chosen.first, chosen.last)
             is DrainSpan.Between -> betweenName(chosen)
             else -> stringResource(R.string.drain_more)
@@ -133,7 +135,8 @@ internal fun WindowNote(
             duration
         }
     val note =
-        if (report.span == DrainSpan.LastNight || report.span is DrainSpan.Night) {
+        // A session's two ends are its own, not the latest snapshot's.
+        if (report.span == DrainSpan.LastNight || report.span is DrainSpan.Night || report.span is DrainSpan.Discharge) {
             val clock = formats.range(formats.clock(drains.fromWallMs, zone, drains.toWallMs), formats.clock(drains.toWallMs, zone))
             stringResource(R.string.drain_detail_separator, clock, levels)
         } else {

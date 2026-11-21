@@ -397,7 +397,11 @@ internal class DrainReader
                 }
 
                 is DrainSpan.Night -> {
-                    night(span.sessionId)
+                    session(span.sessionId, SessionKind.SCREEN_OFF)
+                }
+
+                is DrainSpan.Discharge -> {
+                    session(span.sessionId, SessionKind.DISCHARGE)
                 }
 
                 is DrainSpan.Between -> {
@@ -448,12 +452,15 @@ internal class DrainReader
             return Bounds(from, to, windows.forSession(night.id)).takeIf { before(from, to) }
         }
 
-        /** The screen-off session [id] between its two snapshots; null when either is gone. */
-        private suspend fun night(id: Long): Bounds? {
-            val night = sessions.session(id)?.takeIf { it.kind == SessionKind.SCREEN_OFF } ?: return null
-            val from = night.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
-            val to = night.endSnapshotId?.let { snapshots.snapshot(it) } ?: return null
-            return Bounds(from, to, windows.forSession(night.id)).takeIf { before(from, to) }
+        /** The session [id] of [kind] between its two snapshots; null when either is gone. */
+        private suspend fun session(
+            id: Long,
+            kind: SessionKind,
+        ): Bounds? {
+            val found = sessions.session(id)?.takeIf { it.kind == kind } ?: return null
+            val from = found.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
+            val to = found.endSnapshotId?.let { snapshots.snapshot(it) } ?: return null
+            return Bounds(from, to, windows.forSession(found.id)).takeIf { before(from, to) }
         }
 
         /** Between two named references' snapshots, or from one to the latest heavy snapshot (SPEC 7.6). */

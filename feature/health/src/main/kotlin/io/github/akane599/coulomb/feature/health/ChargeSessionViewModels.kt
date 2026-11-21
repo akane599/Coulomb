@@ -12,6 +12,9 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.akane599.coulomb.core.data.ChargeSessionDetail
 import io.github.akane599.coulomb.core.data.ChargeSessionRow
+import io.github.akane599.coulomb.core.data.ChosenWindow
+import io.github.akane599.coulomb.core.data.DischargeSessionRow
+import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.HealthRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,15 +40,26 @@ internal sealed interface Read<out T> {
 
 private const val STOP_TIMEOUT_MS = 5_000L
 
-/** Every closed charge session, newest first ("See all", SPEC 10.8 item 6). */
+/** Every closed charge and discharge session, newest first ("See all", SPEC 10.8 item 6; SPEC 2). */
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
 public class ChargeSessionsViewModel
     @Inject
     constructor(
         health: HealthRepository,
+        private val window: ChosenWindow,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
+
+        /** Every closed discharge session; null until read, or when the read fails. */
+        internal val discharges: StateFlow<List<DischargeSessionRow>?> =
+            health.allDischarges
+                .map<List<DischargeSessionRow>, List<DischargeSessionRow>?> { it }
+                .catch { emit(null) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
+
+        /** Drain opens on this discharge session (SPEC 2, session history). */
+        internal fun showInDrain(sessionId: Long) = window.choose(DrainSpan.Discharge(sessionId))
 
         internal val state: StateFlow<Read<List<ChargeSessionRow>>> =
             attempt

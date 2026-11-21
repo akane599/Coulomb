@@ -16,6 +16,7 @@
 
     <string name="drain_sheet_title">More options</string>
     <string name="drain_night">Screen-off stretch</string>
+    <string name="drain_discharge">Stretch on battery</string>
     <string name="drain_last_night_detail">The longest screen-off stretch of an hour or more in the last day</string>
     <string name="drain_custom_range">Custom range</string>
     <!-- %1$s: how many days back a range may start. -->
@@ -176,6 +177,7 @@
     <string name="drain_empty_today">Nothing is stored for today yet.</string>
     <string name="drain_empty_last_24h">Nothing is stored for the last 24 hours yet.</string>
     <string name="drain_empty_night">Nothing is stored for this screen-off stretch any more.</string>
+    <string name="drain_empty_discharge">Nothing is stored for this stretch on battery any more.</string>
     <string name="drain_empty_last_night">No screen-off stretch of an hour or more in the last day.</string>
     <string name="drain_empty_days">Nothing is stored for those days.</string>
     <!-- ADR-0028 §3: a source that was not collected is never shown as zero. -->

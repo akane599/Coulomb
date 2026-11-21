@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.data
 
 import io.github.akane599.coulomb.core.analytics.CapacityEstimate
 import io.github.akane599.coulomb.core.analytics.StressLevel
+import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.model.DesignCapacity
 import io.github.akane599.coulomb.core.model.dumpsys.OemHealthValue
 import java.time.LocalDate
@@ -105,6 +106,39 @@ public data class ChargeSessionRow(
     /** 0 to 1 (SPEC 6.7). */
     val quality: Double,
 )
+
+/** One closed discharge session (SPEC 2, session history): from unplug to plug, levels Measured. */
+public data class DischargeSessionRow(
+    val id: Long,
+    val startWallMs: Long,
+    val endWallMs: Long,
+    val fromPct: Int,
+    val toPct: Int,
+    /** 0 to 1 (SPEC 6.7). */
+    val quality: Double,
+) {
+    /** Points an hour from the two ends, from a quarter of an hour on; Derived. */
+    val pctPerHour: Double?
+        get() {
+            val ms = endWallMs - startWallMs
+            return if (ms < MIN_RATE_MS) null else (fromPct - toPct).coerceAtLeast(0) * MS_PER_HOUR / ms
+        }
+
+    internal companion object {
+        private const val MIN_RATE_MS = 15 * 60_000L
+        private const val MS_PER_HOUR = 3_600_000.0
+
+        fun of(session: SessionEntity): DischargeSessionRow =
+            DischargeSessionRow(
+                id = session.id,
+                startWallMs = session.startWall,
+                endWallMs = session.endWall ?: session.startWall,
+                fromPct = session.startLevel,
+                toPct = session.endLevel ?: session.startLevel,
+                quality = session.quality,
+            )
+    }
+}
 
 /** A charger profile (SPEC 10.8 item 7); an empty [name] is not named yet. */
 public data class Charger(

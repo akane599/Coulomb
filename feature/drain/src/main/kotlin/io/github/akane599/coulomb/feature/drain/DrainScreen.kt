@@ -446,6 +446,7 @@ private fun EmptyWindow(chosen: DrainSpan) {
             DrainSpan.Last24Hours -> R.string.drain_empty_last_24h
             DrainSpan.LastNight -> R.string.drain_empty_last_night
             is DrainSpan.Night -> R.string.drain_empty_night
+            is DrainSpan.Discharge -> R.string.drain_empty_discharge
             is DrainSpan.Days -> R.string.drain_empty_days
             is DrainSpan.Between -> R.string.drain_empty_between
         }

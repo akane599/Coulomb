@@ -169,6 +169,54 @@ class HealthScreenshotTest {
             "sessions",
         ) { ChargeSessionsContent(Read.Ready(LAB_SESSIONS + hardenedReport().sessions), {}, {}, zone = ZONE, nowMs = NOW_MS) }
 
+    /** The history's second list: time on battery between the charges, each opening Drain. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun allDischarges() =
+        shoot("sessions-discharges") {
+            ChargeSessionsContent(
+                Read.Ready(LAB_SESSIONS),
+                {},
+                {},
+                zone = ZONE,
+                nowMs = NOW_MS,
+                discharges = LAB_DISCHARGES,
+                initialTab = SessionKindTab.DISCHARGES,
+            )
+        }
+
+    /** A search keeps the rows whose text holds every word of it. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun searchedSessions() =
+        shoot("sessions-search") {
+            ChargeSessionsContent(
+                Read.Ready(LAB_SESSIONS),
+                {},
+                {},
+                zone = ZONE,
+                nowMs = NOW_MS,
+                discharges = LAB_DISCHARGES,
+                initialQuery = "100%",
+            )
+        }
+
+    /** A search that keeps nothing says so, with the query. */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun searchedNothing() =
+        shoot("sessions-search-none") {
+            ChargeSessionsContent(
+                Read.Ready(LAB_SESSIONS),
+                {},
+                {},
+                zone = ZONE,
+                nowMs = NOW_MS,
+                discharges = LAB_DISCHARGES,
+                initialQuery = "Feb 30",
+            )
+        }
+
     @Test
     fun session() = shoot("session") { ChargeSessionContent(Read.Ready(labSession()), {}, zone = ZONE, nowMs = NOW_MS) }
 

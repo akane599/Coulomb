@@ -160,7 +160,13 @@
 
     <!-- A charge session (SPEC 10.8 item 6). -->
     <string name="health_session_title">Charge session</string>
-    <string name="health_all_sessions_title">Charge sessions</string>
+    <string name="health_all_sessions_title">Sessions</string>
+    <string name="health_tab_charges">Charges</string>
+    <string name="health_tab_discharges">On battery</string>
+    <string name="health_search_label">Search</string>
+    <string name="health_search_hint">A day, a time or a level, such as “Nov 3” or “80%”</string>
+    <string name="health_search_none">No session matches “%1$s”.</string>
+    <string name="health_no_discharges">No time on battery is stored yet. Each stretch shows here once you plug in.</string>
     <string name="health_curve">Level and power</string>
     <string name="health_curve_level">Level</string>
     <string name="health_curve_summary">Charged from %1$s to %2$s between %3$s and %4$s.</string>

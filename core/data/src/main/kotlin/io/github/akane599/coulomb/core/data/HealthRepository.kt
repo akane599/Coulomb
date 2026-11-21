@@ -97,6 +97,14 @@ public class HealthRepository
                 .distinctUntilChanged()
                 .flowOn(dispatchers.io)
 
+        /** Every closed discharge session, newest first (SPEC 2, session history). */
+        public val allDischarges: Flow<List<DischargeSessionRow>> =
+            sessions
+                .observeClosed(SessionKind.DISCHARGE, ALL_SESSIONS)
+                .map { rows -> rows.map { DischargeSessionRow.of(it) } }
+                .distinctUntilChanged()
+                .flowOn(dispatchers.io)
+
         /** One charge session with its figures and curve; null when there is no such session. */
         public fun session(id: Long): Flow<ChargeSessionDetail?> =
             combine(sessions.observeSession(id), sessions.observeChargeDetail(id), sessions.observeChargerProfiles()) { s, d, c ->
