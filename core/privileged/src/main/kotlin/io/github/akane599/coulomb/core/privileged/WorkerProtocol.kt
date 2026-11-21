@@ -115,6 +115,12 @@ public enum class PrivilegedQuery(
 
     /** `cmd deviceidle whitelist`. */
     DEVICE_IDLE_WHITELIST(3),
+
+    /** `appops get <package> RUN_ANY_IN_BACKGROUND`: the one op "Restrict background" writes. */
+    RUN_ANY_IN_BACKGROUND(4),
+
+    /** `am get-standby-bucket <package>`: one app's bucket. */
+    STANDBY_BUCKET(5),
     ;
 
     internal companion object {
@@ -199,6 +205,9 @@ internal object WorkerLimits {
     const val MAX_COMMAND_OUTPUT_BYTES = 4L * 1024 * 1024
     const val MAX_SYSFS_ENTRIES = 4096
     const val COMMAND_TIMEOUT_MS = 10_000L
+
+    /** An action's output is shown, never parsed: enough for an error line. */
+    const val MAX_ACTION_OUTPUT_BYTES = 2L * 1024
 
     /**
      * One `/dev/kmsg` record: `printk_buffers.outbuf` is PRINTK_MESSAGE_MAX (2 KiB) in

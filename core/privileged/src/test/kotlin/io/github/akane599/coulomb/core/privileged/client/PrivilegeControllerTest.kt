@@ -12,6 +12,7 @@ import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.model.WorkerFailure
 import io.github.akane599.coulomb.core.model.WorkerStatus
+import io.github.akane599.coulomb.core.model.cmd.StandbyBucket
 import io.github.akane599.coulomb.core.model.kernel.KernelPaths
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DumpResult
@@ -20,12 +21,14 @@ import io.github.akane599.coulomb.core.privileged.GrantKind
 import io.github.akane599.coulomb.core.privileged.GrantOutcome
 import io.github.akane599.coulomb.core.privileged.PartialReason
 import io.github.akane599.coulomb.core.privileged.PrivilegeConfig
+import io.github.akane599.coulomb.core.privileged.PrivilegedAction
 import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.Route
 import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
 import io.github.akane599.coulomb.core.privileged.WorkerOrigin
+import io.github.akane599.coulomb.core.privileged.WorkerStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher

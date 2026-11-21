@@ -8,7 +8,10 @@ import io.github.akane599.coulomb.core.model.cmd.AppOpMode
 import io.github.akane599.coulomb.core.model.cmd.AppOpReading
 import io.github.akane599.coulomb.core.model.cmd.DozeAllowlist
 import io.github.akane599.coulomb.core.model.cmd.StandbyBucket
+import io.github.akane599.coulomb.core.parsing.Fixtures
+import io.github.akane599.coulomb.core.parsing.dumpsys.DeviceIdleParser
 import org.junit.Test
+import java.io.ByteArrayInputStream
 
 class CmdOutputsTest {
     private val op = "RUN_ANY_IN_BACKGROUND"
@@ -76,8 +79,21 @@ class CmdOutputsTest {
                 "user,com.example.app,10234\nuser,com.example.two,10235\n"
         assertThat(CmdOutputs.dozeAllowlist(out))
             .isEqualTo(DozeAllowlist(setOf("com.example.cal"), setOf("com.example.sys"), setOf("com.example.app", "com.example.two")))
-        assertThat(CmdOutputs.dozeAllowlist("")).isEqualTo(DozeAllowlist(emptySet(), emptySet(), emptySet()))
+        // No output is no answer: taken for an empty list, a listed app would read as unlisted.
+        assertThat(CmdOutputs.dozeAllowlist("")).isNull()
         assertThat(CmdOutputs.dozeAllowlist("Permission Denial: can't dump DeviceIdleController\n")).isNull()
         assertThat(CmdOutputs.dozeAllowlist("user,com.example.app\n")).isNull()
+    }
+
+    @Test
+    fun thePhonesDozeDurationsAreReadFromItsDump() {
+        val settings = DeviceIdleParser.parse(ByteArrayInputStream(Fixtures.bytes(Fixtures.PHONE, "deviceidle.txt"))).value.settings
+        val ms = CmdOutputs.dozeDurationsMs(settings)
+        assertThat(ms["inactive_to"]).isEqualTo(180_000)
+        assertThat(ms["idle_after_inactive_to"]).isEqualTo(120_000)
+        assertThat(ms["idle_to"]).isEqualTo(3_600_000)
+        assertThat(ms["max_idle_to"]).isEqualTo(21_600_000)
+        // Factors, switches and lengths are not durations.
+        assertThat(ms.keys).containsNoneOf("idle_factor", "wait_for_unlock", "location_accuracy", "skip_sensing")
     }
 }

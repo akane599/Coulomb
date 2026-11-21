@@ -11,6 +11,7 @@ import io.github.akane599.coulomb.core.model.PrivilegeState
 import io.github.akane599.coulomb.core.model.ServerInfo
 import io.github.akane599.coulomb.core.model.WorkerFailure
 import io.github.akane599.coulomb.core.model.WorkerStatus
+import io.github.akane599.coulomb.core.privileged.ActionCommands
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.BootstrapItem
 import io.github.akane599.coulomb.core.privileged.BootstrapReport
@@ -25,6 +26,7 @@ import io.github.akane599.coulomb.core.privileged.PrivilegeConfig
 import io.github.akane599.coulomb.core.privileged.PrivilegeDiagnostics
 import io.github.akane599.coulomb.core.privileged.PrivilegeDrills
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
+import io.github.akane599.coulomb.core.privileged.PrivilegedAction
 import io.github.akane599.coulomb.core.privileged.PrivilegedQuery
 import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.Route
@@ -667,6 +669,43 @@ internal class PrivilegeController(
         namespace: SettingsNamespace,
         key: String,
     ): PrivilegedResult<String?> = small { w, st -> w.getSetting(namespace.id, key, st) }
+
+    override suspend fun act(action: PrivilegedAction): PrivilegedResult<String> =
+        small { w, st ->
+            when (action) {
+                is PrivilegedAction.ForceStop -> {
+                    w.forceStop(action.packageName, st)
+                }
+
+                is PrivilegedAction.SetRunInBackground -> {
+                    w.setRunInBackground(action.packageName, action.allowed, st)
+                }
+
+                is PrivilegedAction.SetStandbyBucket -> {
+                    w.setStandbyBucket(action.packageName, action.bucket.value, st)
+                }
+
+                is PrivilegedAction.SetDozeAllowlisted -> {
+                    w.setDozeAllowlisted(action.packageName, action.listed, st)
+                }
+
+                is PrivilegedAction.PutDozeConstants -> {
+                    // By the value asked for, never by the answer: a put the worker refuses returns null too.
+                    val value = action.value
+                    if (value == null) w.deleteDozeConstants(st) else w.putDozeConstants(value, st)
+                }
+
+                is PrivilegedAction.SetBatterySaver -> {
+                    w.setBatterySaver(action.on, st)
+                }
+
+                PrivilegedAction.ResetBatteryStats -> {
+                    w.resetBatteryStats(st)
+                }
+            }.orEmpty()
+        }
+
+    override fun actionArgv(action: PrivilegedAction): List<String> = ActionCommands.argv(action, config.uid / PER_USER_RANGE)
 
     override suspend fun listSettingKeys(namespace: SettingsNamespace): PrivilegedResult<List<String>> =
         small { w, st -> w.listSettingKeys(namespace.id, st).orEmpty().toList() }

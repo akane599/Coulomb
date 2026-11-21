@@ -7,6 +7,7 @@ import io.github.akane599.coulomb.core.model.cmd.AppOpMode
 import io.github.akane599.coulomb.core.model.cmd.AppOpReading
 import io.github.akane599.coulomb.core.model.cmd.DozeAllowlist
 import io.github.akane599.coulomb.core.model.cmd.StandbyBucket
+import io.github.akane599.coulomb.core.parsing.text.Durations
 
 /**
  * The small outputs of the `cmd` reads an action is checked with (SPEC 13.1: read, write, read
@@ -95,8 +96,18 @@ public object CmdOutputs {
                 else -> user
             } += match.groupValues[2]
         }
+        // Every device lists system entries, so no line at all is a command that said nothing.
+        if (exceptIdle.isEmpty() && system.isEmpty() && user.isEmpty()) return null
         return DozeAllowlist(exceptIdle, system, user)
     }
+
+    /**
+     * The duration keys of `dumpsys deviceidle`'s settings ([io.github.akane599.coulomb.core.model.dumpsys.DeviceIdleDump.settings])
+     * in milliseconds. A key whose value is not a duration (a factor, a switch, a raw number) is
+     * left out: a Doze profile changes durations only.
+     */
+    public fun dozeDurationsMs(settings: Map<String, String>): Map<String, Long> =
+        settings.mapNotNull { (key, value) -> Durations.parseMs(value)?.let { key to it } }.toMap()
 
     private fun lines(stdout: String): List<String> =
         stdout

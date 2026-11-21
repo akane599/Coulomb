@@ -146,6 +146,57 @@ internal class FakeWorker(
         return arrayOf("battery")
     }
 
+    /** Every action the worker was asked for, as `name:arguments`. */
+    val actions = mutableListOf<String>()
+    var actionStatus: Int = WorkerStatusCode.OK
+
+    /** As the worker does: null with the status for a call it refuses or that fails. */
+    private fun acted(
+        what: String,
+        status: IntArray?,
+    ): String? {
+        actions += what
+        status!![0] = actionStatus
+        return if (actionStatus == WorkerStatusCode.OK) "" else null
+    }
+
+    override fun forceStop(
+        packageName: String?,
+        status: IntArray?,
+    ): String? = acted("forceStop:$packageName", status)
+
+    override fun setRunInBackground(
+        packageName: String?,
+        allowed: Boolean,
+        status: IntArray?,
+    ): String? = acted("setRunInBackground:$packageName:$allowed", status)
+
+    override fun setStandbyBucket(
+        packageName: String?,
+        bucket: Int,
+        status: IntArray?,
+    ): String? = acted("setStandbyBucket:$packageName:$bucket", status)
+
+    override fun setDozeAllowlisted(
+        packageName: String?,
+        listed: Boolean,
+        status: IntArray?,
+    ): String? = acted("setDozeAllowlisted:$packageName:$listed", status)
+
+    override fun putDozeConstants(
+        value: String?,
+        status: IntArray?,
+    ): String? = acted("putDozeConstants:$value", status)
+
+    override fun deleteDozeConstants(status: IntArray?): String? = acted("deleteDozeConstants", status)
+
+    override fun setBatterySaver(
+        on: Boolean,
+        status: IntArray?,
+    ): String? = acted("setBatterySaver:$on", status)
+
+    override fun resetBatteryStats(status: IntArray?): String? = acted("resetBatteryStats", status)
+
     override fun grantPermission(permission: Int): Int {
         granted += permission
         onGrant(permission)

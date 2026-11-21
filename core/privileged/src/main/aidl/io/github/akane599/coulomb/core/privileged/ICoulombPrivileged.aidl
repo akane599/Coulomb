@@ -32,7 +32,8 @@ interface ICoulombPrivileged {
     int dumpService(int service, in ParcelFileDescriptor pipe) = 11;
 
     // Fixed `cmd` queries from the read group (WorkerProtocol.Query); output goes to `pipe`.
-    // `packageName` is required by APP_OPS and ignored otherwise.
+    // `packageName` is required by APP_OPS, RUN_ANY_IN_BACKGROUND and STANDBY_BUCKET and ignored
+    // otherwise.
     int runQuery(int query, String packageName, in ParcelFileDescriptor pipe) = 12;
 
     // The four small reads below return their value directly and a WorkerStatusCode in status[0]
@@ -71,6 +72,27 @@ interface ICoulombPrivileged {
     // Bootstrap group: `appops set <coulomb> GET_USAGE_STATS allow`.
     int allowUsageStatsAppOp() = 31;
 
+    // Action group (SPEC 13.2, 19.1; ADR-0060). One method per operation; modes and buckets are
+    // closed sets, and every package must be an installed app other than Coulomb (uid >= 10000).
+    // Each returns at most 2 KB of the command's output for display and a WorkerStatusCode in
+    // status[0]. Whether the write changed anything is for the caller to read back.
+    // `am force-stop --user <user> <pkg>`.
+    String forceStop(String packageName, out int[] status) = 40;
+    // `appops set <pkg> RUN_ANY_IN_BACKGROUND allow|ignore`.
+    String setRunInBackground(String packageName, boolean allowed, out int[] status) = 41;
+    // `am set-standby-bucket <pkg> <bucket>`; `bucket` is a STANDBY_BUCKET_* value from 10 to 45.
+    String setStandbyBucket(String packageName, int bucket, out int[] status) = 42;
+    // `cmd deviceidle whitelist +<pkg>` (listed) or `-<pkg>`.
+    String setDozeAllowlisted(String packageName, boolean listed, out int[] status) = 43;
+    // `settings put global device_idle_constants <value>`; the value is checked by
+    // ActionCommands.isDozeConstants.
+    String putDozeConstants(String value, out int[] status) = 44;
+    // `settings delete global device_idle_constants`.
+    String deleteDozeConstants(out int[] status) = 45;
+    // `cmd power set-mode 1|0`.
+    String setBatterySaver(boolean on, out int[] status) = 46;
+    // `dumpsys batterystats --reset`. Not revertible.
+    String resetBatteryStats(out int[] status) = 47;
     // Transport test for the P1 gate ("a 20 MB dump streams without OOM") and the protocol F drills:
     // writes a deterministic pattern of `bytes`, stops early after `truncateAt` bytes while still
     // returning OK (a stream that ends too soon), and sleeps `chunkDelayMs` (at most 1000) after each

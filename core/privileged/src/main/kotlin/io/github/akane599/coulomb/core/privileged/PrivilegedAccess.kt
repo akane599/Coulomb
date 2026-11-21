@@ -87,6 +87,15 @@ public interface PrivilegedAccess {
         key: String,
     ): PrivilegedResult<String?>
 
+    /**
+     * Runs one Action Center write (SPEC 13.2; ADR-0060) and returns what the command printed, for
+     * display only: a success here means the command ran, not that anything changed. Worker only.
+     */
+    public suspend fun act(action: PrivilegedAction): PrivilegedResult<String>
+
+    /** [action]'s command as the worker runs it, for the preview (SPEC 13.1). */
+    public fun actionArgv(action: PrivilegedAction): List<String>
+
     /** Names of the battery-related keys present in [namespace]; values never cross (ADR-0009). */
     public suspend fun listSettingKeys(namespace: SettingsNamespace): PrivilegedResult<List<String>>
 

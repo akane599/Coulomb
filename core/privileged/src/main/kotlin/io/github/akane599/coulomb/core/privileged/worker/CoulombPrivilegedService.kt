@@ -12,11 +12,14 @@ import android.os.Process
 import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
+import io.github.akane599.coulomb.core.model.cmd.StandbyBucket
 import io.github.akane599.coulomb.core.model.kernel.KernelBoot
 import io.github.akane599.coulomb.core.model.kernel.KernelPaths
+import io.github.akane599.coulomb.core.privileged.ActionCommands
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DurablePermission
 import io.github.akane599.coulomb.core.privileged.ICoulombPrivileged
+import io.github.akane599.coulomb.core.privileged.PrivilegedAction
 import io.github.akane599.coulomb.core.privileged.PrivilegedQuery
 import io.github.akane599.coulomb.core.privileged.SettingsNamespace
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
@@ -158,10 +161,29 @@ public class CoulombPrivilegedService(
         packageName: String?,
     ): List<String>? =
         when (PrivilegedQuery.fromId(query)) {
-            PrivilegedQuery.STANDBY_BUCKETS -> CmdCommands.standbyBuckets(userId)
-            PrivilegedQuery.DEVICE_IDLE_WHITELIST -> CmdCommands.deviceIdleWhitelist()
-            PrivilegedQuery.APP_OPS -> packageName?.takeIf(::isInstalledPackage)?.let { CmdCommands.appOps(it, userId) }
-            null -> null
+            PrivilegedQuery.STANDBY_BUCKETS -> {
+                CmdCommands.standbyBuckets(userId)
+            }
+
+            PrivilegedQuery.DEVICE_IDLE_WHITELIST -> {
+                CmdCommands.deviceIdleWhitelist()
+            }
+
+            PrivilegedQuery.APP_OPS -> {
+                packageName?.takeIf(::isInstalledPackage)?.let { CmdCommands.appOps(it, userId) }
+            }
+
+            PrivilegedQuery.RUN_ANY_IN_BACKGROUND -> {
+                packageName?.takeIf(::isInstalledPackage)?.let { ActionCommands.readRunInBackground(it, userId) }
+            }
+
+            PrivilegedQuery.STANDBY_BUCKET -> {
+                packageName?.takeIf(::isInstalledPackage)?.let { ActionCommands.readStandbyBucket(it, userId) }
+            }
+
+            null -> {
+                null
+            }
         }
 
     private fun runTo(
@@ -382,6 +404,86 @@ public class CoulombPrivilegedService(
         return commandStatus(shell.run(CmdCommands.allowUsageStats(ownerPackage, userId), null, MAX_SETTINGS_OUTPUT))
     }
 
+    // --- actions (SPEC 13.2; ADR-0060) -----------------------------------------------------------
+
+    override fun forceStop(
+        packageName: String?,
+        status: IntArray?,
+    ): String? = onApp(packageName, status) { PrivilegedAction.ForceStop(it) }
+
+    override fun setRunInBackground(
+        packageName: String?,
+        allowed: Boolean,
+        status: IntArray?,
+    ): String? = onApp(packageName, status) { PrivilegedAction.SetRunInBackground(it, allowed) }
+
+    override fun setStandbyBucket(
+        packageName: String?,
+        bucket: Int,
+        status: IntArray?,
+    ): String? {
+        val to = StandbyBucket.of(bucket)?.takeIf { it in PrivilegedAction.BUCKETS }
+        return onApp(packageName, status) { name -> to?.let { PrivilegedAction.SetStandbyBucket(name, it) } }
+    }
+
+    override fun setDozeAllowlisted(
+        packageName: String?,
+        listed: Boolean,
+        status: IntArray?,
+    ): String? = onApp(packageName, status) { PrivilegedAction.SetDozeAllowlisted(it, listed) }
+
+    override fun putDozeConstants(
+        value: String?,
+        status: IntArray?,
+    ): String? {
+        enforceCaller()
+        return act(value?.takeIf(ActionCommands::isDozeConstants)?.let { PrivilegedAction.PutDozeConstants(it) }, status)
+    }
+
+    override fun deleteDozeConstants(status: IntArray?): String? {
+        enforceCaller()
+        return act(PrivilegedAction.PutDozeConstants(null), status)
+    }
+
+    override fun setBatterySaver(
+        on: Boolean,
+        status: IntArray?,
+    ): String? {
+        enforceCaller()
+        return act(PrivilegedAction.SetBatterySaver(on), status)
+    }
+
+    override fun resetBatteryStats(status: IntArray?): String? {
+        enforceCaller()
+        return act(PrivilegedAction.ResetBatteryStats, status)
+    }
+
+    /** An action on one app: an installed package that is not Coulomb and not a system UID's (ADR-0060 §5). */
+    private fun onApp(
+        packageName: String?,
+        status: IntArray?,
+        action: (String) -> PrivilegedAction?,
+    ): String? {
+        enforceCaller()
+        return act(packageName?.takeIf(::isActionTarget)?.let(action), status)
+    }
+
+    /** Runs [action]'s command; null is an argument the worker refused. */
+    private fun act(
+        action: PrivilegedAction?,
+        status: IntArray?,
+    ): String? {
+        if (action == null) return status.set(WorkerStatusCode.INVALID_ARGUMENT, null)
+        val r = shell.run(ActionCommands.argv(action, userId), null, WorkerLimits.MAX_ACTION_OUTPUT_BYTES)
+        val output = listOf(r.stdoutText.trim(), r.stderr.trim()).filter { it.isNotEmpty() }.joinToString("\n")
+        return status.set(commandStatus(r), output)
+    }
+
+    private fun isActionTarget(name: String): Boolean =
+        Validation.isPackageName(name) &&
+            name != ownerPackage &&
+            runCatching { packageManager.getPackageUid(name, 0) % PER_USER_RANGE >= FIRST_APPLICATION_UID }.getOrDefault(false)
+
     private fun commandStatus(r: ShellRunner.Result): Int =
         when {
             r.timedOut -> WorkerStatusCode.TIMEOUT
@@ -443,6 +545,9 @@ public class CoulombPrivilegedService(
     private companion object {
         const val BATTERYSTATS = "batterystats"
         const val PER_USER_RANGE = 100_000
+
+        /** `Process.FIRST_APPLICATION_UID`: below it are the system's own UIDs. */
+        const val FIRST_APPLICATION_UID = 10_000
         const val MAX_SETTINGS_OUTPUT = 64L * 1024
         const val TEST_CHUNK = 64 * 1024
         const val MAX_CHUNK_DELAY_MS = 1_000
