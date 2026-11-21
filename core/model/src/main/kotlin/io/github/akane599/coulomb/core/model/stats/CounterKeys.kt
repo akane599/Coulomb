@@ -46,6 +46,9 @@ public object UidKeys {
     public const val ALARM_WAKEUPS: String = "alarm_wakeups"
     public const val JOB_COUNT: String = "job_count"
     public const val JOB_RUNTIME_MS: String = "job_runtime_ms"
+
+    /** Stops for `JobStopCount.TIMEOUT_ABANDONED`. */
+    public const val JOB_ABANDONED: String = "job_abandoned"
     public const val MOBILE_RX_BYTES: String = "mobile_rx_b"
     public const val MOBILE_TX_BYTES: String = "mobile_tx_b"
     public const val WIFI_RX_BYTES: String = "wifi_rx_b"

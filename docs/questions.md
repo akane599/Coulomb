@@ -5,6 +5,12 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. **R15 waits for a two-minute look at the phone.** The rule needs "battery protection
+  off". One UI keeps the choice in `global: protect_battery` (3 on the phone when its fixture was
+  taken), and nothing Coulomb can read says what each number means; it is Samsung's own key, so
+  AOSP does not settle it. Needed: the owner switches the protection modes in Settings while
+  Coulomb reads the key. Default in use: the setting counts as unknown, so R15 finds nothing (it
+  cannot claim the setting is off).
 - 2026-11-21. **Needs a yes before it is built (it deletes data).** Windows stored before the fix of
   ADR-0055 hold drain that never happened: on the phone's data of 2026-11-21, 21 consecutive windows
   across a system restart (about 47,800 mAh modeled, 900 mAh measured) and four day windows that span

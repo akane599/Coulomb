@@ -87,8 +87,12 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   you can do" is one sentence per part of the phone, and usually "nothing".
   - Reviewed by an independent subagent; its seven findings are fixed (uncollected history shown
     as zero, wakes whose beginning the history does not show, a first wakelock without a holder).
-- **Still to build in P5:** the Action Center, and three collector additions: job stop reasons
-  (R10), the battery protection setting (R15), standby buckets and last launch (R16).
+- **Rule inputs.** R10 now sees abandoned jobs: the stops for `TIMEOUT_ABANDONED` are kept with
+  each snapshot and window. R16 has its input: `am get-standby-bucket` through the worker and the
+  platform's last-use records, read at most once a day.
+  - R15 pending real device: what the numbers of One UI's protection setting mean
+    (`docs/questions.md`). Until then the rule finds nothing.
+- **Still to build in P5:** the Action Center.
 
 ## P4 Core screens (gate deferred: protocol C)
 

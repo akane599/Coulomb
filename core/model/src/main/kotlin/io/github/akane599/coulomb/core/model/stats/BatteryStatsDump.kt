@@ -220,7 +220,17 @@ public data class JobStopCount(
     val job: String,
     val reason: String,
     val count: Long,
-)
+) {
+    public companion object {
+        /**
+         * The job ran out its time and never told the scheduler it was done (SPEC 9.2 R10's
+         * "abandoned jobs"): `InternalStopReasonEnum.INTERNAL_STOP_REASON_TIMEOUT_ABANDONED`, 13 in
+         * `JobParameters` (apex/jobscheduler/framework/java/android/app/job/JobParameters.java,
+         * android-16.0.0_r4 L146-162, android-17.0.0_r1 L153-170).
+         */
+        public const val TIMEOUT_ABANDONED: String = "INTERNAL_STOP_REASON_TIMEOUT_ABANDONED"
+    }
+}
 
 public data class SyncTimer(
     val name: String,

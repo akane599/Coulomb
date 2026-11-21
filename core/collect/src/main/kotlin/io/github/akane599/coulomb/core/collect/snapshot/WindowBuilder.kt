@@ -365,6 +365,7 @@ internal object WindowBuilder {
         rows.jobStats.forEach {
             put(it.uid, UidKeys.JOB_COUNT, it.jobs)
             put(it.uid, UidKeys.JOB_RUNTIME_MS, it.runtimeMs)
+            put(it.uid, UidKeys.JOB_ABANDONED, it.abandoned)
         }
         rows.netStats.forEach {
             put(it.uid, UidKeys.MOBILE_RX_BYTES, it.mobileRxB)

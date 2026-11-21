@@ -30,6 +30,9 @@ public interface InsightPorts {
 
     /** When the app with [uid] was last updated, by the wall clock; null when not known. */
     public fun lastUpdateWallMs(uid: Int): Long?
+
+    /** Each app's standby bucket and last opening (R16); empty where the phone gives neither. */
+    public suspend fun standby(): List<AppStandby> = emptyList()
 }
 
 /**
@@ -71,6 +74,7 @@ public class RuleContextLoader(
                     day.healthPct?.let { HealthPoint(day.epochDay * DAY_MS, it) }
                 },
             trends = trends(nowWallMs),
+            standby = ports.standby(),
         )
     }
 
@@ -143,6 +147,7 @@ public class RuleContextLoader(
         val wakelock = stat(UidKeys.PARTIAL_WAKELOCK_MS, chain)
         val alarms = stat(UidKeys.ALARM_WAKEUPS, chain)
         val jobs = stat(UidKeys.JOB_COUNT, chain)
+        val abandoned = stat(UidKeys.JOB_ABANDONED, chain)
         val gnss = stat(UidKeys.GNSS_MS, chain, screenOff = true)
         val sensor = stat(UidKeys.SENSOR_MS, chain, screenOff = true)
         // Only installed apps: the user can act on those, not on the system's own UIDs (ADR-0054 §12).
@@ -160,6 +165,8 @@ public class RuleContextLoader(
                 gnssScreenOffMs = gnss[uid] ?: 0,
                 sensorScreenOffMs = sensor[uid] ?: 0,
                 jobCount = jobs[uid] ?: 0,
+                // A window keeps only counts above zero, and one stored before stop reasons were kept has none.
+                abandonedJobs = abandoned[uid],
             )
         }
     }

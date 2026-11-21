@@ -191,6 +191,8 @@ class RuleContextLoaderTest {
                         stat(app, UidKeys.PARTIAL_WAKELOCK_MS, 2 * hour),
                         stat(app, UidKeys.GNSS_MS, 12 * MINUTE),
                         stat(app, UidKeys.ALARM_WAKEUPS, 40),
+                        stat(app, UidKeys.JOB_COUNT, 60),
+                        stat(app, UidKeys.JOB_ABANDONED, 2),
                         stat(app, UidKeys.BLE_SCAN_MS, 5 * MINUTE),
                         stat(10_200, UidKeys.BLE_SCAN_MS, 30 * MINUTE),
                         // The system's own UID, the device's row of the same name and the rest row are not apps.
@@ -214,7 +216,7 @@ class RuleContextLoaderTest {
             )
             val day = checkNotNull(loader.load(c.wallMs, hour).day)
             assertThat(day.span).isEqualTo(Span(a.wallMs, c.wallMs))
-            assertThat(day.apps).containsExactly(AppDayUse(app, 3 * hour, 40, 12 * MINUTE, 0, 0))
+            assertThat(day.apps).containsExactly(AppDayUse(app, 3 * hour, 40, 12 * MINUTE, 0, 60, abandonedJobs = 2))
             assertThat(day.screenOffMs).isEqualTo(4 * hour)
             assertThat(day.bleScanMs).isEqualTo(30 * MINUTE)
             assertThat(day.wifiScanMs).isEqualTo(0)

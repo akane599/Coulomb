@@ -12,6 +12,8 @@ import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
+import io.github.akane599.coulomb.core.model.stats.JobStopCount
+import io.github.akane599.coulomb.core.model.stats.JobTimer
 import io.github.akane599.coulomb.core.model.stats.PowerColumn
 import io.github.akane599.coulomb.core.model.stats.TimerStat
 import io.github.akane599.coulomb.core.model.stats.UidKeys
@@ -34,6 +36,25 @@ class CounterMapperTest {
             .inputStream()
             .use { BatteryStatsProtoParser.parse(it) }
             .value
+
+    @Test
+    fun abandonedStopsAreCountedAcrossAnAppsJobs() {
+        val uid =
+            UidStats(
+                uid = 10_123,
+                jobs = listOf(JobTimer("one", TimerStat(4_000, 3)), JobTimer("two", TimerStat(1_000, 2))),
+                jobStopReasons =
+                    listOf(
+                        JobStopCount("one", JobStopCount.TIMEOUT_ABANDONED, 2),
+                        JobStopCount("one", "INTERNAL_STOP_REASON_SUCCESSFUL_FINISH", 1),
+                        JobStopCount("two", JobStopCount.TIMEOUT_ABANDONED, 1),
+                    ),
+            )
+        val quiet = UidStats(uid = 10_124, jobs = listOf(JobTimer("three", TimerStat(500, 1))))
+        val rows = CounterMapper.rows(BatteryStatsDump(header = null, device = null, uids = listOf(uid, quiet), uidsComplete = true))
+        assertThat(rows.jobStats.associate { it.uid to it.abandoned }).containsExactly(10_123, 3, 10_124, 0)
+        assertThat(rows.jobStats.first { it.uid == 10_123 }.jobs).isEqualTo(5)
+    }
 
     @Test
     fun thePhoneDumpBecomesRowsWithUniqueKeysAndNoZeros() {

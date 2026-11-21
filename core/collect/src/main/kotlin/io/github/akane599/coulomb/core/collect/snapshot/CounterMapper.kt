@@ -19,6 +19,7 @@ import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
 import io.github.akane599.coulomb.core.model.stats.ComponentPower
 import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.DeviceStats
+import io.github.akane599.coulomb.core.model.stats.JobStopCount
 import io.github.akane599.coulomb.core.model.stats.NamedTimer
 import io.github.akane599.coulomb.core.model.stats.SensorStat
 import io.github.akane599.coulomb.core.model.stats.SipperKind
@@ -179,7 +180,9 @@ internal object CounterMapper {
                 .groupBy { it.reason }
                 .maxByOrNull { (_, counts) -> counts.sumOf { it.count } }
                 ?.key
-        return JobStatEntity(0, uid.uid, count.toIntClamped(), runtime, abandoned = null, topStopReason = topReason)
+        // S5 lists every stop reason for every job, so no abandoned stop is a count of zero.
+        val abandoned = uid.jobStopReasons.filter { it.reason == JobStopCount.TIMEOUT_ABANDONED }.sumOf { it.count }
+        return JobStatEntity(0, uid.uid, count.toIntClamped(), runtime, abandoned.toIntClamped(), topStopReason = topReason)
     }
 
     private fun netRow(uid: UidStats): NetStatEntity? {

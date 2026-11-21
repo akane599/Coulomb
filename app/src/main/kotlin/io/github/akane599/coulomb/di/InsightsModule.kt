@@ -18,12 +18,14 @@ import io.github.akane599.coulomb.core.database.dao.SampleDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
 import io.github.akane599.coulomb.core.database.dao.WindowDao
+import io.github.akane599.coulomb.core.insights.AppStandby
 import io.github.akane599.coulomb.core.insights.InsightEngine
 import io.github.akane599.coulomb.core.insights.InsightPorts
 import io.github.akane599.coulomb.core.insights.InsightRunner
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.RuleContextLoader
 import io.github.akane599.coulomb.core.insights.Thresholds
+import io.github.akane599.coulomb.insights.AppStandbyReader
 import javax.inject.Singleton
 
 /** The insight engine's wiring (SPEC 9). `SurfaceObserver` runs it after each heavy snapshot (SPEC 7.5, step 6). */
@@ -48,9 +50,12 @@ object InsightsModule {
         @ApplicationContext context: Context,
         sessions: SessionDao,
         devices: DeviceDao,
+        standby: AppStandbyReader,
     ): InsightPorts =
         object : InsightPorts {
             private val pm = context.packageManager
+
+            override suspend fun standby(): List<AppStandby> = standby.read()
 
             override val ownUid = Process.myUid()
 
