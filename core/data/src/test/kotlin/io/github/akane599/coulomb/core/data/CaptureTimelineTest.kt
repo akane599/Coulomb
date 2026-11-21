@@ -67,6 +67,24 @@ class CaptureTimelineTest {
                 }
                 span("day", now - DAY_MS, now)
                 span("week", now - WEEK_MS, now)
+                // SPEC 10.5: which apps follow the day's most frequent wakeup reasons (WakeCorrelation).
+                val day = timelines.read(now - DAY_MS, now)
+                val stretches = day.tracks.getValue(TimelineTrack.AWAKE)
+                lines += "awake stretches=${stretches.size} with a reason=${stretches.count { it.tag != null }}"
+                stretches
+                    .mapNotNull { it.tag }
+                    .groupingBy { it }
+                    .eachCount()
+                    .entries
+                    .sortedByDescending { it.value }
+                    .take(SHOWN)
+                    .forEach { (reason, _) ->
+                        val by = FOLLOWS.map { WakeCorrelation.apps(day, reason, emptyMap(), it) }
+                        val apps = by.last()
+                        lines += "  reason ${reason.take(REASON_CHARS)}: wakes=${apps.wakes} known=${apps.knownMs / MINUTE_MS} min " +
+                            "unclaimed within ${FOLLOWS.map { it / SECOND_MS }} s=${by.map { it.unclaimed }} unnamed=${apps.unnamed} " +
+                            "apps=${apps.apps.size} top=${apps.apps.take(TOP).map { it.wakes }}"
+                    }
                 nights.take(SHOWN).forEach { night ->
                     lines += "night ${night.id}: ${night.durationMs / MINUTE_MS} min ${night.startLevel}->${night.endLevel} " +
                         "rate=${night.ratePctPerHour} charged=${night.charged} sleep=${night.deepSleepShare} " +
@@ -89,5 +107,9 @@ class CaptureTimelineTest {
         const val DAY_MS = 86_400_000L
         const val WEEK_MS = 7 * DAY_MS
         const val SHOWN = 6
+        const val REASON_CHARS = 40
+        const val TOP = 3
+        const val SECOND_MS = 1_000L
+        val FOLLOWS = listOf(1_000L, 5_000L, 10_000L, 60_000L, Long.MAX_VALUE / 2)
     }
 }

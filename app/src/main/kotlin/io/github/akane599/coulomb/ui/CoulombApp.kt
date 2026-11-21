@@ -67,6 +67,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.ProvideSharedVisibilit
 import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.feature.appdetail.AppDetailScreen
 import io.github.akane599.coulomb.feature.appdetail.appDetailTitle
 import io.github.akane599.coulomb.feature.appdetail.appDetailViewModel
@@ -74,6 +75,8 @@ import io.github.akane599.coulomb.feature.charging.ChargingScreen
 import io.github.akane599.coulomb.feature.charging.rememberPlugged
 import io.github.akane599.coulomb.feature.drain.CompareScreen
 import io.github.akane599.coulomb.feature.drain.DrainScreen
+import io.github.akane599.coulomb.feature.drain.WakeSourceScreen
+import io.github.akane599.coulomb.feature.drain.wakeSourceViewModel
 import io.github.akane599.coulomb.feature.health.ChargeSessionScreen
 import io.github.akane599.coulomb.feature.health.ChargeSessionsScreen
 import io.github.akane599.coulomb.feature.health.HealthScreen
@@ -234,6 +237,8 @@ class AppScreens(
     val chargeSession: @Composable (AppNavigator, id: Long) -> Unit,
     val privileges: @Composable () -> Unit,
     val settings: @Composable () -> Unit,
+    /** One kernel record or wakeup reason (SPEC 10.5), beside Drain's list; [kind] is a `WakeKind`'s name. */
+    val wakeSource: @Composable (AppNavigator, kind: String, tag: String) -> Unit = { _, _, _ -> },
 ) {
     companion object {
         val Default: AppScreens =
@@ -253,7 +258,14 @@ class AppScreens(
                         onOpenCompare = { navigator.open(Route.DrainCompare) },
                         // Shown only while the detail is beside the list; under it, Drain is not on screen.
                         selectedApp = navigator.openApp(Destination.Drain),
+                        onOpenWake = { kind, tag -> navigator.openDetail(Route.WakeSource(kind.name, tag)) },
                     )
+                },
+                wakeSource = { navigator, kind, tag ->
+                    // A route restored from an older build could name a kind that is gone: then nothing shows.
+                    WakeKind.entries.firstOrNull { it.name == kind }?.let {
+                        WakeSourceScreen(wakeSourceViewModel(it, tag), onOpenApp = { uid -> navigator.openDetail(Route.AppDetail(uid)) })
+                    }
                 },
                 compare = { navigator -> CompareScreen(onOpenApp = { navigator.openDetail(Route.AppDetail(it)) }) },
                 // One model per entry: both calls get the entry's instance for the UID.
@@ -328,6 +340,11 @@ private fun appEntries(
         }
         entry<Route.AppDetail>(metadata = ListDetailStrategy.detail) { key ->
             InnerScreen(screens.appDetailTitle(key.uid), navigator::back, pane = true) { screens.appDetail(navigator, key.uid) }
+        }
+        entry<Route.WakeSource>(metadata = ListDetailStrategy.detail) { key ->
+            InnerScreen(stringResource(DrainR.string.wake_title), navigator::back, pane = true) {
+                screens.wakeSource(navigator, key.kind, key.tag)
+            }
         }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { screens.timeline(navigator) } }
         entry<Route.NightReport>(metadata = ListDetailStrategy.list) {

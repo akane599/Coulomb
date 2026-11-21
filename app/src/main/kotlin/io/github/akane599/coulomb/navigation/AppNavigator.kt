@@ -107,7 +107,8 @@ class AppNavigator internal constructor(
     }
 
     /** A screen that shows beside its list on expanded widths. */
-    private fun NavKey?.isDetail(): Boolean = this is Route.AppDetail || this is Route.ChargeSession || this is Route.Night
+    private fun NavKey?.isDetail(): Boolean =
+        this is Route.AppDetail || this is Route.ChargeSession || this is Route.Night || this is Route.WakeSource
 
     private fun popToFirst(stack: NavBackStack<NavKey>) {
         while (stack.size > 1) stack.removeAt(stack.lastIndex)

@@ -32,6 +32,13 @@ sealed interface Route : NavKey {
         val uid: Int,
     ) : Route
 
+    /** One kernel record or wakeup reason of Drain's Wakeups lens (SPEC 10.5); [kind] is a `WakeKind`'s name. */
+    @Serializable
+    data class WakeSource(
+        val kind: String,
+        val tag: String,
+    ) : Route
+
     @Serializable
     data object Timeline : Route
 

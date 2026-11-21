@@ -80,9 +80,15 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   draw the widgets' `RemoteViews` at fixed sizes.
   - Not verified yet: cell sizes and looks on One UI 9's launcher and panel. Pending real device.
   - The wallpaper-colour option waits for the Theme setting (P6).
-- **Still to build in P5:** the Action Center, the wakeup source detail (SPEC 10.5), and three
-  collector additions: job stop reasons (R10), the
-  battery protection setting (R15), standby buckets and last launch (R16).
+- **The wakeup source detail (SPEC 10.5, ADR-0059).** A kernel record or a wakeup reason in Drain's
+  Wakeups lens opens its own page: the dictionary's line, the record in the window and in the
+  latest seven nights, and for a wakeup reason the apps that took the first wakelock within 10 s
+  of a wake, read from a day of history. Missing history reads "not collected", never zero. "What
+  you can do" is one sentence per part of the phone, and usually "nothing".
+  - Reviewed by an independent subagent; its seven findings are fixed (uncollected history shown
+    as zero, wakes whose beginning the history does not show, a first wakelock without a holder).
+- **Still to build in P5:** the Action Center, and three collector additions: job stop reasons
+  (R10), the battery protection setting (R15), standby buckets and last launch (R16).
 
 ## P4 Core screens (gate deferred: protocol C)
 

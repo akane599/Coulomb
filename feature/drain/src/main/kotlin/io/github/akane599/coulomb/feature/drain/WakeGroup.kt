@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.feature.drain
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -125,6 +127,7 @@ internal fun LazyListScope.wakeupItems(
     groups: List<WakeGroupView>,
     formats: Formats,
     lists: ListState,
+    openWake: ((WakeKind, String) -> Unit)? = null,
 ) {
     // S5 counts the wakeup alarms (UidKeys.ALARM_WAKEUPS).
     val alarmsCoverage = report.wakeCoverage.batteryStats
@@ -171,7 +174,7 @@ internal fun LazyListScope.wakeupItems(
             toggle = { lists.toggleGroup(view.group.ordinal) },
             formats = formats,
             rowKey = { "wake-${it.kind}-${it.uid}-${it.tag}" },
-        ) { entry, first -> WakeRow(entry, share(entry), first, formats) }
+        ) { entry, first -> WakeRow(entry, share(entry), first, formats, openWake) }
     }
     alarmItems(report, alarmsCoverage, formats, lists)
 }
@@ -396,6 +399,7 @@ private fun WakeRow(
     share: Double?,
     first: Boolean,
     formats: Formats,
+    openWake: ((WakeKind, String) -> Unit)?,
 ) {
     val resources = LocalResources.current
     val count = formats.integer(entry.count)
@@ -419,6 +423,8 @@ private fun WakeRow(
         share = share,
         first = first,
         rawName = !partial,
+        // A kernel record or a wakeup reason has its own page (SPEC 10.5); a wakelock is its app's.
+        onClick = if (partial || openWake == null) null else ({ openWake(entry.kind, entry.tag) }),
     )
 }
 
@@ -459,12 +465,14 @@ private fun RecordRow(
     share: Double?,
     first: Boolean,
     rawName: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     Column(
         Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .drawBehind {
                 val stroke = Hairline.toPx()
                 if (first) drawLine(colors.hairline, Offset(0f, stroke / 2), Offset(size.width, stroke / 2), stroke)

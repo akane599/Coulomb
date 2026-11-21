@@ -54,6 +54,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
+import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
@@ -69,6 +70,7 @@ import java.time.ZoneId
  * @param onOpenPrivileges opens Privileges, where a privilege issue is fixed.
  * @param onOpenCompare opens Compare two periods (ADR-0038).
  * @param selectedApp the UID open in the detail pane beside the list (SPEC 10.10), if any.
+ * @param onOpenWake opens the page of a kernel record or a wakeup reason (SPEC 10.5).
  */
 @Composable
 public fun DrainScreen(
@@ -77,12 +79,13 @@ public fun DrainScreen(
     onOpenCompare: () -> Unit,
     modifier: Modifier = Modifier,
     selectedApp: Int? = null,
+    onOpenWake: ((kind: WakeKind, tag: String) -> Unit)? = null,
     viewModel: DrainViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val actions =
-        remember(viewModel, onOpenApp, onOpenPrivileges, onOpenCompare, selectedApp) {
+        remember(viewModel, onOpenApp, onOpenPrivileges, onOpenCompare, selectedApp, onOpenWake) {
             DrainActions(
                 choose = viewModel::choose,
                 refresh = viewModel::refresh,
@@ -95,6 +98,7 @@ public fun DrainScreen(
                 icon = viewModel::icon,
                 peekIcon = viewModel::peekIcon,
                 selectedApp = selectedApp,
+                openWake = onOpenWake,
             )
         }
     DrainContent(state = state, actions = actions, modifier = modifier, refreshing = refreshing)
@@ -113,6 +117,8 @@ internal class DrainActions(
     val openCompare: () -> Unit,
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
     val peekIcon: (packageName: String, sizePx: Int) -> ImageBitmap? = { _, _ -> null },
+    /** Opens the page of a kernel record or a wakeup reason (SPEC 10.5); null while there is none to open. */
+    val openWake: ((WakeKind, String) -> Unit)? = null,
     /** The UID open in the detail pane beside the list, shown selected. */
     val selectedApp: Int? = null,
 )
@@ -376,7 +382,7 @@ private fun LazyListScope.lensItems(
         }
 
         Lens.WAKEUPS -> {
-            wakeupItems(report, views.wakes, formats, lists)
+            wakeupItems(report, views.wakes, formats, lists, actions.openWake)
         }
     }
 }

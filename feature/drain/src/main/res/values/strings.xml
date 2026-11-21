@@ -241,4 +241,66 @@
     <string name="drain_compare_basis_screen_off">Counted only on battery with the screen off: %1$s, then %2$s</string>
     <string name="drain_compare_basis_on_battery">Counted on battery: %1$s, then %2$s</string>
     <string name="drain_compare_basis_whole">Counted over the whole period: %1$s, then %2$s</string>
+    <!-- The wakeup source detail (SPEC 10.5). -->
+    <string name="wake_kind_partial">Wakelock</string>
+    <string name="wake_kind_kernel">Kernel wakelock</string>
+    <string name="wake_kind_source">Wakeup source</string>
+    <string name="wake_kind_reason">Wakeup reason</string>
+    <string name="wake_kind_resume">Resume cause</string>
+    <string name="wake_kind_abort">Abandoned sleep</string>
+    <string name="wake_subsystem">Part of the phone: %1$s</string>
+    <string name="wake_no_meaning">Coulomb has no description for this name. It is the driver’s own, and no source Coulomb trusts explains it.</string>
+    <string name="wake_no_window">This window has no records to read. Choose another window in Drain.</string>
+    <string name="wake_in_window">In this window</string>
+    <string name="wake_held">Held</string>
+    <string name="wake_count">Times</string>
+    <string name="wake_woke">Woke the phone</string>
+    <string name="wake_none_in_window">Not seen in this window.</string>
+    <string name="wake_not_collected">Not collected in this window, so Coulomb can’t say whether it ran.</string>
+    <string name="wake_partial">Collected for part of this window: the figures are lower bounds.</string>
+    <string name="wake_nights">Night by night</string>
+    <string name="wake_night_length">%1$s with the screen off</string>
+    <string name="wake_night_none">None</string>
+    <string name="wake_night_not_collected">Not collected</string>
+    <string name="wake_apps">Apps that followed</string>
+    <string name="wake_apps_no_history">Android’s history does not record when this was held, so no app can be tied to it.</string>
+    <string name="wake_apps_none">In the %1$s of history up to %2$s, no stretch awake begins with this reason, so no app can be tied to it.</string>
+    <string name="wake_apps_not_collected">Coulomb holds no history for the 24 hours up to %1$s, so it can’t say which apps followed.</string>
+    <plurals name="wake_apps_intro">
+        <item quantity="one">In the %2$s of history up to %3$s, the phone woke for this reason %1$s time. Each app below took the first wakelock within %4$s seconds of a wake: it came next, which does not prove it caused the wake.</item>
+        <item quantity="other">In the %2$s of history up to %3$s, the phone woke for this reason %1$s times. Each app below took the first wakelock within %4$s seconds of a wake: it came next, which does not prove it caused the wake.</item>
+    </plurals>
+    <plurals name="wake_apps_unclaimed">
+        <item quantity="one">After %1$s wake nothing took a wakelock in that time.</item>
+        <item quantity="other">After %1$s wakes nothing took a wakelock in that time.</item>
+    </plurals>
+    <plurals name="wake_apps_unnamed">
+        <item quantity="one">After %1$s the history does not name who took it.</item>
+        <item quantity="other">After %1$s the history does not name who took it.</item>
+    </plurals>
+    <plurals name="wake_app_wakes">
+        <item quantity="one">%1$s wake</item>
+        <item quantity="other">%1$s wakes</item>
+    </plurals>
+    <plurals name="wake_apps_more">
+        <item quantity="one">And %1$s more app.</item>
+        <item quantity="other">And %1$s more apps.</item>
+    </plurals>
+    <string name="wake_do">What you can do</string>
+    <string name="wake_do_mobile">Mobile data and network signalling wake the modem. Apps that sync or receive pushes in the background are the usual cause, and a weak signal makes each wake longer. If an app above stands out, restricting its background data is the lever.</string>
+    <string name="wake_do_wifi">Wi-Fi traffic wakes the phone: pushes, sync, and other devices on the network talking to it. If an app above stands out, look at its sync settings. Traffic from the network itself is not yours to stop.</string>
+    <string name="wake_do_bluetooth">A connected watch, earbuds or tracker keeps this busy. Disconnecting a device you don’t use is the only lever.</string>
+    <string name="wake_do_gps">An app is asking for location. Setting its location permission to “only while using the app” stops requests in the background.</string>
+    <string name="wake_do_nfc">Nothing, short of turning NFC off.</string>
+    <string name="wake_do_input">Nothing. This is the phone answering a touch or a key.</string>
+    <string name="wake_do_fingerprint">Nothing. The sensor listens for a finger, and counts rise when it is touched in a pocket.</string>
+    <string name="wake_do_sensors">A sensor is waking the phone: lift to wake, pocket detection, step counting. Turning off lift to wake or tap to wake lowers it.</string>
+    <string name="wake_do_battery">Nothing. The charger and the fuel gauge report in.</string>
+    <string name="wake_do_audio">Nothing while something plays. If it runs with nothing playing, an app is keeping audio open: check the wakelocks in Drain.</string>
+    <string name="wake_do_camera">Nothing while the camera is in use.</string>
+    <string name="wake_do_timers">Timers set by apps and by Android. The Alarms group in Drain shows which apps wake the phone most.</string>
+    <string name="wake_do_android">Nothing here. This is Android’s own bookkeeping; the apps behind it are under Partial wakelocks in Drain.</string>
+    <string name="wake_do_other">Nothing that Coulomb knows of. This is a driver’s own record, and no setting is known to change it.</string>
+    <string name="wake_do_abort">Usually nothing. The phone tried to sleep while something was still busy, and the name says what. A high count next to one app above points at that app.</string>
+    <string name="wake_title">Wakeup source</string>
 </resources>
