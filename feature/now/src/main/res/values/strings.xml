@@ -65,4 +65,8 @@
     <string name="now_error_title">Coulomb couldn’t read its battery records</string>
     <string name="now_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
     <string name="now_error_action">Try again</string>
+    <string name="now_screen_context">Screen now: %1$s.</string>
+    <string name="now_screen_hz">%1$s Hz</string>
+    <string name="now_screen_auto_brightness">automatic brightness</string>
+    <string name="now_screen_manual_brightness">brightness set by hand</string>
 </resources>

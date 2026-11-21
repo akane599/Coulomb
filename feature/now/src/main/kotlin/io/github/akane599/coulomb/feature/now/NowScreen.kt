@@ -99,6 +99,7 @@ public fun NowScreen(
                 insightAction = onInsightAction,
             ),
         modifier = modifier,
+        screen = rememberScreenContext(),
     )
 }
 
@@ -134,6 +135,7 @@ internal fun NowContent(
     actions: NowActions,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
+    screen: ScreenContext? = null,
 ) {
     val formats = rememberFormats()
     var table by rememberSaveable { mutableStateOf<OpenTable?>(null) }
@@ -170,7 +172,10 @@ internal fun NowContent(
                     FadeInOnce {
                         Column(Modifier.testTag(NOW_VERDICT_TAG)) {
                             Hero(state, formats, zone, onViewTable = { table = OpenTable.LEVEL })
-                            if (state.discharge != null) SessionStrip(state.discharge, formats)
+                            if (state.discharge != null) {
+                                SessionStrip(state.discharge, formats)
+                                screen?.let { ScreenContextNote(it, formats) }
+                            }
                             TopDrains(state, formats, zone, actions)
                             val more = state.moreInsights
                             Insights(

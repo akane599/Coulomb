@@ -203,6 +203,7 @@ class NowScreenshotTest {
         fontScale: Float = 1f,
         black: Boolean = false,
         rtl: Boolean = false,
+        screen: ScreenContext? = ScreenContext(refreshHz = 120, autoBrightness = true),
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
         val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -212,7 +213,7 @@ class NowScreenshotTest {
             ) {
                 CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
-                        NowContent(state = state, refreshing = false, actions = NoActions, zone = ZoneOffset.UTC)
+                        NowContent(state = state, refreshing = false, actions = NoActions, zone = ZoneOffset.UTC, screen = screen)
                     }
                 }
             }

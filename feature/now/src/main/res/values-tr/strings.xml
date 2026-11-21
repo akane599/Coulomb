@@ -63,4 +63,8 @@
     <string name="now_error_title">Coulomb pil kayıtlarını okuyamadı</string>
     <string name="now_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
     <string name="now_error_action">Yeniden dene</string>
+    <string name="now_screen_context">Ekran şu an: %1$s.</string>
+    <string name="now_screen_hz">%1$s Hz</string>
+    <string name="now_screen_auto_brightness">otomatik parlaklık</string>
+    <string name="now_screen_manual_brightness">elle ayarlı parlaklık</string>
 </resources>
