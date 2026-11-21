@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.database.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -50,6 +51,13 @@ public interface InsightDao {
 
     @Update
     public suspend fun updateAction(action: ActionLogEntity)
+
+    /** Removes a row whose command changed nothing (ADR-0060 §21). */
+    @Delete
+    public suspend fun deleteAction(action: ActionLogEntity)
+
+    @Query("SELECT * FROM action_log WHERE id = :id")
+    public suspend fun action(id: Long): ActionLogEntity?
 
     /** Every action, newest first: the order they ran in, whatever the clock said. */
     @Query("SELECT * FROM action_log ORDER BY id DESC")

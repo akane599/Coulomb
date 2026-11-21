@@ -28,4 +28,6 @@ message Settings {
   bool insights_digest_off = 8;
   // The digest's minute of the day plus one; 0 is the default 09:00.
   int32 insights_digest_minute_plus_one = 9;
+  // "Action Center" (SPEC 14.4): Off.
+  bool action_center = 10;
 }

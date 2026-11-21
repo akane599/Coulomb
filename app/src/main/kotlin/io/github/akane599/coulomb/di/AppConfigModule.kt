@@ -11,6 +11,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.akane599.coulomb.BuildConfig
+import io.github.akane599.coulomb.core.collect.actions.ActionGate
 import io.github.akane599.coulomb.core.collect.engine.CollectorSettings
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.parsing.batterystats.UsageStatsProtoParser
@@ -37,6 +38,10 @@ object AppConfigModule {
     // ADR-0035 §2: the collector reads "Component breakdown" at each heavy snapshot.
     @Provides
     fun collectorSettings(store: SettingsStore): CollectorSettings = CollectorSettings { store.settings.first().componentBreakdown }
+
+    /** SPEC 13: the engine asks this before every action, so nothing can act while the Action Center is off. */
+    @Provides
+    fun actionGate(store: SettingsStore): ActionGate = ActionGate { store.settings.first().actionCenter }
 
     /** S4's parser for the capability probe (ADR-0035). */
     @Provides

@@ -31,6 +31,8 @@ public data class UserSettings(
     val insightsDigest: Boolean = true,
     /** The minute of the local day from which the digest may post: 09:00. */
     val insightsDigestMinute: Int = DEFAULT_DIGEST_MINUTE,
+    /** "Action Center" (SPEC 13, 14.4): Off. Nothing on the phone is changed while it is off. */
+    val actionCenter: Boolean = false,
 ) {
     public companion object {
         public const val DEFAULT_CHARGE_TARGET: Int = 80
@@ -76,6 +78,7 @@ public class SettingsStore
                         insightsDigestMinute =
                             (it.insights_digest_minute_plus_one - 1).takeIf { minute -> minute in 0 until UserSettings.MINUTES_PER_DAY }
                                 ?: UserSettings.DEFAULT_DIGEST_MINUTE,
+                        actionCenter = it.action_center,
                     )
                 }.distinctUntilChanged()
 
@@ -104,6 +107,10 @@ public class SettingsStore
         public suspend fun temperatureAlarm(deciC: Int?) {
             val stored = deciC?.coerceIn(UserSettings.TEMPERATURE_ALARMS) ?: ALARM_OFF
             store.updateData { it.copy(temperature_alarm_deci_c = stored) }
+        }
+
+        public suspend fun actionCenter(on: Boolean) {
+            store.updateData { it.copy(action_center = on) }
         }
 
         public suspend fun insightsDigest(on: Boolean) {
