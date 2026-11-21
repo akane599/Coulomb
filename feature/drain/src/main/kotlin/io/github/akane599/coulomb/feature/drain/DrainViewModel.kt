@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.akane599.coulomb.core.collect.Collector
+import io.github.akane599.coulomb.core.collect.LiveReads
 import io.github.akane599.coulomb.core.data.AppIcons
 import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
@@ -17,6 +18,7 @@ import io.github.akane599.coulomb.core.data.NamedReference
 import io.github.akane599.coulomb.core.data.References
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
+import io.github.akane599.coulomb.core.model.dumpsys.PowerDump
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +55,7 @@ public class DrainViewModel
         access: PrivilegedAccess,
         private val collector: Collector,
         private val namedReferences: References,
+        private val live: LiveReads,
     ) : ViewModel() {
         private val attempt = MutableStateFlow(0)
         private val refreshing = MutableStateFlow(false)
@@ -93,6 +96,9 @@ public class DrainViewModel
                 namedReferences.mark(name, System.currentTimeMillis())
             }
         }
+
+        /** S12 on demand (ADR-0068): the wakelocks held now. */
+        internal suspend fun readPower(): PowerDump? = live.power()
 
         internal fun deleteReferences(ids: List<Long>) {
             viewModelScope.launch { ids.forEach { namedReferences.delete(it) } }

@@ -56,6 +56,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.dumpsys.PowerDump
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
@@ -102,6 +103,7 @@ public fun DrainScreen(
                 selectedApp = selectedApp,
                 openWake = onOpenWake,
                 markReference = viewModel::markReference,
+                readPower = viewModel::readPower,
                 deleteReferences = viewModel::deleteReferences,
             )
         }
@@ -125,10 +127,34 @@ internal class DrainActions(
     val openWake: ((WakeKind, String) -> Unit)? = null,
     /** The UID open in the detail pane beside the list, shown selected. */
     val selectedApp: Int? = null,
+    /** Reads S12 for the wakelocks held now; null where there is nothing to read with. */
+    val readPower: (suspend () -> PowerDump?)? = null,
+    val openHeld: () -> Unit = {},
     /** Marks this moment as a named reference (SPEC 7.6). */
     val markReference: (String) -> Unit = {},
     val deleteReferences: (List<Long>) -> Unit = {},
 )
+
+/** These actions with Held now opening the sheet. */
+private fun DrainActions.withHeld(open: () -> Unit): DrainActions =
+    DrainActions(
+        choose = choose,
+        refresh = refresh,
+        includeSystem = includeSystem,
+        scale = scale,
+        retry = retry,
+        openApp = openApp,
+        openPrivileges = openPrivileges,
+        openCompare = openCompare,
+        icon = icon,
+        peekIcon = peekIcon,
+        openWake = openWake,
+        selectedApp = selectedApp,
+        readPower = readPower,
+        openHeld = open,
+        markReference = markReference,
+        deleteReferences = deleteReferences,
+    )
 
 /** The three views of the same window (SPEC 10.3). */
 internal enum class Lens { APPS, COMPONENTS, WAKEUPS }
@@ -197,6 +223,7 @@ internal fun DrainContent(
     val gutter = currentGutter()
     var sheet by rememberSaveable { mutableStateOf(false) }
     var referencesOpen by rememberSaveable { mutableStateOf(false) }
+    var heldOpen by rememberSaveable { mutableStateOf(false) }
     when (state) {
         DrainUiState.Loading -> {
             BoxWithConstraints(modifier.fillMaxSize()) {
@@ -222,7 +249,7 @@ internal fun DrainContent(
             FadeInOnce(modifier.fillMaxSize()) {
                 // As on Now: a pull asks for a heavy snapshot, and the report follows (SPEC 7.2).
                 PullToRefreshBox(isRefreshing = refreshing, onRefresh = actions.refresh, modifier = Modifier.fillMaxSize()) {
-                    ReadyContent(state, actions, zone, today, initialLens, onMore = { sheet = true })
+                    ReadyContent(state, actions.withHeld { heldOpen = true }, zone, today, initialLens, onMore = { sheet = true })
                 }
             }
         }
@@ -236,6 +263,24 @@ internal fun DrainContent(
             onCompare = actions.openCompare,
             onReferences = { referencesOpen = true },
             onDismiss = { sheet = false },
+        )
+    }
+    val readPower = actions.readPower
+    if (heldOpen && ready != null && readPower != null) {
+        val formats = rememberFormats()
+        HeldNowSheet(
+            read = readPower,
+            name = { uid ->
+                formats.appName(
+                    ready.report
+                        ?.drains
+                        ?.apps
+                        ?.firstOrNull { it.uid == uid }
+                        ?.label,
+                    uid,
+                )
+            },
+            onDismiss = { heldOpen = false },
         )
     }
     if (referencesOpen && ready != null) {
@@ -404,6 +449,7 @@ private fun LazyListScope.lensItems(
         }
 
         Lens.WAKEUPS -> {
+            if (actions.readPower != null) heldNowItem(actions.openHeld)
             wakeupItems(report, views.wakes, formats, lists, actions.openWake)
         }
     }

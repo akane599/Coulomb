@@ -6,7 +6,10 @@ package io.github.akane599.coulomb.feature.drain
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
@@ -23,6 +26,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import androidx.compose.ui.test.then
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
@@ -36,6 +40,7 @@ import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.WakeKind
 import io.github.akane599.coulomb.core.model.kernel.KernelCoverage.Coverage
+import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -227,6 +232,14 @@ class DrainScreenshotTest {
         captureScreenRoboImage("src/test/screenshots/drain-sheet.png")
     }
 
+    /** The wakelocks held now (S12, on demand), as the sheet shows them once read. */
+    @Test
+    fun heldNow() =
+        shootContent("held-now") {
+            val names = mapOf(10_123 to "Halcyon", 10_515 to "Northwind Mail")
+            HeldBody(HeldState.Read(HeldNow.of(labPower())), { uid -> names[uid] ?: "Android System" }, rememberFormats())
+        }
+
     /** Named references (SPEC 7.6), with two chosen: a span between them. */
     @OptIn(ExperimentalRoborazziApi::class)
     @Test
@@ -387,6 +400,19 @@ class DrainScreenshotTest {
 
     @Test
     fun componentsBreakdownOff() = shoot("components-off", ready(report().copy(breakdownOff = true)), lens = Lens.COMPONENTS)
+
+    /** A part of a sheet on the page's own background, padded as the sheet pads it. */
+    private fun shootContent(
+        name: String,
+        content: @Composable () -> Unit,
+    ) {
+        compose.setContent {
+            CoulombTheme {
+                Column(Modifier.fillMaxSize().background(CoulombTheme.colors.surfaceRaised).padding(horizontal = 16.dp)) { content() }
+            }
+        }
+        compose.onRoot().captureRoboImage("src/test/screenshots/drain-$name.png")
+    }
 
     @Suppress("LongParameterList") // Test variants.
     private fun shoot(
