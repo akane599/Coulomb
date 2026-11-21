@@ -62,7 +62,9 @@ class CaptureInsightsTest {
                         ctx.dischargeWindows.map { "window $it" } +
                         ctx.chargeSessions.map { "charge ${it.copy(samples = it.samples.take(1))} samples=${it.samples.size}" } +
                         found.map {
-                            "FOUND ${it.rule.code} ${it.severity} ${it.subject?.key} window=${it.windowId} ${it.evidence.toJson()}"
+                            "FOUND ${it.rule.code} ${it.severity} ${it.subject?.key} window=${it.windowId} ${EvidenceJson.encode(
+                                it.evidence,
+                            )}"
                         }
                 checkNotNull(out).writeText(lines.joinToString("\n", postfix = "\n"))
             } finally {

@@ -4,6 +4,8 @@
 package io.github.akane599.coulomb.core.insights
 
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
 import org.junit.Test
 
 /**

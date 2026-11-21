@@ -3,6 +3,9 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
+
 /**
  * The rules about screen-off sessions (SPEC 9.2). Each is about the device, not about one session:
  * it judges the latest session that qualifies, so one card follows the latest night rather than a

@@ -11,6 +11,9 @@ import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.entity.InsightEntity
 import io.github.akane599.coulomb.core.model.InsightSeverity
 import io.github.akane599.coulomb.core.model.InsightState
+import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After

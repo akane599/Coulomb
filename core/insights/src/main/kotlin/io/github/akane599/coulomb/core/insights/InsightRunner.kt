@@ -3,6 +3,8 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.model.insight.Insight
+
 /**
  * One pass of the insight engine (SPEC 7.5, step 6): load what the rules read, run them, and store
  * what they found. It reads stored data only and wakes nothing.

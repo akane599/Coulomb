@@ -8,6 +8,9 @@ import io.github.akane599.coulomb.core.insights.ActionId.OPEN_APP_DETAIL
 import io.github.akane599.coulomb.core.insights.ActionId.OPEN_LOCATION_PERMISSION
 import io.github.akane599.coulomb.core.insights.ActionId.RESTRICT_BACKGROUND
 import io.github.akane599.coulomb.core.insights.ActionId.STANDBY_BUCKET
+import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
 
 /** The rules about one app or one wakelock tag (SPEC 9.2). */
 internal object AppRules {

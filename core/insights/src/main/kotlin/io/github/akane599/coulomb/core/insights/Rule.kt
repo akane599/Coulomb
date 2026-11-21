@@ -3,6 +3,10 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
+
 /** What an insight's card can offer (SPEC 9.2 "Action offered"): an Action Center action or a place to open. */
 public enum class ActionId {
     RESTRICT_BACKGROUND,

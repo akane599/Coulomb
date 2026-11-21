@@ -7,22 +7,10 @@ import io.github.akane599.coulomb.core.database.dao.InsightDao
 import io.github.akane599.coulomb.core.database.entity.InsightEntity
 import io.github.akane599.coulomb.core.model.InsightSeverity
 import io.github.akane599.coulomb.core.model.InsightState
+import io.github.akane599.coulomb.core.model.insight.Insight
+import io.github.akane599.coulomb.core.model.insight.RuleId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
-/** A stored insight as the screens read it (SPEC 9.4). */
-public data class Insight(
-    val id: Long,
-    val rule: RuleId,
-    val severity: InsightSeverity,
-    val state: InsightState,
-    val subjectKey: String?,
-    /** The app the insight is about or points at. */
-    val uid: Int?,
-    val windowId: Long?,
-    val evidence: Evidence,
-    val createdWallMs: Long,
-)
 
 /**
  * The stored insights: what the rules found, through the lifecycle (SPEC 9.1, 9.4), and what the
@@ -107,7 +95,7 @@ public class InsightStore(
         severity = candidate.severity,
         subjectKey = candidate.subject?.key,
         subjectUid = candidate.subject?.uid ?: candidate.relatedUid,
-        evidenceJson = candidate.evidence.toJson(),
+        evidenceJson = EvidenceJson.encode(candidate.evidence),
         state = InsightState.NEW,
         createdWall = nowWallMs,
         stateChangedWall = nowWallMs,
@@ -119,13 +107,13 @@ public class InsightStore(
             windowId = candidate.windowId,
             severity = maxOf(severity, candidate.severity),
             subjectUid = candidate.subject?.uid ?: candidate.relatedUid,
-            evidenceJson = candidate.evidence.toJson(),
+            evidenceJson = EvidenceJson.encode(candidate.evidence),
         )
 
     /** Null for a rule this version does not know or evidence it cannot read: such a row is not shown. */
     private fun read(row: InsightEntity): Insight? {
         val rule = RuleId.of(row.ruleId) ?: return null
-        val evidence = Evidence.fromJson(row.evidenceJson) ?: return null
+        val evidence = EvidenceJson.decode(row.evidenceJson) ?: return null
         return Insight(row.id, rule, row.severity, row.state, row.subjectKey, row.subjectUid, row.windowId, evidence, row.createdWall)
     }
 

@@ -3,6 +3,9 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
+
 /** The rules about temperature, charging and capacity (SPEC 9.2). */
 internal object BatteryRules {
     private const val MINUTES_PER_HOUR = 60.0

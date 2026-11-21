@@ -4,6 +4,9 @@
 package io.github.akane599.coulomb.core.insights
 
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
 import org.junit.Test
 
 class EvidenceTest {
@@ -20,19 +23,19 @@ class EvidenceTest {
                 labels = mapOf("tag" to "*job*/com.example/.Sync \"quoted\" \\ ü"),
                 sessionId = 9_007_199_254_740_993,
             )
-        assertThat(Evidence.fromJson(evidence.toJson())).isEqualTo(evidence)
+        assertThat(EvidenceJson.decode(EvidenceJson.encode(evidence))).isEqualTo(evidence)
         val plain = evidence.copy(values = emptyMap(), labels = emptyMap(), sessionId = null)
-        assertThat(plain.toJson()).doesNotContain("values")
-        assertThat(plain.toJson()).doesNotContain("session")
-        assertThat(Evidence.fromJson(plain.toJson())).isEqualTo(plain)
+        assertThat(EvidenceJson.encode(plain)).doesNotContain("values")
+        assertThat(EvidenceJson.encode(plain)).doesNotContain("session")
+        assertThat(EvidenceJson.decode(EvidenceJson.encode(plain))).isEqualTo(plain)
     }
 
     @Test
     fun unknownFieldsAreIgnoredAndBrokenTextReadsAsNothing() {
         val json = """{"measured":1,"threshold":2.5,"unit":"COUNT","from":10,"to":20,"later":{"a":[1]},"values":{"n":3,"bad":"x"}}"""
-        assertThat(Evidence.fromJson(json)).isEqualTo(Evidence(1.0, 2.5, EvidenceUnit.COUNT, 10, 20, mapOf("n" to 3.0)))
+        assertThat(EvidenceJson.decode(json)).isEqualTo(Evidence(1.0, 2.5, EvidenceUnit.COUNT, 10, 20, mapOf("n" to 3.0)))
         for (broken in listOf("", "{}", "[1]", "not json", """{"measured":1,"threshold":2,"unit":"FURLONGS","from":1,"to":2}""")) {
-            assertThat(Evidence.fromJson(broken)).isNull()
+            assertThat(EvidenceJson.decode(broken)).isNull()
         }
     }
 

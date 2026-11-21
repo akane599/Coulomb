@@ -3,6 +3,9 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
+import io.github.akane599.coulomb.core.model.insight.RuleId
+
 /** The rules about the device as a whole (SPEC 9.2). */
 internal object DeviceRules {
     private const val LOW_BINS = 2
