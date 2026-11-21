@@ -54,7 +54,7 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   "Why am I seeing this?", snooze and dismiss; App detail shows the app's Act insight the same way.
 - **Drain Story (SPEC 9.3).** `DrainStory` picks what a story names (verdict, up to three causes,
   the anomaly, deep sleep) and `StoryCopy` says it in Turkish and English. App detail and the night
-  page use it; Now still shows its P4 verdict sentence.
+  page use it, and Now's verdict is its one-line form (`StoryCopy.line`).
 - **Night Report (SPEC 10.7, ADR-0056).** `:feature:timeline` lists the screen-off stretches of an
   hour or more with rate, deep sleep and deep Doze, and shows one night: its story, a compact
   timeline and the ranked culprits, with a link to the same window in Drain. On the phone's data the
@@ -67,8 +67,8 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   and "View as table". A day of the phone's history reads in about 0.1 s on the build server.
   - Not measured yet: 60 fps while panning on the S25 Ultra (SPEC 10.6). Pending real device.
 - **Still to build in P5:** the daily digest and the other notifications, the Charging Live Update,
-  widgets and the Quick Settings tile, the Action Center, the wakeup source detail (SPEC 10.5), the
-  Drain Story on Now, and three collector additions: job stop reasons (R10), the battery protection
+  widgets and the Quick Settings tile, the Action Center, the wakeup source detail (SPEC 10.5),
+  and three collector additions: job stop reasons (R10), the battery protection
   setting (R15), standby buckets and last launch (R16).
 
 ## P4 Core screens (gate deferred: protocol C)

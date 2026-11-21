@@ -13,9 +13,6 @@
     <string name="now_state_not_charging">Şarj olmuyor</string>
     <string name="now_state_with_current">%1$s\u00A0· %2$s</string>
 
-    <string name="now_verdict_with_app">Şarjdan çıkalı %1$s oldu ve pil %2$s azaldı; bunun %4$s kadarını %3$s kullandı.</string>
-    <string name="now_verdict">Şarjdan çıkalı %1$s oldu ve pil %2$s azaldı.</string>
-    <string name="now_verdict_flat">Şarjdan çıkalı %1$s oldu; seviye henüz değişmedi.</string>
 
     <string name="now_strip_heading">Bu oturum</string>
     <string name="now_screen_on">Ekran açık</string>

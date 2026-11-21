@@ -15,9 +15,6 @@
     <string name="now_state_not_charging">Not charging</string>
     <string name="now_state_with_current">%1$s\u00A0· %2$s</string>
 
-    <string name="now_verdict_with_app">Since unplugged %1$s ago, the battery fell %2$s; %3$s used %4$s of it.</string>
-    <string name="now_verdict">Since unplugged %1$s ago, the battery fell %2$s.</string>
-    <string name="now_verdict_flat">Unplugged %1$s ago; the level hasn’t changed yet.</string>
 
     <string name="now_strip_heading">This session</string>
     <string name="now_screen_on">Screen on</string>

@@ -38,6 +38,8 @@ class StoryCopyTest {
     /** The sentences as plain text: no-break spaces as spaces, word joiners removed. */
     private fun StoryCopy.plain(story: Story): List<String> = sentences(story).map { it.text.replace('\u00A0', ' ').replace("\u2060", "") }
 
+    private fun StoryCopy.plainLine(story: Story): String = line(story).text.replace('\u00A0', ' ').replace("\u2060", "")
+
     private val night = StorySpan(now - 432 * minute, now, 432 * minute, levelDropPct = 6, ratePctPerHour = 0.8)
 
     /** SPEC 9.3's example: a night, half of whose drain came from one app's 41 wakeups. */
@@ -160,6 +162,13 @@ class StoryCopyTest {
         ).containsExactly("Unplugged 5 h 12 min ago; the level hasn’t changed yet.")
         assertThat(copy.plain(example.copy(span = night.copy(ratePctPerHour = null), causes = emptyList(), deepSleepShare = null)))
             .containsExactly("Your screen was off for 7 h 12 min overnight and the battery fell 6%.")
+        // One line for Now and the widgets: the verdict, with the largest app when one is a cause.
+        val causes = listOf(StoryCause.Device(0.4), StoryCause.App(10_200, "Halcyon", 0.38, wakeups = null, heldAwakeMs = null))
+        assertThat(copy.plainLine(since.copy(causes = causes)))
+            .isEqualTo("Since unplugged 5 h 12 min ago, the battery fell 26%; Halcyon used 38% of it.")
+        assertThat(copy.plainLine(since.copy(causes = causes.take(1)))).isEqualTo("Since unplugged 5 h 12 min ago, the battery fell 26%.")
+        assertThat(copy.plainLine(since.copy(span = since.span.copy(levelDropPct = 0), causes = causes)))
+            .isEqualTo("Unplugged 5 h 12 min ago; the level hasn’t changed yet.")
         val app =
             Story(
                 subject = StorySubject.App(10_200, "Halcyon"),

@@ -5,6 +5,7 @@
     <!-- SPEC 9.3 Drain Story: a verdict, up to three causes, at most one anomaly. No sentence passes 22 words. -->
     <string name="story_full_stop">.</string>
     <string name="story_unplugged">Since unplugged %1$s ago, the battery fell %2$s.</string>
+    <string name="story_unplugged_with_app">Since unplugged %1$s ago, the battery fell %2$s; %3$s used %4$s of it.</string>
     <string name="story_unplugged_flat">Unplugged %1$s ago; the level hasn’t changed yet.</string>
     <string name="story_night">Your screen was off for %1$s overnight and the battery fell %2$s (%3$s).</string>
     <string name="story_night_no_rate">Your screen was off for %1$s overnight and the battery fell %2$s.</string>

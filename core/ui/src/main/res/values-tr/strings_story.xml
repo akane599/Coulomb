@@ -4,6 +4,7 @@
 <resources>
     <string name="story_full_stop">.</string>
     <string name="story_unplugged">Şarjdan çıkalı %1$s oldu ve pil %2$s azaldı.</string>
+    <string name="story_unplugged_with_app">Şarjdan çıkalı %1$s oldu ve pil %2$s azaldı; bunun %4$s kadarını %3$s kullandı.</string>
     <string name="story_unplugged_flat">Şarjdan çıkalı %1$s oldu; seviye henüz değişmedi.</string>
     <string name="story_night">Gece ekran %1$s kapalıydı ve pil %2$s azaldı (%3$s).</string>
     <string name="story_night_no_rate">Gece ekran %1$s kapalıydı ve pil %2$s azaldı.</string>

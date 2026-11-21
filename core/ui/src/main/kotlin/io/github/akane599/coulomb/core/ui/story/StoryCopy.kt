@@ -66,6 +66,25 @@ public class StoryCopy(
         return listOf(verdict(story)) + causes + listOfNotNull(sleep, anomaly)
     }
 
+    /**
+     * The story in one sentence, for Now and the surfaces outside the app (SPEC 10.2, 12): the
+     * verdict, and for "since unplugged" the app that used most of the drain when one is a cause.
+     */
+    public fun line(story: Story): StorySentence {
+        val top = story.causes.filterIsInstance<StoryCause.App>().firstOrNull()
+        val drop = story.span.levelDropPct?.takeIf { it > 0 }
+        if (story.subject != StorySubject.SinceUnplugged || top == null || drop == null) return verdict(story)
+        val sentence =
+            text(
+                R.string.story_unplugged_with_app,
+                formats.hours(story.span.durationMs / MS_PER_HOUR),
+                formats.percent(drop),
+                formats.appName(top.label, top.uid),
+                formats.share(top.share),
+            )
+        return StorySentence(sentence, StoryLink.App(top.uid))
+    }
+
     /** The story's first sentence: what the battery did over the stretch. */
     public fun verdict(story: Story): StorySentence {
         val span = story.span

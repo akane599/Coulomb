@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -56,9 +57,14 @@ import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
+import io.github.akane599.coulomb.core.insights.Contributor
+import io.github.akane599.coulomb.core.insights.DrainStory
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.insights.StoryInput
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.story.StorySpan
+import io.github.akane599.coulomb.core.model.story.StorySubject
 import io.github.akane599.coulomb.core.ui.AppDrainRow
 import io.github.akane599.coulomb.core.ui.FigureText
 import io.github.akane599.coulomb.core.ui.IconStandIn
@@ -73,6 +79,7 @@ import io.github.akane599.coulomb.core.ui.insight.InsightCardActions
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
+import io.github.akane599.coulomb.core.ui.story.StoryCopy
 import java.time.ZoneId
 import kotlin.math.roundToInt
 import io.github.akane599.coulomb.core.ui.R as UiR
@@ -307,33 +314,47 @@ private fun Scale(
     )
 }
 
-/** The verdict sentence for "since unplugged" (SPEC 10.2). P5's Drain Story replaces it (SPEC 9.3). */
+/**
+ * The verdict (SPEC 10.2): the Drain Story for "since unplugged" in one sentence (SPEC 9.3), in the
+ * same words as the widgets and notifications. Its causes come from the window's drains.
+ */
 @Composable
 private fun Verdict(
     state: NowUiState.Ready,
     discharge: DischargeSummary,
     formats: Formats,
 ) {
-    val since = formats.hours((state.battery.wallMs - discharge.startWallMs) / MS_PER_HOUR)
-    val fell = discharge.startLevel - state.battery.levelPct
-    val top = state.drains?.let { drains -> drains.apps.firstOrNull()?.let { it to drains.share(it.mah) } }
-    val text =
-        when {
-            fell <= 0 -> {
-                stringResource(R.string.now_verdict_flat, since)
-            }
-
-            top == null -> {
-                stringResource(R.string.now_verdict, since, formats.percent(fell))
-            }
-
-            else -> {
-                val (app, share) = top
-                val name = formats.appName(app.label, app.uid)
-                stringResource(R.string.now_verdict_with_app, since, formats.percent(fell), name, formats.share(share))
-            }
+    val resources = LocalResources.current
+    val copy = remember(resources, formats) { StoryCopy(resources, formats, InsightCopy(resources, formats)) }
+    val drains = state.drains
+    val story =
+        remember(discharge.startWallMs, discharge.startLevel, state.battery.wallMs, state.battery.levelPct, drains) {
+            DrainStory.compose(
+                StoryInput(
+                    subject = StorySubject.SinceUnplugged,
+                    span =
+                        StorySpan(
+                            fromWallMs = discharge.startWallMs,
+                            toWallMs = state.battery.wallMs,
+                            durationMs = state.battery.wallMs - discharge.startWallMs,
+                            levelDropPct = discharge.startLevel - state.battery.levelPct,
+                            ratePctPerHour = null,
+                        ),
+                    totalMah = drains?.total ?: 0.0,
+                    apps = drains?.apps.orEmpty().map { Contributor(it.uid, it.label, it.mah) },
+                    deviceMah = drains?.deviceMah ?: 0.0,
+                    unattributedMah = drains?.unattributedMah ?: 0.0,
+                    deepSleepShare = null,
+                    open = emptyList(),
+                ),
+            )
         }
-    Text(text, Modifier.widthIn(max = VerdictMeasure), color = CoulombTheme.colors.textPrimary, style = CoulombTheme.typography.body)
+    Text(
+        copy.line(story).text,
+        Modifier.widthIn(max = VerdictMeasure),
+        color = CoulombTheme.colors.textPrimary,
+        style = CoulombTheme.typography.body,
+    )
 }
 
 /** SPEC 10.2 session strip: screen-on and screen-off rates and the deep sleep share. */
