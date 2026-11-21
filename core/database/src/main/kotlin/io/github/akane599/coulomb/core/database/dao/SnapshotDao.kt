@@ -68,6 +68,13 @@ public data class StoredKernelEvent(
     val errno: Int?,
 )
 
+/** One snapshot's two clocks: [wallMs] at [elapsedNs] of boot [bootSeq]. */
+public data class BootClock(
+    val bootSeq: Int,
+    val elapsedNs: Long,
+    val wallMs: Long,
+)
+
 /** Snapshots, their counters and the references that pin them (SPEC 7.2, 7.6, 7.7). */
 @Dao
 public abstract class SnapshotDao {
@@ -209,6 +216,46 @@ public abstract class SnapshotDao {
      */
     @Query("SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} AND wallMs >= :wallMs ORDER BY bootSeq, elapsedNs LIMIT 1")
     public abstract suspend fun firstHeavyFrom(wallMs: Long): SnapshotEntity?
+
+    /**
+     * The latest snapshot at or before [wallMs] that stored a history read. A span of history is
+     * read from it: the read after it starts by restating the whole state (ADR-0014), so the state
+     * at the span's start is known. [Long.MAX_VALUE] gives where the stored history ends.
+     */
+    @Query("SELECT * FROM snapshot WHERE historyEventId IS NOT NULL AND wallMs <= :wallMs ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
+    public abstract suspend fun lastWithHistoryAtOrBefore(wallMs: Long): SnapshotEntity?
+
+    /** [lastWithHistoryAtOrBefore] by boot and elapsed time, for a span that lies in a boot: a session's. */
+    @Query(
+        "SELECT * FROM snapshot WHERE historyEventId IS NOT NULL " +
+            "AND (bootSeq < :bootSeq OR (bootSeq = :bootSeq AND elapsedNs <= :elapsedNs)) " +
+            "ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1",
+    )
+    public abstract suspend fun lastWithHistoryAtOrBefore(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): SnapshotEntity?
+
+    /** The first snapshot at or after [wallMs], in time order: where a span of history that ends at a wall time ends. */
+    @Query("SELECT * FROM snapshot WHERE wallMs >= :wallMs ORDER BY bootSeq, elapsedNs LIMIT 1")
+    public abstract suspend fun firstAtOrAfter(wallMs: Long): SnapshotEntity?
+
+    /**
+     * Each boot's latest snapshot from [fromBootSeq] to [toBootSeq]: its two clocks place the boot's
+     * history events on the wall clock (SPEC 10.6).
+     */
+    @Query(
+        "SELECT bootSeq, elapsedNs, wallMs FROM snapshot AS s WHERE bootSeq BETWEEN :fromBootSeq AND :toBootSeq " +
+            "AND elapsedNs = (SELECT MAX(elapsedNs) FROM snapshot WHERE bootSeq = s.bootSeq) ORDER BY bootSeq",
+    )
+    public abstract suspend fun bootClocks(
+        fromBootSeq: Int,
+        toBootSeq: Int,
+    ): List<BootClock>
+
+    /** How many snapshots are stored: it changes when one is, which is when a reader has more to read. */
+    @Query("SELECT COUNT(*) FROM snapshot")
+    public abstract fun observeCount(): Flow<Int>
 
     /** The snapshot of [bootSeq] read at [elapsedNs]: the one a session opened at. */
     @Query("SELECT * FROM snapshot WHERE bootSeq = :bootSeq AND elapsedNs = :elapsedNs LIMIT 1")

@@ -144,6 +144,13 @@ public interface SessionDao {
         limit: Int,
     ): Flow<List<SessionEntity>>
 
+    /** Every session of [kind] in [bootSeqs], in time order: sessions overlap only within a boot. */
+    @Query("SELECT * FROM session WHERE kind = :kind AND bootSeq IN (:bootSeqs) ORDER BY bootSeq, startElapsedNs")
+    public suspend fun inBoots(
+        kind: SessionKind,
+        bootSeqs: List<Int>,
+    ): List<SessionEntity>
+
     /** Closed sessions of [kind] that ended at or after [fromWall], newest first. */
     @Query(
         "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL AND endWall >= :fromWall " +

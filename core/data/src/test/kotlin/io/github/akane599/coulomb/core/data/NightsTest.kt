@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.data
 
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.database.dao.BootClock
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.model.SessionCloseReason
 import io.github.akane599.coulomb.core.model.SessionKind
@@ -21,15 +22,17 @@ class NightsTest {
         kind: SessionKind = SessionKind.SCREEN_OFF,
         awake: Double? = 0.09,
         deep: Boolean? = true,
-        startWall: Long = start,
+        /** Hours into the boot. */
+        at: Double = 1.0,
+        boot: Int = 1,
     ) = SessionEntity(
         id = 7,
         kind = kind,
-        bootSeq = 1,
-        startElapsedNs = hourNs,
-        endElapsedNs = hours?.let { hourNs + (it * hourNs).toLong() },
-        startWall = startWall,
-        endWall = hours?.let { startWall + (it * hourMs).toLong() },
+        bootSeq = boot,
+        startElapsedNs = (at * hourNs).toLong(),
+        endElapsedNs = hours?.let { ((at + it) * hourNs).toLong() },
+        startWall = start + (at * hourMs).toLong(),
+        endWall = hours?.let { start + ((at + it) * hourMs).toLong() },
         startSnapshotId = null,
         endSnapshotId = null,
         startLevel = levels.first,
@@ -44,7 +47,7 @@ class NightsTest {
         maxTempDeciC = 300,
         awakeRatio = awake,
         deepIdleReached = deep,
-        deepIdleReachedMs = 42 * 60_000L,
+        deepIdleReachedMs = (42 * 60_000L).takeIf { deep != null },
         minutesAtOrAbove80 = null,
         minutesAt100 = null,
         stressIndex = null,
@@ -77,14 +80,51 @@ class NightsTest {
         assertThat(checkNotNull(Nights.summary(session(8.0, 80 to 78), emptyList())).ratePctPerHour).isNull()
         assertThat(checkNotNull(Nights.summary(session(8.0, 80 to 77), emptyList())).ratePctPerHour).isNotNull()
         // A charge that overlaps the night, even with the level lower at its end.
-        val charge = session(1.0, 60 to 70, SessionKind.CHARGE, startWall = start + 2 * hourMs)
+        val charge = session(1.0, 60 to 70, SessionKind.CHARGE, at = 3.0)
         val charged = checkNotNull(Nights.summary(session(8.0, 80 to 70), listOf(charge)))
         assertThat(charged.charged).isTrue()
         assertThat(charged.ratePctPerHour).isNull()
-        // One that ended before it began does not count; a level that rose does.
-        val earlier = session(1.0, 60 to 80, SessionKind.CHARGE, startWall = start - 2 * hourMs)
+        // So does one still open; one that ended as the night began does not, and a level that rose does.
+        assertThat(
+            checkNotNull(Nights.summary(session(8.0, 80 to 70), listOf(session(null, 60 to null, SessionKind.CHARGE, at = 0.5)))).charged,
+        ).isTrue()
+        val earlier = session(0.5, 60 to 80, SessionKind.CHARGE, at = 0.5)
         assertThat(checkNotNull(Nights.summary(session(8.0, 80 to 70), listOf(earlier))).charged).isFalse()
         assertThat(checkNotNull(Nights.summary(session(8.0, 80 to 85), emptyList())).charged).isTrue()
+    }
+
+    @Test
+    fun aChargeInAnotherBootDoesNotOverlapWhateverItsWallTimesSay() {
+        // The wall clock was wrong for a while in boot 2: its charge seems to span the night of boot 1.
+        val charge = session(1_000.0, 60 to 70, SessionKind.CHARGE, at = 0.0, boot = 2)
+
+        assertThat(checkNotNull(Nights.summary(session(8.0, 80 to 70), listOf(charge))).charged).isFalse()
+    }
+
+    @Test
+    fun aNightIsDatedByItsBootsClockAsLastSeen() {
+        // The clock was 40 days behind when the session was stored and was set right later in the boot.
+        val right = start + 40 * 24 * hourMs
+        val clock = BootClock(bootSeq = 1, elapsedNs = 20 * hourNs, wallMs = right + 20 * hourMs)
+
+        val night = checkNotNull(Nights.summary(session(8.0, 80 to 70), emptyList(), clock))
+
+        assertThat(night.startWallMs).isEqualTo(right + hourMs)
+        assertThat(night.endWallMs).isEqualTo(right + 9 * hourMs)
+        assertThat(night.durationMs).isEqualTo(8 * hourMs)
+    }
+
+    @Test
+    fun dozeComesFromTheHistoryWhereTheSessionStoredNone() {
+        val stored = session(8.0, 80 to 70, deep = null)
+
+        val night = checkNotNull(Nights.summary(stored, emptyList(), doze = DozeReached(true, 25 * 60_000L)))
+        assertThat(night.deepDozeReached).isTrue()
+        assertThat(night.deepDozeAfterMs).isEqualTo(25 * 60_000L)
+        // What the session stored stands.
+        val own = checkNotNull(Nights.summary(session(8.0, 80 to 70), emptyList(), doze = DozeReached(false, null)))
+        assertThat(own.deepDozeReached).isTrue()
+        assertThat(own.deepDozeAfterMs).isEqualTo(42 * 60_000L)
     }
 
     @Test

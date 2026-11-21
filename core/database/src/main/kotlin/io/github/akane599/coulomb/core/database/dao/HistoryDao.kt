@@ -136,8 +136,29 @@ public abstract class HistoryDao {
         fromElapsedNs: Long,
         toBootSeq: Int,
         toElapsedNs: Long,
+    ): List<StoredHistoryEvent> = named(stored(fromBootSeq, fromElapsedNs, toBootSeq, toElapsedNs) { true })
+
+    /**
+     * [events] of [kinds] only. The Timeline reads days at a time and draws a few kinds; the ones it
+     * drops, jobs and sensors among them, are most of the history and are never built.
+     *
+     * @throws io.github.akane599.coulomb.core.database.entity.CorruptChunkException when a stored
+     *   chunk does not decode.
+     */
+    @Transaction
+    public open suspend fun eventsOf(
+        kinds: Set<HistoryKind>,
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
     ): List<StoredHistoryEvent> {
-        val rows = stored(fromBootSeq, fromElapsedNs, toBootSeq, toElapsedNs) { true }
+        val codes = kinds.mapTo(HashSet()) { HistoryCodes.kindCode(it) }
+        return named(stored(fromBootSeq, fromElapsedNs, toBootSeq, toElapsedNs) { it.typeCode in codes })
+    }
+
+    /** [rows] with their tags' text. Called inside the transaction that read them. */
+    private suspend fun named(rows: List<HistoryEventRow>): List<StoredHistoryEvent> {
         val tags = HashMap<Long, String>()
         rows.mapNotNullTo(HashSet()) { it.tagId }.chunked(MAX_IDS).forEach { chunk -> tagsById(chunk).forEach { tags[it.id] = it.tag } }
         return rows.map { StoredHistoryEvent(it, it.tagId?.let(tags::get)) }
