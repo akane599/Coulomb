@@ -65,6 +65,16 @@ class NowScreenshotTest {
     @Test
     fun dischargingLight() = shoot("discharging-light", discharging())
 
+    /** A reading 40 minutes old in Full mode: its time under the level, nothing drawn as now (ADR-0069). */
+    @Test
+    @Config(qualifiers = "w412dp-h1600dp-xhdpi")
+    fun dischargingStale() = discharging().let { shoot("discharging-stale", it, nowMs = it.battery.wallMs + 40 * 60_000L) }
+
+    /** Lite mode, an hour after its last reading: no live current, and the note says how to read now. */
+    @Test
+    @Config(qualifiers = "w412dp-h1600dp-xhdpi")
+    fun dischargingLite() = discharging().let { shoot("discharging-lite", it, nowMs = it.battery.wallMs + 60 * 60_000L, lite = true) }
+
     @Test
     @Config(qualifiers = "$COMPACT_SIZE-night-xhdpi")
     fun dischargingDark() = shoot("discharging-dark", discharging(), dark = true)
@@ -204,6 +214,8 @@ class NowScreenshotTest {
         black: Boolean = false,
         rtl: Boolean = false,
         screen: ScreenContext? = ScreenContext(refreshHz = 120, autoBrightness = true),
+        nowMs: Long? = null,
+        lite: Boolean = false,
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
         val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -213,7 +225,15 @@ class NowScreenshotTest {
             ) {
                 CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
-                        NowContent(state = state, refreshing = false, actions = NoActions, zone = ZoneOffset.UTC, screen = screen)
+                        NowContent(
+                            state = state,
+                            refreshing = false,
+                            actions = NoActions,
+                            zone = ZoneOffset.UTC,
+                            screen = screen,
+                            nowMs = nowMs,
+                            lite = lite,
+                        )
                     }
                 }
             }

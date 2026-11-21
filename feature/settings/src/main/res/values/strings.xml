@@ -173,7 +173,7 @@
     <string name="settings_action_center_open">Open the Action Center</string>
     <!-- SPEC 12.7, 14.4. The note names everything an allowed app can do and read (ADR-0065 §7). -->
     <string name="settings_automation">Automation API</string>
-    <string name="settings_automation_note">Apps you allow can ask for a snapshot, set the charge target and re-apply a Doze profile you have applied or return it to stock, while the Action Center is on. They can read the battery level, drain rates, last night’s report and the names of the three apps that use the most battery.</string>
+    <string name="settings_automation_note">Apps you allow can ask for a snapshot, set the charge target and re-apply a Doze profile you have applied (while the Action Center is on) or return it to stock. They can read the battery level, drain rates, last night’s report and the names of the three apps that use the most battery.</string>
     <string name="settings_automation_apps">Apps allowed</string>
     <string name="settings_automation_apps_none">None yet. An app asks for the permission “automate Coulomb”, and you allow it in Android’s settings for that app.</string>
     <string name="settings_automation_apps_joined">%1$s, %2$s</string>
@@ -219,7 +219,7 @@
     <string name="data_said_already">This bundle is already imported. It is in the list below.</string>
     <string name="data_said_import_failed">Couldn’t read the file to its end, so nothing was imported. Check the free space and try again.</string>
     <string name="data_settings_offer">Use this bundle’s settings on this phone?</string>
-    <string name="data_settings_offer_note">Theme, units, the charge target, the temperature threshold, the digest’s time, sampling and the two Drain choices. Alarms, the Action Center and anything that needs a permission stay as they are here.</string>
+    <string name="data_settings_offer_note">Theme, units, the charge target, the temperature threshold (if that alarm is on here), the digest’s time, sampling and the two Drain choices. Alarms, the Action Center and anything that needs a permission stay as they are here.</string>
     <string name="data_settings_use">Use its settings</string>
     <string name="data_settings_keep">Keep mine</string>
     <string name="data_said_settings_applied">Settings applied.</string>

@@ -86,6 +86,22 @@ class ChargingScreenshotTest {
     @Test
     fun labLight() = shoot("lab-light") { Charging(labNow()) }
 
+    /** Lite mode, half an hour after the last reading: its time, readings not called live, the alarm note (ADR-0069). */
+    @Test
+    @Config(qualifiers = "w412dp-h2000dp-xhdpi")
+    fun liteStale() =
+        shoot("lite-stale") {
+            val now = labNow()
+            ChargingContent(
+                ChargingUiState.Ready(now),
+                NoActions,
+                zone = ZONE,
+                targetAlarm = true,
+                lite = true,
+                nowMs = now.wallMs + 30 * 60_000L,
+            )
+        }
+
     @Test
     @Config(qualifiers = "$PAGE-xhdpi")
     fun page() = shoot("page") { Charging(labNow()) }

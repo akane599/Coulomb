@@ -15,18 +15,23 @@ import io.github.akane599.coulomb.core.data.ChargingRepository
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.InsightSeverity
+import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.dumpsys.ThermalDump
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /** What Charging shows (SPEC 10.9), in the states of SPEC 10.11. */
@@ -90,6 +95,21 @@ public class ChargingViewModel
                 .catch { emit(false) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
+        private val refreshing = MutableStateFlow(false)
+
+        /** True from a pull until the next reading arrives, or [REFRESH_WAIT_MS] at most. */
+        internal val isRefreshing: StateFlow<Boolean> = refreshing.asStateFlow()
+
+        internal fun refresh() {
+            if (refreshing.value) return
+            refreshing.value = true
+            collector.post(SnapshotTrigger.PULL_TO_REFRESH)
+            viewModelScope.launch {
+                withTimeoutOrNull(REFRESH_WAIT_MS) { state.drop(1).first() }
+                refreshing.value = false
+            }
+        }
+
         /** Lite mode; false until read. */
         internal val lite: StateFlow<Boolean> =
             charging.lite
@@ -152,5 +172,6 @@ public class ChargingViewModel
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
             const val MAX_INSIGHTS = 2
+            const val REFRESH_WAIT_MS = 5_000L
         }
     }

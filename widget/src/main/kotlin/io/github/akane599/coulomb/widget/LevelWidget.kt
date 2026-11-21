@@ -89,7 +89,10 @@ private val LevelColumn = 96.dp
  * ([WidgetFit]); it is never cut.
  */
 @Composable
-internal fun LevelContent(level: LevelFacts?) {
+internal fun LevelContent(
+    level: LevelFacts?,
+    zone: ZoneId = ZoneId.systemDefault(),
+) {
     val context = LocalContext.current
     val size = LocalSize.current
     val stacked = size.height >= StackedFrom
@@ -100,21 +103,11 @@ internal fun LevelContent(level: LevelFacts?) {
         }
         val formats = formatsFor(context)
         val percent = formats.percent(level.levelPct)
-        val state = stateLine(context, level, formats)
+        val state = stateLine(context, level, formats, zone)
         val scale = context.resources.configuration.fontScale
         val inner = DpSize(size.width - WidgetPadding * 2, size.height - WidgetPadding * 2)
         if (!stacked) {
-            // One line: the level at the size the height holds, and its state where the width holds both.
-            val large = inner.height >= WidgetLine.hero * scale
-            val levelWidth = WidgetFit.width(percent, if (large) WidgetLine.HERO_SP else WidgetLine.TITLE_SP, scale) + WidgetLine.mark.value
-            val both = levelWidth + StateGap.value + WidgetFit.width(state, WidgetLine.LABEL_SP, scale) <= inner.width.value
-            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Figure(percent, Provenance.MODELED, if (large) WidgetType.hero else WidgetType.title)
-                if (both) {
-                    Spacer(GlanceModifier.defaultWeight())
-                    Text(state, style = WidgetType.label, maxLines = 1)
-                }
-            }
+            OneLine(level, percent, state, formats, zone, inner, scale)
             return@WidgetSurface
         }
         val verdict = level.story?.let { StoryCopy(context.resources, formats, InsightCopy(context.resources, formats)).line(it).text }
@@ -147,8 +140,42 @@ private fun stateLine(
     context: Context,
     level: LevelFacts,
     formats: Formats,
+    zone: ZoneId,
 ): String {
-    val word = context.getString(level.state.label())
-    val at = level.asOfWallMs ?: return word
-    return context.getString(R.string.widget_state_as_of, word, formats.clock(at, ZoneId.systemDefault(), System.currentTimeMillis()))
+    val at = level.asOfWallMs ?: return context.getString(level.state.label())
+    // The time takes the state word's place, so it fits wherever the state did; with its day, since
+    // the widget is not drawn again at midnight.
+    return context.getString(R.string.widget_as_of, formats.dayClock(at, zone))
+}
+
+/** The level on one line, with its state, or an old reading's time, where the width holds both. */
+@Composable
+private fun OneLine(
+    level: LevelFacts,
+    percent: String,
+    state: String,
+    formats: Formats,
+    zone: ZoneId,
+    inner: DpSize,
+    scale: Float,
+) {
+    // One line: the level at the size the height holds, and its state where the width holds both.
+    // An old reading's time is never left out (ADR-0069): it is the bare clock here, and the
+    // level steps down to title size to make room for it.
+    val line = level.asOfWallMs?.let { formats.clock(it, zone) } ?: state
+    val lineWidth = WidgetFit.width(line, WidgetLine.LABEL_SP, scale)
+
+    fun fits(hero: Boolean) =
+        WidgetFit.width(percent, if (hero) WidgetLine.HERO_SP else WidgetLine.TITLE_SP, scale) + WidgetLine.mark.value +
+            StateGap.value + lineWidth <= inner.width.value
+    val tall = inner.height >= WidgetLine.hero * scale
+    val large = tall && (level.asOfWallMs == null || fits(hero = true))
+    val both = level.asOfWallMs != null || fits(large)
+    Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Figure(percent, Provenance.MODELED, if (large) WidgetType.hero else WidgetType.title)
+        if (both) {
+            Spacer(GlanceModifier.defaultWeight())
+            Text(line, style = WidgetType.label, maxLines = 1)
+        }
+    }
 }

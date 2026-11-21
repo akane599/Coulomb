@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,8 +38,11 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import io.github.akane599.coulomb.core.data.BatteryNow
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
 import io.github.akane599.coulomb.core.designsystem.component.SkeletonBlock
@@ -56,6 +60,7 @@ import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.page.ErrorState
 import io.github.akane599.coulomb.core.ui.page.Note
+import kotlinx.coroutines.delay
 import java.time.ZoneId
 
 /**
@@ -76,6 +81,7 @@ public fun NowScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val lite by viewModel.lite.collectAsStateWithLifecycle()
     // Time to verdict (SPEC 1.3, 16.5): the app is fully drawn once Now shows the battery.
     ReportDrawnWhen { state is NowUiState.Ready }
     NowContent(
@@ -103,7 +109,8 @@ public fun NowScreen(
             ),
         modifier = modifier,
         screen = rememberScreenContext(),
-        nowMs = rememberResumedNowMs(),
+        nowMs = rememberResumedNowMs((state as? NowUiState.Ready)?.battery?.wallMs?.plus(BatteryNow.STALE_MS)),
+        lite = lite,
     )
 }
 
@@ -142,6 +149,7 @@ internal fun NowContent(
     screen: ScreenContext? = null,
     // Null where the reading's age is not judged (previews and goldens).
     nowMs: Long? = null,
+    lite: Boolean = false,
 ) {
     val formats = rememberFormats()
     var table by rememberSaveable { mutableStateOf<OpenTable?>(null) }
@@ -177,10 +185,11 @@ internal fun NowContent(
                 is NowUiState.Ready -> {
                     FadeInOnce {
                         Column(Modifier.testTag(NOW_VERDICT_TAG)) {
-                            Hero(state, formats, zone, onViewTable = { table = OpenTable.LEVEL })
                             val staleSince =
                                 nowMs?.takeIf { state.battery.isStale(it) }?.let { formats.clock(state.battery.wallMs, zone, it) }
-                            staleSince?.let { Note(stringResource(R.string.now_as_of, it)) }
+                            val staleNote =
+                                staleSince?.let { stringResource(if (lite) R.string.now_as_of else R.string.now_as_of_full, it) }
+                            Hero(state, formats, zone, onViewTable = { table = OpenTable.LEVEL }, staleNote = staleNote)
                             if (state.discharge != null) {
                                 SessionStrip(state.discharge, formats)
                                 screen?.let { ScreenContextNote(it, formats) }
@@ -199,7 +208,7 @@ internal fun NowContent(
                                         null
                                     },
                             )
-                            LiveCurrent(state, formats, onViewTable = { table = OpenTable.CURRENT }, staleSince = staleSince)
+                            LiveCurrent(state, formats, onViewTable = { table = OpenTable.CURRENT }, staleSince = staleSince, lite = lite)
                         }
                     }
                 }
@@ -292,13 +301,23 @@ private fun Skeleton() {
     }
 }
 
-/** The wall clock, read again each time the screen resumes: enough to judge a reading's age (ADR-0069). */
+/**
+ * The wall clock, read again each time the screen resumes and once more at [changesAt], when the
+ * reading turns old, so an open screen shows its age too (ADR-0069). Nothing ticks in between.
+ */
 @Composable
-internal fun rememberResumedNowMs(): Long {
+internal fun rememberResumedNowMs(changesAt: Long?): Long {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LifecycleResumeEffect(Unit) {
-        now = System.currentTimeMillis()
-        onPauseOrDispose {}
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, changesAt) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            now = System.currentTimeMillis()
+            val wait = (changesAt ?: return@repeatOnLifecycle) - now
+            if (wait > 0) {
+                delay(wait + 1)
+                now = System.currentTimeMillis()
+            }
+        }
     }
     return now
 }

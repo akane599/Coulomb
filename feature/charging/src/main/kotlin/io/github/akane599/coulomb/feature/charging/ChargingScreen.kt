@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,8 +36,11 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import io.github.akane599.coulomb.core.data.BatteryNow
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
@@ -85,6 +90,7 @@ public fun ChargingScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val alarm by viewModel.targetAlarm.collectAsStateWithLifecycle()
     val lite by viewModel.lite.collectAsStateWithLifecycle()
+    val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val insights by viewModel.shownInsights.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {
         viewModel.visible(true)
@@ -95,6 +101,7 @@ public fun ChargingScreen(
         remember(viewModel, onOpenSettings, onInsightAction) {
             ChargingActions(
                 retry = viewModel::retry,
+                refresh = viewModel::refresh,
                 setTarget = viewModel::setTarget,
                 openSettings = onOpenSettings,
                 snoozeInsight = viewModel::snoozeInsight,
@@ -112,7 +119,8 @@ public fun ChargingScreen(
         lite = lite,
         insights = insights.shown,
         moreInsights = insights.more,
-        nowMs = rememberResumedNowMs(),
+        nowMs = rememberResumedNowMs((state as? ChargingUiState.Ready)?.now?.wallMs?.plus(BatteryNow.STALE_MS)),
+        refreshing = refreshing,
     )
 }
 
@@ -121,6 +129,8 @@ public fun ChargingScreen(
 internal class ChargingActions(
     val retry: () -> Unit,
     val setTarget: (Int) -> Unit,
+    /** A reading now (SPEC 7.2's pull to refresh): in Lite mode the only one between snapshots. */
+    val refresh: () -> Unit = {},
     val openSettings: () -> Unit = {},
     val snoozeInsight: (id: Long, forMs: Long) -> Unit = { _, _ -> },
     val dismissInsight: (id: Long) -> Unit = {},
@@ -133,6 +143,7 @@ internal class ChargingActions(
 /** Charging's column on wide windows, as Now's (ADR-0034). */
 private val MaxContentWidth = 720.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChargingContent(
     state: ChargingUiState,
@@ -145,6 +156,7 @@ internal fun ChargingContent(
     moreInsights: Int = 0,
     // Null where the reading's age is not judged (previews and goldens).
     nowMs: Long? = null,
+    refreshing: Boolean = false,
 ) {
     var thermalOpen by rememberSaveable { mutableStateOf(false) }
     val formats = rememberFormats()
@@ -153,70 +165,72 @@ internal fun ChargingContent(
     var why by rememberSaveable { mutableStateOf<Long?>(null) }
     val resources = LocalResources.current
     val copy = remember(resources, formats, zone) { InsightCopy(resources, formats, zone) }
-    Column(
-        modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = currentGutter(), end = currentGutter(), bottom = CoulombSpacing.Space48)
-            .wrapContentWidth(Alignment.Start)
-            .widthIn(max = MaxContentWidth)
-            .fillMaxWidth(),
-    ) {
-        when (state) {
-            ChargingUiState.Loading -> {
-                // The first sample is usually read well within this; only a slow read shows the skeleton.
-                var late by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) {
-                    delay(SKELETON_DELAY_MS)
-                    late = true
+    PullToRefreshBox(isRefreshing = refreshing, onRefresh = actions.refresh, modifier = modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(start = currentGutter(), end = currentGutter(), bottom = CoulombSpacing.Space48)
+                .wrapContentWidth(Alignment.Start)
+                .widthIn(max = MaxContentWidth)
+                .fillMaxWidth(),
+        ) {
+            when (state) {
+                ChargingUiState.Loading -> {
+                    // The first sample is usually read well within this; only a slow read shows the skeleton.
+                    var late by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        delay(SKELETON_DELAY_MS)
+                        late = true
+                    }
+                    if (late) Skeleton()
                 }
-                if (late) Skeleton()
-            }
 
-            ChargingUiState.Error -> {
-                ErrorState(
-                    stringResource(R.string.charging_error_title),
-                    stringResource(R.string.charging_error_body),
-                    stringResource(R.string.charging_error_action),
-                    actions.retry,
-                )
-            }
+                ChargingUiState.Error -> {
+                    ErrorState(
+                        stringResource(R.string.charging_error_title),
+                        stringResource(R.string.charging_error_body),
+                        stringResource(R.string.charging_error_action),
+                        actions.retry,
+                    )
+                }
 
-            ChargingUiState.Unplugged -> {
-                StandIn(stringResource(R.string.charging_unplugged), top = CoulombSpacing.Space24)
-            }
+                ChargingUiState.Unplugged -> {
+                    StandIn(stringResource(R.string.charging_unplugged), top = CoulombSpacing.Space24)
+                }
 
-            is ChargingUiState.Ready -> {
-                FadeInOnce {
-                    Column {
-                        val now = state.now
-                        Hero(now, formats)
-                        // An old reading says when it was taken (ADR-0069).
-                        nowMs?.takeIf { it - now.wallMs > BatteryNow.STALE_MS }?.let {
-                            Note(stringResource(R.string.charging_as_of, formats.clock(now.wallMs, zone, it)))
+                is ChargingUiState.Ready -> {
+                    FadeInOnce {
+                        Column {
+                            val now = state.now
+                            Hero(now, formats)
+                            // An old reading says when it was taken (ADR-0069).
+                            nowMs?.takeIf { it - now.wallMs > BatteryNow.STALE_MS }?.let {
+                                Note(stringResource(R.string.charging_as_of, formats.clock(now.wallMs, zone, it)))
+                            }
+                            LevelScale(now, formats, zone, onViewTable = { table = SCALE_TABLE })
+                            Times(now, formats)
+                            Insights(
+                                insights,
+                                copy,
+                                actions,
+                                onWhy = { why = it },
+                                more =
+                                    if (moreInsights > 0) {
+                                        pluralStringResource(
+                                            R.plurals.charging_insights_more,
+                                            moreInsights,
+                                            formats.integer(moreInsights.toLong()),
+                                        )
+                                    } else {
+                                        null
+                                    },
+                            )
+                            Readings(now, formats, lite)
+                            actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
+                            Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
+                            Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings, lite)
                         }
-                        LevelScale(now, formats, zone, onViewTable = { table = SCALE_TABLE })
-                        Times(now, formats)
-                        Insights(
-                            insights,
-                            copy,
-                            actions,
-                            onWhy = { why = it },
-                            more =
-                                if (moreInsights > 0) {
-                                    pluralStringResource(
-                                        R.plurals.charging_insights_more,
-                                        moreInsights,
-                                        formats.integer(moreInsights.toLong()),
-                                    )
-                                } else {
-                                    null
-                                },
-                        )
-                        Readings(now, formats)
-                        actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
-                        Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
-                        Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings, lite)
                     }
                 }
             }
@@ -387,13 +401,23 @@ private fun Skeleton() {
     }
 }
 
-/** The wall clock, read again each time the screen resumes: enough to judge a reading's age (ADR-0069). */
+/**
+ * The wall clock, read again each time the screen resumes and once more at [changesAt], when the
+ * reading turns old, so an open screen shows its age too (ADR-0069). Nothing ticks in between.
+ */
 @Composable
-private fun rememberResumedNowMs(): Long {
+private fun rememberResumedNowMs(changesAt: Long?): Long {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LifecycleResumeEffect(Unit) {
-        now = System.currentTimeMillis()
-        onPauseOrDispose {}
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, changesAt) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            now = System.currentTimeMillis()
+            val wait = (changesAt ?: return@repeatOnLifecycle) - now
+            if (wait > 0) {
+                delay(wait + 1)
+                now = System.currentTimeMillis()
+            }
+        }
     }
     return now
 }

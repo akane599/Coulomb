@@ -56,7 +56,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        collector.start(SnapshotTrigger.APP_OPENED)
         if (savedInstanceState == null) open.value = requested(intent)
         lifecycleScope.launch {
             settings.settings
@@ -117,6 +116,15 @@ class MainActivity : ComponentActivity() {
         } else {
             OPENS[intent?.getStringExtra(OpenRequest.EXTRA)]
         }
+
+    /**
+     * Every return to Coulomb is an app open (SPEC 7.1), not only a cold start: in Lite mode it is
+     * the only reading the screens get, and the trigger policy keeps it to one a minute (ADR-0069).
+     */
+    override fun onStart() {
+        super.onStart()
+        collector.start(SnapshotTrigger.APP_OPENED)
+    }
 
     override fun onResume() {
         super.onResume()

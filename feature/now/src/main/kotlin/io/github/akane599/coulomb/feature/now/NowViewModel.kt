@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.data.BatteryRepository
 import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
@@ -54,7 +55,15 @@ public class NowViewModel
         private val collector: Collector,
         private val window: ChosenWindow,
         private val insights: InsightStore,
+        settings: SettingsStore,
     ) : ViewModel() {
+        /** Lite mode, in which nothing follows live current (ADR-0069); false until read. */
+        internal val lite: StateFlow<Boolean> =
+            settings.settings
+                .map { it.liteMode }
+                .catch { emit(false) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
         private val attempt = MutableStateFlow(0)
         private val refreshing = MutableStateFlow(false)
 

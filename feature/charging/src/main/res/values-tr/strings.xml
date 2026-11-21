@@ -103,4 +103,5 @@
     <string name="charging_target_alarm_lite">Hedefteki alarm açık, ama Hafif mod onu çalmaz.</string>
     <string name="charging_sensor_pa">Güç yükselteci</string>
     <string name="charging_sensor_npu">Yapay zekâ işlemcisi</string>
+    <string name="charging_readings_lite">Ölçümler</string>
 </resources>

@@ -112,7 +112,7 @@
         <item quantity="other">The phone woke %1$s times in this range.</item>
     </plurals>
     <string name="timeline_caption_density">On Awake, Wakelocks and the radios, an outlined span is a run of events too close to draw one by one; zoom in to see each. On Doze, outlined is light Doze.</string>
-    <string name="timeline_caption_current">Current is sampled while the screen is on or the phone charges.</string>
+    <string name="timeline_caption_current">Current is sampled while the screen is on or the phone charges, and once at each snapshot; in Lite mode only at snapshots.</string>
     <string name="timeline_caption_signal">Signal runs from none to great.</string>
     <string name="timeline_caption_temperature">Temperature runs from %1$s to %2$s.</string>
     <string name="timeline_event_one">%1$s to %2$s · %3$s</string>

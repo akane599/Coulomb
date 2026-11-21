@@ -5,11 +5,11 @@
     <string name="actions_loading">Yükleniyor</string>
 
     <string name="actions_off_title">Eylem Merkezi kapalı</string>
-    <string name="actions_off_body">Açıkken Coulomb, telefonun ve seçtiğin uygulamaların birkaç ayarını değiştirebilir. Her değişiklik çalışmadan önce gösterilir, yerine geçtiği değerle birlikte kaydedilir ve geri alınabilir. Sen dokunmadan hiçbir şey çalışmaz; tek istisna, Otomasyon’da izin verdiğin bir uygulamanın senin uyguladığın bir Doze profilini yinelemesi ya da varsayılana döndürmesidir.</string>
+    <string name="actions_off_body">Açıkken Coulomb, telefonun ve seçtiğin uygulamaların birkaç ayarını değiştirebilir. Her değişiklik çalışmadan önce gösterilir, yerine geçtiği değerle birlikte kaydedilir ve geri alınabilir. Sen dokunmadan hiçbir şey çalışmaz; tek istisna, Otomasyon’da izin verdiğin bir uygulamanın senin uyguladığın bir Doze profilini yinelemesi ya da stok ayara döndürmesidir.</string>
     <string name="actions_off_grant">Yardımcı süreç çalışıyorsa açmak, Coulomb’a sistem ayarlarını yazma iznini de verir (WRITE_SECURE_SETTINGS). Eylem Merkezi’ni kapatınca izin kalır.</string>
     <string name="actions_turn_on">Eylem Merkezi’ni aç</string>
     <string name="actions_switch">Eylem Merkezi</string>
-    <string name="actions_switch_note">Sen dokunmadan hiçbir şey çalışmaz; tek istisna, Otomasyon’da izin verdiğin bir uygulamanın senin uyguladığın bir Doze profilini yinelemesi ya da varsayılana döndürmesidir.</string>
+    <string name="actions_switch_note">Sen dokunmadan hiçbir şey çalışmaz; tek istisna, Otomasyon’da izin verdiğin bir uygulamanın senin uyguladığın bir Doze profilini yinelemesi ya da stok ayara döndürmesidir.</string>
     <string name="actions_save_failed">Coulomb bu ayarı kaydedemedi. Yeniden dene.</string>
     <string name="actions_doze_needs_worker">Bir profil, yalnızca yardımcı sürecin okuyabildiği değerlerden kurulur.</string>
     <string name="actions_no_worker">Coulomb’un yardımcı süreci çalışmıyor, bu yüzden buradan hiçbir şey değiştirilemez. Her eylem yine de komutunu gösterir; profiller dışında komutu adb ile çalıştırabilirsin.</string>

@@ -37,7 +37,7 @@
 
     <!-- Step 3: Shizuku, by what is found (SPEC 4.5). -->
     <string name="onboarding_shizuku_title">Connect Shizuku</string>
-    <string name="onboarding_shizuku_lede">Shizuku lets Coulomb read battery details that Android keeps to itself. Coulomb changes a setting only when you tap, or when an app you allow repeats a change you made.</string>
+    <string name="onboarding_shizuku_lede">Shizuku lets Coulomb read battery details that Android keeps to itself. Coulomb changes a setting only when you tap, or when an app you allow repeats a change you made or returns it to stock.</string>
     <string name="onboarding_shizuku_checking">Looking for Shizuku…</string>
     <string name="onboarding_shizuku_missing_title">Shizuku isn’t installed</string>
     <string name="onboarding_shizuku_missing_body">Install a Shizuku fork such as thedjchi’s, or Sui on a rooted phone. Start it, then come back here.</string>

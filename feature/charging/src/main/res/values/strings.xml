@@ -103,4 +103,5 @@
     <string name="charging_target_alarm_lite">The alarm at the target is on, but Lite mode does not ring it.</string>
     <string name="charging_sensor_pa">Power amplifier</string>
     <string name="charging_sensor_npu">Neural processor</string>
+    <string name="charging_readings_lite">Readings</string>
 </resources>

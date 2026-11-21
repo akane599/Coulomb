@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.ui.page
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
@@ -60,10 +62,18 @@ public fun SectionTitle(
     }
     if (caption != null) {
         // A caption, such as the window a section covers, sits on the title's first baseline.
-        Row(block) {
-            text(Modifier.weight(1f).wrapContentWidth(Alignment.Start).alignByBaseline())
+        // Neither crushes the other: a long caption (a span between two named references) wraps
+        // within a third of the row, and the title keeps the rest (SPEC 11.3).
+        Row(block, horizontalArrangement = Arrangement.SpaceBetween) {
+            text(Modifier.weight(2f, fill = false).alignByBaseline())
             Spacer(Modifier.width(CoulombSpacing.Space16))
-            Text(caption, Modifier.alignByBaseline(), color = colors.textSecondary, style = type.caption)
+            Text(
+                caption,
+                Modifier.weight(1f, fill = false).alignByBaseline(),
+                color = colors.textSecondary,
+                style = type.caption,
+                textAlign = TextAlign.End,
+            )
         }
         return
     }

@@ -76,6 +76,19 @@ class WidgetScreenshotTest {
     @Test
     fun level() = capture("widget-level", DpSize(170.dp, 64.dp)) { LevelContent(Samples.level) }
 
+    /** Lite mode: the reading's time takes the state's place, at 2×1 and stacked (ADR-0069). */
+    @Test
+    fun levelAsOf() =
+        capture("widget-level-as-of", DpSize(170.dp, 64.dp)) {
+            LevelContent(Samples.level.copy(asOfWallMs = AS_OF), ZoneOffset.UTC)
+        }
+
+    @Test
+    fun levelAsOfTall() =
+        capture("widget-level-as-of-tall", DpSize(170.dp, 150.dp)) {
+            LevelContent(Samples.level.copy(asOfWallMs = AS_OF), ZoneOffset.UTC)
+        }
+
     @Test
     fun levelTall() = capture("widget-level-tall", DpSize(170.dp, 150.dp)) { LevelContent(Samples.level) }
 
@@ -194,3 +207,6 @@ class WidgetScreenshotTest {
     @Config(qualifiers = "tr-w412dp-h915dp-xhdpi")
     fun healthTurkish() = capture("widget-health-tr", DpSize(170.dp, 160.dp)) { HealthContent(Samples.health) }
 }
+
+/** 2026-11-08 14:30 UTC: a Lite reading's time. */
+private const val AS_OF = 1_794_148_200_000L

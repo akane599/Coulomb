@@ -146,7 +146,7 @@
     <string name="drain_rails">Güç ölçerler</string>
     <string name="drain_rails_definition">Telefonun içinde, her güç hattının taşıdığı enerjiyi sayan ölçerler. Bu telefonda var; çoğu telefonda yok.</string>
     <string name="drain_rails_caption">Aralık boyunca telefonun kendi ölçerlerinin saydığı enerji. Adlar üreticinindir; Coulomb her birinin neyi beslediğini tahmin etmez.</string>
-    <string name="drain_rails_consumers">Aralık boyunca üreticinin kendi gruplarına göre enerji. Android hangilerini üreticinin ölçtüğünü, hangilerini modellediğini söylemez; bu yüzden Coulomb hepsini Modellenmiş olarak işaretler.</string>
+    <string name="drain_rails_consumers">Aralık boyunca üreticinin kendi gruplarına göre enerji. Android hangilerini üreticinin ölçtüğünü, hangilerini modellediğini söylemez; bu yüzden Coulomb hepsini Modellenen olarak işaretler.</string>
     <string name="drain_consumers">Enerji tüketicileri</string>
     <string name="drain_consumers_definition">Üreticinin gruplayıp enerjisini bildirdiği parçalar, örneğin ekran ya da GPU. Bazı üreticiler bunları ölçer, bazıları bir modelden hesaplar.</string>
     <string name="drain_column_rail">Hat</string>

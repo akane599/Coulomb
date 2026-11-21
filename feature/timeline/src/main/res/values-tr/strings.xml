@@ -111,7 +111,7 @@
         <item quantity="other">Telefon bu aralıkta %1$s kez uyandı.</item>
     </plurals>
     <string name="timeline_caption_density">Uyanık, Uyanık tutma ve radyo şeritlerinde çerçeveli bölüm, her biri ayrı çizilemeyecek kadar sık olayları gösterir; her birini görmek için yakınlaştır. Doze şeridinde çerçeveli bölüm hafif Doze’dur.</string>
-    <string name="timeline_caption_current">Akım, ekran açıkken ya da telefon şarj olurken örneklenir.</string>
+    <string name="timeline_caption_current">Akım, ekran açıkken ya da telefon şarj olurken ve her anlık kayıtta bir kez örneklenir; Hafif modda yalnızca anlık kayıtlarda.</string>
     <string name="timeline_caption_signal">Sinyal, yoktan çok iyiye uzanır.</string>
     <string name="timeline_caption_temperature">Sıcaklık %1$s ile %2$s arasındadır.</string>
     <string name="timeline_event_one">%1$s – %2$s · %3$s</string>

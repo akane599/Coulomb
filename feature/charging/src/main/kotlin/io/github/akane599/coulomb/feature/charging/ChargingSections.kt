@@ -356,11 +356,16 @@ private fun span(
 internal fun Readings(
     now: ChargingNow,
     formats: Formats,
+    lite: Boolean = false,
 ) {
     val type = CoulombTheme.typography
     val colors = CoulombTheme.colors
     Column(Modifier.fillMaxWidth()) {
-        SectionTitle(stringResource(R.string.charging_readings), provenance = Provenance.MEASURED)
+        // Nothing follows them in Lite: they are one snapshot's, not live (ADR-0069).
+        SectionTitle(
+            stringResource(if (lite) R.string.charging_readings_lite else R.string.charging_readings),
+            provenance = Provenance.MEASURED,
+        )
         CoulombFigureStrip {
             val current = now.currentMa
             CoulombFigure(

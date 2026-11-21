@@ -79,6 +79,7 @@ import io.github.akane599.coulomb.core.ui.insight.InsightCard
 import io.github.akane599.coulomb.core.ui.insight.InsightCardActions
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
 import io.github.akane599.coulomb.core.ui.insight.insightAction
+import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
 import io.github.akane599.coulomb.core.ui.story.StoryCopy
@@ -107,13 +108,16 @@ internal fun Hero(
     formats: Formats,
     zone: ZoneId,
     onViewTable: () -> Unit,
+    // An old reading's note: then nothing that would read as now is drawn from it (ADR-0069).
+    staleNote: String? = null,
 ) {
     val discharge = state.discharge
+    val stale = staleNote != null
     val type = CoulombTheme.typography
     val range = discharge?.timeLeft?.let { formats.timeLeft(it.shortestHours, it.longestHours) }?.let { formats.range(it.first, it.second) }
     val pending = stringResource(R.string.now_time_left_pending)
     val left = range?.let { timeLeftText(it) }
-    val stateText = batteryStateText(state.battery, formats)
+    val stateText = batteryStateText(state.battery, formats, stale)
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     // The side text sits beside the reading only while each of its lines fits unbroken; otherwise
@@ -150,16 +154,30 @@ internal fun Hero(
                 Modifier.widthIn(min = sideMin).weight(1f),
                 verticalArrangement = Arrangement.spacedBy(CoulombSpacing.Space4),
             ) {
-                if (discharge != null) TimeLeft(discharge, left, pending)
-                BatteryState(stateText, measured = state.battery.currentMa != null)
+                if (discharge != null && !stale) TimeLeft(discharge, left, pending)
+                BatteryState(stateText, measured = state.battery.currentMa != null && !stale)
             }
         }
-        if (discharge != null) {
-            // Until time left exists there is no projection to scale (ADR-0034).
-            if (discharge.timeLeft != null) Scale(state, discharge, formats, zone, onViewTable)
-            Verdict(state, discharge, formats)
-        }
+        staleNote?.let { Note(it, top = 0.dp) }
+        if (discharge != null) Projection(state, discharge, formats, zone, onViewTable, stale)
     }
+}
+
+/**
+ * The hero's scale and verdict. Until time left exists there is no projection to scale
+ * (ADR-0034); an old reading would put "now" at its own time, so it has none either (ADR-0069).
+ */
+@Composable
+private fun Projection(
+    state: NowUiState.Ready,
+    discharge: DischargeSummary,
+    formats: Formats,
+    zone: ZoneId,
+    onViewTable: () -> Unit,
+    stale: Boolean,
+) {
+    if (discharge.timeLeft != null && !stale) Scale(state, discharge, formats, zone, onViewTable)
+    Verdict(state, discharge, formats)
 }
 
 @Composable
@@ -230,6 +248,7 @@ private fun TimeLeft(
 private fun batteryStateText(
     battery: BatteryNow,
     formats: Formats,
+    stale: Boolean = false,
 ): String {
     val name =
         stringResource(
@@ -246,6 +265,8 @@ private fun batteryStateText(
                 else -> R.string.now_state_not_charging
             },
         )
+    // An old reading's current is not the current now (ADR-0069).
+    if (stale) return name
     // SPEC 6.1: until calibration completes, the current reads "Calibrating", not a number.
     val current =
         battery.currentMa ?: return stringResource(R.string.now_state_with_current, name, stringResource(R.string.now_calibrating))
@@ -626,11 +647,12 @@ internal fun LiveCurrent(
     formats: Formats,
     onViewTable: () -> Unit,
     staleSince: String? = null,
+    lite: Boolean = false,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     // An old reading is not live current (ADR-0069).
-    val current = state.battery.currentMa.takeIf { staleSince == null }
+    val current = state.battery.currentMa.takeIf { staleSince == null && !lite }
     Column(Modifier.padding(top = currentSectionGap())) {
         CoulombSectionHead(
             title = stringResource(R.string.now_live_current),
@@ -644,9 +666,10 @@ internal fun LiveCurrent(
                     }
                 },
         )
-        if (staleSince != null) {
+        if (staleSince != null || lite) {
             Text(
-                stringResource(R.string.now_live_stale, staleSince),
+                // Nothing samples in Lite: one snapshot's reading is not live current (ADR-0069).
+                if (lite) stringResource(R.string.now_live_lite) else stringResource(R.string.now_live_stale, staleSince.orEmpty()),
                 Modifier.padding(top = CoulombSpacing.Space12),
                 color = colors.textSecondary,
                 style = type.body,
