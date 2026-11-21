@@ -90,6 +90,11 @@ private fun AppNavigator.follow(
             open(Route.ActionCenter)
         }
 
+        // Coulomb's own use and the monitoring mode are in Settings (SPEC 6.9, 9 R20).
+        ActionId.OPEN_SELF_DIAGNOSTIC -> {
+            open(Route.Settings)
+        }
+
         // Handled where the card is, or without a place to lead to yet (InsightActions.label).
         else -> {}
     }

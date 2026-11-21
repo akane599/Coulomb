@@ -86,6 +86,7 @@ import io.github.akane599.coulomb.feature.health.ChargeSessionsScreen
 import io.github.akane599.coulomb.feature.health.HealthScreen
 import io.github.akane599.coulomb.feature.health.chargeSessionViewModel
 import io.github.akane599.coulomb.feature.now.NowScreen
+import io.github.akane599.coulomb.feature.settings.ConsoleScreen
 import io.github.akane599.coulomb.feature.settings.DataScreen
 import io.github.akane599.coulomb.feature.settings.PrivilegesScreen
 import io.github.akane599.coulomb.feature.settings.SettingsScreen
@@ -248,6 +249,8 @@ class AppScreens(
     val wakeSource: @Composable (AppNavigator, kind: String, tag: String) -> Unit = { _, _, _ -> },
     /** SPEC 14.5, opened from Settings. */
     val data: @Composable (AppNavigator) -> Unit = {},
+    /** SPEC 14.4, opened from Settings once unlocked. */
+    val console: @Composable (AppNavigator) -> Unit = {},
 ) {
     companion object {
         val Default: AppScreens =
@@ -344,8 +347,10 @@ class AppScreens(
                     SettingsScreen(
                         onOpenActionCenter = { navigator.open(Route.ActionCenter) },
                         onOpenData = { navigator.open(Route.Data) },
+                        onOpenConsole = { navigator.open(Route.Console) },
                     )
                 },
+                console = { navigator -> ConsoleScreen(onClose = navigator::back) },
                 data = { navigator -> DataScreen(onOpenActionCenter = { navigator.open(Route.ActionCenter) }) },
                 actionCenter = { navigator ->
                     ActionCenterScreen(
@@ -431,6 +436,9 @@ private fun EntryProviderScope<NavKey>.barEntries(
     }
     entry<Route.Data> {
         InnerScreen(stringResource(R.string.screen_data), navigator::back, pane = true) { screens.data(navigator) }
+    }
+    entry<Route.Console> {
+        InnerScreen(stringResource(R.string.screen_console), navigator::back, pane = true) { screens.console(navigator) }
     }
 }
 

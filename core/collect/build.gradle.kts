@@ -60,6 +60,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.work.runtime)
 
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

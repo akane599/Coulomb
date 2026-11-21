@@ -399,14 +399,14 @@ private fun Heat(
         SectionTitle(stringResource(R.string.health_heat), provenance = null)
         CoulombFigureStrip {
             val mean = detail.meanTempDeciC
-            val highest = formats.celsius(detail.maxTempDeciC.toDouble())
+            val highest = formats.temperature(detail.maxTempDeciC.toDouble())
             if (mean != null) {
                 // An average of measured readings is Derived, as the habits' charge temperature is.
                 CoulombFigure(
                     stringResource(R.string.health_temperature),
                     stringResource(R.string.health_temperature_note, highest.joined()),
                 ) {
-                    FigureText(formats.celsius(mean.toDouble()).affixed(), numberStyle = type.title, unitStyle = type.label)
+                    FigureText(formats.temperature(mean.toDouble()).affixed(), numberStyle = type.title, unitStyle = type.label)
                     ProvenanceMark(Provenance.DERIVED)
                 }
             } else {
@@ -422,7 +422,7 @@ private fun Heat(
                 }
             }
             detail.minutesAbove38C?.let { minutes ->
-                CoulombFigure(stringResource(R.string.health_time_hot), caption = null) {
+                CoulombFigure(stringResource(R.string.health_time_hot, formats.threshold(HOT_DECI_C).joined()), caption = null) {
                     Text(formats.duration(minutes.toLong()), color = CoulombTheme.colors.textPrimary, style = type.title)
                     ProvenanceMark(Provenance.DERIVED)
                 }

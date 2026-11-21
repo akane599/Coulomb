@@ -11,6 +11,8 @@ import io.github.akane599.coulomb.core.collect.snapshot.UsageRead
 import io.github.akane599.coulomb.core.model.DesignCapacity
 import io.github.akane599.coulomb.core.model.PrivilegeMode
 import io.github.akane599.coulomb.core.model.dumpsys.OemHealthValue
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import java.time.ZoneId
 
 /** The privileged part of a heavy snapshot; `HeavyReader` in the app, a fake in tests. */
@@ -74,12 +76,26 @@ internal interface HealthSource {
 }
 
 /**
- * The settings the collector follows, read at each heavy snapshot. `:core:collect` may not depend
- * on `:core:datastore` (SPEC 15.2), so the app binds this to the stored settings.
+ * The settings the collector follows. `:core:collect` may not depend on `:core:datastore`
+ * (SPEC 15.2), so the app binds this to the stored settings.
  */
 public fun interface CollectorSettings {
-    /** "Component breakdown" (ADR-0035 §2): whether S4 is read. */
+    /** "Component breakdown" (ADR-0035 §2): whether S4 is read. Read at each heavy snapshot. */
     public suspend fun componentBreakdown(): Boolean
+
+    /** "Monitoring mode" (SPEC 7.1, 14.4): true for Lite, which runs no foreground service. */
+    public val liteMode: Flow<Boolean> get() = flowOf(false)
+
+    /** "Screen-on sampling" (SPEC 14.4) in milliseconds, for [SamplerPolicy.intervalMs]. */
+    public val visibleSamplingMs: Flow<Long> get() = flowOf(SamplerPolicy.VISIBLE_MS)
+
+    /** "Data retention" (SPEC 14.4): the days raw samples stay before they become 1-minute aggregates. */
+    public suspend fun rawSampleDays(): Int = RAW_SAMPLE_DAYS
+
+    public companion object {
+        /** SPEC 7.7. */
+        public const val RAW_SAMPLE_DAYS: Int = 14
+    }
 }
 
 /** The device the collector runs on. */

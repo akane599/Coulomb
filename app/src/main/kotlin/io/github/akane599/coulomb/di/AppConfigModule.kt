@@ -14,10 +14,12 @@ import io.github.akane599.coulomb.BuildConfig
 import io.github.akane599.coulomb.core.collect.actions.ActionGate
 import io.github.akane599.coulomb.core.collect.engine.CollectorSettings
 import io.github.akane599.coulomb.core.datastore.SettingsStore
+import io.github.akane599.coulomb.core.datastore.UserSettings
 import io.github.akane599.coulomb.core.parsing.batterystats.UsageStatsProtoParser
 import io.github.akane599.coulomb.core.privileged.PrivilegeConfig
 import io.github.akane599.coulomb.core.privileged.capability.UsageParser
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -35,9 +37,19 @@ object AppConfigModule {
             fingerprint = Build.FINGERPRINT,
         )
 
-    // ADR-0035 §2: the collector reads "Component breakdown" at each heavy snapshot.
+    /** The stored settings the collector follows: ADR-0035 §2 and SPEC 14.4's mode, sampling and retention. */
     @Provides
-    fun collectorSettings(store: SettingsStore): CollectorSettings = CollectorSettings { store.settings.first().componentBreakdown }
+    fun collectorSettings(store: SettingsStore): CollectorSettings =
+        object : CollectorSettings {
+            override val liteMode = store.settings.map { it.liteMode }
+
+            override val visibleSamplingMs = store.settings.map { it.screenOnSamplingS * MS_PER_S }
+
+            override suspend fun componentBreakdown() = store.settings.first().componentBreakdown
+
+            override suspend fun rawSampleDays() =
+                if (store.settings.first().longRawRetention) UserSettings.LONG_RAW_DAYS else CollectorSettings.RAW_SAMPLE_DAYS
+        }
 
     /** SPEC 13: the engine asks this before every action, so nothing can act while the Action Center is off. */
     @Provides
@@ -47,3 +59,5 @@ object AppConfigModule {
     @Provides
     fun usageParser(): UsageParser = UsageParser { UsageStatsProtoParser.parse(it) }
 }
+
+private const val MS_PER_S = 1_000L

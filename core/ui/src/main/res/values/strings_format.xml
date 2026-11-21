@@ -24,6 +24,7 @@
     <string name="unit_w" translatable="false">W</string>
     <string name="unit_v" translatable="false">V</string>
     <string name="unit_celsius" translatable="false">°C</string>
+    <string name="unit_fahrenheit" translatable="false">°F</string>
 
     <!-- A UID with no package name yet (SPEC 6.5). -->
     <string name="uid_kernel">Kernel</string>

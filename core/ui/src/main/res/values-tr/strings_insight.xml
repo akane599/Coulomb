@@ -67,6 +67,7 @@
     <string name="insight_action_location">Konum ayarlarını aç</string>
     <string name="insight_action_health">Sağlık’ı aç</string>
     <string name="insight_action_doze">Eylem Merkezi’ni aç</string>
+    <string name="insight_action_monitoring">Ayarlar’ı aç</string>
     <string name="insight_why">Bunu neden görüyorum?</string>
     <string name="insight_why_title">Bunu neden görüyorsun</string>
     <string name="insight_column_what">Ne</string>

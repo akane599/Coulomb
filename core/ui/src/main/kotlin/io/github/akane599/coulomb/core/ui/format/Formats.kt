@@ -11,7 +11,10 @@ import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
@@ -67,6 +70,8 @@ public class Formats(
     monthPattern: String = "LLL",
     monthYearPattern: String = "MMM yyyy",
     fullWeekdayPattern: String = "EEEE",
+    /** SPEC 14.4 "Units": temperatures in °F. Everything is stored and compared in °C. */
+    public val fahrenheit: Boolean = false,
 ) {
     private val integer = NumberFormat.getIntegerInstance(locale)
     private val oneDecimal =
@@ -81,6 +86,11 @@ public class Formats(
         }
     private val axisAmps = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 }
     private val percent = NumberFormat.getPercentInstance(locale).apply { maximumFractionDigits = 0 }
+    private val finePercent =
+        NumberFormat.getPercentInstance(locale).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
     private val clock = DateTimeFormatter.ofPattern(clockPattern, locale)
     private val clockSeconds = DateTimeFormatter.ofPattern(secondsPattern, locale)
     private val hour = DateTimeFormatter.ofPattern(hourPattern, locale)
@@ -101,6 +111,9 @@ public class Formats(
 
     /** [percent] split around its digits, for the hero numeral. */
     public fun percentParts(points: Int): Affixed = split(percent(points))
+
+    /** A share too small for whole points, to the hundredth: "0.12%"; Turkish "%0,12" (SPEC 6.9). */
+    public fun finePercent(points: Double): String = finePercent.format(points / PERCENT)
 
     /**
      * A share from 0 to 1 as a whole percentage; a share above zero never shows as 0%, nor one
@@ -158,8 +171,23 @@ public class Formats(
     /** A voltage to the hundredth of a volt: "4.02 V". */
     public fun volts(millivolts: Int): Figure = Figure(twoDecimals.format(millivolts / MV_PER_V), resources.getString(R.string.unit_v))
 
-    /** A temperature to 0.1 °C from tenths of a degree, as the battery reports it. */
-    public fun celsius(deciC: Double): Figure = Figure(oneDecimal.format(deciC / DECI), resources.getString(R.string.unit_celsius))
+    /** A temperature to a tenth of a degree, from tenths of a degree Celsius as the battery reports it, in the user's unit. */
+    public fun temperature(deciC: Double): Figure = Figure(oneDecimal.format(degrees(deciC)), degreeUnit())
+
+    /** A threshold: whole degrees when it is whole in the user's unit ("38 °C"), else to a tenth ("100.4 °F"). */
+    public fun threshold(deciC: Int): Figure {
+        val degrees = degrees(deciC.toDouble())
+        val whole = (degrees * DECI).roundToLong() % DECI.toLong() == 0L
+        return Figure(if (whole) integer.format(degrees.roundToLong()) else oneDecimal.format(degrees), degreeUnit())
+    }
+
+    /** How far a temperature moved, from tenths of a degree Celsius: a difference has no offset. */
+    public fun temperatureChange(deciC: Double): Figure =
+        Figure(oneDecimal.format(deciC / DECI * if (fahrenheit) F_PER_C else 1.0), degreeUnit())
+
+    private fun degrees(deciC: Double): Double = (deciC / DECI).let { if (fahrenheit) it * F_PER_C + F_AT_ZERO_C else it }
+
+    private fun degreeUnit(): String = resources.getString(if (fahrenheit) R.string.unit_fahrenheit else R.string.unit_celsius)
 
     /** A day without the year: "Nov 1"; Turkish "1 Kas". */
     public fun day(date: LocalDate): String = day.format(date)
@@ -386,6 +414,8 @@ public class Formats(
     internal companion object {
         private const val PERCENT = 100.0
         private const val DECI = 10.0
+        private const val F_PER_C = 1.8
+        private const val F_AT_ZERO_C = 32.0
         private const val SMALL_MAH = 10.0
         private const val MA_PER_A = 1_000.0
         private const val MV_PER_V = 1_000.0
@@ -437,7 +467,17 @@ public fun rememberFormats(): Formats {
     val context = LocalContext.current
     val locale = stringsLocale(configuration, resources)
     val is24Hour = DateFormat.is24HourFormat(context)
-    return remember(configuration, resources, locale, is24Hour) { formats(resources, locale, is24Hour) }
+    val fahrenheit = DisplayUnits.fahrenheit
+    return remember(configuration, resources, locale, is24Hour, fahrenheit) { formats(resources, locale, is24Hour, fahrenheit) }
+}
+
+/**
+ * SPEC 14.4 "Units" for every formatter of the process: a screen, a notification, a widget and
+ * the tile print one unit. The app sets it from the stored setting; a composition that read it
+ * recomposes when it changes.
+ */
+public object DisplayUnits {
+    public var fahrenheit: Boolean by mutableStateOf(false)
 }
 
 /**
@@ -446,13 +486,15 @@ public fun rememberFormats(): Formats {
  */
 public fun formatsFor(context: Context): Formats {
     val resources = context.resources
-    return formats(resources, stringsLocale(resources.configuration, resources), DateFormat.is24HourFormat(context))
+    val locale = stringsLocale(resources.configuration, resources)
+    return formats(resources, locale, DateFormat.is24HourFormat(context), DisplayUnits.fahrenheit)
 }
 
 private fun formats(
     resources: Resources,
     locale: Locale,
     is24Hour: Boolean,
+    fahrenheit: Boolean,
 ): Formats {
     val hours = if (is24Hour) "H" else "h"
     return Formats(
@@ -470,5 +512,6 @@ private fun formats(
         monthPattern = DateFormat.getBestDateTimePattern(locale, "LLL"),
         monthYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMyyyy"),
         fullWeekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEEE"),
+        fahrenheit = fahrenheit,
     )
 }

@@ -3,15 +3,14 @@
 
 package io.github.akane599.coulomb.core.collect.android
 
-import android.app.ForegroundServiceStartNotAllowedException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 
 /**
- * Starts Full mode after a boot or an update of Coulomb (SPEC 7.2). Both broadcasts let the
+ * Starts Full mode after a boot or an update of Coulomb (SPEC 7.2); in Lite mode nothing starts
+ * (SPEC 7.1, `Collector.start`). Both broadcasts let the
  * receiver start a foreground service from the background:
  * - `BOOT_COMPLETED` allows `specialUse` (`FGS_BOOT_COMPLETED_RESTRICTIONS`, ActiveServices
  *   android-17.0.0_r1 L389-404, android-16.0.0_r4 L368-383);
@@ -41,14 +40,12 @@ public class BootReceiver : BroadcastReceiver() {
                 Intent.ACTION_MY_PACKAGE_REPLACED -> SnapshotTrigger.PACKAGE_REPLACED
                 else -> return
             }
-        try {
-            CollectorService.start(context, trigger)
-        } catch (e: ForegroundServiceStartNotAllowedException) {
-            Log.w(TAG, "collector not started on ${intent.action}; it starts when Coulomb is opened", e)
-        }
-    }
-
-    private companion object {
-        const val TAG = "Coulomb:boot"
+        // The mode is in the stored settings, read off this thread; the broadcast stays open until
+        // the start is made (goAsync, BroadcastReceiver android-17.0.0_r1 L446, android-16.0.0_r4
+        // L443). Both allowances are a temporary allowlist of the app for some seconds, not of this
+        // call (UserController.getTemporaryAppAllowlistBroadcastOptions android-17.0.0_r1
+        // L4293-4305, android-16.0.0_r4 L4323-4335).
+        val pending: PendingResult? = goAsync()
+        context.collector().start(trigger) { pending?.finish() }
     }
 }

@@ -77,6 +77,10 @@ sealed interface Route : NavKey {
     /** "Data and export" (SPEC 14.5), below Settings. */
     @Serializable
     data object Data : Route
+
+    /** The developer console (SPEC 14.4), below Settings once unlocked. */
+    @Serializable
+    data object Console : Route
 }
 
 /** The four destinations of SPEC 10 in bar order, each the root of its own back stack. */

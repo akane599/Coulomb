@@ -161,7 +161,7 @@
     <string name="health_temperature_note">ortalama; en yüksek %1$s</string>
     <string name="health_temperature_highest">En yüksek sıcaklık</string>
     <string name="health_time_high">%1$s veya üstünde</string>
-    <string name="health_time_hot">38 °C üstünde</string>
+    <string name="health_time_hot">%1$s üstünde</string>
     <string name="health_wear">Aşınma stresi</string>
     <string name="health_charger">Şarj cihazı</string>
     <string name="health_no_power">Bu şarj için güç değeri yok: şarj çok kısaydı ya da Coulomb bu telefonun akım okumasını henüz kalibre etmemişti.</string>

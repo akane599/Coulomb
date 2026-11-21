@@ -377,7 +377,7 @@ internal fun Readings(
                 FigureText(formats.volts(now.voltageMv).affixed(), numberStyle = type.title, unitStyle = type.label)
             }
             CoulombFigure(stringResource(R.string.charging_temperature), riseWords(now.tempRiseDeciC, formats)) {
-                FigureText(formats.celsius(now.tempDeciC.toDouble()).affixed(), numberStyle = type.title, unitStyle = type.label)
+                FigureText(formats.temperature(now.tempDeciC.toDouble()).affixed(), numberStyle = type.title, unitStyle = type.label)
             }
         }
     }
@@ -401,7 +401,7 @@ private fun riseWords(
     formats: Formats,
 ): String? {
     val rise = riseDeciC ?: return null
-    val size = formats.celsius(abs(rise).toDouble()).joined()
+    val size = formats.temperatureChange(abs(rise).toDouble()).joined()
     return when {
         rise > STEADY_DECI_C -> stringResource(R.string.charging_temp_up, size)
         rise < -STEADY_DECI_C -> stringResource(R.string.charging_temp_down, size)

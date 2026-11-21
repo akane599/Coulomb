@@ -727,7 +727,7 @@ internal class CollectorEngine(
         }
         // SPEC 7.7: compaction and VACUUM only while charging and idle (the screen off).
         if (reading.plugged && !reading.screenOn && due(lastRetentionElapsedNs, reading, RETENTION_EVERY_NS)) {
-            retention.run(current, reading.elapsedNs)
+            retention.run(current, reading.elapsedNs, settings.rawSampleDays())
             lastRetentionElapsedNs = reading.elapsedNs
         }
     }

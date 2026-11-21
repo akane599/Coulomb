@@ -470,8 +470,8 @@ private fun caption(
             if (TimelineTrack.TEMPERATURE in shown && low != null && high != null) {
                 stringResource(
                     R.string.timeline_caption_temperature,
-                    formats.celsius(low.toDouble()).number,
-                    formats.celsius(high.toDouble()).joined(),
+                    formats.temperature(low.toDouble()).number,
+                    formats.temperature(high.toDouble()).joined(),
                 )
             } else {
                 null

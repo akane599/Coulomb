@@ -73,7 +73,8 @@ public data class TableRow(
  * the name would get less than [NAME_MIN_EM] beside the figures, as at 200% text, each name takes
  * its own line and the figures sit under it, each with its column's name (lab's large-text
  * layout). TalkBack reads each row as one item with its column names and any definition. A
- * table longer than [shown] rows ends with "Show all".
+ * table longer than [shown] rows ends with "Show all". [stack] takes that layout at any width, for
+ * a table whose values are words that a figure's column would break.
  */
 @Composable
 public fun InlineTable(
@@ -82,6 +83,7 @@ public fun InlineTable(
     modifier: Modifier = Modifier,
     termAction: String? = null,
     shown: Int = Int.MAX_VALUE,
+    stack: Boolean = false,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -91,7 +93,7 @@ public fun InlineTable(
         // large as 120 sp, so converting the product would keep the threshold near 120 dp at any scale.
         val nameMin = with(LocalDensity.current) { EM.toDp() * NAME_MIN_EM }
         val valueWidth = ValueColumn * LocalDensity.current.fontScale.coerceAtLeast(1f)
-        val stacked = maxWidth - (valueWidth + CoulombSpacing.Space12) * (columns.size - 1) < nameMin
+        val stacked = stack || maxWidth - (valueWidth + CoulombSpacing.Space12) * (columns.size - 1) < nameMin
         Column(Modifier.fillMaxWidth()) {
             Row(
                 Modifier

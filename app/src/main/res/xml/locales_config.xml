@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  SPEC 14.4 "Language": the languages Coulomb's strings exist in, for Android's per-app language
+  page and for Settings' own row. AOSP: the `localeConfig` attribute,
+  frameworks/base/core/res/res/values/attrs_manifest.xml:1648-1649 (android-16.0.0_r4) and
+  1747-1748 (android-17.0.0_r1); read by LocaleConfig.parseLocaleConfig,
+  frameworks/base/core/java/android/app/LocaleConfig.java:206-246 (android-17.0.0_r1).
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="tr" />
+</locale-config>

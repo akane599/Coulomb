@@ -113,6 +113,49 @@
     <string name="settings_target">Charge target</string>
     <string name="settings_target_note">Charging shows the time to this level.</string>
     <string name="settings_save_failed">Couldn’t save that change. Try again.</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_follow_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_black">True black</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_tr" translatable="false">Türkçe</string>
+    <string name="settings_language_en" translatable="false">English</string>
+    <string name="settings_units">Temperature unit</string>
+    <string name="settings_units_note">Current stays in mA and power in W.</string>
+    <string name="settings_monitoring">Monitoring</string>
+    <string name="settings_mode">Monitoring mode</string>
+    <string name="settings_mode_full">Full</string>
+    <string name="settings_mode_lite">Lite</string>
+    <string name="settings_mode_full_note">Coulomb keeps recording while it is closed: live current, exact sessions, the charge and temperature alarms.</string>
+    <string name="settings_mode_lite_note">Nothing runs in the background. Coulomb reads Android’s statistics when you open it and every 6 hours, so every app’s use is still counted. There is no live current, session times are less exact, and the charge and temperature alarms do not ring.</string>
+    <string name="settings_sampling">Reading interval while Coulomb is open</string>
+    <!-- %1$s: a number of seconds. -->
+    <string name="settings_sampling_seconds">%1$s s</string>
+    <string name="settings_sampling_note">On battery. Behind another app Coulomb reads every 30 s at most; while charging the interval is fixed.</string>
+    <string name="settings_retention">Keep every reading for 60 days</string>
+    <string name="settings_retention_note">Otherwise readings become one-minute averages after 14 days. Sessions and daily figures are kept either way.</string>
+    <string name="settings_own_use">Coulomb’s own use</string>
+    <!-- %1$s: a time, "Thu 2:05 PM". -->
+    <string name="settings_own_use_since">Since %1$s, by Android’s estimate. Coulomb’s budget is 0.3%% of the battery a day.</string>
+    <string name="settings_own_use_none">Not measured yet. It takes two readings of Android’s statistics.</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_console_on">The developer console is on.</string>
+    <string name="settings_console_open">Developer console</string>
+
+    <!-- The developer console (SPEC 14.4). Column names in its tables are the database’s own. -->
+    <string name="console_about">Read-only. Each query is a fixed question to Coulomb’s own database; nothing here changes it or leaves the phone.</string>
+    <string name="console_query">Query</string>
+    <string name="console_storage">Storage</string>
+    <string name="console_snapshots">Snapshots</string>
+    <string name="console_sources">Sources</string>
+    <string name="console_capabilities">Capabilities</string>
+    <string name="console_boots">Boots</string>
+    <string name="console_empty">No rows.</string>
+    <string name="console_failed">The query could not be read.</string>
+    <string name="console_hide">Hide the console</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_breakdown">Component breakdown</string>
     <string name="settings_breakdown_note">Splits drain by component. It adds a system report at each snapshot, which costs a little battery.</string>

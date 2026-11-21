@@ -16,6 +16,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.then
 import androidx.compose.ui.unit.LayoutDirection
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.akane599.coulomb.core.data.SelfCost
+import io.github.akane599.coulomb.core.datastore.ThemeChoice
 import io.github.akane599.coulomb.core.datastore.UserSettings
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import org.junit.Rule
@@ -24,11 +26,12 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.ZoneOffset
 
 /** The settings built so far (SPEC 14.4): defaults, some on, a target set elsewhere, dark, 200%, Turkish. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [36], application = Application::class, qualifiers = "w412dp-h1500dp-xhdpi")
+@Config(sdk = [36], application = Application::class, qualifiers = "w412dp-h2300dp-xhdpi")
 class SettingsScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
@@ -40,26 +43,26 @@ class SettingsScreenshotTest {
     fun changed() = shoot("changed", CHANGED)
 
     @Test
-    @Config(qualifiers = "w412dp-h1500dp-night-xhdpi")
+    @Config(qualifiers = "w412dp-h2300dp-night-xhdpi")
     fun dark() = shoot("dark", CHANGED, dark = true)
 
     @Test
-    @Config(qualifiers = "w412dp-h3200dp")
+    @Config(qualifiers = "w412dp-h5200dp")
     fun text200() = shoot("200", CHANGED, fontScale = 2f)
 
     @Test
-    @Config(qualifiers = "tr-w412dp-h1500dp-xhdpi")
+    @Config(qualifiers = "tr-w412dp-h2300dp-xhdpi")
     fun turkish() = shoot("tr", CHANGED)
 
     @Test
     fun loading() = shoot("loading", null)
 
     @Test
-    @Config(qualifiers = "ar-w412dp-h1500dp-xhdpi")
+    @Config(qualifiers = "ar-w412dp-h2300dp-xhdpi")
     fun arabic() = shoot("ar", CHANGED, rtl = true)
 
     @Test
-    @Config(qualifiers = "w1280dp-h800dp")
+    @Config(qualifiers = "w1280dp-h2000dp")
     fun wide() = shoot("wide", CHANGED)
 
     @Test
@@ -70,8 +73,21 @@ class SettingsScreenshotTest {
     fun notificationsOff() = shoot("notifications-off", CHANGED, notificationsAllowed = false)
 
     @Test
-    @Config(qualifiers = "tr-w412dp-h1500dp-night-xhdpi")
+    @Config(qualifiers = "tr-w412dp-h2300dp-night-xhdpi")
     fun notificationsOffTurkishDark() = shoot("notifications-off-tr-dark", CHANGED, dark = true, notificationsAllowed = false)
+
+    /** SPEC 7.1: Lite has no sampler to set a rate for; a phone without a capacity shows the charge alone. */
+    @Test
+    fun lite() =
+        shoot(
+            "lite",
+            CHANGED.copy(liteMode = true, theme = ThemeChoice.BLACK, fahrenheit = true, longRawRetention = true, developerConsole = true),
+            device = DEVICE.copy(language = AppLanguage.TURKISH, ownUse = OwnUse(SelfCost(1.84, null, FROM, NOW))),
+        )
+
+    /** Before two readings of the day are stored. */
+    @Test
+    fun ownUseNotMeasured() = shoot("own-use-none", UserSettings(), device = DEVICE.copy(ownUse = OwnUse(null)))
 
     @Suppress("LongParameterList") // One switch per variant of the screen.
     private fun shoot(
@@ -82,6 +98,7 @@ class SettingsScreenshotTest {
         saveFailed: Boolean = false,
         rtl: Boolean = false,
         notificationsAllowed: Boolean = true,
+        device: SettingsDevice = DEVICE,
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
         val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -91,7 +108,13 @@ class SettingsScreenshotTest {
             ) {
                 CoulombTheme(darkTheme = dark) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
-                        SettingsContent(settings, NoActions, saveFailed = saveFailed, notificationsAllowed = notificationsAllowed)
+                        SettingsContent(
+                            settings,
+                            NoActions,
+                            saveFailed = saveFailed,
+                            notificationsAllowed = notificationsAllowed,
+                            device = device,
+                        )
                     }
                 }
             }
@@ -110,3 +133,9 @@ private val CHANGED =
         insightsDigestMinute = 8 * 60 + 30,
     )
 private val NoActions = SettingsActions({}, {}, {}, {})
+
+// 2026-11-19 14:05 and 2026-11-20 09:30 UTC.
+private const val FROM = 1_795_097_100_000L
+private const val NOW = 1_795_167_000_000L
+private val DEVICE =
+    SettingsDevice(ownUse = OwnUse(SelfCost(5.9, 4_855.0, FROM, NOW)), version = "1.0.0", zone = ZoneOffset.UTC, nowMs = NOW)

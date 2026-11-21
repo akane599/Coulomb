@@ -141,6 +141,15 @@ public class SettingsStore
             store.updateData { it.copy(onboarded = true) }
         }
 
+        /**
+         * The settings were restored from a backup of another install (ADR-0062 §15): what stands
+         * for a grant or a consent given there starts off again, and onboarding runs, because
+         * this install has neither. Nothing changes on an install that has no settings yet.
+         */
+        public suspend fun startedFromBackup() {
+            store.updateData { it.copy(onboarded = false, action_center = false, automation = false) }
+        }
+
         public suspend fun chargeAlarm(on: Boolean) {
             store.updateData { it.copy(charge_alarm = on) }
         }

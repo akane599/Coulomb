@@ -181,7 +181,8 @@
     <string name="health_temperature_note">average; highest %1$s</string>
     <string name="health_temperature_highest">Highest temperature</string>
     <string name="health_time_high">At %1$s or more</string>
-    <string name="health_time_hot">Above 38 °C</string>
+    <!-- %1$s: a temperature, "38 °C". -->
+    <string name="health_time_hot">Above %1$s</string>
     <string name="health_wear">Wear stress</string>
     <string name="health_charger">Charger</string>
     <string name="health_no_power">No power figures for this charge: it was too short, or Coulomb hadn’t calibrated this phone’s current reading yet.</string>

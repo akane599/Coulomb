@@ -11,6 +11,7 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.collect.Collector
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,10 +21,13 @@ import org.robolectric.Shadows.shadowOf
 class BootReceiverTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
 
+    private val snapshots = ArrayList<SnapshotTrigger>()
+
     @Test
     fun aBootOrAnUpdateStartsTheCollectorWithItsTrigger() {
-        BootReceiver().onReceive(app, Intent(Intent.ACTION_BOOT_COMPLETED))
-        BootReceiver().onReceive(app, Intent(Intent.ACTION_MY_PACKAGE_REPLACED))
+        Collector.startIn(app, lite = false, SnapshotTrigger.BOOT_COMPLETED, snapshots::add)
+        Collector.startIn(app, lite = false, SnapshotTrigger.PACKAGE_REPLACED, snapshots::add)
+        assertThat(snapshots).isEmpty()
         val started = generateSequence { shadowOf(app).nextStartedService }.toList()
         assertThat(started.map { it.component?.className }).containsExactly(
             CollectorService::class.java.name,
@@ -46,8 +50,20 @@ class BootReceiverTest {
                     throw ForegroundServiceStartNotAllowedException("startForegroundService() not allowed")
                 }
             }
-        BootReceiver().onReceive(refusing, Intent(Intent.ACTION_BOOT_COMPLETED))
+        Collector.startIn(refusing, lite = false, SnapshotTrigger.BOOT_COMPLETED, snapshots::add)
         assertThat(asked).isEqualTo(1)
+    }
+
+    /** SPEC 7.1: Lite runs no foreground service; only an app open takes a snapshot. */
+    @Test
+    fun liteModeStartsNoServiceAndSnapshotsOnlyWhenTheAppIsOpened() {
+        for (trigger in listOf(SnapshotTrigger.BOOT_COMPLETED, SnapshotTrigger.PACKAGE_REPLACED, SnapshotTrigger.SERVICE_STARTED)) {
+            Collector.startIn(app, lite = true, trigger, snapshots::add)
+        }
+        assertThat(snapshots).isEmpty()
+        Collector.startIn(app, lite = true, SnapshotTrigger.APP_OPENED, snapshots::add)
+        assertThat(snapshots).containsExactly(SnapshotTrigger.APP_OPENED)
+        assertThat(shadowOf(app).nextStartedService).isNull()
     }
 
     @Test

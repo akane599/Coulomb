@@ -50,7 +50,10 @@ class InsightActionsTest {
 
     @Test
     fun anActionWithoutAPlaceOrLeftOutHasNoButton() {
-        assertThat(InsightActions.pick(listOf(ActionId.OPEN_SELF_DIAGNOSTIC, ActionId.SWITCH_TO_LITE), insight())).isNull()
+        assertThat(InsightActions.pick(listOf(ActionId.OPEN_BATTERY_PROTECTION, ActionId.SWITCH_TO_LITE), insight())).isNull()
+        // The self-cost insight leads to Settings, where the mode is switched too.
+        assertThat(InsightActions.pick(listOf(ActionId.OPEN_SELF_DIAGNOSTIC, ActionId.SWITCH_TO_LITE), insight()))
+            .isEqualTo(ActionId.OPEN_SELF_DIAGNOSTIC)
         // On the app's own page, "open the app's page" is left out.
         assertThat(InsightActions.pick(listOf(ActionId.OPEN_APP_DETAIL), insight(), except = setOf(ActionId.OPEN_APP_DETAIL))).isNull()
     }
@@ -58,6 +61,6 @@ class InsightActionsTest {
     @Test
     fun everyActionHasWordsOrIsKnownToLackAPlace() {
         val without = ActionId.entries.filter { InsightActions.label(it) == null }
-        assertThat(without).containsExactly(ActionId.OPEN_BATTERY_PROTECTION, ActionId.OPEN_SELF_DIAGNOSTIC, ActionId.SWITCH_TO_LITE)
+        assertThat(without).containsExactly(ActionId.OPEN_BATTERY_PROTECTION, ActionId.SWITCH_TO_LITE)
     }
 }

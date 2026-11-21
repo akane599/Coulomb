@@ -3,32 +3,52 @@
 
 package io.github.akane599.coulomb.feature.settings
 
+import android.database.SQLException
+import android.os.Build
+import android.os.Process
 import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.akane599.coulomb.core.data.SelfCostReader
 import io.github.akane599.coulomb.core.datastore.SettingsStore
+import io.github.akane599.coulomb.core.datastore.ThemeChoice
 import io.github.akane599.coulomb.core.datastore.UserSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
 import javax.inject.Inject
 
 /** The settings built so far (SPEC 14.4, ADR-0047 §8). */
+@Suppress("TooManyFunctions") // One setter per row of SPEC 14.4.
 @HiltViewModel
 public class SettingsViewModel
     @Inject
     constructor(
         private val store: SettingsStore,
+        private val selfCost: SelfCostReader,
     ) : ViewModel() {
         /** Null until the stored values are read, so no switch shows a default and then flips. */
         internal val settings: StateFlow<UserSettings?> =
             store.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
+
+        /**
+         * Coulomb's own use over the last day (SPEC 6.9), read when Settings opens; null until then.
+         * A read that fails leaves the row out, as one with no reading does not.
+         */
+        internal val ownUse: StateFlow<OwnUse?> =
+            flow<OwnUse?> { emit(OwnUse(selfCost.lastDay(Process.myUid(), Build.FINGERPRINT))) }
+                .catch { e ->
+                    if (e !is SQLException) throw e
+                    Log.w(TAG, "own use not read", e)
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
         private val failed = MutableStateFlow(false)
 
@@ -51,6 +71,19 @@ public class SettingsViewModel
         internal fun insightsDigest(on: Boolean) = write { store.insightsDigest(on) }
 
         internal fun insightsDigestMinute(minute: Int) = write { store.insightsDigestMinute(minute) }
+
+        internal fun theme(choice: ThemeChoice) = write { store.theme(choice) }
+
+        internal fun fahrenheit(on: Boolean) = write { store.fahrenheit(on) }
+
+        /** The collector follows the stored mode: it stops or starts its service itself (SPEC 7.1). */
+        internal fun liteMode(on: Boolean) = write { store.liteMode(on) }
+
+        internal fun screenOnSampling(seconds: Int) = write { store.screenOnSampling(seconds) }
+
+        internal fun longRawRetention(on: Boolean) = write { store.longRawRetention(on) }
+
+        internal fun developerConsole(on: Boolean) = write { store.developerConsole(on) }
 
         /** A write that fails (a full disk) is logged and said; the switch shows the stored value again. */
         private fun write(block: suspend () -> Unit) {
@@ -86,4 +119,12 @@ internal class SettingsActions(
     val openActionCenter: () -> Unit = {},
     val allowNotifications: () -> Unit = {},
     val openData: () -> Unit = {},
+    val theme: (ThemeChoice) -> Unit = {},
+    val language: (AppLanguage) -> Unit = {},
+    val fahrenheit: (Boolean) -> Unit = {},
+    val liteMode: (Boolean) -> Unit = {},
+    val screenOnSampling: (Int) -> Unit = {},
+    val longRawRetention: (Boolean) -> Unit = {},
+    val versionTap: () -> Unit = {},
+    val openConsole: () -> Unit = {},
 )

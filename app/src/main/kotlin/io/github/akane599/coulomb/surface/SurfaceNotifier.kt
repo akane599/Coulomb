@@ -201,7 +201,7 @@ class SurfaceNotifier
                     is Alert.Hot -> {
                         Triple(
                             HOT_ID,
-                            context.getString(R.string.surface_hot_title, formats.celsius(alert.tempDeciC.toDouble()).joined()),
+                            context.getString(R.string.surface_hot_title, formats.temperature(alert.tempDeciC.toDouble()).joined()),
                             context.getString(R.string.surface_hot_text),
                         )
                     }

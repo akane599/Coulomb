@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,6 +58,7 @@ import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.page.DataRow
 import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 /** SPEC 14.4 as built so far: the rest joins as each setting's feature lands (ADR-0047 §8). */
@@ -64,14 +67,21 @@ public fun SettingsScreen(
     modifier: Modifier = Modifier,
     onOpenActionCenter: () -> Unit = {},
     onOpenData: () -> Unit = {},
+    onOpenConsole: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val ownUse by viewModel.ownUse.collectAsStateWithLifecycle()
     val saveFailed by viewModel.saveFailed.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // An alarm that is on while Coulomb may not post is not armed: the screen says so and asks (SPEC 14.1 lets the step be skipped).
     var allowed by remember { mutableStateOf(context.notificationsAllowed()) }
     var refused by rememberSaveable { mutableStateOf(false) }
+    // Android holds the language; a change recreates the activity, which reads it again here.
+    var language by remember { mutableStateOf(AppLanguage.of(context)) }
+    val version = remember(context) { context.versionName() }
+    // SPEC 14.4: the seventh tap on the version unlocks the developer console.
+    var taps by remember { mutableIntStateOf(0) }
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             allowed = granted
@@ -82,7 +92,7 @@ public fun SettingsScreen(
         onPauseOrDispose {}
     }
     val actions =
-        remember(viewModel, onOpenActionCenter, onOpenData, allowed, refused) {
+        remember(viewModel, onOpenActionCenter, onOpenData, onOpenConsole, allowed, refused) {
             // Asked once in place; after a refusal the system's page is where it is changed.
             val ask = {
                 if (refused) context.openNotificationSettings() else launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -109,11 +119,36 @@ public fun SettingsScreen(
                 insightsDigestMinute = viewModel::insightsDigestMinute,
                 openActionCenter = onOpenActionCenter,
                 openData = onOpenData,
+                theme = viewModel::theme,
+                language = {
+                    language = it
+                    context.setAppLanguage(it)
+                },
+                fahrenheit = viewModel::fahrenheit,
+                liteMode = viewModel::liteMode,
+                screenOnSampling = viewModel::screenOnSampling,
+                longRawRetention = viewModel::longRawRetention,
+                versionTap = {
+                    taps++
+                    if (taps == CONSOLE_TAPS) viewModel.developerConsole(true)
+                },
+                openConsole = onOpenConsole,
             )
         }
     // Nothing until the stored values are read, then one fade-in (SPEC 10.11).
-    if (settings != null) FadeInOnce { SettingsContent(settings, actions, modifier, saveFailed, notificationsAllowed = allowed) }
+    if (settings != null) {
+        val device = SettingsDevice(language, ownUse, version, ZoneId.systemDefault(), System.currentTimeMillis())
+        FadeInOnce { SettingsContent(settings, actions, modifier, saveFailed, notificationsAllowed = allowed, device = device) }
+    }
 }
+
+private fun Context.versionName(): String =
+    try {
+        packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
+    } catch (_: PackageManager.NameNotFoundException) {
+        // Coulomb's own package is always found; the row would only be empty.
+        ""
+    }
 
 private fun Context.notificationsAllowed(): Boolean = getSystemService(NotificationManager::class.java).areNotificationsEnabled()
 
@@ -136,6 +171,7 @@ internal fun SettingsContent(
     modifier: Modifier = Modifier,
     saveFailed: Boolean = false,
     notificationsAllowed: Boolean = true,
+    device: SettingsDevice = SettingsDevice(),
 ) {
     val gutter = currentGutter()
     Column(
@@ -178,6 +214,10 @@ internal fun SettingsContent(
         )
         Temperature(settings.temperatureAlarmDeciC, actions.temperatureAlarm)
         Digest(settings.insightsDigest, settings.insightsDigestMinute, actions)
+        SectionTitle(stringResource(R.string.settings_appearance), provenance = null)
+        Appearance(settings.theme, device.language, settings.fahrenheit, actions)
+        SectionTitle(stringResource(R.string.settings_monitoring), provenance = null)
+        Monitoring(settings, device, actions)
         SectionTitle(stringResource(R.string.settings_advanced), provenance = null)
         Setting(
             stringResource(R.string.settings_breakdown),
@@ -210,6 +250,8 @@ internal fun SettingsContent(
             trailingIcon = CoulombIcons.ChevronRight,
             edge = ButtonEdge.Start,
         )
+        SectionTitle(stringResource(R.string.settings_about), provenance = null)
+        About(device.version, settings.developerConsole, actions)
     }
 }
 
@@ -262,7 +304,6 @@ private fun ColumnScope.Temperature(
     onSelect: (Int?) -> Unit,
 ) {
     val formats = rememberFormats()
-    val unit = formats.celsius(0.0).unit
     val degrees = remember(deciC) { (TEMPERATURES + listOfNotNull(deciC)).distinct().sorted() }
     // One of the alerts: a label over its choices, not a section of its own.
     Text(
@@ -272,18 +313,8 @@ private fun ColumnScope.Temperature(
         style = CoulombTheme.typography.body,
     )
     CoulombChoiceGroup(
-        // Whole degrees as offered; a stored threshold between them keeps its tenth.
-        options =
-            listOf(stringResource(R.string.settings_off)) +
-                degrees.map {
-                    if (it % DECI ==
-                        0
-                    ) {
-                        "${formats.integer((it / DECI).toLong())}\u00A0$unit"
-                    } else {
-                        formats.celsius(it.toDouble()).joined()
-                    }
-                },
+        // Whole degrees as offered; a stored threshold between them, or any in °F, keeps its tenth.
+        options = listOf(stringResource(R.string.settings_off)) + degrees.map { formats.threshold(it).joined() },
         selected = deciC?.let { degrees.indexOf(it) + 1 } ?: 0,
         onSelect = { onSelect(if (it == 0) null else degrees[it - 1]) },
     )
@@ -315,9 +346,9 @@ private fun ColumnScope.Digest(
     }
 }
 
+private const val CONSOLE_TAPS = 7
 private val TARGETS = listOf(80, 85, 90, 100)
 private val TEMPERATURES = listOf(380, 400, 420, 450, 500)
 private val DIGEST_MINUTES = listOf(7 * 60, 9 * 60, 12 * 60, 18 * 60, 21 * 60)
-private const val DECI = 10
 private const val MS_PER_MINUTE = 60_000L
 private val MaxWidth = 720.dp

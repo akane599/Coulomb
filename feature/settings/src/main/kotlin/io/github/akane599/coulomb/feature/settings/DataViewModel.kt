@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.akane599.coulomb.core.collect.Collector
 import io.github.akane599.coulomb.core.collect.actions.ActionCenter
 import io.github.akane599.coulomb.core.collect.android.CollectorService
 import io.github.akane599.coulomb.core.collect.export.RawBundle
@@ -160,7 +161,8 @@ public class DataViewModel internal constructor(
         settings: SettingsTransfer,
         raw: RawBundle,
         actions: ActionCenter,
-    ) : this(transfer, AndroidDataHost(context, settings, raw, actions))
+        collector: Collector,
+    ) : this(transfer, AndroidDataHost(context, settings, raw, actions, collector))
 
     private val ui = MutableStateFlow(DataUiState())
     internal val state: StateFlow<DataUiState> = ui.asStateFlow()
@@ -371,6 +373,7 @@ private class AndroidDataHost(
     private val settings: SettingsTransfer,
     private val raw: RawBundle,
     private val actions: ActionCenter,
+    private val collector: Collector,
 ) : DataHost {
     override fun now(): Long = System.currentTimeMillis()
 
@@ -418,7 +421,8 @@ private class AndroidDataHost(
 
     override fun collector(run: Boolean) {
         if (run) {
-            CollectorService.start(context, SnapshotTrigger.SERVICE_STARTED)
+            // In the user's mode: Lite has no service to start again.
+            collector.start(SnapshotTrigger.SERVICE_STARTED)
         } else {
             context.stopService(Intent(context, CollectorService::class.java))
         }

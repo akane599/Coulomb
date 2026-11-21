@@ -15,6 +15,7 @@ import io.github.akane599.coulomb.core.database.dao.NewHistoryEvent
 import io.github.akane599.coulomb.core.database.dao.SnapshotRows
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
+import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceStatEntity
 import io.github.akane599.coulomb.core.database.entity.KernelReadEntity
 import io.github.akane599.coulomb.core.database.entity.KmsgSpan
@@ -198,6 +199,20 @@ class RetentionTest {
             assertThat(db.historyDao().events(1, 0, 1, Long.MAX_VALUE)).hasSize(1)
             // The history ring's tag prune ran after the S27 ring and freed the old event's tag.
             assertThat(tags()).containsExactly(WLAN)
+        }
+
+    /** SPEC 14.4 "Data retention": raw samples go after 14 days (SPEC 7.7), or after the longer time the user set. */
+    @Test
+    fun rawSamplesStayForAsLongAsTheSettingSays() =
+        runTest {
+            val boot = db.deviceDao().enterBoot(1, "fp", wall0, 0)
+            db.sampleDao().insert(BatterySampleEntity(1, hourNs, wall0, 50, null, null, null, 4_000, 300, 0, 3, true, 0, 0))
+            val now = 20 * 24 * hourNs
+
+            assertThat(Retention(db, Blobs()).run(boot, now, rawSampleDays = 60).samplesCompacted).isEqualTo(0)
+            // A setting can only lengthen it.
+            assertThat(Retention(db, Blobs()).run(boot, 10 * 24 * hourNs, rawSampleDays = 1).samplesCompacted).isEqualTo(0)
+            assertThat(Retention(db, Blobs()).run(boot, now).samplesCompacted).isEqualTo(1)
         }
 
     /** Before the database is 30 days old there is no history cut; the S27 ring still frees its tags. */

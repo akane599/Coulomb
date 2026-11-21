@@ -99,7 +99,7 @@ internal fun Habits(
             }
             habits.chargeTempDeciC?.let { temp ->
                 CoulombFigure(stringResource(R.string.health_charge_temp), stringResource(R.string.health_charge_temp_note)) {
-                    Figure(formats.celsius(temp).affixed())
+                    Figure(formats.temperature(temp).affixed())
                 }
             }
         }
@@ -136,6 +136,9 @@ private fun Figure(figure: Affixed) {
 
 /** The level the habits count time at or above (ADR-0044 §2). */
 internal const val HIGH_LEVEL = 80
+
+/** The temperature above which a charge counts as hot, in tenths of a degree Celsius (SPEC 6.6). */
+internal const val HOT_DECI_C = 380
 
 /**
  * The latest charge sessions' head (SPEC 10.8 item 6), with "See all" where there are more, or the

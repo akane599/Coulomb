@@ -10,6 +10,7 @@
     <string name="screen_privileges">Yetkiler</string>
     <string name="screen_settings">Ayarlar</string>
     <string name="screen_data">Veri ve dışa aktarma</string>
+    <string name="screen_console">Geliştirici konsolu</string>
     <!-- The notification channels of SPEC 12.1; Monitor is the collector's. -->
     <string name="surface_channel_charging">Şarj</string>
     <string name="surface_channel_charging_about">Telefon şarj olurken seviye, güç ve hedefine kalan süre.</string>

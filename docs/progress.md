@@ -162,10 +162,20 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
     reader would throw on); fixed, with tests (ADR-0062 §11 and "Reviewed").
   - Not verified on a device: the system's file pickers, the restart after a deletion, the raw
     bundle's dumps and whether Battery Historian takes them.
-- **Settings rows still to come (SPEC 14.4), all in P6:** Monitoring mode (Full, Lite), the two
-  sampling intervals, Theme with true black, Language, Units, Automation API, Data retention, the
-  Developer console, and the self-cost line of SPEC 6.9. Lite mode was once planned with P4's
-  Settings (ADR-0018); it moves to P6 with the rest.
+- **The remaining settings of SPEC 14.4 (ADR-0064).**
+  - Appearance: Theme (System, Light, Dark, True black), Language (Android's per-app language,
+    with `locales_config.xml`) and the temperature unit, which every screen, notification, widget
+    and the tile now print through one formatter.
+  - Monitoring: Full or Lite mode (Lite stops the service and runs one WorkManager job every six
+    hours; a boot starts nothing), the reading interval while Coulomb is open (2 to 60 s), raw
+    samples for 60 days instead of 14, and Coulomb's own use of the last day (SPEC 6.9), the figure
+    the self-cost insight judges; that insight's button now leads here.
+  - About: the version; seven taps unlock the developer console, five fixed read-only queries.
+  - Settings restored by Auto Backup start without onboarding, the Action Center or the
+    Automation API (ADR-0062 §15).
+  - Not seen on a device yet (`docs/questions.md`). Wallpaper colour stays in `BACKLOG.md`.
+- **Still to come in P6:** the Automation API (its setting with it), DeX and expanded-layout
+  polish, release signing, and SPEC 18's checklist.
 
 ## P4 Core screens (gate deferred: protocol C)
 

@@ -3,15 +3,20 @@
 
 package io.github.akane599.coulomb.core.collect
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.PowerManager
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.akane599.coulomb.core.collect.android.AndroidAppLabels
 import io.github.akane599.coulomb.core.collect.android.AndroidDeviceIdentity
 import io.github.akane599.coulomb.core.collect.android.AndroidHealthSource
 import io.github.akane599.coulomb.core.collect.android.AndroidLightSource
+import io.github.akane599.coulomb.core.collect.android.CollectorService
 import io.github.akane599.coulomb.core.collect.android.FileBlobStore
+import io.github.akane599.coulomb.core.collect.android.LiteWorker
 import io.github.akane599.coulomb.core.collect.engine.CollectorActor
 import io.github.akane599.coulomb.core.collect.engine.CollectorEngine
 import io.github.akane599.coulomb.core.collect.engine.CollectorEvent
@@ -22,6 +27,7 @@ import io.github.akane599.coulomb.core.collect.snapshot.HeavyReader
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +38,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -50,7 +57,7 @@ public class Collector
         @ApplicationContext private val context: Context,
         db: CoulombDatabase,
         private val access: PrivilegedAccess,
-        settings: CollectorSettings,
+        private val settings: CollectorSettings,
         observers: Set<@JvmSuppressWildcards SnapshotObserver>,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -72,6 +79,10 @@ public class Collector
         private val screen = MutableStateFlow(VisibleScreen.NONE)
         private var attached: Job? = null
 
+        init {
+            scope.launch { followMode() }
+        }
+
         /** Which Coulomb screen is showing, for the sampling rate (SPEC 7.3). */
         public var visibleScreen: VisibleScreen
             get() = screen.value
@@ -82,6 +93,55 @@ public class Collector
         /** Queues a snapshot for [trigger]; the policy decides its kind (SPEC 7.2). */
         public fun post(trigger: SnapshotTrigger) {
             actor.post(CollectorEvent.Trigger(trigger))
+        }
+
+        /** [post], returning when the trigger has been handled and what follows a snapshot has run. */
+        public suspend fun snapshot(trigger: SnapshotTrigger) {
+            val done = CompletableDeferred<Unit>()
+            actor.post(CollectorEvent.Trigger(trigger, done))
+            done.await()
+        }
+
+        /**
+         * Starts collecting for [trigger] in the user's monitoring mode (SPEC 7.1): Full starts the
+         * foreground service with it; Lite runs no service and takes a snapshot only for an app
+         * open. [onStarted] runs once that is decided and done, for a receiver that holds its
+         * broadcast open meanwhile.
+         */
+        public fun start(
+            trigger: SnapshotTrigger,
+            onStarted: () -> Unit = {},
+        ) {
+            scope.launch {
+                try {
+                    startIn(context, settings.liteMode.first(), trigger, ::post)
+                } finally {
+                    onStarted()
+                }
+            }
+        }
+
+        /** Whether Lite mode is on, for the periodic job, which is left over when it is not. */
+        internal suspend fun lite(): Boolean = settings.liteMode.first()
+
+        /**
+         * The mode as stored and every change of it. Lite stops the service and schedules its
+         * 6-hour job; Full cancels the job. A change to Full starts the service too: it is made in
+         * Settings, with Coulomb in front. At a process start in Full nothing is started here: that
+         * is the launch's or the boot's, which Android allows to (SPEC 7.1, ADR-0064 §5).
+         */
+        private suspend fun followMode() {
+            var stored = true
+            settings.liteMode.distinctUntilChanged().collect { lite ->
+                if (lite) {
+                    context.stopService(Intent(context, CollectorService::class.java))
+                    LiteWorker.schedule(context)
+                } else if (!stored) {
+                    LiteWorker.cancel(context)
+                    startIn(context, lite = false, SnapshotTrigger.SERVICE_STARTED, ::post)
+                }
+                stored = false
+            }
         }
 
         /** The service is running: samplers and the screen-on snapshot timer start. */
@@ -117,8 +177,9 @@ public class Collector
         private suspend fun sample() {
             val power = context.getSystemService(PowerManager::class.java)
             val wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG).apply { setReferenceCounted(false) }
-            combine(device, screen) { d, s -> d.plugged to SamplerPolicy.intervalMs(d.plugged, d.screenOn, s) }
-                .distinctUntilChanged()
+            combine(device, screen, settings.visibleSamplingMs) { d, s, visibleMs ->
+                d.plugged to SamplerPolicy.intervalMs(d.plugged, d.screenOn, s, visibleMs)
+            }.distinctUntilChanged()
                 .collectLatest { (plugged, intervalMs) ->
                     if (intervalMs == null) return@collectLatest
                     while (true) {
@@ -160,8 +221,30 @@ public class Collector
             val screenOn: Boolean,
         )
 
-        private companion object {
-            const val WAKE_LOCK_TAG = "Coulomb:sample"
-            val SCREEN_ON_PERIOD = 30.minutes
+        internal companion object {
+            private const val TAG = "CoulombCollector"
+            private const val WAKE_LOCK_TAG = "Coulomb:sample"
+            private val SCREEN_ON_PERIOD = 30.minutes
+
+            /**
+             * [start] for a known mode. Android refuses a foreground service from the background
+             * without an allowance (see `BootReceiver`); that is logged, and the collector starts
+             * when Coulomb is next opened.
+             */
+            fun startIn(
+                context: Context,
+                lite: Boolean,
+                trigger: SnapshotTrigger,
+                snapshot: (SnapshotTrigger) -> Unit,
+            ) {
+                try {
+                    when {
+                        !lite -> CollectorService.start(context, trigger)
+                        trigger == SnapshotTrigger.APP_OPENED -> snapshot(trigger)
+                    }
+                } catch (e: ForegroundServiceStartNotAllowedException) {
+                    Log.w(TAG, "collector not started for $trigger; it starts when Coulomb is opened", e)
+                }
+            }
         }
     }

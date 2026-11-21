@@ -5,6 +5,16 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. Settings' new rows (ADR-0064) are built and tested on the build server only. Not
+  seen on a device yet: the chosen theme at a cold start (the first frame is held until the
+  stored theme is read), Android's per-app language page, Lite mode (the service stopping and
+  starting on a mode change, the six-hour job), the collector's start after a boot now that the
+  receiver reads the mode first, and the first start after a restore from a backup. Default in
+  use: an emulator run is queued with P6's device tests; none of it needs the phone.
+- 2026-11-21. "Screen-on sampling" (SPEC 14.4: "5 s visible / 30 s background", options 2–60 s)
+  is read as the rate while a Coulomb screen shows on battery; behind another app it stays 30 s,
+  or the chosen rate when that is slower, and charging's rates stay fixed (ADR-0064 §4). "Longer
+  raw retention" is one switch, 60 days instead of 14 (§6). Say so if either should be otherwise.
 - 2026-11-21. **Import keeps another phone's history apart; it does not merge it** (ADR-0062 §9,
   after a second opinion). SPEC 14.5 says import is "for moving to a new phone". Merged rows would
   put the old phone's capacity, cycles, baselines and app UIDs under this phone's name, so an

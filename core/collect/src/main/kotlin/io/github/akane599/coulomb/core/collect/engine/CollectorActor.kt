@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.collect.SnapshotObserver
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -15,8 +16,10 @@ import kotlinx.coroutines.launch
 
 /** What the collector is asked to do. */
 internal sealed interface CollectorEvent {
+    /** [done] completes when the trigger has been handled, whether or not it stored a snapshot. */
     data class Trigger(
         val trigger: SnapshotTrigger,
+        val done: CompletableDeferred<Unit>? = null,
     ) : CollectorEvent
 
     data class Sample(
@@ -57,6 +60,8 @@ internal class CollectorActor(
                 ) {
                     // Room, a parser or the platform failed for this event only.
                     Log.w(TAG, "collector event $event failed", e)
+                } finally {
+                    (event as? CollectorEvent.Trigger)?.done?.complete(Unit)
                 }
             }
         }

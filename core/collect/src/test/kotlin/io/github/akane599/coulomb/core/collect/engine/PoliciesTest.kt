@@ -78,6 +78,24 @@ class PoliciesTest {
         assertThat(SamplerPolicy.intervalMs(plugged = true, screenOn = true, VisibleScreen.CHARGING)).isEqualTo(1_000)
     }
 
+    /** SPEC 14.4 "Screen-on sampling", 2–60 s: the visible rate on battery; charging's rates are fixed. */
+    @Test
+    fun theUsersSamplingRateIsTheVisibleOneOnBattery() {
+        fun rate(
+            plugged: Boolean,
+            screen: VisibleScreen,
+            visibleMs: Long,
+        ) = SamplerPolicy.intervalMs(plugged, screenOn = true, screen, visibleMs)
+        assertThat(rate(plugged = false, VisibleScreen.COULOMB, 2_000)).isEqualTo(2_000)
+        assertThat(rate(plugged = false, VisibleScreen.CHARGING, 60_000)).isEqualTo(60_000)
+        // Behind another app it is never faster than 30 s, nor faster than the user's own.
+        assertThat(rate(plugged = false, VisibleScreen.NONE, 2_000)).isEqualTo(30_000)
+        assertThat(rate(plugged = false, VisibleScreen.NONE, 60_000)).isEqualTo(60_000)
+        assertThat(rate(plugged = true, VisibleScreen.COULOMB, 60_000)).isEqualTo(5_000)
+        assertThat(rate(plugged = true, VisibleScreen.CHARGING, 60_000)).isEqualTo(1_000)
+        assertThat(SamplerPolicy.intervalMs(plugged = false, screenOn = false, VisibleScreen.COULOMB, 2_000)).isNull()
+    }
+
     @Test
     fun aRetentionCutCountsBackInElapsedTimeOverTheBoots() {
         val hourNs = 3_600_000_000_000L

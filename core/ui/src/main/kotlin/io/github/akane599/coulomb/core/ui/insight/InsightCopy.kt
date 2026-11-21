@@ -307,7 +307,7 @@ public class InsightCopy(
     private fun rate(pctPerHour: Double): String =
         resources.getString(R.string.insight_rate, formats.rate(pctPerHour), formats.rateUnit.replace("/", "/\u2060"))
 
-    private fun celsius(degrees: Double): String = formats.celsius(degrees * DECI).joined()
+    private fun celsius(degrees: Double): String = formats.temperature(degrees * DECI).joined()
 
     private companion object {
         val RULE_NAMES: Map<RuleId, Int> =

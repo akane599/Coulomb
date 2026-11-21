@@ -15,7 +15,8 @@ public object InsightActions {
     /**
      * The first of [offered] that [insight] can carry out and that is not in [except], or null:
      * an action for an app needs the app, and a night needs its session. An action with no place
-     * to lead to yet (battery protection, the self-diagnostic, Lite mode) has no button.
+     * to lead to yet (battery protection) has no button; Lite mode is switched where the
+     * self-diagnostic leads, in Settings, so it has none of its own.
      */
     public fun pick(
         offered: List<ActionId>,
@@ -44,14 +45,25 @@ public object InsightActions {
     public fun label(action: ActionId): Int? =
         when (action) {
             ActionId.RESTRICT_BACKGROUND, ActionId.STANDBY_BUCKET -> R.string.insight_action_app_actions
+
             ActionId.OPEN_APP_DETAIL -> R.string.insight_action_app
+
             ActionId.OPEN_SESSION -> R.string.insight_action_night
+
             ActionId.OPEN_NIGHT_REPORT -> R.string.insight_action_nights
+
             ActionId.OPEN_LOCATION_PERMISSION -> R.string.insight_action_app_info
+
             ActionId.OPEN_SCANNING_SETTINGS -> R.string.insight_action_location
+
             ActionId.OPEN_HEALTH -> R.string.insight_action_health
+
             ActionId.OPEN_DOZE -> R.string.insight_action_doze
-            ActionId.OPEN_BATTERY_PROTECTION, ActionId.OPEN_SELF_DIAGNOSTIC, ActionId.SWITCH_TO_LITE -> null
+
+            // Settings' Monitoring section: Coulomb's own use (SPEC 6.9) and the mode beside it.
+            ActionId.OPEN_SELF_DIAGNOSTIC -> R.string.insight_action_monitoring
+
+            ActionId.OPEN_BATTERY_PROTECTION, ActionId.SWITCH_TO_LITE -> null
         }
 }
 

@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.collect.retention
 
 import io.github.akane599.coulomb.core.collect.engine.BlobStore
+import io.github.akane599.coulomb.core.collect.engine.CollectorSettings
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.entity.BootEntity
 import io.github.akane599.coulomb.core.model.SessionKind
@@ -36,10 +37,16 @@ internal class Retention(
     suspend fun run(
         boot: BootEntity,
         nowElapsedNs: Long,
+        rawSampleDays: Int = CollectorSettings.RAW_SAMPLE_DAYS,
     ): Report {
         val cut = cutter(boot, nowElapsedNs)
         val samples = db.sampleDao()
-        val compacted = cut(SAMPLES_MS)?.let { samples.compactSamples(it.bootSeq, it.elapsedNs, MINUTE_S) } ?: 0
+        // Never shorter than SPEC 7.7's own, whatever a setting says.
+        val compacted =
+            cut(
+                maxOf(rawSampleDays, CollectorSettings.RAW_SAMPLE_DAYS) * DAY_MS,
+            )?.let { samples.compactSamples(it.bootSeq, it.elapsedNs, MINUTE_S) }
+                ?: 0
         cut(AGGREGATES_MS)?.let { samples.compactAggregates(it.bootSeq, it.elapsedNs, MINUTE_S, HOUR_S) }
         // The kernel log ring before the history ring, so the history tag prune sees its events gone.
         val kernelCut = cut(KERNEL_LOG_MS)
@@ -148,7 +155,6 @@ internal class Retention(
     companion object {
         private const val HOUR_MS = 3_600_000L
         private const val DAY_MS = 24 * HOUR_MS
-        const val SAMPLES_MS: Long = 14 * DAY_MS
         const val AGGREGATES_MS: Long = 180 * DAY_MS
         const val HISTORY_MS: Long = 30 * DAY_MS
 
