@@ -30,4 +30,18 @@ message Settings {
   int32 insights_digest_minute_plus_one = 9;
   // "Action Center" (SPEC 14.4): Off.
   bool action_center = 10;
+  // "Theme" (SPEC 14.4): 0 System, 1 Light, 2 Dark, 3 True black.
+  int32 theme = 11;
+  // "Units" (SPEC 14.4): temperatures in °F; Off is °C.
+  bool fahrenheit = 12;
+  // "Monitoring mode" (SPEC 7.1, 14.4): Lite; Off is Full.
+  bool lite_mode = 13;
+  // "Screen-on sampling" (SPEC 14.4) in seconds while a Coulomb screen is visible, 2-60; 0 is the default 5.
+  int32 screen_on_sampling_s = 14;
+  // "Data retention" (SPEC 14.4): raw samples kept longer than SPEC 7.7's 14 days.
+  bool long_raw_retention = 15;
+  // "Developer console" (SPEC 14.4): unlocked by tapping the version seven times.
+  bool developer_console = 16;
+  // "Automation API" (SPEC 12.7, 14.4): Off.
+  bool automation = 17;
 }

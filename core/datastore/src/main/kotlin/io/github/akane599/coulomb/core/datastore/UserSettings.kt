@@ -11,6 +11,17 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * "Theme" (SPEC 14.4). Stored by position: append, never reorder. The wallpaper accent is not
+ * built (`BACKLOG.md`).
+ */
+public enum class ThemeChoice {
+    SYSTEM,
+    LIGHT,
+    DARK,
+    BLACK,
+}
+
 /** The settings of SPEC 14.4 that are built so far, with their defaults. */
 public data class UserSettings(
     /** "Show system apps in Drain": Off. */
@@ -33,6 +44,20 @@ public data class UserSettings(
     val insightsDigestMinute: Int = DEFAULT_DIGEST_MINUTE,
     /** "Action Center" (SPEC 13, 14.4): Off. Nothing on the phone is changed while it is off. */
     val actionCenter: Boolean = false,
+    /** "Theme" (SPEC 14.4). */
+    val theme: ThemeChoice = ThemeChoice.SYSTEM,
+    /** "Units" (SPEC 14.4): temperatures in °F. */
+    val fahrenheit: Boolean = false,
+    /** "Monitoring mode" (SPEC 7.1): Lite, with no foreground service. */
+    val liteMode: Boolean = false,
+    /** "Screen-on sampling" (SPEC 14.4): seconds between samples while a Coulomb screen is visible. */
+    val screenOnSamplingS: Int = DEFAULT_SAMPLING_S,
+    /** "Data retention" (SPEC 14.4): raw samples kept [LONG_RAW_DAYS] days instead of SPEC 7.7's 14. */
+    val longRawRetention: Boolean = false,
+    /** "Developer console" (SPEC 14.4): unlocked. */
+    val developerConsole: Boolean = false,
+    /** "Automation API" (SPEC 12.7). */
+    val automation: Boolean = false,
 ) {
     public companion object {
         public const val DEFAULT_CHARGE_TARGET: Int = 80
@@ -45,10 +70,19 @@ public data class UserSettings(
 
         /** SPEC 14.4's range for the charge target. */
         public val CHARGE_TARGETS: IntRange = 50..100
+
+        public const val DEFAULT_SAMPLING_S: Int = 5
+
+        /** SPEC 14.4: 2 to 60 s. */
+        public val SAMPLING_S: IntRange = 2..60
+
+        /** Raw samples under "longer raw retention"; SPEC 7.7's own is 14 days. */
+        public const val LONG_RAW_DAYS: Int = 60
     }
 }
 
 /** Reads and writes [UserSettings] in Proto DataStore (SPEC 8.1). */
+@Suppress("TooManyFunctions") // One setter per row of SPEC 14.4, each holding its value to the spec's range.
 @Singleton
 public class SettingsStore
     @Inject
@@ -79,6 +113,14 @@ public class SettingsStore
                             (it.insights_digest_minute_plus_one - 1).takeIf { minute -> minute in 0 until UserSettings.MINUTES_PER_DAY }
                                 ?: UserSettings.DEFAULT_DIGEST_MINUTE,
                         actionCenter = it.action_center,
+                        theme = ThemeChoice.entries.getOrElse(it.theme) { ThemeChoice.SYSTEM },
+                        fahrenheit = it.fahrenheit,
+                        liteMode = it.lite_mode,
+                        screenOnSamplingS =
+                            it.screen_on_sampling_s.takeIf { s -> s in UserSettings.SAMPLING_S } ?: UserSettings.DEFAULT_SAMPLING_S,
+                        longRawRetention = it.long_raw_retention,
+                        developerConsole = it.developer_console,
+                        automation = it.automation,
                     )
                 }.distinctUntilChanged()
 
@@ -111,6 +153,35 @@ public class SettingsStore
 
         public suspend fun actionCenter(on: Boolean) {
             store.updateData { it.copy(action_center = on) }
+        }
+
+        public suspend fun theme(choice: ThemeChoice) {
+            store.updateData { it.copy(theme = choice.ordinal) }
+        }
+
+        public suspend fun fahrenheit(on: Boolean) {
+            store.updateData { it.copy(fahrenheit = on) }
+        }
+
+        public suspend fun liteMode(on: Boolean) {
+            store.updateData { it.copy(lite_mode = on) }
+        }
+
+        /** Stores the interval, held to [UserSettings.SAMPLING_S]. */
+        public suspend fun screenOnSampling(seconds: Int) {
+            store.updateData { it.copy(screen_on_sampling_s = seconds.coerceIn(UserSettings.SAMPLING_S)) }
+        }
+
+        public suspend fun longRawRetention(on: Boolean) {
+            store.updateData { it.copy(long_raw_retention = on) }
+        }
+
+        public suspend fun developerConsole(on: Boolean) {
+            store.updateData { it.copy(developer_console = on) }
+        }
+
+        public suspend fun automation(on: Boolean) {
+            store.updateData { it.copy(automation = on) }
         }
 
         public suspend fun insightsDigest(on: Boolean) {
