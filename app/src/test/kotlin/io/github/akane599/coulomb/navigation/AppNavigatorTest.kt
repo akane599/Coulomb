@@ -96,6 +96,19 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun anotherNightReplacesTheOneBesideTheList() {
+        navigator.select(Destination.Timeline)
+        navigator.openDetail(Route.Night(41))
+        assertThat(navigator.openNight(Destination.Timeline)).isEqualTo(41)
+
+        navigator.openDetail(Route.Night(40))
+
+        assertThat(navigator.backStack).containsExactly(Route.Timeline, Route.Night(40)).inOrder()
+        navigator.back()
+        assertThat(navigator.openNight(Destination.Timeline)).isNull()
+    }
+
+    @Test
     fun theOpenAppIsTheDetailOnTopOfItsStack() {
         navigator.select(Destination.Drain)
         assertThat(navigator.openApp(Destination.Drain)).isNull()

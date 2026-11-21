@@ -35,6 +35,12 @@ sealed interface Route : NavKey {
     @Serializable
     data object Timeline : Route
 
+    /** One screen-off stretch of the Night Report (SPEC 10.7), below Timeline. */
+    @Serializable
+    data class Night(
+        val id: Long,
+    ) : Route
+
     @Serializable
     data object Health : Route
 

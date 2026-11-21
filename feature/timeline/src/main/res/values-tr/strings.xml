@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="timeline_loading">Yükleniyor</string>
+    <string name="timeline_error_title">Coulomb pil kayıtlarını okuyamadı</string>
+    <string name="timeline_error_body">Hiçbir şey kaybolmadı. Yeniden dene; sürerse uygulamayı yeniden başlat.</string>
+    <string name="timeline_error_action">Yeniden dene</string>
+
+    <string name="timeline_level">Seviye</string>
+    <string name="timeline_current">Akım</string>
+    <string name="timeline_track_screen">Ekran</string>
+    <string name="timeline_track_charging">Şarj</string>
+    <string name="timeline_track_doze">Doze</string>
+    <string name="timeline_track_awake">Uyanık</string>
+    <string name="timeline_track_top_app">Öndeki uygulama</string>
+    <string name="timeline_track_wakelocks">Uyanık tutmalar</string>
+    <string name="timeline_track_mobile_radio">Mobil radyo</string>
+    <string name="timeline_track_wifi">Wi-Fi</string>
+    <string name="timeline_track_gps">GPS</string>
+    <string name="timeline_track_signal">Sinyal</string>
+    <string name="timeline_track_temperature">Sıcaklık</string>
+    <string name="timeline_doze_light">Hafif Doze</string>
+    <string name="timeline_doze_deep">Derin Doze</string>
+    <string name="timeline_column_track">Şerit</string>
+    <string name="timeline_column_time">Açık süre</string>
+    <string name="timeline_column_stretches">Aralık</string>
+
+    <string name="night_report_title">Gece Raporu</string>
+    <string name="night_report_note">Ekranın bir saat ya da daha uzun kapalı kaldığı her süre, en yenisi üstte. Çubuk her hızı en yüksek hızla karşılaştırır.</string>
+    <string name="night_empty">Ekranın bir saat ya da daha uzun kapalı kaldığı bir süre henüz yok. İlki, ekran yeniden açıldığında burada görünür.</string>
+    <string name="night_today_at">Bugün, %1$s</string>
+    <string name="night_yesterday_at">Dün, %1$s</string>
+    <string name="night_day_at">%1$s, %2$s</string>
+    <string name="night_separator">" · "</string>
+    <string name="night_deep_sleep_share">%1$s derin uyku</string>
+    <string name="night_doze_after">%1$s sonra derin Doze</string>
+    <string name="night_doze_never">derin Doze yok</string>
+    <string name="night_charged">şarjda</string>
+
+    <string name="night_title">Ekran kapalı süre</string>
+    <string name="night_gone">Bu ekran kapalı süre artık Coulomb’un kayıtlarında yok.</string>
+    <string name="night_levels">Başta %1$s, sonda %2$s · bitiş %3$s</string>
+    <string name="night_charged_note">Telefon bu sürenin bir kısmında şarjdaydı; bu yüzden tüketim hızı yok.</string>
+    <string name="night_rate_source">Süre boyunca seviye değişiminden</string>
+    <string name="night_drop_source">Kaybedilen seviye: hız için çok az</string>
+    <string name="night_deep_doze">Derin Doze</string>
+    <string name="night_doze_after_start">ekran kapandıktan sonra</string>
+    <string name="night_doze_not_reached">Ulaşılmadı</string>
+    <string name="night_doze_reached">Ulaşıldı</string>
+    <string name="night_awake">Uyanık</string>
+    <string name="night_timeline">Zaman çizelgesi</string>
+    <string name="night_no_history">Android’in bu süreye ait pil geçmişi saklı değil; bu yüzden zaman çizelgesi yok.</string>
+    <string name="night_timeline_summary">Seviye %1$s değerinden %2$s değerine indi. Telefon %3$s kez uyandı ve %4$s uyanık kaldı.</string>
+    <string name="night_timeline_caption">Telefon saatte %1$s kez uyandı. Çerçeveli aralık, tek tek çizilemeyecek kadar sık uyanmaları gösterir.</string>
+    <string name="night_culprits">Uyanık tutanlar</string>
+    <string name="night_no_records">Bu sürenin kayıtları artık saklı değil.</string>
+    <string name="night_wakeup_reasons">Uyandırma nedenleri</string>
+    <string name="night_kernel_wakelocks">Çekirdek uyanık tutmaları</string>
+    <string name="night_partial_wakelocks">Kısmi uyanık tutmalar</string>
+    <string name="night_alarms">Alarmlar</string>
+    <string name="night_column_reason">Neden</string>
+    <string name="night_column_wakelock">Uyanık tutma</string>
+    <string name="night_column_app">Uygulama</string>
+    <string name="night_column_count">Kez</string>
+    <string name="night_column_held">Süre</string>
+    <string name="night_column_wakeups">Uyandırma</string>
+    <string name="night_none">Kayıt yok.</string>
+    <string name="night_small_apps">Küçük uygulamalar birlikte</string>
+    <string name="night_open_drain">Bu süreyi Tüketim’de aç</string>
+</resources>

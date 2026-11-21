@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="timeline_loading">Loading</string>
+    <string name="timeline_error_title">Coulomb couldn’t read its battery records</string>
+    <string name="timeline_error_body">Nothing was lost. Try again; if it keeps happening, restart the app.</string>
+    <string name="timeline_error_action">Try again</string>
+
+    <string name="timeline_level">Level</string>
+    <string name="timeline_current">Current</string>
+    <string name="timeline_track_screen">Screen</string>
+    <string name="timeline_track_charging">Charging</string>
+    <string name="timeline_track_doze">Doze</string>
+    <string name="timeline_track_awake">Awake</string>
+    <string name="timeline_track_top_app">Top app</string>
+    <string name="timeline_track_wakelocks">Wakelocks</string>
+    <string name="timeline_track_mobile_radio">Mobile radio</string>
+    <string name="timeline_track_wifi">Wi-Fi</string>
+    <string name="timeline_track_gps">GPS</string>
+    <string name="timeline_track_signal">Signal</string>
+    <string name="timeline_track_temperature">Temperature</string>
+    <string name="timeline_doze_light">Light Doze</string>
+    <string name="timeline_doze_deep">Deep Doze</string>
+    <string name="timeline_column_track">Track</string>
+    <string name="timeline_column_time">Time on</string>
+    <string name="timeline_column_stretches">Stretches</string>
+
+    <string name="night_report_title">Night Report</string>
+    <string name="night_report_note">Every stretch of an hour or more with the screen off, newest first. The bar compares each rate with the fastest.</string>
+    <string name="night_empty">No stretch of an hour or more with the screen off yet. The first shows here once the screen comes back on.</string>
+    <string name="night_today_at">Today, %1$s</string>
+    <string name="night_yesterday_at">Yesterday, %1$s</string>
+    <string name="night_day_at">%1$s, %2$s</string>
+    <string name="night_separator">" · "</string>
+    <string name="night_deep_sleep_share">%1$s deep sleep</string>
+    <string name="night_doze_after">deep Doze after %1$s</string>
+    <string name="night_doze_never">no deep Doze</string>
+    <string name="night_charged">on the charger</string>
+
+    <string name="night_title">Screen-off stretch</string>
+    <string name="night_gone">This screen-off stretch is no longer in Coulomb’s records.</string>
+    <string name="night_levels">%1$s at the start, %2$s at the end · ended %3$s</string>
+    <string name="night_charged_note">The phone was on the charger for part of this stretch, so it has no drain rate.</string>
+    <string name="night_rate_source">From the level change over the stretch</string>
+    <string name="night_drop_source">The level lost: too little for a rate</string>
+    <string name="night_deep_doze">Deep Doze</string>
+    <string name="night_doze_after_start">after the screen went off</string>
+    <string name="night_doze_not_reached">Not reached</string>
+    <string name="night_doze_reached">Reached</string>
+    <string name="night_awake">Awake</string>
+    <string name="night_timeline">Timeline</string>
+    <string name="night_no_history">Android’s battery history for this stretch is not stored, so it has no timeline.</string>
+    <string name="night_timeline_summary">The level went from %1$s to %2$s. The phone woke %3$s times and was awake for %4$s.</string>
+    <string name="night_timeline_caption">The phone woke %1$s times an hour. An outlined span is a run of wakeups too close to draw one by one.</string>
+    <string name="night_culprits">What kept it awake</string>
+    <string name="night_no_records">The records for this stretch are no longer stored.</string>
+    <string name="night_wakeup_reasons">Wakeup reasons</string>
+    <string name="night_kernel_wakelocks">Kernel wakelocks</string>
+    <string name="night_partial_wakelocks">Partial wakelocks</string>
+    <string name="night_alarms">Alarms</string>
+    <string name="night_column_reason">Reason</string>
+    <string name="night_column_wakelock">Wakelock</string>
+    <string name="night_column_app">App</string>
+    <string name="night_column_count">Times</string>
+    <string name="night_column_held">Held</string>
+    <string name="night_column_wakeups">Wakeups</string>
+    <string name="night_none">None recorded.</string>
+    <string name="night_small_apps">Small apps together</string>
+    <string name="night_open_drain">Open this stretch in Drain</string>
+</resources>

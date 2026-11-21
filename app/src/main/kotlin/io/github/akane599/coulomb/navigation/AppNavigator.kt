@@ -72,6 +72,9 @@ class AppNavigator internal constructor(
     /** The charge session on top of [destination]'s stack, if one is. */
     fun openSession(destination: Destination): Long? = (stacks.getValue(destination).lastOrNull() as? Route.ChargeSession)?.id
 
+    /** The night on top of [destination]'s stack, if one is. */
+    fun openNight(destination: Destination): Long? = (stacks.getValue(destination).lastOrNull() as? Route.Night)?.id
+
     fun back() {
         when {
             backStack.size > 1 -> backStack.removeAt(backStack.lastIndex)
@@ -80,7 +83,7 @@ class AppNavigator internal constructor(
     }
 
     /** A screen that shows beside its list on expanded widths. */
-    private fun NavKey?.isDetail(): Boolean = this is Route.AppDetail || this is Route.ChargeSession
+    private fun NavKey?.isDetail(): Boolean = this is Route.AppDetail || this is Route.ChargeSession || this is Route.Night
 
     private fun popToFirst(stack: NavBackStack<NavKey>) {
         while (stack.size > 1) stack.removeAt(stack.lastIndex)
