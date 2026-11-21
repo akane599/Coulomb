@@ -48,7 +48,7 @@
     <string name="drain_references_delete_body">Only the name and its mark go. Drain keeps every window as before.</string>
     <string name="drain_since_reference">Since %1$s</string>
     <string name="drain_between_references">%1$s to %2$s</string>
-    <string name="drain_empty_between">No snapshot after this reference is stored yet.</string>
+    <string name="drain_empty_between">Nothing is stored from this reference on: no snapshot came after it yet, or its start is older than the 30 days Drain keeps.</string>
     <string name="drain_range_confirm">Show</string>
     <string name="drain_range_cancel">Cancel</string>
 

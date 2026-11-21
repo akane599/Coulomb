@@ -35,6 +35,18 @@ class ScheduledNowTest {
         assertEquals(19, alarms.deliveredQuiet)
     }
 
+    /** A clone in another profile: same package, another uid. The per-uid count holds; the split and the next do not. */
+    @Test
+    fun aPackageAnotherProfileAlsoRunsCountsOnlyThisUidsAlarms() {
+        val clone = AppAlarmStats(1_010_123, PACKAGE, runningMs = 0, wakeups = 3, active = false, alarms = emptyList())
+        val dump = labAlarms().let { it.copy(appStats = it.appStats.orEmpty() + clone) }
+        val alarms = checkNotNull(ScheduledNow.of(UID, PACKAGE, null, dump).alarms)
+        assertEquals(2, alarms.pending)
+        assertNull(alarms.pendingWakeups)
+        assertNull(alarms.nextInMs)
+        assertEquals(12, alarms.deliveredWakeups)
+    }
+
     @Test
     fun aDumpThatCouldNotBeReadWholeIsUnknownNotNone() {
         val now = ScheduledNow.of(UID, PACKAGE, JobSchedulerDump(null, null), AlarmDump(1, 1, null, null, null))

@@ -85,8 +85,12 @@ internal data class ScheduledJobs(
 @Immutable
 internal data class ScheduledAlarms(
     val pending: Int,
-    val pendingWakeups: Int,
-    /** Until the soonest pending alarm, in ms; null without one or without the dump's clock. */
+    /**
+     * Of [pending], those that wake the phone; null when another profile runs the same package, since
+     * a pending alarm names its package but not its uid.
+     */
+    val pendingWakeups: Int?,
+    /** Until the soonest pending alarm, in ms; null without one, without the dump's clock, or as [pendingWakeups]. */
     val nextInMs: Long?,
     val delivered: Int,
     val deliveredWakeups: Int,
@@ -102,12 +106,20 @@ internal data class ScheduledAlarms(
         ): ScheduledAlarms? {
             val stats = dump.appStats?.filter { it.uid == uid } ?: return null
             val packages = stats.map { it.packageName }.toSet() + listOfNotNull(packageName)
-            val pending = dump.pending?.filter { it.packageName in packages }.orEmpty()
+            // The same package in a work profile or a clone has another uid and the same name.
+            val shared = dump.appStats.orEmpty().any { it.uid != uid && it.packageName in packages }
+            val byPackage =
+                dump.pending
+                    ?.filter { it.packageName in packages }
+                    .orEmpty()
+                    .takeUnless { shared }
             val now = dump.nowElapsedMs
             return ScheduledAlarms(
-                pending = pending.size,
-                pendingWakeups = pending.count { it.type?.wakeup == true },
-                nextInMs = now?.let { pending.minOfOrNull { alarm -> alarm.whenElapsedMs }?.minus(it)?.coerceAtLeast(0) },
+                // The per-uid count is exact; a uid it does not list has none pending.
+                pending = dump.pendingPerUid?.let { it[uid] ?: 0 } ?: byPackage?.size ?: return null,
+                pendingWakeups = byPackage?.count { it.type?.wakeup == true },
+                nextInMs =
+                    now?.let { byPackage?.minOfOrNull { alarm -> alarm.whenElapsedMs }?.minus(it)?.coerceAtLeast(0) },
                 delivered = stats.sumOf { app -> app.alarms.sumOf { it.count } },
                 deliveredWakeups = stats.sumOf { it.wakeups },
             )

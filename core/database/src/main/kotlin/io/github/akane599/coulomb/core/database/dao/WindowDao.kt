@@ -307,6 +307,21 @@ public abstract class WindowDao {
         toElapsedNs: Long,
     ): List<ChainStep>
 
+    /**
+     * Where the chain's first window starts. A chain whose first window starts after the span's
+     * start lost its beginning to retention (ADR-0021), so it no longer covers the span.
+     */
+    @Query(
+        "SELECT w.fromSnapshotId FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN ORDER BY s.bootSeq, s.elapsedNs LIMIT 1",
+    )
+    public abstract suspend fun chainStart(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): Long?
+
     /** As [chainTotals], each UID's modeled mAh per component (device rows included). */
     @Query(
         "SELECT u.uid, c.name AS component, SUM(u.mAh) AS mAh FROM window_uid u JOIN stat_key c ON c.id = u.componentId " +

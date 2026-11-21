@@ -101,6 +101,10 @@ public class DrainViewModel
         internal suspend fun readPower(): PowerDump? = live.power()
 
         internal fun deleteReferences(ids: List<Long>) {
+            // A span on a deleted reference would keep its name, and retention may take its snapshot.
+            val open = window.span.value as? DrainSpan.Between
+            val gone = references.value.filter { it.id in ids }.map { it.mark }
+            if (open != null && (open.from in gone || open.to in gone)) window.choose(DrainSpan.SinceUnplugged)
             viewModelScope.launch { ids.forEach { namedReferences.delete(it) } }
         }
 

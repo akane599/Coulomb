@@ -46,7 +46,7 @@
     <string name="drain_references_delete_body">Yalnızca ad ve işaret gider. Tüketim tüm pencereleri eskisi gibi tutar.</string>
     <string name="drain_since_reference">Beri: %1$s</string>
     <string name="drain_between_references">%1$s – %2$s</string>
-    <string name="drain_empty_between">Bu referanstan sonra kaydedilmiş bir anlık görüntü henüz yok.</string>
+    <string name="drain_empty_between">Bu referanstan sonrası için kayıt yok: ya ondan sonra henüz anlık görüntü alınmadı ya da başlangıcı Tüketim’in tuttuğu 30 günden eski.</string>
     <string name="drain_range_confirm">Göster</string>
     <string name="drain_range_cancel">İptal</string>
 

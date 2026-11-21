@@ -487,15 +487,22 @@ internal class DrainReader
             return Bounds(from, to, windows.forSession(found.id)).takeIf { before(from, to) }
         }
 
-        /** Between two named references' snapshots, or from one to the latest heavy snapshot (SPEC 7.6). */
+        /**
+         * Between two named references' snapshots, or from one to the latest heavy snapshot (SPEC 7.6).
+         * A reference outlives the windows after it (ADR-0015, ADR-0021): when the chain no longer
+         * starts at [DrainSpan.Between.from], it would sum a shorter span under the reference's name,
+         * so there is no report.
+         */
         private suspend fun between(
             span: DrainSpan.Between,
             inputs: DrainInputs,
         ): Bounds? {
             val from = snapshots.snapshot(span.from.snapshotId) ?: return null
             val to = (span.to?.let { snapshots.snapshot(it.snapshotId) } ?: snapshots.latestHeavy()) ?: return null
+            if (!before(from, to)) return null
             val stored = inputs.stored.firstOrNull { it.fromSnapshotId == from.id && it.toSnapshotId == to.id }
-            return Bounds(from, to, stored).takeIf { before(from, to) }
+            if (stored == null && windows.chainStart(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs) != from.id) return null
+            return Bounds(from, to, stored)
         }
 
         private suspend fun of(window: WindowResultEntity): Bounds? {

@@ -77,6 +77,20 @@ internal class ReferencesTest : DrainDbTest() {
             assertThat(since.drains.measuredProvenance).isEqualTo(Provenance.MEASURED)
         }
 
+    /** Retention took the windows after the mark: the rest of the chain is a shorter span, not this one. */
+    @Test
+    fun aMarkWhoseFirstWindowsArePrunedReadsNothingRatherThanLess() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+            store(window(b, c).copy(measuredMah = 60.0))
+            val from = DrainSpan.Mark(a, "Before", wall(a))
+
+            assertThat(reader.read(DrainSpan.Between(from, null), empty())).isNull()
+            assertThat(reader.read(DrainSpan.Between(DrainSpan.Mark(b, "Later", wall(b)), null), empty())).isNotNull()
+        }
+
     @Test
     fun aMarkWhoseSnapshotIsGoneReadsNothing() =
         runTest {

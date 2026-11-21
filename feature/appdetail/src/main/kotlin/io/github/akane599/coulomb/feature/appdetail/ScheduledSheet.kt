@@ -184,10 +184,10 @@ private fun Alarms(
     val waiting =
         pluralStringResource(R.plurals.appdetail_scheduled_pending, alarms.pending, formats.integer(alarms.pending.toLong()))
     val next = alarms.nextInMs?.let { stringResource(R.string.appdetail_scheduled_next, formats.held(it)) }
-    val wakeups = alarms.pendingWakeups
     val wakers =
-        pluralStringResource(R.plurals.appdetail_scheduled_pending_wakeups, wakeups, formats.integer(wakeups.toLong()))
-            .takeIf { alarms.pending > 0 }
+        alarms.pendingWakeups?.takeIf { alarms.pending > 0 }?.let { wakeups ->
+            pluralStringResource(R.plurals.appdetail_scheduled_pending_wakeups, wakeups, formats.integer(wakeups.toLong()))
+        }
     Note(listOfNotNull(waiting, wakers, next).joinToString(" "), top = 0.dp)
     Note(
         stringResource(
