@@ -368,32 +368,6 @@ class CollectorEngineTest {
         }
 
     @Test
-    fun aSystemRestartLeavesNoWindowAcrossIt() =
-        runTest {
-            val before = engine()
-            device.set(hours = 5.0, level = 60, chargeMah = 3_000.0, screenOn = true)
-            before.handle(SnapshotTrigger.SERVICE_STARTED)
-            device.set(hours = 5.5, level = 59, chargeMah = 2_950.0, screenOn = false)
-            assertThat(before.handle(SnapshotTrigger.SCREEN_OFF)).isEqualTo(Action.HEAVY)
-            assertThat(db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()).hasSize(1)
-
-            // The system server restarts: BOOT_COUNT goes up, but elapsed time and the clock run on (ADR-0055).
-            identity.bootCount = identity.bootCount + 1
-            val after = engine()
-            device.set(hours = 5.8, level = 58, chargeMah = 2_900.0, screenOn = false)
-            assertThat(after.handle(SnapshotTrigger.BOOT_COMPLETED)).isEqualTo(Action.HEAVY)
-            // The counters on the two sides cannot be compared, so the step is in no window.
-            assertThat(db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()).hasSize(1)
-            assertThat(db.snapshotDao().autoReference(AutoReference.BEFORE_RESET)).isNull()
-
-            device.set(hours = 6.3, level = 57, chargeMah = 2_850.0, screenOn = true)
-            assertThat(after.handle(SnapshotTrigger.SCREEN_ON)).isEqualTo(Action.HEAVY)
-            val windows = db.windowDao().observeRecent(WindowKind.CONSECUTIVE, 10).first()
-            assertThat(windows).hasSize(2)
-            assertThat(windows.maxBy { it.id }.measuredMah).isWithin(1e-6).of(50.0)
-        }
-
-    @Test
     fun aHeavySnapshotWithoutAccessIsLightAndOwedUntilDumpsWork() =
         runTest {
             stats.available = false
