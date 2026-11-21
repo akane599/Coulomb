@@ -75,6 +75,14 @@ The fourth gate run found where §1 and §2 did not reach (`docs/design-gates/20
     level is drawn muted and TalkBack says the time, rather than cutting it. Reason: the honest
     choice that never truncates (SPEC 12.4); a tap opens Now, which shows the time.
 
+## Run 7 (2026-11-22)
+
+11. **The 2×1 widget's time keeps its day.** Run 7 was clean. Its minors are fixed: each form of
+    the time is tried at hero size and then at title size before a shorter one, so a fuller time
+    beats a larger number, and the dayless form is dropped. Where no form fits beside the level or
+    under it (the smallest size, or the 2×1 from about 130% text) the muted level carries a small
+    clock glyph, so colour is not the only cue, and TalkBack says the time.
+
 ## Verified
 
 Unit tests (sample counts, the 0.0 filter, the import threshold), every golden re-recorded and
