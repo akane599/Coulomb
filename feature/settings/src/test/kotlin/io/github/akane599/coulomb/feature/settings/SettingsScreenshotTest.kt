@@ -90,5 +90,13 @@ class SettingsScreenshotTest {
     }
 }
 
-private val CHANGED = UserSettings(showSystemApps = true, scaleToMeasured = true, chargeTargetPct = 75)
+private val CHANGED =
+    UserSettings(
+        showSystemApps = true,
+        scaleToMeasured = true,
+        chargeTargetPct = 75,
+        chargeAlarm = true,
+        temperatureAlarmDeciC = 450,
+        insightsDigestMinute = 8 * 60 + 30,
+    )
 private val NoActions = SettingsActions({}, {}, {}, {})

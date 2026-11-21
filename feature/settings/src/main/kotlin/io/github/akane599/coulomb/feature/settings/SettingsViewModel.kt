@@ -43,6 +43,15 @@ public class SettingsViewModel
 
         internal fun chargeTarget(pct: Int) = write { store.chargeTarget(pct) }
 
+        internal fun chargeAlarm(on: Boolean) = write { store.chargeAlarm(on) }
+
+        /** Tenths of a degree; null turns the alarm off. */
+        internal fun temperatureAlarm(deciC: Int?) = write { store.temperatureAlarm(deciC) }
+
+        internal fun insightsDigest(on: Boolean) = write { store.insightsDigest(on) }
+
+        internal fun insightsDigestMinute(minute: Int) = write { store.insightsDigestMinute(minute) }
+
         /** A write that fails (a full disk) is logged and said; the switch shows the stored value again. */
         private fun write(block: suspend () -> Unit) {
             viewModelScope.launch {
@@ -70,4 +79,8 @@ internal class SettingsActions(
     val scaleToMeasured: (Boolean) -> Unit,
     val componentBreakdown: (Boolean) -> Unit,
     val chargeTarget: (Int) -> Unit,
+    val chargeAlarm: (Boolean) -> Unit = {},
+    val temperatureAlarm: (Int?) -> Unit = {},
+    val insightsDigest: (Boolean) -> Unit = {},
+    val insightsDigestMinute: (Int) -> Unit = {},
 )

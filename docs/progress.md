@@ -72,16 +72,16 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   once with a tap to Privileges. All of it follows the collector's stored snapshots; nothing is
   scheduled and nothing samples.
   - Not verified yet: the Live Update in One UI 9's Now Bar, and its promoted look. Pending real device.
-  - No screen sets the charge alarm, the temperature threshold or the digest's time yet: the
-    fields are stored, and Settings (SPEC 14.4) gets its rows with the rest of that screen.
+  - Settings has their rows (SPEC 14.4): the alarm at the charge target, the temperature threshold
+    (off, or 38 to 50 °C) and the digest with its time, each as fixed choices within the spec's range.
 - **Widgets and the tile (SPEC 12.4, 12.5, ADR-0058).** Four Glance widgets (level and verdict, top
   drains, last night, health) and the Quick Settings tile, read once per stored snapshot and only
   while a widget is placed. A sentence is shown only where all of it fits, never cut. Unit tests
   draw the widgets' `RemoteViews` at fixed sizes.
   - Not verified yet: cell sizes and looks on One UI 9's launcher and panel. Pending real device.
   - The wallpaper-colour option waits for the Theme setting (P6).
-- **Still to build in P5:** the Action Center, the wakeup source detail (SPEC 10.5), the Settings
-  rows for the alarms and the digest, and three collector additions: job stop reasons (R10), the
+- **Still to build in P5:** the Action Center, the wakeup source detail (SPEC 10.5), and three
+  collector additions: job stop reasons (R10), the
   battery protection setting (R15), standby buckets and last launch (R16).
 
 ## P4 Core screens (gate deferred: protocol C)

@@ -111,9 +111,18 @@
     <string name="settings_scale">Scale attribution to measured</string>
     <string name="settings_scale_note">Scales each app’s modeled drain so the total matches the measured drop. Scaled figures are marked Derived.</string>
     <string name="settings_target">Charge target</string>
-    <string name="settings_target_note">Charging shows the time to this level. There is no alert at it yet.</string>
+    <string name="settings_target_note">Charging shows the time to this level.</string>
     <string name="settings_save_failed">Couldn’t save that change. Try again.</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_breakdown">Component breakdown</string>
     <string name="settings_breakdown_note">Splits drain by component. It adds a system report at each snapshot, which costs a little battery.</string>
+    <!-- The alarms and the digest (SPEC 12.3, 14.4). -->
+    <string name="settings_charge_alarm">Alarm at the charge target</string>
+    <string name="settings_charge_alarm_note">Sounds once per charge when the level reaches the target.</string>
+    <string name="settings_temperature">Battery temperature alarm</string>
+    <string name="settings_temperature_note">Alerts when the battery is at least this warm, at most once in 30 minutes.</string>
+    <string name="settings_off">Off</string>
+    <string name="settings_digest_title">Insights</string>
+    <string name="settings_digest">Daily digest of new insights</string>
+    <string name="settings_digest_note">One notification a day at most, from the time below. Heat warnings do not wait for it.</string>
 </resources>

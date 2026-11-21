@@ -106,9 +106,17 @@
     <string name="settings_scale">Dağılımı ölçülene göre ölçekle</string>
     <string name="settings_scale_note">Her uygulamanın modellenen tüketimini, toplam ölçülen düşüşe eşit olacak şekilde ölçekler. Ölçeklenen değerler Türetilen olarak işaretlenir.</string>
     <string name="settings_target">Şarj hedefi</string>
-    <string name="settings_target_note">Şarj ekranı bu seviyeye kalan süreyi gösterir. Bu seviyede henüz uyarı yok.</string>
+    <string name="settings_target_note">Şarj ekranı bu seviyeye kalan süreyi gösterir.</string>
     <string name="settings_save_failed">Bu değişiklik kaydedilemedi. Yeniden dene.</string>
     <string name="settings_advanced">Gelişmiş</string>
     <string name="settings_breakdown">Bileşen dağılımı</string>
     <string name="settings_breakdown_note">Tüketimi bileşenlere göre ayırır. Her anlık görüntüde bir sistem raporu ekler; bu biraz pil harcar.</string>
+    <string name="settings_charge_alarm">Şarj hedefinde alarm</string>
+    <string name="settings_charge_alarm_note">Seviye hedefe ulaştığında her şarjda bir kez çalar.</string>
+    <string name="settings_temperature">Pil sıcaklığı alarmı</string>
+    <string name="settings_temperature_note">Pil en az bu kadar ısındığında uyarır; 30 dakikada en çok bir kez.</string>
+    <string name="settings_off">Kapalı</string>
+    <string name="settings_digest_title">İçgörüler</string>
+    <string name="settings_digest">Yeni içgörülerin günlük özeti</string>
+    <string name="settings_digest_note">Günde en çok bir bildirim, aşağıdaki saatten itibaren. Isı uyarıları bunu beklemez.</string>
 </resources>
