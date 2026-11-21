@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="insight_app_unknown">Bir uygulama</string>
+    <string name="insight_percent_decimal">%%%1$s</string>
+    <string name="insight_rate">%1$s %2$s</string>
+
+    <string name="insight_r01_title">%1$s telefonu %2$s uyanık tuttu</string>
+    <string name="insight_r01_body">Android, günde %1$s üzerindeki uyanık tutmayı aşırı sayar. Arka plan kullanımını kısıtlamak bunun çoğunu durdurur.</string>
+    <string name="insight_r02_title">Bir uyanık tutma %1$s sürdü</string>
+    <string name="insight_r02_body">%1$s, tek oturumda “%2$s” kilidini tuttu. Bu kadar uzun tutulan bir kilit işlemcinin uyumasını engeller.</string>
+    <string name="insight_r03_title">Telefon, ekran kapalı sürenin %1$s kadarında uyanıktı</string>
+    <string name="insight_r03_body">Ekran %1$s kapalıydı. İyi uyuyan bir telefon %2$s altında kalır; oturum neyin uyandırdığını gösterir.</string>
+    <string name="insight_r04_title">Ekran kapalıyken tüketim %1$s oldu</string>
+    <string name="insight_r04_body">Ekran kapalıyken olağan hızın %1$s. Gece raporu farkın nereye gittiğini gösterir.</string>
+    <string name="insight_r05_title">%1$s telefonu saatte %2$s kez uyandırdı</string>
+    <string name="insight_r05_body">Ekranın kapalı geçtiği %2$s içinde %1$s alarm. Arka plan kullanımını kısıtlamak bunları seyreltir.</string>
+    <string name="insight_r06_title">%1$s ekran kapalıyken %2$s konum kullandı</string>
+    <string name="insight_r06_body">Konum erişimini yalnızca uygulama kullanılırken olacak şekilde sınırlayabilirsin.</string>
+    <string name="insight_r07_title">Zayıf sinyal pil harcıyor</string>
+    <string name="insight_r07_body">Sinyal, sürenin %1$s kadarında zayıftı ve mobil radyo tüketimin %2$s kadarını aldı. Coulomb’da bunun bir ayarı yok; operatörün sunuyorsa Wi-Fi araması yardımcı olur.</string>
+    <string name="insight_r08_title_wifi">Wi-Fi taraması %1$s sürdü</string>
+    <string name="insight_r08_title_bluetooth">Bluetooth taraması %1$s sürdü</string>
+    <string name="insight_r08_body">En az bir uygulama bir günde bu kadar süre tarama yaptı. Arka plan taraması konum ayarlarından kapatılabilir.</string>
+    <string name="insight_r09_title">%1$s ekran kapalıyken %2$s sensör kullandı</string>
+    <string name="insight_r09_body">Uygulamanın sayfası o sürede başka neler yaptığını gösterir.</string>
+    <string name="insight_r10_title">%1$s bir günde %2$s arka plan işi çalıştırdı</string>
+    <string name="insight_r10_title_abandoned">%1$s, %2$s arka plan işini yarım bıraktı</string>
+    <string name="insight_r10_body">Daha sıkı bir bekleme grubu, Android’in bu işleri daha seyrek çalıştırmasını sağlar.</string>
+    <string name="insight_r11_title">Pil şarj olurken %2$s boyunca %1$s üzerinde kaldı</string>
+    <string name="insight_r11_body">En yüksek %1$s oldu. Şarj sırasındaki ısı pili yıpratır; kılıfı çıkarmak ya da daha yavaş bir şarj aleti kullanmak pili serin tutar.</string>
+    <string name="insight_r12_title">Pil %1$s sıcaklığa ulaştı</string>
+    <string name="insight_r12_body_app">O sırada en çok gücü %1$s kullanıyordu. %2$s üzerinde pil hızlı yıpranır.</string>
+    <string name="insight_r12_body">%1$s üzerinde pil hızlı yıpranır. Yoğun kullanımdan ya da şarjdan önce telefonun soğumasını bekle.</string>
+    <string name="insight_r13_title">Şarj yavaştı: %1$s</string>
+    <string name="insight_r13_body">Her zamanki şarj aletin %1$s veriyor. Kabloyu ve girişi kontrol et.</string>
+    <string name="insight_r14_title">Kapasite tahmini %1$s puan düştü</string>
+    <string name="insight_r14_body">%3$s gün içinde %1$s değerinden %2$s değerine indi. Bu bir tahmindir; Sağlık sayfası aralığını gösterir.</string>
+    <string name="insight_r15_title">Pil %1$s boyunca %%100’de kaldı</string>
+    <string name="insight_r15_body">Dolduktan sonra prizde kaldı. Samsung ayarlarındaki pil koruması şarjı daha erken durdurur.</string>
+    <string name="insight_r16_title">%1$s %2$s gündür açılmadı</string>
+    <string name="insight_r16_body">Android onu hâlâ etkin grupta tutuyor. Daha sıkı bir bekleme grubu arka plan işlerini sınırlar.</string>
+    <string name="insight_r17_title">Telefon derin Doze’a ulaşmıyor</string>
+    <string name="insight_r17_body">Son %1$s uzun ekran kapalı sürenin hiçbirinde ulaşmadı. Doze sayfası buna neyin engel olabileceğini listeler.</string>
+    <string name="insight_r18_title">%1$s güncellemeden beri daha çok harcıyor</string>
+    <string name="insight_r18_body">Olağan %2$s yerine bir günde %1$s. Sayfası öncesini ve sonrasını gösterir.</string>
+    <string name="insight_r19_title">Tüketimin %1$s kadarı atanamadı</string>
+    <string name="insight_r19_body">Android’in güç modeli, ölçülen %2$s tüketimin %1$s kadarını uygulamalara ve donanıma atadı. Kalanı modelin yerleştiremediği gerçek tüketimdir; yapılacak bir şey yok.</string>
+    <string name="insight_r20_title">Coulomb bir günde pilin %1$s kadarını kullandı</string>
+    <string name="insight_r20_body">Kendi bütçesi %1$s. Hafif mod daha az veri toplar.</string>
+</resources>

@@ -63,6 +63,12 @@ accurate, cheaper, easier-to-revert option and record it. Every number below liv
 12. **App rules look at installed apps only.** A UID below the first application UID (the system,
     the phone process, shared system UIDs) is left out of R01, R05, R06, R09, R10 and R18: their
     actions restrict an app, and the user cannot restrict the system.
+13. **The words live in `:core:ui`, the engine in `:core:insights`.** SPEC 15.2 lists the Drain
+    Story templates under `:core:insights`. Words need the shared number formats (`Formats`, SPEC
+    6.7), which are in `:core:ui`, and `:core:ui` may see the model but not the engine. So the
+    insight's data types (`RuleId`, `Evidence`, `Insight`) are in `:core:model`, the rule engine and
+    its JSON stay in `:core:insights`, and `InsightCopy` with its Turkish and English strings is in
+    `:core:ui`. Which causes and which anomaly a story names is still the engine's decision.
 
 ## Consequences
 
