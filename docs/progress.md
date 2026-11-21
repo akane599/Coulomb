@@ -50,8 +50,25 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
     about 47,800 mAh modeled against 900 mAh measured, and four day windows span one.
   - Open (owner): deleting those stored windows (`docs/questions.md`). The phone keeps the old
     build until the deferred update.
-- **Still to build for the rules:** insights on Now and App detail with their evidence sheet, the
-  daily digest, and three collector additions: job stop reasons (R10), the battery protection
+- **Insights on screen (SPEC 9.4, 10.2, 10.4).** Now shows the open insights as cards with
+  "Why am I seeing this?", snooze and dismiss; App detail shows the app's Act insight the same way.
+- **Drain Story (SPEC 9.3).** `DrainStory` picks what a story names (verdict, up to three causes,
+  the anomaly, deep sleep) and `StoryCopy` says it in Turkish and English. App detail and the night
+  page use it; Now still shows its P4 verdict sentence.
+- **Night Report (SPEC 10.7, ADR-0056).** `:feature:timeline` lists the screen-off stretches of an
+  hour or more with rate, deep sleep and deep Doze, and shows one night: its story, a compact
+  timeline and the ranked culprits, with a link to the same window in Drain. On the phone's data the
+  read model had to learn three things: date a night by its boot's latest clock, judge charging by
+  elapsed time in the same boot, and take "Doze reached" from the history.
+- **Timeline (SPEC 10.6, ADR-0056).** The stored history as eleven tracks under the level and the
+  current, in a custom Canvas chart: pinch from 15 minutes to 7 days, scrub with a readout and a
+  haptic tick per event, density spans with their rate in the caption, a tap for a mark's details
+  (a sheet, or a side panel from 840 dp), the floating toolbar with range presets, tracks and "Now",
+  and "View as table". A day of the phone's history reads in about 0.1 s on the build server.
+  - Not measured yet: 60 fps while panning on the S25 Ultra (SPEC 10.6). Pending real device.
+- **Still to build in P5:** the daily digest and the other notifications, the Charging Live Update,
+  widgets and the Quick Settings tile, the Action Center, the wakeup source detail (SPEC 10.5), the
+  Drain Story on Now, and three collector additions: job stop reasons (R10), the battery protection
   setting (R15), standby buckets and last launch (R16).
 
 ## P4 Core screens (gate deferred: protocol C)
