@@ -3,6 +3,14 @@
 
 package io.github.akane599.coulomb.feature.settings
 
+import android.Manifest
+import android.app.NotificationManager
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -13,22 +21,31 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.akane599.coulomb.core.datastore.UserSettings
+import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombChoiceGroup
 import io.github.akane599.coulomb.core.designsystem.component.CoulombSwitchRow
+import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.component.FadeInOnce
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
@@ -47,22 +64,64 @@ public fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val saveFailed by viewModel.saveFailed.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    // An alarm that is on while Coulomb may not post is not armed: the screen says so and asks (SPEC 14.1 lets the step be skipped).
+    var allowed by remember { mutableStateOf(context.notificationsAllowed()) }
+    var refused by rememberSaveable { mutableStateOf(false) }
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            allowed = granted
+            refused = !granted
+        }
+    LifecycleResumeEffect(Unit) {
+        allowed = context.notificationsAllowed()
+        onPauseOrDispose {}
+    }
     val actions =
-        remember(viewModel, onOpenActionCenter) {
+        remember(viewModel, onOpenActionCenter, allowed, refused) {
+            // Asked once in place; after a refusal the system's page is where it is changed.
+            val ask = {
+                if (refused) context.openNotificationSettings() else launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            val asking = { on: Boolean -> if (on && !allowed && !refused) launcher.launch(Manifest.permission.POST_NOTIFICATIONS) }
             SettingsActions(
                 showSystemApps = viewModel::showSystemApps,
                 scaleToMeasured = viewModel::scaleToMeasured,
                 componentBreakdown = viewModel::componentBreakdown,
                 chargeTarget = viewModel::chargeTarget,
-                chargeAlarm = viewModel::chargeAlarm,
-                temperatureAlarm = viewModel::temperatureAlarm,
-                insightsDigest = viewModel::insightsDigest,
+                chargeAlarm = {
+                    viewModel.chargeAlarm(it)
+                    asking(it)
+                },
+                temperatureAlarm = {
+                    viewModel.temperatureAlarm(it)
+                    asking(it != null)
+                },
+                insightsDigest = {
+                    viewModel.insightsDigest(it)
+                    asking(it)
+                },
+                allowNotifications = ask,
                 insightsDigestMinute = viewModel::insightsDigestMinute,
                 openActionCenter = onOpenActionCenter,
             )
         }
     // Nothing until the stored values are read, then one fade-in (SPEC 10.11).
-    if (settings != null) FadeInOnce { SettingsContent(settings, actions, modifier, saveFailed) }
+    if (settings != null) FadeInOnce { SettingsContent(settings, actions, modifier, saveFailed, notificationsAllowed = allowed) }
+}
+
+private fun Context.notificationsAllowed(): Boolean = getSystemService(NotificationManager::class.java).areNotificationsEnabled()
+
+private fun Context.openNotificationSettings() {
+    val intent =
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try {
+        startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        // No such page on this build: the line stays, and the system's settings are still where it is changed.
+    }
 }
 
 @Composable
@@ -71,6 +130,7 @@ internal fun SettingsContent(
     actions: SettingsActions,
     modifier: Modifier = Modifier,
     saveFailed: Boolean = false,
+    notificationsAllowed: Boolean = true,
 ) {
     val gutter = currentGutter()
     Column(
@@ -96,6 +156,9 @@ internal fun SettingsContent(
             stringResource(R.string.settings_scale_note),
         )
         Target(settings.chargeTargetPct, actions.chargeTarget)
+        SectionTitle(stringResource(R.string.settings_alerts), provenance = null)
+        val posts = settings.chargeAlarm || settings.temperatureAlarmDeciC != null || settings.insightsDigest
+        if (posts && !notificationsAllowed) NotificationsOff(actions.allowNotifications)
         Setting(
             stringResource(R.string.settings_charge_alarm),
             settings.chargeAlarm,
@@ -118,9 +181,33 @@ internal fun SettingsContent(
             value = stringResource(if (settings.actionCenter) R.string.settings_on else R.string.settings_off),
             mark = null,
             share = null,
-            first = false,
+            first = true,
             modifier = Modifier.padding(top = CoulombSpacing.Space8),
-            onClick = actions.openActionCenter,
+        )
+        // A link looks like one everywhere: a text button with its chevron.
+        CoulombTextButton(
+            stringResource(R.string.settings_action_center_open),
+            actions.openActionCenter,
+            trailingIcon = CoulombIcons.ChevronRight,
+            edge = ButtonEdge.Start,
+        )
+    }
+}
+
+/** The alarms and the digest are on and cannot be posted: said where they are set, with the way to allow them. */
+@Composable
+private fun NotificationsOff(allow: () -> Unit) {
+    Column(Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }) {
+        Text(
+            stringResource(R.string.settings_notifications_off),
+            color = CoulombTheme.colors.textPrimary,
+            style = CoulombTheme.typography.body,
+        )
+        CoulombTextButton(
+            stringResource(R.string.settings_notifications_allow),
+            allow,
+            trailingIcon = CoulombIcons.ChevronRight,
+            edge = ButtonEdge.Start,
         )
     }
 }
@@ -162,7 +249,13 @@ private fun ColumnScope.Temperature(
     val formats = rememberFormats()
     val unit = formats.celsius(0.0).unit
     val degrees = remember(deciC) { (TEMPERATURES + listOfNotNull(deciC)).distinct().sorted() }
-    SectionTitle(stringResource(R.string.settings_temperature), provenance = null)
+    // One of the alerts: a label over its choices, not a section of its own.
+    Text(
+        stringResource(R.string.settings_temperature),
+        Modifier.padding(top = CoulombSpacing.Space16, bottom = CoulombSpacing.Space8),
+        color = CoulombTheme.colors.textPrimary,
+        style = CoulombTheme.typography.body,
+    )
     CoulombChoiceGroup(
         // Whole degrees as offered; a stored threshold between them keeps its tenth.
         options =
@@ -179,7 +272,7 @@ private fun ColumnScope.Temperature(
         selected = deciC?.let { degrees.indexOf(it) + 1 } ?: 0,
         onSelect = { onSelect(if (it == 0) null else degrees[it - 1]) },
     )
-    Note(stringResource(R.string.settings_temperature_note))
+    Note(stringResource(if (deciC == null) R.string.settings_temperature_note_off else R.string.settings_temperature_note))
 }
 
 /** SPEC 14.4: on at 09:00, a time, or off. The times show only while the digest is on. */
@@ -192,7 +285,12 @@ private fun ColumnScope.Digest(
     val formats = rememberFormats()
     val minutes = remember(minute) { (DIGEST_MINUTES + minute).distinct().sorted() }
     SectionTitle(stringResource(R.string.settings_digest_title), provenance = null)
-    Setting(stringResource(R.string.settings_digest), on, actions.insightsDigest, stringResource(R.string.settings_digest_note))
+    Setting(
+        stringResource(R.string.settings_digest),
+        on,
+        actions.insightsDigest,
+        stringResource(if (on) R.string.settings_digest_note else R.string.settings_digest_note_off),
+    )
     if (on) {
         CoulombChoiceGroup(
             options = minutes.map { formats.clock(it * MS_PER_MINUTE, ZoneOffset.UTC) },

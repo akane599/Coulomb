@@ -65,6 +65,15 @@ class SettingsScreenshotTest {
     @Test
     fun saveFailed() = shoot("save-failed", CHANGED, saveFailed = true)
 
+    /** Alarms and the digest on while Coulomb may not post: said where they are set. */
+    @Test
+    fun notificationsOff() = shoot("notifications-off", CHANGED, notificationsAllowed = false)
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h1500dp-night-xhdpi")
+    fun notificationsOffTurkishDark() = shoot("notifications-off-tr-dark", CHANGED, dark = true, notificationsAllowed = false)
+
+    @Suppress("LongParameterList") // One switch per variant of the screen.
     private fun shoot(
         name: String,
         settings: UserSettings?,
@@ -72,6 +81,7 @@ class SettingsScreenshotTest {
         fontScale: Float = 1f,
         saveFailed: Boolean = false,
         rtl: Boolean = false,
+        notificationsAllowed: Boolean = true,
     ) {
         // The ldrtl qualifier does not reach the composition under Robolectric; the override does.
         val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -81,7 +91,7 @@ class SettingsScreenshotTest {
             ) {
                 CoulombTheme(darkTheme = dark) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
-                        SettingsContent(settings, NoActions, saveFailed = saveFailed)
+                        SettingsContent(settings, NoActions, saveFailed = saveFailed, notificationsAllowed = notificationsAllowed)
                     }
                 }
             }
