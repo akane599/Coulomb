@@ -217,7 +217,55 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   - Not seen on a device. One independent review of these commits found one finding above minor
     (a reference older than the kept windows read as a shorter span, marked Measured) and two minor;
     all fixed with tests (ADR-0068 "Reviewed").
-- **Still to come in P6:** SPEC 18's checklist; then the whole-app design gate's third run.
+- **WCAG contrast over the tokens (SPEC 11.11, 18).** `ContrastTest` checks every theme: text
+  4.5:1 on each surface and on each status fill, and 3:1 for the marks without text (accent, Good
+  and Critical icons, the seven data hues). Caution is only ever the Watch chip's fill, whose word
+  carries the meaning; light caution is 2.5:1 on the background and is kept out of standalone use.
+- **Whole-app design gate, run 3 (2026-11-22).** Audit 0 critical, 9 major; critique 1 critical,
+  4 major (`docs/design-gates/2026-11-22-*-run-3.md`). The critical: Lite mode showed the last
+  Full-mode reading as now. All above minor fixed (ADR-0069): snapshots store their reading as a
+  sample, an old reading shows its time on Now, Charging, the tile and the Level widget, Lite skips
+  the alarms and the Live Update and says so, consumers are marked Modeled under their own head,
+  discharge levels are Modeled, the temperatures sheet drops the S25's unread 0.0 °C sensor, the
+  window chip wraps long names, and the no-tap and import copy match what the code does.
+- **Still to come in P6:** design gate run 4, then run 5; two consecutive clean runs pass the gate.
+
+### SPEC 18 status (2026-11-22)
+
+Done means the evidence is in this file or the ADR named. "Phone" means it waits for the deferred
+phone runs (ADR-0053); "owner" means an owner hard stop.
+
+| Item | Status | Evidence or what is missing |
+| --- | --- | --- |
+| API 36 and 37, targets 37, adaptive incl. DeX | Partly | Both AVDs run it (P1, P4); wide goldens (ADR-0066). DeX not seen: emulator run queued |
+| Shizuku forks, Sui, basic mode | Partly | Fork on the phone and basic mode (P1); Sui untested, official Shizuku on 17 untested (ADR-0028) |
+| Shell and root switch without restart | Done on AVD | `tools/emulator/mode-switch.sh` run (ADR-0028 §5); phone pending |
+| 5 s bind timeout, 4.5 failure copy | Done | Bind hang drill on the phone fell back after 5.001 s (P1); failure copy in Privileges goldens |
+| Durable grants survive stop and reboot | Partly | Shizuku killed mid-dump: resumed without a tap; revoked grants repaired in one tap (P1 drills). Survival across a reboot: phone |
+| Capability report for the S25 build | Partly | `docs/capabilities/sm-s938b-S938BXXSDDZJ1.md` (shell level); in-app export from the current build: phone |
+| Every section 5 source | Done | ADR-0068 (S22 pending real device, with reason) |
+| All fixtures parse, unknown fields asserted | Done | `core/parsing` golden tests (P1, P2) |
+| Protocols A to G | Phone | A, C, E, G are the deferred runs above; B passed on capture data (ADR-0049) |
+| Provenance and rounding on every metric | Done | Design gates (P4, P5); review of each new view (ADR-0068) |
+| Unattributed shown above 10% | Done | `Attribution.kt` and its tests (P4) |
+| Protocol E, battery cost | Phone | Deferred run |
+| No alarms or long wakelocks (lint) | Done | `NoWakeupDetector`, green in CI |
+| Nothing animates while idle | Done | Design gate run 2, `optimize-now` gate |
+| Parity matrix | Done | ADR-0068 |
+| 20 rules with tests, Drain Story in both languages | Done | P5 (33 rule tests), Story goldens |
+| Action Center previewed, logged, verified, revertible | Built, unrun | Writes never run on a device: owner yes needed (`docs/questions.md`) |
+| Charging Live Update with fallback | Partly | Built and on the AVD; promotion on One UI: phone |
+| Four widgets, tile, automation API | Done | P5, ADR-0065; not seen on the phone |
+| Export, import, delete all data | Done | ADR-0062; system pickers not seen on a device |
+| `impeccable detect design-lab/` zero | Done | P3 gate |
+| Two consecutive whole-app audit and critique runs | Not yet | Runs 1 to 3 each found majors, all fixed; run 4 next |
+| Screenshot suite in all themes, three font scales, two widths, both languages | Done | CI composes every screen; `verifyRoborazziDebug` over all twelve screenshot modules passed against the committed goldens on 2026-11-22 |
+| WCAG AA contrast; TalkBack script | Partly | `ContrastTest`; TalkBack script on a device: phone or AVD run |
+| No INTERNET | Done | `verifyReleaseManifestPermissions` in CI |
+| Performance targets 16.5 | Done | Macrobenchmark on the phone, 2026-11-11 |
+| 30-day stress test | Done | Schema 5 pass (P2) |
+| Every deviation has an ADR | Done | `docs/adr/` to ADR-0068 |
+| Signed release on GitHub Releases | Owner | ADR-0067; key and release are the owner's |
 
 ## P4 Core screens (gate deferred: protocol C)
 
