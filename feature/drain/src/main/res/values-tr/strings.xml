@@ -101,6 +101,17 @@
     <string name="drain_column_component">Bileşen</string>
     <string name="drain_column_energy">Enerji</string>
     <string name="drain_column_share">Pay</string>
+    <string name="drain_column_signal">Sinyal</string>
+    <string name="drain_column_time">Süre</string>
+    <string name="drain_signal">Sinyal gücü</string>
+    <string name="drain_signal_definition">Telefonun mobil ağı ne kadar iyi duyduğu. Sinyal zayıfken radyo aynı veri için daha çok çalışır.</string>
+    <string name="drain_signal_caption">Pilde, telefonun radyosu açıkken geçen süre.</string>
+    <string name="drain_signal_scanning">Ağ arama: %1$s.</string>
+    <string name="drain_signal_none">Yok</string>
+    <string name="drain_signal_poor">Zayıf</string>
+    <string name="drain_signal_moderate">Orta</string>
+    <string name="drain_signal_good">İyi</string>
+    <string name="drain_signal_great">Çok iyi</string>
     <string name="drain_column_share_measured">Ölçülendeki pay</string>
     <string name="drain_row_measured">Ölçülen</string>
     <string name="drain_row_modeled">Android’in modellediği</string>

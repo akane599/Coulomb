@@ -9,6 +9,7 @@ import io.github.akane599.coulomb.core.data.ComponentApp
 import io.github.akane599.coulomb.core.data.ComponentDrain
 import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.SignalTime
 import io.github.akane599.coulomb.core.data.SpanBreakdown
 import io.github.akane599.coulomb.core.data.WakeCoverage
 import io.github.akane599.coulomb.core.data.WakeEntry
@@ -170,6 +171,7 @@ internal fun report(
     drains: WindowDrains = labDrains(),
     components: List<ComponentDrain> = coarseComponents(),
     wakeCoverage: WakeCoverage = SHELL_COVERAGE,
+    signal: SignalTime? = labSignal(),
 ) = DrainReport(
     span = span,
     drains = drains,
@@ -186,7 +188,11 @@ internal fun report(
     wakeCoverage = wakeCoverage,
     alarms = alarms(),
     components = components,
+    signal = signal,
 )
+
+/** Mostly good signal, a stretch at poor and three minutes searching. */
+internal fun labSignal() = SignalTime(listOf(4 * MINUTE, 26 * MINUTE, 68 * MINUTE, 112 * MINUTE, 41 * MINUTE), 3 * MINUTE)
 
 internal fun ready(
     report: DrainReport? = report(),

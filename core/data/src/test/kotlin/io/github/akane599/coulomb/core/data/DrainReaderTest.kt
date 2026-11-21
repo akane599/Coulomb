@@ -184,6 +184,46 @@ internal class DrainReaderTest : DrainDbTest() {
             assertThat(report.screenOffOnBatteryMs).isEqualTo(1_200_000)
         }
 
+    /** SPEC 2: time per signal bin and scanning time, summed over the chain; none recorded is null. */
+    @Test
+    fun theSignalTimeIsTheDevicesBinsAndScanning() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+
+            fun bin(
+                index: Int,
+                ms: Long,
+            ) = WindowStat(UidPowerEntity.DEVICE_UID, DeviceKeys.signalBin(index), ms, Provenance.MEASURED)
+            store(window(a, b), WindowRows(stats = listOf(bin(1, 600_000), bin(4, 1_200_000))))
+            store(
+                window(b, c),
+                WindowRows(
+                    stats =
+                        listOf(
+                            bin(1, 300_000),
+                            bin(3, 900_000),
+                            WindowStat(UidPowerEntity.DEVICE_UID, DeviceKeys.SIGNAL_SCANNING_MS, 60_000, Provenance.MEASURED),
+                        ),
+                ),
+            )
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.signal).isEqualTo(SignalTime(listOf(0L, 900_000L, 0L, 900_000L, 1_200_000L), 60_000))
+        }
+
+    @Test
+    fun noSignalRecordedIsNoSignal() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            store(window(a, b), WindowRows(stats = device(onBatteryMs = 1_800_000, screenOffMs = 1_200_000)))
+
+            assertThat(checkNotNull(reader.read(DrainSpan.Last24Hours, empty())).signal).isNull()
+        }
+
     @Test
     fun theSmallAppsKeepTheirAlarmsTogether() =
         runTest {

@@ -105,6 +105,17 @@
     <string name="drain_column_component">Component</string>
     <string name="drain_column_energy">Energy</string>
     <string name="drain_column_share">Share</string>
+    <string name="drain_column_signal">Signal</string>
+    <string name="drain_column_time">Time</string>
+    <string name="drain_signal">Signal strength</string>
+    <string name="drain_signal_definition">How well the phone heard the mobile network. With a weak signal the radio works harder for the same data.</string>
+    <string name="drain_signal_caption">Time on battery with the phone’s radio on.</string>
+    <string name="drain_signal_scanning">Searching for a network: %1$s.</string>
+    <string name="drain_signal_none">None</string>
+    <string name="drain_signal_poor">Poor</string>
+    <string name="drain_signal_moderate">Moderate</string>
+    <string name="drain_signal_good">Good</string>
+    <string name="drain_signal_great">Great</string>
     <string name="drain_column_share_measured">Share of measured</string>
     <string name="drain_row_measured">Measured</string>
     <string name="drain_row_modeled">Modeled by Android</string>

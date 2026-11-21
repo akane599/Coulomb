@@ -97,7 +97,25 @@ public data class DrainReport(
     val breakdown: SpanBreakdown? = null,
     /** Some windows of the span were not broken down because Component breakdown was off (ADR-0035 §2). */
     val breakdownOff: Boolean = false,
+    /** The time on battery by the phone's signal strength (SPEC 2); null when S5 recorded none. */
+    val signal: SignalTime? = null,
 )
+
+/**
+ * The time on battery in each of Android's five signal strengths, none or unknown (0) to great
+ * (4), and the time it spent searching for a network (S5's device section, as R07 reads it).
+ * Android counts them only on battery and only while the phone's radio is on. Measured.
+ */
+public data class SignalTime(
+    val binsMs: List<Long>,
+    val scanningMs: Long,
+) {
+    public val totalMs: Long get() = binsMs.sum()
+
+    public companion object {
+        public const val BINS: Int = 5
+    }
+}
 
 /** One power component's share of a span: the device's total for it, apps included. Modeled. */
 public data class ComponentDrain(

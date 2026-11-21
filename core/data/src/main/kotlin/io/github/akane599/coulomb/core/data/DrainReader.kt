@@ -260,6 +260,7 @@ internal class DrainReader
                 componentsNotBrokenDownMah = s4.notBrokenDownMah,
                 breakdown = s4.apps.takeIf { it.isNotEmpty() }?.let(::SpanBreakdown),
                 breakdownOff = totals.offWindows > 0,
+                signal = signal(rows, chain),
             )
         }
 
@@ -338,12 +339,26 @@ internal class DrainReader
         private suspend fun bases(
             rows: WindowRows?,
             chain: Chain,
-        ): Bases {
-            suspend fun device(key: String): Long =
-                rows?.stats?.filter { it.uid == UidPowerEntity.DEVICE_UID && it.key == key }?.sumOf { it.value }
-                    ?: chain.stat(key).filter { it.uid == UidPowerEntity.DEVICE_UID }.sumOf { it.value }
-            return Bases(device(DeviceKeys.BATTERY_REALTIME_MS), device(DeviceKeys.SCREEN_OFF_REALTIME_MS))
+        ): Bases = Bases(device(DeviceKeys.BATTERY_REALTIME_MS, rows, chain), device(DeviceKeys.SCREEN_OFF_REALTIME_MS, rows, chain))
+
+        /** The span's time by signal strength, from where [bases] reads; null when none was recorded. */
+        private suspend fun signal(
+            rows: WindowRows?,
+            chain: Chain,
+        ): SignalTime? {
+            val bins = (0 until SignalTime.BINS).map { device(DeviceKeys.signalBin(it), rows, chain) }
+            if (bins.all { it == 0L }) return null
+            return SignalTime(bins, device(DeviceKeys.SIGNAL_SCANNING_MS, rows, chain))
         }
+
+        /** A device counter over the span: the stored window's detail, or its chain's sum. */
+        private suspend fun device(
+            key: String,
+            rows: WindowRows?,
+            chain: Chain,
+        ): Long =
+            rows?.stats?.filter { it.uid == UidPowerEntity.DEVICE_UID && it.key == key }?.sumOf { it.value }
+                ?: chain.stat(key).filter { it.uid == UidPowerEntity.DEVICE_UID }.sumOf { it.value }
 
         /** The device rows, which hold each component's total with the apps' share in it (CounterMapper). */
         private fun components(rows: List<WindowUid>): List<ComponentDrain> =
