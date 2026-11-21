@@ -6,6 +6,12 @@ plugins {
 }
 
 dependencies {
-    implementation(projects.core.analytics)
+    // The model comes with analytics; SPEC 15.2 lets this module depend on analytics and database.
+    api(projects.core.analytics)
     implementation(projects.core.database)
+    // Evidence and thresholds are small JSON trees, read and written without generated serializers.
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }
