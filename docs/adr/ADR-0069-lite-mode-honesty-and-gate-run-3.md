@@ -83,6 +83,13 @@ The fourth gate run found where §1 and §2 did not reach (`docs/design-gates/20
     under it (the smallest size, or the 2×1 from about 130% text) the muted level carries a small
     clock glyph, so colour is not the only cue, and TalkBack says the time.
 
+## Run 8 (2026-11-22)
+
+12. **The whole-app design gate passes.** Runs 7 and 8 found nothing above minor in either the
+    audit or the critique (SPEC 11.12). Run 8's minors (the remaining day references on an old
+    reading, the Last night widget's bare form, the clock glyph beside the mark) are recorded open
+    in its gate files and are not built under the gate.
+
 ## Verified
 
 Unit tests (sample counts, the 0.0 filter, the import threshold), every golden re-recorded and

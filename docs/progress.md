@@ -239,7 +239,9 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   (ADR-0069 §10).
 - **Whole-app design gate, run 7 (2026-11-22). Clean:** audit and critique both 0 critical, 0
   major, the first of two consecutive clean runs. Its minors are fixed (ADR-0069 §11).
-- **Still to come in P6:** design gate run 8; a second clean run passes the gate.
+- **Whole-app design gate, run 8 (2026-11-22). Clean:** audit and critique both 0 critical, 0
+  major. With run 7, two consecutive clean runs: **the whole-app design gate passes** (SPEC 11.12,
+  ADR-0069 §12). Run 8's minors are recorded open in its gate files.
 
 ### SPEC 18 status (2026-11-22)
 
@@ -269,13 +271,13 @@ phone runs (ADR-0053); "owner" means an owner hard stop.
 | Four widgets, tile, automation API | Done | P5, ADR-0065; not seen on the phone |
 | Export, import, delete all data | Done | ADR-0062; system pickers not seen on a device |
 | `impeccable detect design-lab/` zero | Done | P3 gate |
-| Two consecutive whole-app audit and critique runs | Not yet | Runs 1 to 6 each found majors, all fixed; run 7 clean; run 8 next |
+| Two consecutive whole-app audit and critique runs | Done | Runs 7 and 8 clean (`docs/design-gates/2026-11-22-*-run-{7,8}.md`, ADR-0069 §12) |
 | Screenshot suite in all themes, three font scales, two widths, both languages | Done | CI composes every screen; `verifyRoborazziDebug` over all twelve screenshot modules passed against the committed goldens on 2026-11-22 |
 | WCAG AA contrast; TalkBack script | Partly | `ContrastTest`; TalkBack script on a device: phone or AVD run |
 | No INTERNET | Done | `verifyReleaseManifestPermissions` in CI |
 | Performance targets 16.5 | Done | Macrobenchmark on the phone, 2026-11-11 |
 | 30-day stress test | Done | Schema 5 pass (P2) |
-| Every deviation has an ADR | Done | `docs/adr/` to ADR-0068 |
+| Every deviation has an ADR | Done | `docs/adr/` to ADR-0069 |
 | Signed release on GitHub Releases | Owner | ADR-0067; key and release are the owner's |
 
 ## P4 Core screens (gate deferred: protocol C)
