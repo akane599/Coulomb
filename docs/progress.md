@@ -31,9 +31,23 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   the lifecycle that keeps one open insight per rule and subject. Each rule has a firing case, a
   non-firing case and a case exactly on its threshold (SPEC 16.1); 33 tests. ADR-0054 records what
   the rule table leaves open.
-- **Still to build for the rules:** the loader that fills `RuleContext` from the database, the
-  recorder that stores findings, and four collector additions: job stop reasons (R10), the battery
-  protection setting (R15), standby buckets and last launch (R16), deep idle per session (R17).
+- **Loading and storing (SPEC 7.5 step 6, 9.4).** `RuleContextLoader` fills the context from the
+  database, `InsightStore` applies findings through the lifecycle, and `InsightRunner` joins them. The
+  collector calls bound `SnapshotObserver`s after each stored snapshot; the app binds the runner to
+  heavy ones. `InsightCopy` in `:core:ui` gives each insight its Turkish and English words.
+- **First run over the phone's data of 2026-11-21** (`CaptureInsightsTest`): R01 for three apps, R02
+  for one job wakelock, R03 for the latest 3.2 h night (20% awake), R08 and R10. It also showed four
+  things now fixed in the loader (ADR-0054 §9 to §12) and one fault in the collector, below.
+- **A system restart was read as a statistics reset (found 2026-11-21, fix under review).** The
+  platform's boot count also rises when the system server restarts without a reboot. Coulomb then
+  took the next snapshot for a reset and added every counter's whole total to one window. On the
+  phone, 13 consecutive windows carry about 47,000 mAh of modeled drain that never happened; session,
+  day and reference windows are not affected. `Attribution.resetBetween` now tells a system restart
+  from a reboot by the wall time of boot. Open: what to do with the 13 stored windows (they leave by
+  retention within 30 days).
+- **Still to build for the rules:** insights on Now and App detail with their evidence sheet, the
+  daily digest, and three collector additions: job stop reasons (R10), the battery protection
+  setting (R15), standby buckets and last launch (R16).
 
 ## P4 Core screens (gate deferred: protocol C)
 
