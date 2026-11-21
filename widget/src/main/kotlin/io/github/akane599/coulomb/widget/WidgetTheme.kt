@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.widget
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -11,6 +12,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.appWidgetBackground
@@ -71,6 +73,22 @@ internal object WidgetType {
 
 internal val WidgetPadding = 12.dp
 
+/** The height a line of each role takes at font scale 1, for deciding what fits (SPEC 12.4: nothing is cut). */
+internal object WidgetLine {
+    val hero = 34.dp
+    val title = 26.dp
+    val data = 20.dp
+    val label = 18.dp
+    val caption = 16.dp
+    const val HERO_SP = 28f
+    const val TITLE_SP = 20f
+    const val DATA_SP = 15f
+    const val LABEL_SP = 13f
+
+    /** A provenance mark with its gap. */
+    val mark = 16.dp
+}
+
 /** The widget's ground: `bg`, the system's widget corners, and one tap target that opens [open] in the app. */
 @Composable
 internal fun WidgetSurface(
@@ -122,6 +140,8 @@ internal fun Figure(
     style: TextStyle,
     modifier: GlanceModifier = GlanceModifier,
     unit: String? = null,
+    /** The unit TalkBack says when it is not drawn beside the number. */
+    spokenUnit: String? = unit,
 ) {
     val context = LocalContext.current
     val name =
@@ -133,7 +153,7 @@ internal fun Figure(
                 Provenance.DERIVED -> UiR.string.provenance_derived
             },
         )
-    val spoken = context.getString(R.string.widget_figure_spoken, listOfNotNull(number, unit).joinToString(" "), name)
+    val spoken = context.getString(R.string.widget_figure_spoken, listOfNotNull(number, spokenUnit).joinToString(" "), name)
     Row(modifier.semantics { contentDescription = spoken }, verticalAlignment = Alignment.CenterVertically) {
         Text(number, style = style, maxLines = 1)
         if (unit != null) {
@@ -145,8 +165,26 @@ internal fun Figure(
     }
 }
 
-/** What a widget says while it has nothing to show. */
+/**
+ * What a widget says while it has nothing to show: the sentence where all of it fits the room
+ * left under [used], else its [short] form.
+ */
 @Composable
-internal fun Empty(text: Int) {
-    Text(LocalContext.current.getString(text), style = WidgetType.captionQuiet)
+internal fun Empty(
+    text: Int,
+    short: Int,
+    used: Dp = 0.dp,
+) {
+    val context = LocalContext.current
+    val size = LocalSize.current
+    val scale = context.resources.configuration.fontScale
+    val width = (size.width - WidgetPadding * 2).value
+    val height = (size.height - WidgetPadding * 2 - used * scale).value
+    val sentence = context.getString(text)
+    val lines = WidgetFit.lines(sentence, width, height, scale)
+    if (lines != null) {
+        Text(sentence, style = WidgetType.captionQuiet, maxLines = lines)
+    } else {
+        Text(context.getString(short), style = WidgetType.captionQuiet, maxLines = 1)
+    }
 }

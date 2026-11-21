@@ -109,22 +109,22 @@ class WidgetScreenshotTest {
     fun drainsTurkishDark() = capture("widget-drains-tr-dark", DpSize(340.dp, 160.dp)) { DrainsContent(Samples.drains) }
 
     @Test
-    fun night() = capture("widget-night", DpSize(340.dp, 160.dp)) { NightContent(Samples.night(now), now, ZoneOffset.UTC) }
+    fun night() = capture("widget-night", DpSize(340.dp, 160.dp)) { NightContent(Samples.night(now), ZoneOffset.UTC) }
 
     @Test
     fun nightCharged() =
         capture("widget-night-charged", DpSize(340.dp, 160.dp)) {
-            NightContent(Samples.night(now).copy(charged = true, ratePctPerHour = null), now, ZoneOffset.UTC)
+            NightContent(Samples.night(now).copy(charged = true, ratePctPerHour = null), ZoneOffset.UTC)
         }
 
     @Test
     fun nightFlat() =
         capture("widget-night-flat", DpSize(340.dp, 160.dp)) {
-            NightContent(Samples.night(now).copy(endLevel = 79, ratePctPerHour = null), now, ZoneOffset.UTC)
+            NightContent(Samples.night(now).copy(endLevel = 79, ratePctPerHour = null), ZoneOffset.UTC)
         }
 
     @Test
-    fun nightEmpty() = capture("widget-night-empty", DpSize(340.dp, 160.dp)) { NightContent(null, now, ZoneOffset.UTC) }
+    fun nightEmpty() = capture("widget-night-empty", DpSize(340.dp, 160.dp)) { NightContent(null, ZoneOffset.UTC) }
 
     @Test
     fun health() = capture("widget-health", DpSize(170.dp, 160.dp)) { HealthContent(Samples.health) }
@@ -134,6 +134,61 @@ class WidgetScreenshotTest {
 
     @Test
     fun healthEmpty() = capture("widget-health-empty", DpSize(170.dp, 160.dp)) { HealthContent(null) }
+
+    // Each widget at the smallest size its provider declares, and at the largest text: nothing may be cut (SPEC 12.4).
+    @Test
+    fun levelSmallest() = capture("widget-level-min", DpSize(110.dp, 50.dp)) { LevelContent(Samples.level) }
+
+    @Test
+    fun levelSmallestEmpty() = capture("widget-level-min-empty", DpSize(110.dp, 50.dp)) { LevelContent(null) }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 2f)
+    fun levelLargeText() = capture("widget-level-200", DpSize(170.dp, 64.dp)) { LevelContent(Samples.level) }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 2f)
+    fun levelTallLargeText() = capture("widget-level-tall-200", DpSize(170.dp, 150.dp)) { LevelContent(Samples.level) }
+
+    @Test
+    fun drainsSmallest() = capture("widget-drains-min", DpSize(250.dp, 110.dp)) { DrainsContent(Samples.drains) }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 2f)
+    fun drainsLargeText() = capture("widget-drains-200", DpSize(340.dp, 160.dp)) { DrainsContent(Samples.drains) }
+
+    @Test
+    fun nightSmallest() = capture("widget-night-min", DpSize(250.dp, 110.dp)) { NightContent(Samples.night(now), ZoneOffset.UTC) }
+
+    @Test
+    fun nightSmallestEmpty() = capture("widget-night-min-empty", DpSize(250.dp, 110.dp)) { NightContent(null, ZoneOffset.UTC) }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 2f)
+    fun nightLargeText() = capture("widget-night-200", DpSize(340.dp, 160.dp)) { NightContent(Samples.night(now), ZoneOffset.UTC) }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 2f)
+    fun nightSmallestLargeText() =
+        capture("widget-night-min-200", DpSize(250.dp, 110.dp)) { NightContent(Samples.night(now), ZoneOffset.UTC) }
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h915dp-night-xhdpi")
+    fun nightTurkishDark() = capture("widget-night-tr-dark", DpSize(340.dp, 160.dp)) { NightContent(Samples.night(now), ZoneOffset.UTC) }
+
+    @Test
+    fun healthSmallest() = capture("widget-health-min", DpSize(110.dp, 110.dp)) { HealthContent(Samples.health) }
+
+    @Test
+    fun healthSmallestEmpty() = capture("widget-health-min-empty", DpSize(110.dp, 110.dp)) { HealthContent(null) }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-xhdpi", fontScale = 2f)
+    fun healthLargeText() = capture("widget-health-200", DpSize(170.dp, 160.dp)) { HealthContent(Samples.health) }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-night-xhdpi")
+    fun healthDark() = capture("widget-health-dark", DpSize(170.dp, 160.dp)) { HealthContent(Samples.health) }
 
     @Test
     @Config(qualifiers = "tr-w412dp-h915dp-xhdpi")

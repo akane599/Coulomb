@@ -67,5 +67,6 @@ internal object Samples {
             deepDozeAfterMs = 23 * MINUTE_MS,
         )
 
-    val health = HealthFacts(capacityMah = 4_712.0, healthPct = 94.2, cycles = 212.0, cyclesMeasured = true)
+    val health =
+        HealthFacts(capacityMah = 4_712.0, lowMah = 4_650.0, highMah = 4_790.0, healthPct = 94.2, cycles = 212.0, cyclesMeasured = true)
 }

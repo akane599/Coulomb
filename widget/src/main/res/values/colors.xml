@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- DESIGN.md's `bg` for the initial layout; WidgetTokensTest holds it to the token. -->
+    <color name="widget_bg">#FFF8FAFD</color>
+</resources>

@@ -61,6 +61,9 @@ internal data class DrainFacts(
 internal data class HealthFacts(
     /** SPEC 6.3's estimate; Estimated. */
     val capacityMah: Double,
+    /** Its 95% interval: an estimate is shown with its range (PRODUCT.md). */
+    val lowMah: Double,
+    val highMah: Double,
     /** Against the design capacity; null without one. Estimated. */
     val healthPct: Double?,
     /** The platform's count where it has one (Measured), else Coulomb's own (Derived); null with neither. */
@@ -126,6 +129,8 @@ internal object WidgetFacts {
         val platform = report.cycles.platformCount
         return HealthFacts(
             capacityMah = capacity.estimateMah,
+            lowMah = capacity.ciLowMah,
+            highMah = capacity.ciHighMah,
             healthPct = capacity.healthPct,
             cycles = platform?.toDouble() ?: report.cycles.coulombCount.takeIf { it > 0 },
             cyclesMeasured = platform != null,
@@ -166,5 +171,15 @@ internal object WidgetFit {
         max: Int,
     ): Int = (heightDp / (rowDp * fontScale)).toInt().coerceIn(0, max)
 
+    /** The width [text] takes on one line at [sp], on the wide side, in dp. */
+    fun width(
+        text: String,
+        sp: Float,
+        fontScale: Float,
+    ): Float = text.length * sp * CHAR_EM * fontScale
+
     private const val WRAP_LOSS = 1.25f
+
+    /** A wide average for a letter or digit of the system face, in em. */
+    private const val CHAR_EM = 0.55f
 }

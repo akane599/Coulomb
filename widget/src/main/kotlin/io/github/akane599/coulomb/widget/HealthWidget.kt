@@ -21,9 +21,12 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.text.Text
 import io.github.akane599.coulomb.core.common.OpenRequest
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.formatsFor
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -54,8 +57,8 @@ class HealthWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HealthWidget()
 }
 
-/** "4,712 mAh" with its mark at 28 sp needs this width; narrower, it is set in Title. */
-private val HeroFrom = 176.dp
+private val MarkGap = 4.dp
+private const val CAPTION_SP = 12f
 private val LineGap = 4.dp
 private val HeadGap = 8.dp
 
@@ -69,35 +72,78 @@ internal fun HealthContent(health: HealthFacts?) {
     val context = LocalContext.current
     val size = LocalSize.current
     WidgetSurface(OpenRequest.HEALTH) {
-        Text(context.getString(R.string.widget_health_title), style = WidgetType.label, maxLines = 1)
         if (health == null) {
+            Text(context.getString(R.string.widget_health_title), style = WidgetType.label, maxLines = 1)
             Spacer(GlanceModifier.height(HeadGap))
-            Empty(R.string.widget_health_empty)
+            Empty(R.string.widget_health_empty, R.string.widget_health_empty_short, used = WidgetLine.label + HeadGap)
             return@WidgetSurface
         }
         val formats = formatsFor(context)
         val scale = context.resources.configuration.fontScale
         val capacity = formats.mah(health.capacityMah)
-        val hero = if (size.width >= HeroFrom * scale) WidgetType.hero else WidgetType.title
-        Figure(capacity.number, Provenance.ESTIMATED, hero, unit = capacity.unit)
+        val inner = (size.width - WidgetPadding * 2).value
+        // The figure at the largest size its line holds; where even Title has no room for the unit, the heading carries it.
+        val unitWidth = MarkGap.value + WidgetFit.width(capacity.unit, WidgetLine.DATA_SP, scale)
+
+        fun fits(
+            sp: Float,
+            withUnit: Boolean,
+        ) = WidgetFit.width(capacity.number, sp, scale) + WidgetLine.mark.value + (if (withUnit) unitWidth else 0f) <= inner
+        val wide = fits(WidgetLine.HERO_SP, withUnit = true)
+        val unitBeside = wide || fits(WidgetLine.TITLE_SP, withUnit = true)
+        val heading = context.getString(R.string.widget_health_title)
+        val withUnit = context.getString(R.string.widget_health_title_unit, heading, capacity.unit)
+        // Where neither line holds the unit, the range under the figure still names it.
+        val named = !unitBeside && WidgetFit.width(withUnit, WidgetLine.LABEL_SP, scale) <= inner
+        Text(if (named) withUnit else heading, style = WidgetType.label, maxLines = 1)
+        Figure(
+            capacity.number,
+            Provenance.ESTIMATED,
+            if (wide) WidgetType.hero else WidgetType.title,
+            unit = capacity.unit.takeIf { unitBeside },
+            spokenUnit = capacity.unit,
+        )
+        // What the height still holds, in order: the estimate's range first, then health, then cycles.
+        var room = size.height - WidgetPadding * 2 - (WidgetLine.label + if (wide) WidgetLine.hero else WidgetLine.title) * scale
+        val full = formats.range(formats.mah(health.lowMah).number, formats.mah(health.highMah).joined())
+        val half = maxOf(health.capacityMah - health.lowMah, health.highMah - health.capacityMah)
+        val short = context.getString(R.string.widget_health_plus_minus, formats.mah(half).joined())
+        val range = listOf(full, short).firstOrNull { WidgetFit.width(it, CAPTION_SP, scale) <= inner }
+        if (range != null && room >= WidgetLine.caption * scale) {
+            room -= WidgetLine.caption * scale
+            val spoken = context.getString(R.string.widget_health_range_spoken, full)
+            Text(range, GlanceModifier.semantics { contentDescription = spoken }, style = WidgetType.captionQuiet, maxLines = 1)
+        }
         Spacer(GlanceModifier.defaultWeight())
-        health.healthPct?.let {
+        val line = LineGap + WidgetLine.data * scale
+        health.healthPct?.takeIf { room >= line }?.let {
+            room -= line
             Line(
                 context.getString(R.string.widget_health_health),
                 formats.percent(it.roundToInt()),
                 Provenance.ESTIMATED,
             )
         }
-        health.cycles?.let {
+        health.cycles?.takeIf { room >= line }?.let {
             Spacer(GlanceModifier.height(LineGap))
-            val count = if (health.cyclesMeasured) formats.integer(it.roundToLong()) else formats.decimal(it)
-            Line(
-                context.getString(R.string.widget_health_cycles),
-                count,
-                if (health.cyclesMeasured) Provenance.MEASURED else Provenance.DERIVED,
-            )
+            Cycles(it, health.cyclesMeasured, formats, context)
         }
     }
+}
+
+/** The platform's cycle count as it is, Measured; Coulomb's own to a decimal, Derived. */
+@Composable
+private fun Cycles(
+    cycles: Double,
+    measured: Boolean,
+    formats: Formats,
+    context: Context,
+) {
+    Line(
+        context.getString(R.string.widget_health_cycles),
+        if (measured) formats.integer(cycles.roundToLong()) else formats.decimal(cycles),
+        if (measured) Provenance.MEASURED else Provenance.DERIVED,
+    )
 }
 
 @Composable

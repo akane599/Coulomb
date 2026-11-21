@@ -76,6 +76,7 @@ private val HeroLine = 34.dp
 private val LabelLine = 18.dp
 private val VerdictGap = 4.dp
 private val BesideGap = 16.dp
+private val StateGap = 8.dp
 
 /** The width the level and its state take beside the verdict. */
 private val LevelColumn = 96.dp
@@ -92,23 +93,29 @@ internal fun LevelContent(level: LevelFacts?) {
     val stacked = size.height >= StackedFrom
     WidgetSurface(OpenRequest.NOW, verticalAlignment = if (stacked) Alignment.Top else Alignment.CenterVertically) {
         if (level == null) {
-            Empty(R.string.widget_level_empty)
+            Empty(R.string.widget_level_empty, R.string.widget_level_empty_short)
             return@WidgetSurface
         }
         val formats = formatsFor(context)
         val percent = formats.percent(level.levelPct)
         val state = context.getString(level.state.label())
+        val scale = context.resources.configuration.fontScale
+        val inner = DpSize(size.width - WidgetPadding * 2, size.height - WidgetPadding * 2)
         if (!stacked) {
+            // One line: the level at the size the height holds, and its state where the width holds both.
+            val large = inner.height >= WidgetLine.hero * scale
+            val levelWidth = WidgetFit.width(percent, if (large) WidgetLine.HERO_SP else WidgetLine.TITLE_SP, scale) + WidgetLine.mark.value
+            val both = levelWidth + StateGap.value + WidgetFit.width(state, WidgetLine.LABEL_SP, scale) <= inner.width.value
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Figure(percent, Provenance.MODELED, WidgetType.hero)
-                Spacer(GlanceModifier.defaultWeight())
-                Text(state, style = WidgetType.label, maxLines = 1)
+                Figure(percent, Provenance.MODELED, if (large) WidgetType.hero else WidgetType.title)
+                if (both) {
+                    Spacer(GlanceModifier.defaultWeight())
+                    Text(state, style = WidgetType.label, maxLines = 1)
+                }
             }
             return@WidgetSurface
         }
         val verdict = level.story?.let { StoryCopy(context.resources, formats, InsightCopy(context.resources, formats)).line(it).text }
-        val scale = context.resources.configuration.fontScale
-        val inner = DpSize(size.width - WidgetPadding * 2, size.height - WidgetPadding * 2)
         if (size.width >= BesideFrom) {
             val width = inner.width - LevelColumn * scale - BesideGap
             val lines = verdict?.let { WidgetFit.lines(it, width.value, inner.height.value, scale) }

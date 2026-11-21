@@ -4,7 +4,7 @@
 <resources>
     <!-- The widget picker (SPEC 12.4). -->
     <string name="widget_level_name">Level and verdict</string>
-    <string name="widget_level_about">The battery level, whether it is charging, and what happened since unplugging in one line.</string>
+    <string name="widget_level_about">The battery level and whether it is charging. Made larger, it adds what happened since unplugging in one line.</string>
     <string name="widget_drains_name">Top drains</string>
     <string name="widget_drains_about">The three apps that used the most battery since unplugging.</string>
     <string name="widget_night_name">Last night</string>
@@ -17,9 +17,12 @@
     <string name="widget_state_full">Full</string>
     <string name="widget_state_plugged">Plugged in</string>
     <string name="widget_level_empty">No reading yet. Open Coulomb once.</string>
+    <string name="widget_level_empty_short">No reading yet</string>
     <!-- Top drains. -->
-    <string name="widget_drains_title">Since unplugged</string>
+    <string name="widget_drains_title">Share of drain since unplugged</string>
+    <string name="widget_drains_title_short">Share of drain</string>
     <string name="widget_drains_empty">No drain to show yet. It appears after some time on battery.</string>
+    <string name="widget_drains_empty_short">No drain yet</string>
     <!-- Last night. -->
     <string name="widget_night_title">Last night</string>
     <string name="widget_night_ended">ended %1$s</string>
@@ -28,11 +31,18 @@
     <string name="widget_night_duration">Duration</string>
     <string name="widget_night_deep_sleep">Deep sleep</string>
     <string name="widget_night_empty">No night yet. One shows after the screen stays off for an hour.</string>
+    <string name="widget_night_empty_short">No night yet</string>
     <!-- Health. -->
     <string name="widget_health_title">Capacity</string>
+    <!-- The heading with the figure's unit, where the unit has no room beside the figure: "Capacity, mAh". -->
+    <string name="widget_health_title_unit">%1$s, %2$s</string>
+    <string name="widget_health_plus_minus">± %1$s</string>
     <string name="widget_health_health">Health</string>
     <string name="widget_health_cycles">Cycles</string>
     <string name="widget_health_empty">Collecting. The estimate shows after a few charges.</string>
+    <string name="widget_health_empty_short">Collecting</string>
+    <!-- The estimate's 95% interval, for TalkBack: "Range 4,650 – 4,790 mAh". -->
+    <string name="widget_health_range_spoken">Range %1$s</string>
     <!-- A figure with its provenance, for TalkBack: "74%, Modeled". -->
     <string name="widget_figure_spoken">%1$s, %2$s</string>
     <!-- The Quick Settings tile (SPEC 12.5). -->

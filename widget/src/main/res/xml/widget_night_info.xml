@@ -4,7 +4,7 @@
 <!-- SPEC 12.4: no periodic update; the collector's snapshots refresh it. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_night_about"
-    android:initialLayout="@layout/glance_default_loading_layout"
+    android:initialLayout="@layout/widget_initial"
     android:minWidth="250dp"
     android:minHeight="110dp"
     android:resizeMode="horizontal|vertical"

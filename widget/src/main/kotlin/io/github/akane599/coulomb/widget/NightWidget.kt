@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
@@ -42,14 +43,14 @@ internal class NightWidget : GlanceAppWidget() {
         store.ensure(WidgetKind.NIGHT)
         provideContent {
             val data by store.state.collectAsState()
-            NightContent(data.night, System.currentTimeMillis(), ZoneId.systemDefault())
+            NightContent(data.night, ZoneId.systemDefault())
         }
     }
 
     override suspend fun providePreview(
         context: Context,
         widgetCategory: Int,
-    ) = provideContent { NightContent(Samples.night(System.currentTimeMillis()), System.currentTimeMillis(), ZoneId.systemDefault()) }
+    ) = provideContent { NightContent(Samples.night(System.currentTimeMillis()), ZoneId.systemDefault()) }
 }
 
 class NightWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -58,6 +59,7 @@ class NightWidgetReceiver : GlanceAppWidgetReceiver() {
 
 private val HeadGap = 8.dp
 private val FiguresGap = 8.dp
+private val TightGap = 4.dp
 private val ColumnGap = 16.dp
 private const val MS_PER_MINUTE = 60_000L
 
@@ -69,29 +71,58 @@ private const val MS_PER_MINUTE = 60_000L
 @Composable
 internal fun NightContent(
     night: NightSummary?,
-    nowMs: Long,
     zone: ZoneId,
 ) {
     val context = LocalContext.current
-    WidgetSurface(OpenRequest.NIGHT) {
-        val formats = formatsFor(context)
-        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(context.getString(R.string.widget_night_title), style = WidgetType.label, maxLines = 1)
-            Spacer(GlanceModifier.defaultWeight())
-            if (night != null) {
-                val ended = context.getString(R.string.widget_night_ended, formats.clock(night.endWallMs, zone, nowMs))
-                Text(ended, style = WidgetType.captionQuiet, maxLines = 1)
-            }
+    val size = LocalSize.current
+    val scale = context.resources.configuration.fontScale
+    // What the height holds, largest first (SPEC 12.4: nothing is cut).
+    val room = size.height - WidgetPadding * 2
+    val head = WidgetLine.label * scale + HeadGap
+    val hero = WidgetLine.hero * scale
+    val fit =
+        when {
+            room >= head + hero + FiguresGap + (WidgetLine.label + WidgetLine.data) * scale -> NightFit.FULL
+            room >= head + hero + TightGap + WidgetLine.data * scale -> NightFit.DURATION
+            room >= head + hero -> NightFit.HERO
+            else -> NightFit.BARE
         }
-        Spacer(GlanceModifier.height(HeadGap))
+    WidgetSurface(OpenRequest.NIGHT, verticalAlignment = if (fit == NightFit.BARE) Alignment.CenterVertically else Alignment.Top) {
+        val formats = formatsFor(context)
+        if (fit != NightFit.BARE || night == null) {
+            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(context.getString(R.string.widget_night_title), style = WidgetType.label, maxLines = 1)
+                Spacer(GlanceModifier.defaultWeight())
+                if (night != null) {
+                    // Always with its weekday: the widget is drawn once and may be read days later.
+                    val ended = context.getString(R.string.widget_night_ended, formats.dayClock(night.endWallMs, zone))
+                    Text(ended, style = WidgetType.captionQuiet, maxLines = 1)
+                }
+            }
+            Spacer(GlanceModifier.height(HeadGap))
+        }
         if (night == null) {
-            Empty(R.string.widget_night_empty)
+            Empty(R.string.widget_night_empty, R.string.widget_night_empty_short, used = WidgetLine.label + HeadGap)
             return@WidgetSurface
         }
-        NightHero(night, formats)
-        Spacer(GlanceModifier.height(FiguresGap))
+        NightHero(night, formats, large = fit != NightFit.BARE || room >= hero)
+        if (fit == NightFit.HERO || fit == NightFit.BARE) return@WidgetSurface
+        Spacer(GlanceModifier.height(if (fit == NightFit.DURATION) TightGap else FiguresGap))
+        val duration = formats.duration(night.durationMs / MS_PER_MINUTE)
+        if (fit == NightFit.DURATION) {
+            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    context.getString(R.string.widget_night_duration),
+                    GlanceModifier.defaultWeight(),
+                    style = WidgetType.label,
+                    maxLines = 1,
+                )
+                Figure(duration, Provenance.MEASURED, WidgetType.data)
+            }
+            return@WidgetSurface
+        }
         Row(GlanceModifier.fillMaxWidth()) {
-            Small(context.getString(R.string.widget_night_duration), formats.duration(night.durationMs / MS_PER_MINUTE))
+            Small(context.getString(R.string.widget_night_duration), duration)
             night.deepSleepShare?.takeUnless { night.charged }?.let {
                 Spacer(GlanceModifier.width(ColumnGap))
                 Small(context.getString(R.string.widget_night_deep_sleep), formats.share(it))
@@ -100,10 +131,26 @@ internal fun NightContent(
     }
 }
 
+/** How much of the night a height holds. */
+private enum class NightFit {
+    /** The head, the hero and both figures under their headings. */
+    FULL,
+
+    /** The head, the hero and the duration on one line. */
+    DURATION,
+
+    /** The head and the hero. */
+    HERO,
+
+    /** The hero alone. */
+    BARE,
+}
+
 @Composable
 private fun NightHero(
     night: NightSummary,
     formats: Formats,
+    large: Boolean,
 ) {
     val context = LocalContext.current
     val rate = night.ratePctPerHour
@@ -113,7 +160,7 @@ private fun NightHero(
         }
 
         rate != null -> {
-            Figure(formats.rate(rate), Provenance.DERIVED, WidgetType.hero, unit = formats.rateUnit)
+            Figure(formats.rate(rate), Provenance.DERIVED, if (large) WidgetType.hero else WidgetType.title, unit = formats.rateUnit)
         }
 
         else -> {
