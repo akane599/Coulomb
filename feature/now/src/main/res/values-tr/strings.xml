@@ -67,7 +67,7 @@
     <string name="now_screen_hz">%1$s\u00A0Hz</string>
     <string name="now_screen_auto_brightness">otomatik parlaklık</string>
     <string name="now_screen_manual_brightness">elle ayarlı parlaklık</string>
-    <string name="now_as_of">Son okuma %1$s. Hafif modda Coulomb pili, onu açtığında ve 6 saatte bir okur; şimdi okumak için aşağı çek.</string>
+    <string name="now_as_of">Son okuma %1$s. Hafif modda Coulomb pili, uygulamayı açtığında ve 6 saatte bir okur; şimdi okumak için aşağı çek.</string>
     <string name="now_as_of_full">Son okuma %1$s. Coulomb o zamandan beri pili okumadı; şimdi okumak için aşağı çek.</string>
     <string name="now_live_lite">Hafif mod anlık akımı izlemez. Ayarlar’daki Tam mod izler.</string>
     <string name="now_live_stale">%1$s sonrasında okuma yok, bu yüzden gösterilecek anlık akım yok.</string>

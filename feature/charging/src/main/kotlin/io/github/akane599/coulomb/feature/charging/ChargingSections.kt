@@ -519,7 +519,8 @@ internal fun Target(
     onSelect: (Int) -> Unit,
     onOpenSettings: () -> Unit,
     lite: Boolean = false,
-    stale: Boolean = false,
+    // Whether the page shows a time to the target; the note promises one only then.
+    timed: Boolean = true,
 ) {
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.charging_target), provenance = null)
@@ -532,7 +533,7 @@ internal fun Target(
         )
         // SPEC 10.9: the selector links to the alarm. The note says what the alarm is set to, not what it could be.
         Note(
-            stringResource(if (stale) R.string.charging_target_note_mark else R.string.charging_target_note) + " " +
+            stringResource(if (timed) R.string.charging_target_note else R.string.charging_target_note_mark) + " " +
                 stringResource(
                     when {
                         alarm && lite -> R.string.charging_target_alarm_lite

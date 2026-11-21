@@ -223,7 +223,7 @@ internal fun NowContent(
     // An insight that left the list while its sheet was open closes the sheet with it.
     val asked = ready?.insights?.firstOrNull { it.insight.id == why }
     if (ready != null && asked != null) {
-        DataTableSheet(table = copy.evidence(asked.insight, zone, ready.battery.wallMs), onDismiss = { why = null })
+        DataTableSheet(table = copy.evidence(asked.insight, zone, ready.clock(nowMs)), onDismiss = { why = null })
     }
 }
 
@@ -321,3 +321,6 @@ internal fun rememberResumedNowMs(changesAt: Long?): Long {
     }
     return now
 }
+
+/** The clock an evidence sheet judges its days by: the resumed one, or in a golden the reading's (gate run 7). */
+private fun NowUiState.Ready.clock(nowMs: Long?): Long = nowMs ?: battery.wallMs

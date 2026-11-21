@@ -41,8 +41,8 @@ public data class DataTable(
     val rows: List<List<String>>,
     /** The single source of every figure, marked once on the header (SPEC 10.1). */
     val provenance: Provenance?,
-    /** Each row's source, marked after its last figure, where the rows differ. */
-    val rowProvenance: List<Provenance>? = null,
+    /** Each row's source, marked after its last figure, where the rows differ; null for a setting. */
+    val rowProvenance: List<Provenance?>? = null,
     /** Each column's source, marked on its header, where the columns differ; null for a label column. */
     val columnProvenance: List<Provenance?>? = null,
 ) {

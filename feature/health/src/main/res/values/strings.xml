@@ -47,7 +47,7 @@
     <string name="health_differ_coulomb">%1$s values from different methods differ by up to %2$s points. Coulomb counts the charge going in and out; the others come from the fuel gauge’s own estimate.</string>
     <string name="health_differ">%1$s values differ by up to %2$s points. Android and the manufacturer each work out health their own way and don’t say how.</string>
     <string name="health_only_coulomb">Coulomb has no health value from Android or the manufacturer on this phone.</string>
-    <string name="health_no_values">No health values yet. Coulomb’s needs a long charge or discharge; Android’s needs the battery stats permission, and not every phone reports one.</string>
+    <string name="health_no_values">No health values yet. Coulomb’s estimate needs a long charge or discharge; Android’s value needs the battery stats permission, and not every phone reports one.</string>
     <string name="health_coulomb_needs_design">Coulomb’s health % needs the design capacity.</string>
 
     <!-- Cycles and age (SPEC 10.8 items 2 and 3). -->

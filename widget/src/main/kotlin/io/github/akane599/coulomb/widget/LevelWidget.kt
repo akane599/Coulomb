@@ -9,8 +9,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidget
@@ -23,6 +26,7 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
+import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.Text
 import io.github.akane599.coulomb.core.common.OpenRequest
@@ -80,6 +84,7 @@ private val LabelLine = 18.dp
 private val VerdictGap = 4.dp
 private val BesideGap = 16.dp
 private val StateGap = 8.dp
+private val OldReadingSize = 12.dp
 
 /** The width the level and its state take beside the verdict. */
 private val LevelColumn = 96.dp
@@ -158,9 +163,9 @@ private fun stateLine(
 }
 
 /**
- * An old reading's time for the one-line form, longest first: "As of Sun 2:30 PM", "Sun 2:30 PM",
- * "2:30 PM". The day comes from [Formats.dayClock], as in the stacked form, since the widget is not
- * drawn again at midnight (ADR-0069). Empty for a current reading.
+ * An old reading's time for the one-line form, longest first: "As of Sun 2:30 PM", "Sun 2:30 PM".
+ * Always with its day from [Formats.dayClock], as in the stacked form, since the widget is not drawn
+ * again at midnight (ADR-0069). Empty for a current reading.
  */
 private fun oneLineTimes(
     context: Context,
@@ -170,10 +175,13 @@ private fun oneLineTimes(
 ): List<String> {
     val at = level.asOfWallMs ?: return emptyList()
     val day = formats.dayClock(at, zone)
-    return listOf(context.getString(R.string.widget_as_of, day), day, formats.clock(at, zone))
+    return listOf(context.getString(R.string.widget_as_of, day), day)
 }
 
-/** The first of [lines] that fits beside the level, at hero size if the height holds it, then title; with the size. */
+/**
+ * The first of [lines] that fits beside the level, with the level's size: each line at hero size if
+ * the height holds it, else at title size, before a shorter line. A fuller time beats a larger number.
+ */
 private fun chooseLine(
     percent: String,
     lines: List<String>,
@@ -186,17 +194,20 @@ private fun chooseLine(
     ) = WidgetFit.width(percent, if (hero) WidgetLine.HERO_SP else WidgetLine.TITLE_SP, scale) + WidgetLine.mark.value +
         StateGap.value + WidgetFit.width(line, WidgetLine.LABEL_SP, scale) <= inner.width.value
     val tall = inner.height >= WidgetLine.hero * scale
-    return lines.firstOrNull { tall && fits(it, hero = true) }?.let { it to true }
-        ?: lines.firstOrNull { fits(it, hero = false) }?.let { it to false }
-        ?: (null to tall)
+    for (line in lines) {
+        if (tall && fits(line, hero = true)) return line to true
+        if (fits(line, hero = false)) return line to false
+    }
+    return null to tall
 }
 
 /**
  * The level on one line with its state, or an old reading's time, where the width holds both. The
  * time takes the longest form that fits beside the level at hero or title size; with none, it goes
- * under the level where the height holds two lines. Where neither holds (the smallest size, large
- * text) the level is drawn muted, so it does not read as now, and TalkBack says its time; a tap
- * opens Now, which shows it (ADR-0069). Never cut (SPEC 12.4).
+ * under the level where the height holds two lines. Where neither holds (the smallest size, or the
+ * 2×1 at large text) the level is drawn muted with a small clock, so neither colour alone nor a bare
+ * number says it is now, and TalkBack says its time; a tap opens Now, which shows it (ADR-0069).
+ * Never cut (SPEC 12.4).
  */
 @Composable
 private fun OneLine(
@@ -207,10 +218,11 @@ private fun OneLine(
     scale: Float,
 ) {
     val (line, large) = chooseLine(percent, times.ifEmpty { listOf(state) }, inner, scale)
-    if (line == null && times.isNotEmpty() && inner.height >= (WidgetLine.title + WidgetLine.label) * scale) {
+    val under = times.firstOrNull { WidgetFit.width(it, WidgetLine.LABEL_SP, scale) <= inner.width.value }
+    if (line == null && under != null && inner.height >= (WidgetLine.title + WidgetLine.label) * scale) {
         Column {
             Figure(percent, Provenance.MODELED, WidgetType.title)
-            Text(times.last(), style = WidgetType.label, maxLines = 1)
+            Text(under, style = WidgetType.label, maxLines = 1)
         }
         return
     }
@@ -223,6 +235,15 @@ private fun OneLine(
             if (untimed) style.copy(color = WidgetColors.textSecondary) else style,
             spokenNote = times.firstOrNull()?.takeIf { untimed },
         )
+        if (untimed) {
+            Spacer(GlanceModifier.width(StateGap / 2))
+            Image(
+                provider = ImageProvider(R.drawable.widget_old_reading),
+                contentDescription = null,
+                modifier = GlanceModifier.size(OldReadingSize),
+                colorFilter = ColorFilter.tint(WidgetColors.textSecondary),
+            )
+        }
         if (line != null) {
             Spacer(GlanceModifier.defaultWeight())
             Text(line, style = WidgetType.label, maxLines = 1)

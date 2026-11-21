@@ -226,7 +226,15 @@ internal fun ChargingContent(
                             Readings(now, formats, lite || stale)
                             actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
                             Session(now, formats, zone, onViewTable = { table = CURVE_TABLE }, stale = stale)
-                            Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings, lite, stale)
+                            Target(
+                                now.targetPct,
+                                targetAlarm,
+                                formats,
+                                actions.setTarget,
+                                actions.openSettings,
+                                lite,
+                                timed = now.showsTargetTime(),
+                            )
                         }
                     }
                 }
@@ -304,9 +312,11 @@ private fun scaleTable(
 ): DataTable {
     val toTarget = now.toTarget?.takeIf { now.levelPct < now.targetPct }
     val toFull = now.toFull?.takeIf { now.levelPct < FULL_PCT && now.targetPct < FULL_PCT }
-    val rows =
+    val rows: List<Pair<List<String>, Provenance?>> =
         listOfNotNull(
             listOf(stringResource(R.string.charging_row_level), formats.percent(now.levelPct)) to Provenance.MODELED,
+            // The target the scale draws, always: a setting, so it has no source mark.
+            listOf(stringResource(R.string.charging_target), formats.percent(now.targetPct)) to null,
             toTarget?.let {
                 listOf(
                     stringResource(R.string.charging_row_reaches, formats.percent(now.targetPct)),
@@ -423,6 +433,9 @@ private fun rememberResumedNowMs(changesAt: Long?): Long {
 /** A ready state's reading as the page shows it at [nowMs]; null otherwise. */
 private fun ChargingUiState.shownNow(nowMs: Long?): ChargingNow? =
     (this as? ChargingUiState.Ready)?.now?.let { it.shown(it.isStaleAt(nowMs)) }
+
+/** Whether the page shows a time to the target: one is known and the level is below it. */
+private fun ChargingNow.showsTargetTime(): Boolean = toTarget != null && levelPct < targetPct
 
 /** Older than [BatteryNow.STALE_MS] at [nowMs]; never without a clock (ADR-0069). */
 private fun ChargingNow.isStaleAt(nowMs: Long?): Boolean = nowMs != null && nowMs - wallMs > BatteryNow.STALE_MS
