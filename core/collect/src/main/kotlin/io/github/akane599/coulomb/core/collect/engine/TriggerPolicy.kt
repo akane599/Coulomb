@@ -62,6 +62,7 @@ internal object TriggerPolicy {
                 SnapshotTrigger.APP_OPENED,
                 SnapshotTrigger.PULL_TO_REFRESH,
                 SnapshotTrigger.USER_PRESENT,
+                SnapshotTrigger.AUTOMATION,
                 -> if (recent(input) && !payDebt) Action.NONE else Action.HEAVY
 
                 SnapshotTrigger.SCREEN_OFF,

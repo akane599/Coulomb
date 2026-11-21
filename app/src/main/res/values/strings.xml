@@ -50,4 +50,8 @@
     <string name="surface_privileges_stopped">What Coulomb reads through Shizuku waits until it runs again. Permissions you already granted keep working. Open Privileges to start it.</string>
     <string name="surface_privileges_revoked">The permissions Coulomb was granted were taken back. Open Privileges to grant them again.</string>
     <string name="surface_privileges_denied">Shizuku no longer authorizes Coulomb. Open Privileges to allow it again.</string>
+
+    <!-- The Automation API's permission (SPEC 12.7), as Android shows it when an app asks for it. -->
+    <string name="automation_permission">automate Coulomb</string>
+    <string name="automation_permission_about">Ask Coulomb for a battery snapshot, set its charge target, re-apply a Doze profile you have applied, and read the battery level, drain rates, last night’s report and the names of the three apps that use the most battery.</string>
 </resources>

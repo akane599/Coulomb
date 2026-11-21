@@ -171,6 +171,12 @@
     <string name="settings_action_center">Action Center</string>
     <string name="settings_action_center_note">Changes Coulomb can make for you, each shown first and revertible.</string>
     <string name="settings_action_center_open">Open the Action Center</string>
+    <!-- SPEC 12.7, 14.4. The note names everything an allowed app can do and read (ADR-0065 §7). -->
+    <string name="settings_automation">Automation API</string>
+    <string name="settings_automation_note">Apps you allow can ask for a snapshot, set the charge target and re-apply a Doze profile you have applied. They can read the battery level, drain rates, last night’s report and the names of the three apps that use the most battery.</string>
+    <string name="settings_automation_apps">Apps allowed</string>
+    <string name="settings_automation_apps_none">None yet. An app asks for the permission “automate Coulomb”, and you allow it in Android’s settings for that app.</string>
+    <string name="settings_automation_apps_joined">%1$s, %2$s</string>
     <string name="settings_on">On</string>
     <string name="settings_off">Off</string>
     <string name="settings_digest_title">Insights</string>

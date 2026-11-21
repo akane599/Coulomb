@@ -1,0 +1,30 @@
+{
+  "api_version": 1,
+  "application_id": "io.github.akane599.coulomb",
+  "permission": "io.github.akane599.coulomb.permission.AUTOMATE",
+  "actions": ["io.github.akane599.coulomb.action.SNAPSHOT_NOW", "io.github.akane599.coulomb.action.SET_CHARGE_TARGET", "io.github.akane599.coulomb.action.APPLY_DOZE_PROFILE"],
+  "extras": ["io.github.akane599.coulomb.extra.CHARGE_TARGET_PCT", "io.github.akane599.coulomb.extra.DOZE_PROFILE", "io.github.akane599.coulomb.extra.API_VERSION", "io.github.akane599.coulomb.extra.RETRY_AFTER_S"],
+  "doze_profiles": ["stock", "balanced", "aggressive"],
+  "results": {
+    "done": 1,
+    "accepted": 2,
+    "unchanged": 3,
+    "invalid": 10,
+    "rate_limited": 11,
+    "blocked": 12,
+    "failed": 13,
+    "unverified": 14
+  },
+  "reasons": ["ok", "off", "unknown_action", "bad_target", "bad_profile", "rate_limited", "screen_off", "needs_first_apply", "profile_active", "action_center_off", "drifted", "failed", "unverified", "timeout"],
+  "authority": "io.github.akane599.coulomb.automation",
+  "columns": ["metric", "rank", "subject", "subject_label", "value", "low", "high", "text", "unit", "provenance", "quality", "state", "from_wall_ms", "to_wall_ms", "as_of_wall_ms"],
+  "states": ["ok", "collecting", "unavailable", "not_applicable"],
+  "units": ["pct", "pct_per_h", "min", "pct_of_window"],
+  "paths": {
+    "v1/info": ["api_version", "app_version", "monitoring_mode"],
+    "v1/level": ["level", "power_state"],
+    "v1/rates": ["rate_screen_on", "rate_screen_off", "time_left"],
+    "v1/night": ["duration", "level_start", "level_end", "rate", "deep_sleep", "deep_doze_reached", "deep_doze_after"],
+    "v1/drains": ["drain_share", "drain_share", "drain_share"]
+  }
+}

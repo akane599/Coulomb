@@ -36,6 +36,9 @@ class PoliciesTest {
         assertThat(decide(SnapshotTrigger.APP_OPENED, lastSnapshotMinutesAgo = 0).action).isEqualTo(Action.NONE)
         assertThat(decide(SnapshotTrigger.USER_PRESENT, lastSnapshotMinutesAgo = 0).action).isEqualTo(Action.NONE)
         assertThat(decide(SnapshotTrigger.PULL_TO_REFRESH, lastSnapshotMinutesAgo = 1).action).isEqualTo(Action.HEAVY)
+        // SPEC 12.7: a snapshot another app asks for is debounced as the user's own refresh is.
+        assertThat(decide(SnapshotTrigger.AUTOMATION, lastSnapshotMinutesAgo = 0).action).isEqualTo(Action.NONE)
+        assertThat(decide(SnapshotTrigger.AUTOMATION, lastSnapshotMinutesAgo = 1).action).isEqualTo(Action.HEAVY)
         assertThat(decide(SnapshotTrigger.APP_OPENED).action).isEqualTo(Action.HEAVY)
     }
 

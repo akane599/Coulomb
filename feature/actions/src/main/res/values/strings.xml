@@ -68,6 +68,7 @@
 
     <string name="actions_log">Log</string>
     <string name="actions_log_empty">Nothing has been changed yet.</string>
+    <string name="actions_log_older">Show older changes</string>
     <string name="actions_revert_all">Revert all</string>
     <string name="actions_revert_all_title">Revert every change</string>
     <!-- %1$s: how many changes. -->
@@ -87,6 +88,21 @@
     <!-- %1$s: the value found. -->
     <string name="actions_log_drift_value">Now %1$s. Coulomb leaves it as it is.</string>
     <string name="actions_log_from_insight">Offered by an insight</string>
+    <string name="actions_log_automation">Automation call</string>
+    <string name="actions_log_refused">Refused</string>
+    <string name="actions_log_asked">Asked for</string>
+    <string name="actions_refused_bad_target">The target was outside %1$s to %2$s.</string>
+    <string name="actions_refused_bad_profile">Not a profile Coulomb has.</string>
+    <string name="actions_refused_screen_off">The screen was off and the phone was on battery, so a snapshot would have woken it.</string>
+    <string name="actions_refused_first_apply">You hadn’t applied this profile yourself. A call only repeats a change you made here.</string>
+    <string name="actions_refused_profile_active">Another profile was applied.</string>
+    <string name="actions_refused_center_off">The Action Center was off.</string>
+    <string name="actions_refused_drifted">Something else had changed the value, so Coulomb left it.</string>
+    <string name="actions_refused_failed">The command failed.</string>
+    <string name="actions_log_from_automation">Asked for by another app through the Automation API</string>
+    <string name="actions_automation_snapshot">Snapshot</string>
+    <string name="actions_automation_target">Charge target</string>
+    <string name="actions_automation_stock">Stock</string>
     <string name="actions_log_bucket">Standby bucket</string>
     <string name="actions_log_allowlist">Doze allowlist</string>
     <string name="actions_log_profile">Doze profile</string>

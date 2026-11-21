@@ -6,6 +6,7 @@ package io.github.akane599.coulomb
 import android.app.Application
 import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
+import io.github.akane599.coulomb.automation.AutomationSwitch
 import io.github.akane599.coulomb.core.collect.CapabilityStore
 import io.github.akane599.coulomb.core.common.AppScope
 import io.github.akane599.coulomb.core.data.DataTransfer
@@ -84,6 +85,13 @@ class CoulombApplication : Application() {
                 .map { it.fahrenheit }
                 .distinctUntilChanged()
                 .collect { DisplayUnits.fahrenheit = it }
+        }
+        // SPEC 12.7: the Automation API's receiver and provider are open only while the setting is on.
+        scope.launch {
+            settings.settings
+                .map { it.automation }
+                .distinctUntilChanged()
+                .collect { AutomationSwitch.apply(this@CoulombApplication, it) }
         }
         // What a killed import or export left behind can be large; it goes at the next start (ADR-0062 §11).
         scope.launch { transfer.sweep() }

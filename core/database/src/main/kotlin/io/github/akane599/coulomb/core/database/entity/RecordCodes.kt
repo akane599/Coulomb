@@ -47,6 +47,7 @@ public object RecordCodes {
             SnapshotTrigger.PACKAGE_CHANGED,
             SnapshotTrigger.LITE_PERIODIC,
             SnapshotTrigger.SERVICE_STARTED,
+            SnapshotTrigger.AUTOMATION,
         )
     internal val WINDOW_KINDS: List<WindowKind> =
         listOf(WindowKind.CONSECUTIVE, WindowKind.SESSION, WindowKind.DAY, WindowKind.REFERENCE)

@@ -106,6 +106,49 @@ class DeviceInsightTest : DatabaseTest() {
             }
         }
 
+    /** ADR-0065 §8: what the Automation API reads of the log, none of it the whole table. */
+    @Test
+    fun automationReadsItsOwnRowsAndTheUsersProfilesAndStaysOutOfRevertAll() =
+        runTest {
+            val user = insights.insertAction(profile("balanced", ActionOrigin.USER, executedWall = 100).copy(revertedWall = 150))
+            val drifted = insights.insertAction(profile("balanced", ActionOrigin.INSIGHT, executedWall = 200).copy(externalDriftWall = 250))
+            insights.insertAction(profile("aggressive", ActionOrigin.USER, executedWall = 300).copy(revertedWall = 350))
+            val old = insights.insertAction(call("snapshot_now", executedWall = 400))
+            val applied = insights.insertAction(profile("balanced", ActionOrigin.AUTOMATION, executedWall = 500))
+            val recent = insights.insertAction(call("set_charge_target org.example.tasks", executedWall = 600))
+
+            assertThat(insights.automationSince(400).map { it.id }).containsExactly(recent, applied).inOrder()
+            assertThat(insights.automationSince(0).map { it.id }).containsExactly(recent, applied, old).inOrder()
+            // Automation's own apply is not the user's, whatever its values.
+            assertThat(insights.userDozeProfiles("balanced").map { it.id }).containsExactly(drifted, user).inOrder()
+            assertThat(insights.appliedDozeProfile()?.id).isEqualTo(applied)
+            // A call's row has nothing to revert; the profile a call applied has.
+            assertThat(insights.unreverted().map { it.id }).containsExactly(applied, drifted).inOrder()
+
+            insights.updateAction(checkNotNull(insights.action(applied)).copy(revertedWall = 700))
+            assertThat(insights.appliedDozeProfile()).isNull()
+        }
+
+    private fun profile(
+        name: String,
+        origin: ActionOrigin,
+        executedWall: Long,
+    ) = action(
+        executedWall,
+    ).copy(actionType = "doze_profile", target = name, beforeValue = null, afterValue = "inactive_to=900000", origin = origin)
+
+    private fun call(
+        target: String,
+        executedWall: Long,
+    ) = action(executedWall).copy(
+        actionType = "automation_call",
+        target = target,
+        beforeValue = null,
+        afterValue = "accepted",
+        tier = AccessTier.T0_UNPRIVILEGED,
+        origin = ActionOrigin.AUTOMATION,
+    )
+
     private fun insight(
         windowId: Long,
         subjectKey: String?,

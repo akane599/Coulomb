@@ -160,6 +160,11 @@
     <string name="settings_action_center">Eylem Merkezi</string>
     <string name="settings_action_center_note">Coulomb’un senin için yapabileceği değişiklikler; her biri önce gösterilir ve geri alınabilir.</string>
     <string name="settings_action_center_open">Eylem Merkezi’ni aç</string>
+    <string name="settings_automation">Otomasyon API’si</string>
+    <string name="settings_automation_note">İzin verdiğin uygulamalar anlık kayıt isteyebilir, şarj hedefini ayarlayabilir ve senin uyguladığın bir Doze profilini yeniden uygulayabilir. Pil seviyesini, tüketim hızlarını, dün gecenin raporunu ve en çok pil kullanan üç uygulamanın adını okuyabilir.</string>
+    <string name="settings_automation_apps">İzin verilen uygulamalar</string>
+    <string name="settings_automation_apps_none">Henüz yok. Bir uygulama “Coulomb’u otomatikleştirme” iznini ister; sen de Android’in o uygulamaya ait ayarlarından izin verirsin.</string>
+    <string name="settings_automation_apps_joined">%1$s, %2$s</string>
     <string name="settings_on">Açık</string>
     <string name="settings_off">Kapalı</string>
     <string name="settings_digest_title">İçgörüler</string>

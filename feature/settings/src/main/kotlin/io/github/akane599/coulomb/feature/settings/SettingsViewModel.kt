@@ -85,6 +85,9 @@ public class SettingsViewModel
 
         internal fun developerConsole(on: Boolean) = write { store.developerConsole(on) }
 
+        /** The app opens and closes the API's receiver and provider with the stored value (SPEC 12.7). */
+        internal fun automation(on: Boolean) = write { store.automation(on) }
+
         /** A write that fails (a full disk) is logged and said; the switch shows the stored value again. */
         private fun write(block: suspend () -> Unit) {
             viewModelScope.launch {
@@ -127,4 +130,5 @@ internal class SettingsActions(
     val longRawRetention: (Boolean) -> Unit = {},
     val versionTap: () -> Unit = {},
     val openConsole: () -> Unit = {},
+    val automation: (Boolean) -> Unit = {},
 )

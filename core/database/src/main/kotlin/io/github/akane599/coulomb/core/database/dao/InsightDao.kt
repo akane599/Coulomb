@@ -63,7 +63,25 @@ public interface InsightDao {
     @Query("SELECT * FROM action_log ORDER BY id DESC")
     public fun observeActions(): Flow<List<ActionLogEntity>>
 
-    /** Actions not reverted, newest first: the order "revert all" undoes them in (SPEC 13). */
-    @Query("SELECT * FROM action_log WHERE revertedWall IS NULL ORDER BY id DESC")
+    /**
+     * Actions not reverted, newest first: the order "revert all" undoes them in (SPEC 13). An
+     * automation call's own row has nothing to revert and there can be many, so they stay out.
+     */
+    @Query("SELECT * FROM action_log WHERE revertedWall IS NULL AND actionType != 'automation_call' ORDER BY id DESC")
     public suspend fun unreverted(): List<ActionLogEntity>
+
+    /** The rows automation wrote after [sinceWall], newest first: what its limits count (ADR-0065 §8). */
+    @Query("SELECT * FROM action_log WHERE origin = 'AUTOMATION' AND executedWall > :sinceWall ORDER BY id DESC")
+    public suspend fun automationSince(sinceWall: Long): List<ActionLogEntity>
+
+    /** The Doze profile Coulomb applied that is still in force, if there is one. */
+    @Query(
+        "SELECT * FROM action_log WHERE actionType = 'doze_profile' AND revertedWall IS NULL AND externalDriftWall IS NULL " +
+            "ORDER BY id DESC LIMIT 1",
+    )
+    public suspend fun appliedDozeProfile(): ActionLogEntity?
+
+    /** Every time [profile] was applied by the user or from an insight, newest first: never by automation. */
+    @Query("SELECT * FROM action_log WHERE actionType = 'doze_profile' AND origin != 'AUTOMATION' AND target = :profile ORDER BY id DESC")
+    public suspend fun userDozeProfiles(profile: String): List<ActionLogEntity>
 }

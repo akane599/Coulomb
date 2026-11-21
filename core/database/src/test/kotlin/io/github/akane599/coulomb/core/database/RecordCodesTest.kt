@@ -33,7 +33,9 @@ class RecordCodesTest {
         assertThat(RecordCodes.WINDOW_KINDS.map { it.name }).containsExactly("CONSECUTIVE", "SESSION", "DAY", "REFERENCE").inOrder()
         assertThat(RecordCodes.SNAPSHOT_KINDS.map { it.name }).containsExactly("LIGHT", "HEAVY").inOrder()
         assertThat(RecordCodes.TRIGGERS.first()).isEqualTo(SnapshotTrigger.SCREEN_OFF)
-        assertThat(RecordCodes.TRIGGERS.last()).isEqualTo(SnapshotTrigger.SERVICE_STARTED)
+        // A list of codes only grows at its end: version 7 ended at SERVICE_STARTED, code 13.
+        assertThat(RecordCodes.TRIGGERS.indexOf(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(13)
+        assertThat(RecordCodes.TRIGGERS.last()).isEqualTo(SnapshotTrigger.AUTOMATION)
         assertThat(SourceStatusCodes.SOURCES).containsExactly("S5", "S6", "S7", "S4", "S9", "S25", "S26", "S27").inOrder()
         assertThat(SourceStatusCodes.STATUSES).containsExactly("ok", "partial", "failed", "skipped", "slept", "off").inOrder()
     }

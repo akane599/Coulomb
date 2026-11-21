@@ -10,6 +10,7 @@ import io.github.akane599.coulomb.core.collect.actions.ActionRequest
 import io.github.akane599.coulomb.core.collect.actions.ActionRisk
 import io.github.akane599.coulomb.core.collect.actions.ActionType
 import io.github.akane599.coulomb.core.collect.actions.ActionValues
+import io.github.akane599.coulomb.core.collect.actions.AutomationCalls
 import io.github.akane599.coulomb.core.model.cmd.AppOpMode
 import io.github.akane599.coulomb.core.model.cmd.StandbyBucket
 
@@ -113,7 +114,32 @@ internal object ActionWords {
             ActionType.DOZE_TAKEOVER -> R.string.actions_log_take_over
             ActionType.BATTERY_SAVER -> R.string.actions_saver
             ActionType.RESET_STATS -> R.string.actions_reset
+            ActionType.AUTOMATION_CALL -> R.string.actions_log_automation
             null -> R.string.actions_unknown
+        }
+
+    /** Why the Automation API refused a call, for its own reasons; null for the Action Center's and for an unknown one. */
+    @StringRes
+    fun refusal(reason: String): Int? =
+        when (reason) {
+            "bad_profile" -> R.string.actions_refused_bad_profile
+            "screen_off" -> R.string.actions_refused_screen_off
+            "needs_first_apply" -> R.string.actions_refused_first_apply
+            "profile_active" -> R.string.actions_refused_profile_active
+            "action_center_off" -> R.string.actions_refused_center_off
+            "drifted" -> R.string.actions_refused_drifted
+            "failed" -> R.string.actions_refused_failed
+            else -> null
+        }
+
+    /** What an automation call asked for; null for a call of a version this build does not know. */
+    @StringRes
+    fun automationCall(target: String): Int? =
+        when (AutomationCalls.name(target)) {
+            AutomationCalls.SNAPSHOT_NOW -> R.string.actions_automation_snapshot
+            AutomationCalls.SET_CHARGE_TARGET -> R.string.actions_automation_target
+            AutomationCalls.APPLY_DOZE_PROFILE -> R.string.actions_log_profile
+            else -> null
         }
 
     @StringRes
@@ -198,7 +224,7 @@ internal object ActionWords {
                 R.string.actions_value_unset.takeIf { value.isNullOrEmpty() }
             }
 
-            null -> {
+            ActionType.AUTOMATION_CALL, null -> {
                 null
             }
         }

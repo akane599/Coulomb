@@ -87,8 +87,13 @@ public fun SettingsScreen(
             allowed = granted
             refused = !granted
         }
-    LifecycleResumeEffect(Unit) {
+    // Who holds the automation permission is Android's to say, and changes on its permission page.
+    val automationOn = settings?.automation == true
+    var access by remember { mutableStateOf<AutomationAccess?>(null) }
+    LifecycleResumeEffect(automationOn) {
         allowed = context.notificationsAllowed()
+        access =
+            if (automationOn) AutomationAccess(AutomationPermission.holders(context)) else null
         onPauseOrDispose {}
     }
     val actions =
@@ -133,11 +138,12 @@ public fun SettingsScreen(
                     if (taps == CONSOLE_TAPS) viewModel.developerConsole(true)
                 },
                 openConsole = onOpenConsole,
+                automation = viewModel::automation,
             )
         }
     // Nothing until the stored values are read, then one fade-in (SPEC 10.11).
     if (settings != null) {
-        val device = SettingsDevice(language, ownUse, version, ZoneId.systemDefault(), System.currentTimeMillis())
+        val device = SettingsDevice(language, ownUse, version, ZoneId.systemDefault(), System.currentTimeMillis(), access)
         FadeInOnce { SettingsContent(settings, actions, modifier, saveFailed, notificationsAllowed = allowed, device = device) }
     }
 }
@@ -242,6 +248,7 @@ internal fun SettingsContent(
             trailingIcon = CoulombIcons.ChevronRight,
             edge = ButtonEdge.Start,
         )
+        Automation(settings.automation, device.automation, actions.automation)
         // SPEC 14.5 on its own screen: three exports, an import and a deletion are more than rows here.
         SectionTitle(stringResource(R.string.settings_data), provenance = null)
         CoulombTextButton(

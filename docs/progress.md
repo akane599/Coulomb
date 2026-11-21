@@ -174,8 +174,24 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   - Settings restored by Auto Backup start without onboarding, the Action Center or the
     Automation API (ADR-0062 §15).
   - Not seen on a device yet (`docs/questions.md`). Wallpaper colour stays in `BACKLOG.md`.
-- **Still to come in P6:** the Automation API (its setting with it), DeX and expanded-layout
-  polish, release signing, and SPEC 18's checklist.
+- **The Automation API (SPEC 12.7, ADR-0065).**
+  - A permission of Coulomb's own that the user grants per app; a receiver and a provider that
+    are disabled components until "Automation API" is switched on in Settings, which then lists
+    the apps allowed.
+  - Three broadcast actions answered through the ordered broadcast's result: a snapshot (as a
+    refresh, never with the screen off on battery, four in two hours), the charge target (50 to
+    100%, never brought into range), and a Doze profile, which a call applies only as a repeat
+    of a change the user applied here; "stock" reverts it.
+  - A read-only provider under `/v1/`: level, rates, last night and the top three drains, each
+    figure a row with its unit, provenance and state; a missing figure is a row that says so.
+  - Every call is a row of the action log with the origin "automation", bounded to 100 a day;
+    the Action Center draws its log fifty rows at a time.
+  - `docs/automation-api.md` describes version 1 and `docs/automation-api-v1.json` pins it, with
+    a test. One second opinion on the design and one independent review of the code.
+  - Not seen on a device; the Doze call waits for the same yes as the Action Center's writes
+    (`docs/questions.md`).
+- **Still to come in P6:** DeX and expanded-layout polish, release signing, and SPEC 18's
+  checklist.
 
 ## P4 Core screens (gate deferred: protocol C)
 

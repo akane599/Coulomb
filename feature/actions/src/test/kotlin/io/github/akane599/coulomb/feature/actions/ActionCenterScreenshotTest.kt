@@ -12,8 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.akane599.coulomb.core.analytics.DozeChange
@@ -195,6 +200,53 @@ class ActionCenterScreenshotTest {
     @Config(qualifiers = "w412dp-h1000dp-xhdpi")
     fun previewBusy() = sheet("preview-busy") { ActionPreviewContent(RESTRICT, busy = true, {}, {}, subject = "Halcyon") }
 
+    /** SPEC 12.7: what another app asked for is in the log, the refusals with it. */
+    @Test
+    @Config(qualifiers = "w412dp-h900dp-xhdpi")
+    fun automationLog() = center("automation-log", ActionCenterState.Ready(enabled = false, board = null, log = AUTOMATION_LOG))
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h900dp-night-xhdpi")
+    fun automationLogTurkishDark() =
+        center("automation-log-tr-dark", ActionCenterState.Ready(enabled = false, board = null, log = AUTOMATION_LOG), dark = true)
+
+    @Test
+    @Config(qualifiers = "w412dp-h900dp-xhdpi")
+    fun automationDetails() =
+        sheet("automation-details") {
+            LogDetails(
+                AUTOMATION_LOG[2],
+                io.github.akane599.coulomb.core.ui.format
+                    .rememberFormats(),
+                CLOCK,
+                busy = false,
+                {},
+                {},
+            )
+        }
+
+    /** A page at a time: a long log does not lay out every row it holds. */
+    @Test
+    @Config(qualifiers = "w412dp-h900dp-xhdpi")
+    fun aLongLogShowsAPageAndTheRestOnRequest() {
+        val long = (1L..60L).map { LogRow(automation(100 + it, "snapshot_now", null, "accepted", minutesAgo = it), null) }
+        compose.setContent {
+            CoulombTheme {
+                ActionCenterContent(
+                    ActionCenterState.Ready(enabled = false, board = null, log = long),
+                    FlowState(),
+                    CenterActions(),
+                    clock = CLOCK,
+                )
+            }
+        }
+
+        compose.onAllNodesWithText("Automation call").assertCountEquals(50)
+        compose.onNodeWithText("Show older changes").performScrollTo().performClick()
+        compose.onAllNodesWithText("Automation call").assertCountEquals(60)
+        compose.onNodeWithText("Show older changes").assertDoesNotExist()
+    }
+
     @Test
     @Config(qualifiers = "w412dp-h900dp-xhdpi")
     fun logDetails() =
@@ -338,6 +390,32 @@ private fun record(
     driftValue = drift,
     revertCommand = command,
 )
+
+private fun automation(
+    id: Long,
+    target: String,
+    before: String?,
+    after: String,
+    minutesAgo: Long,
+    type: ActionType = ActionType.AUTOMATION_CALL,
+) = record(id, type, target, before, after, minutesAgo).copy(origin = ActionOrigin.AUTOMATION)
+
+private val AUTOMATION_LOG =
+    listOf(
+        LogRow(automation(25, "snapshot_now app.northwind.tasks", null, "accepted", minutesAgo = 12), null),
+        LogRow(automation(24, "set_charge_target app.northwind.tasks", "80", "65", minutesAgo = 95), null),
+        LogRow(
+            automation(23, "apply_doze_profile app.northwind.tasks", "aggressive", "refused:needs_first_apply", minutesAgo = 9 * 60),
+            null,
+        ),
+        LogRow(automation(22, "apply_doze_profile", "balanced", "stock", minutesAgo = 11 * 60), null),
+        LogRow(
+            automation(21, "balanced", "", "light_after_inactive_to=180000", minutesAgo = 20 * 60, type = ActionType.DOZE_PROFILE)
+                .copy(revertedWallMs = ACTIONS_NOW - 11 * 60 * MINUTE),
+            null,
+        ),
+        LogRow(automation(20, "set_charge_target", "101", "refused:bad_target", minutesAgo = 26 * 60), null),
+    )
 
 private val LOG =
     listOf(

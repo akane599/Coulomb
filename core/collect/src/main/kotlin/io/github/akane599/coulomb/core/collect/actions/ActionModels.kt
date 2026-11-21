@@ -30,6 +30,13 @@ public enum class ActionType(
     /** Plugging in and a restart clear it by design, so it is not watched (ADR-0060 §13). */
     BATTERY_SAVER("battery_saver", stateful = true, watched = false),
     RESET_STATS("reset_stats", stateful = false, watched = false),
+
+    /**
+     * A call through the Automation API (SPEC 12.7) that is not an action of its own: a snapshot
+     * asked for, the charge target set, or a call refused. The target is the call's name
+     * (ADR-0065 §8); a Doze profile applied by a call is a [DOZE_PROFILE] row with the origin.
+     */
+    AUTOMATION_CALL("automation_call", stateful = false, watched = false),
     ;
 
     public companion object {
@@ -219,6 +226,36 @@ public data class ActionRecord(
 ) {
     /** Still in force as far as Coulomb knows: something to revert, and to watch. */
     val active: Boolean get() = type?.stateful == true && revertedWallMs == null && driftWallMs == null
+}
+
+/**
+ * How an [ActionType.AUTOMATION_CALL] row is written (ADR-0065 §8). The target is the call's name
+ * and, where the caller shared it, the caller's package after a space. "Before" is the argument or
+ * the value replaced; "after" is the new value, [ACCEPTED], or [REFUSED] followed by the reason.
+ */
+public object AutomationCalls {
+    public const val SNAPSHOT_NOW: String = "snapshot_now"
+    public const val SET_CHARGE_TARGET: String = "set_charge_target"
+    public const val APPLY_DOZE_PROFILE: String = "apply_doze_profile"
+
+    /** A snapshot that was queued. */
+    public const val ACCEPTED: String = "accepted"
+    public const val REFUSED: String = "refused:"
+
+    /** "After" of a call that returned the phone to its own Doze values. */
+    public const val STOCK: String = "stock"
+
+    public fun target(
+        name: String,
+        caller: String?,
+    ): String = if (caller.isNullOrBlank()) name else "$name $caller"
+
+    public fun name(target: String): String = target.substringBefore(' ')
+
+    public fun caller(target: String): String? = target.substringAfter(' ', "").ifEmpty { null }
+
+    /** The reason of a refused call; null for a call that was carried out. */
+    public fun refusal(after: String): String? = after.removePrefix(REFUSED).takeIf { after.startsWith(REFUSED) }
 }
 
 /** The values the action log stores, by action (ADR-0060 §21). */

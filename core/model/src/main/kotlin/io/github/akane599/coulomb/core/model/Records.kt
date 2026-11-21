@@ -45,6 +45,9 @@ public enum class SnapshotTrigger {
 
     /** The collector's service started, or the system restarted it, with no other trigger (ADR-0018). */
     SERVICE_STARTED,
+
+    /** Another app asked through the Automation API (SPEC 12.7); debounced as a refresh is. */
+    AUTOMATION,
 }
 
 /** SPEC 8 `WakeStat.kind`; the last three come from root kernel sources (ADR-0029). */
@@ -103,7 +106,13 @@ public enum class InsightSeverity { INFO, WATCH, ACT }
 public enum class InsightState { NEW, SEEN, SNOOZED, DISMISSED, ACTED }
 
 /** SPEC 8 `ActionLog.origin`. */
-public enum class ActionOrigin { USER, INSIGHT }
+public enum class ActionOrigin {
+    USER,
+    INSIGHT,
+
+    /** A call through the Automation API (SPEC 12.7). */
+    AUTOMATION,
+}
 
 /** What a stored window spans; it decides how long the window is kept (ADR-0015). */
 public enum class WindowKind {

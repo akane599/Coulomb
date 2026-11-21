@@ -55,6 +55,15 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
+    <!-- SPEC 12.7: the Automation API's permission. Coulomb defines it and does not hold it. It is
+         `dangerous`, so the user grants it to each app that asks; an app must name it in its own
+         manifest to ask (ADR-0065 §1). -->
+    <permission
+        android:name="${applicationId}.permission.AUTOMATE"
+        android:description="@string/automation_permission_about"
+        android:label="@string/automation_permission"
+        android:protectionLevel="dangerous" />
+
     <application
         android:name=".CoulombApplication"
         android:allowBackup="true"
@@ -77,5 +86,27 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
         </activity>
+
+        <!-- SPEC 12.7. Disabled until "Automation API" is switched on in Settings (AutomationSwitch);
+             the permission guards them when it is. -->
+        <receiver
+            android:name=".automation.AutomationReceiver"
+            android:enabled="false"
+            android:exported="true"
+            android:permission="${applicationId}.permission.AUTOMATE">
+            <intent-filter>
+                <action android:name="${applicationId}.action.SNAPSHOT_NOW" />
+                <action android:name="${applicationId}.action.SET_CHARGE_TARGET" />
+                <action android:name="${applicationId}.action.APPLY_DOZE_PROFILE" />
+            </intent-filter>
+        </receiver>
+
+        <provider
+            android:name=".automation.AutomationProvider"
+            android:authorities="${applicationId}.automation"
+            android:enabled="false"
+            android:exported="true"
+            android:grantUriPermissions="false"
+            android:permission="${applicationId}.permission.AUTOMATE" />
     </application>
 </manifest>

@@ -5,6 +5,23 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. **The Automation API's permission keeps stock automation apps out** (ADR-0065 §1).
+  SPEC 12.7 asks for a "signature-or-user-granted permission". Android grants a permission only to
+  an app whose own manifest names it, so an automation app that was not built for Coulomb cannot be
+  allowed; root can call the API without it (`docs/automation-api.md` has the commands). The other
+  shape, no permission and a secret the user pastes into the automation app, was set aside: a
+  secret in an intent extra is readable by more than its receiver. Default in use: the permission
+  as the spec names it. Say so if a pasted token should be offered beside it.
+- 2026-11-21. The Automation API (ADR-0065) is built and tested on the build server only. Not seen
+  on a device: Android's dialog for the permission, a call and a query from an app that holds it,
+  from one that does not, from root and from the shell, and a query to a force-stopped Coulomb.
+  Default in use: an emulator run with a small caller app is queued with P6's device tests.
+  `APPLY_DOZE_PROFILE` writes `device_idle_constants` through the Action Center, so it waits for
+  the same yes as the Action Center's writes below; nothing of it is run until then.
+- 2026-11-21. Automation calls are rows of the action log, as SPEC 12.7 says, and not a table of
+  their own (ADR-0065 §8). Two kinds of call are not written: the same refusal again within the
+  hour, and a call refused for its rate (more than ten a minute, or beyond 100 logged calls a
+  day). Default in use: built that way, so that an app in a loop cannot fill the log.
 - 2026-11-21. Settings' new rows (ADR-0064) are built and tested on the build server only. Not
   seen on a device yet: the chosen theme at a cold start (the first frame is held until the
   stored theme is read), Android's per-app language page, Lite mode (the service stopping and

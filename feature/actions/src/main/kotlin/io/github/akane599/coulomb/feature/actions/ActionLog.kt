@@ -9,12 +9,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import io.github.akane599.coulomb.core.collect.actions.ActionBlock
 import io.github.akane599.coulomb.core.collect.actions.ActionRecord
 import io.github.akane599.coulomb.core.collect.actions.ActionType
+import io.github.akane599.coulomb.core.collect.actions.AutomationCalls
 import io.github.akane599.coulomb.core.designsystem.component.ButtonEdge
 import io.github.akane599.coulomb.core.designsystem.component.CoulombTextButton
 import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
@@ -43,7 +49,9 @@ internal fun ColumnScope.ActionLog(
         StandIn(stringResource(R.string.actions_log_empty), top = CoulombSpacing.Space4)
         return
     }
-    rows.forEachIndexed { index, row ->
+    // A page at a time: automation can add a hundred rows a day (ADR-0065 §8), and every row drawn is laid out.
+    var shown by rememberSaveable { mutableIntStateOf(LOG_PAGE) }
+    rows.take(shown).forEachIndexed { index, row ->
         val record = row.record
         DataRow(
             name = stringResource(ActionWords.logTitle(record.type)),
@@ -69,7 +77,16 @@ internal fun ColumnScope.ActionLog(
                 },
         )
     }
+    if (rows.size > shown) {
+        CoulombTextButton(stringResource(R.string.actions_log_older), { shown += LOG_PAGE }, edge = ButtonEdge.Start)
+    }
 }
+
+private const val LOG_PAGE = 50
+
+// SPEC 14.4's range for the charge target.
+private const val TARGET_MIN = 50
+private const val TARGET_MAX = 100
 
 /** What the row was for and when: "Halcyon · Allowed → Restricted · 9:30 PM". */
 @Composable
@@ -80,7 +97,7 @@ private fun logDetail(
 ): String {
     val record = row.record
     val whenText = formats.clock(record.executedWallMs, clock.zone, clock.nowMs)
-    val parts = listOfNotNull(subject(row), change(record), whenText)
+    val parts = listOfNotNull(subject(row), change(record, formats), whenText)
     return parts.reduce { joined, part -> stringResource(R.string.actions_log_joined, joined, part) }
 }
 
@@ -90,8 +107,17 @@ private fun subject(row: LogRow): String? =
     when (row.record.type) {
         ActionType.DOZE_PROFILE -> profileName(row.record.target)
         ActionType.DOZE_TAKEOVER, ActionType.BATTERY_SAVER, ActionType.RESET_STATS -> null
+        ActionType.AUTOMATION_CALL -> automationSubject(row.record.target)
         else -> row.appLabel ?: row.record.target
     }
+
+/** What the call asked for and, where the caller said who it is, its package: "Charge target · com.example.tasks". */
+@Composable
+private fun automationSubject(target: String): String {
+    val asked = ActionWords.automationCall(target)?.let { stringResource(it) } ?: AutomationCalls.name(target)
+    val caller = AutomationCalls.caller(target) ?: return asked
+    return stringResource(R.string.actions_log_joined, asked, caller)
+}
 
 @Composable
 internal fun profileName(target: String): String =
@@ -103,10 +129,23 @@ internal fun profileName(target: String): String =
 
 /** "Allowed → Restricted"; nothing where the values are a setting too long for a row, or there is no change to name. */
 @Composable
-private fun change(record: ActionRecord): String? =
+private fun change(
+    record: ActionRecord,
+    formats: Formats,
+): String? =
     when (record.type) {
         ActionType.RESTRICT_BACKGROUND, ActionType.STANDBY_BUCKET, ActionType.DOZE_ALLOWLIST, ActionType.BATTERY_SAVER -> {
             stringResource(R.string.actions_log_change, valueText(record.type, record.before), valueText(record.type, record.after))
+        }
+
+        // The charge target's two values, or the profile "stock" replaced; a snapshot has neither.
+        ActionType.AUTOMATION_CALL -> {
+            val before = record.before
+            if (before == null || AutomationCalls.refusal(record.after) != null) {
+                null
+            } else {
+                stringResource(R.string.actions_log_change, automationValue(before, formats), automationValue(record.after, formats))
+            }
         }
 
         else -> {
@@ -114,8 +153,71 @@ private fun change(record: ActionRecord): String? =
         }
     }
 
+/** A call's value in words: a charge target as a percentage, a profile by its name. */
+@Composable
+private fun automationValue(
+    value: String,
+    formats: Formats,
+): String =
+    when {
+        value == AutomationCalls.STOCK -> stringResource(R.string.actions_automation_stock)
+        value.toIntOrNull() != null -> formats.percent(value.toInt())
+        else -> profileName(value)
+    }
+
+/** That another app asked for it, and for a refused call what was asked and why not. */
+@Composable
+private fun AutomationOrigin(
+    record: ActionRecord,
+    formats: Formats,
+) {
+    Text(
+        stringResource(R.string.actions_log_from_automation),
+        color = CoulombTheme.colors.textSecondary,
+        style = CoulombTheme.typography.body,
+    )
+    val reason = AutomationCalls.refusal(record.after).takeIf { record.type == ActionType.AUTOMATION_CALL } ?: return
+    record.before?.let { Fact(stringResource(R.string.actions_log_asked), automationValue(it, formats)) }
+    Fact(stringResource(R.string.actions_log_refused), refusalText(reason, formats))
+}
+
+/**
+ * Why a call was refused, in a sentence. A reason this build has no sentence for shows as the
+ * word the API gave the caller (`docs/automation-api.md`).
+ */
+@Composable
+private fun refusalText(
+    reason: String,
+    formats: Formats,
+): String {
+    val own = ActionWords.refusal(reason)
+    val block = ActionBlock.entries.firstOrNull { it.name.lowercase() == reason }
+    return when {
+        reason == "bad_target" -> {
+            stringResource(
+                R.string.actions_refused_bad_target,
+                formats.percent(TARGET_MIN),
+                formats.percent(TARGET_MAX),
+            )
+        }
+
+        own != null -> {
+            stringResource(own)
+        }
+
+        block != null -> {
+            stringResource(ActionWords.block(block))
+        }
+
+        else -> {
+            reason
+        }
+    }
+}
+
 private fun logState(record: ActionRecord): Int =
     when {
+        record.type == ActionType.AUTOMATION_CALL && AutomationCalls.refusal(record.after) != null -> R.string.actions_log_refused
         record.driftWallMs != null -> R.string.actions_log_drifted
         record.revertedWallMs != null -> R.string.actions_log_reverted
         record.active -> R.string.actions_log_active
@@ -158,6 +260,7 @@ internal fun LogDetails(
         if (record.origin == ActionOrigin.INSIGHT) {
             Text(stringResource(R.string.actions_log_from_insight), color = colors.textSecondary, style = type.body)
         }
+        if (record.origin == ActionOrigin.AUTOMATION) AutomationOrigin(record, formats)
         if (record.type?.stateful == true) {
             Fact(
                 stringResource(R.string.actions_now_before),

@@ -85,6 +85,26 @@ class SettingsScreenshotTest {
             device = DEVICE.copy(language = AppLanguage.TURKISH, ownUse = OwnUse(SelfCost(1.84, null, FROM, NOW))),
         )
 
+    /** SPEC 12.7: the switch names what an allowed app can do and read; once on, the apps the user allowed. */
+    @Test
+    @Config(qualifiers = "w412dp-h2500dp-xhdpi")
+    fun automation() =
+        shoot(
+            "automation",
+            CHANGED.copy(automation = true),
+            device = DEVICE.copy(automation = AutomationAccess(apps = listOf("Northwind Tasks", "Tidewater Macros"))),
+        )
+
+    @Test
+    @Config(qualifiers = "tr-w412dp-h2500dp-night-xhdpi")
+    fun automationNoAppsTurkishDark() =
+        shoot(
+            "automation-none-tr-dark",
+            CHANGED.copy(automation = true),
+            dark = true,
+            device = DEVICE.copy(automation = AutomationAccess()),
+        )
+
     /** Before two readings of the day are stored. */
     @Test
     fun ownUseNotMeasured() = shoot("own-use-none", UserSettings(), device = DEVICE.copy(ownUse = OwnUse(null)))

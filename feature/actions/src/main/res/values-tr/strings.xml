@@ -61,6 +61,7 @@
 
     <string name="actions_log">Kayıt</string>
     <string name="actions_log_empty">Henüz hiçbir şey değiştirilmedi.</string>
+    <string name="actions_log_older">Daha eski değişiklikleri göster</string>
     <string name="actions_revert_all">Hepsini geri al</string>
     <string name="actions_revert_all_title">Bütün değişiklikleri geri al</string>
     <plurals name="actions_revert_all_body">
@@ -76,6 +77,21 @@
     <string name="actions_log_joined">%1$s · %2$s</string>
     <string name="actions_log_drift_value">Şimdi %1$s. Coulomb olduğu gibi bırakıyor.</string>
     <string name="actions_log_from_insight">Bir içgörü önerdi</string>
+    <string name="actions_log_automation">Otomasyon çağrısı</string>
+    <string name="actions_log_refused">Reddedildi</string>
+    <string name="actions_log_asked">İstenen</string>
+    <string name="actions_refused_bad_target">Hedef %1$s ile %2$s arasında değildi.</string>
+    <string name="actions_refused_bad_profile">Coulomb’da böyle bir profil yok.</string>
+    <string name="actions_refused_screen_off">Ekran kapalıydı ve telefon pildeydi; anlık kayıt telefonu uyandırırdı.</string>
+    <string name="actions_refused_first_apply">Bu profili kendin uygulamamıştın. Bir çağrı yalnızca burada yaptığın bir değişikliği yineler.</string>
+    <string name="actions_refused_profile_active">Başka bir profil uygulanmıştı.</string>
+    <string name="actions_refused_center_off">Eylem Merkezi kapalıydı.</string>
+    <string name="actions_refused_drifted">Değeri başka bir şey değiştirmişti; Coulomb dokunmadı.</string>
+    <string name="actions_refused_failed">Komut başarısız oldu.</string>
+    <string name="actions_log_from_automation">Başka bir uygulama Otomasyon API’si üzerinden istedi</string>
+    <string name="actions_automation_snapshot">Anlık kayıt</string>
+    <string name="actions_automation_target">Şarj hedefi</string>
+    <string name="actions_automation_stock">Stok</string>
     <string name="actions_log_bucket">Bekleme grubu</string>
     <string name="actions_log_allowlist">Doze izin listesi</string>
     <string name="actions_log_profile">Doze profili</string>

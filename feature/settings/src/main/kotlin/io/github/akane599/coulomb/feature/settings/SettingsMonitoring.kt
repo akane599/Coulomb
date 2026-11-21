@@ -39,6 +39,8 @@ internal data class SettingsDevice(
     val version: String = "",
     val zone: ZoneId = ZoneOffset.UTC,
     val nowMs: Long = 0,
+    /** Null while the Automation API is off or not read yet. */
+    val automation: AutomationAccess? = null,
 )
 
 /**

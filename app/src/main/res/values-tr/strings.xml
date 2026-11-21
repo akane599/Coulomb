@@ -45,4 +45,7 @@
     <string name="surface_privileges_stopped">Coulomb’un Shizuku üzerinden okudukları, Shizuku yeniden çalışana kadar bekler. Daha önce verdiğin izinler çalışmaya devam eder. Başlatmak için Yetkiler’i aç.</string>
     <string name="surface_privileges_revoked">Coulomb’a verilen izinler geri alındı. Yeniden vermek için Yetkiler’i aç.</string>
     <string name="surface_privileges_denied">Shizuku artık Coulomb’a yetki vermiyor. Yeniden izin vermek için Yetkiler’i aç.</string>
+
+    <string name="automation_permission">Coulomb’u otomatikleştirme</string>
+    <string name="automation_permission_about">Coulomb’dan pil anlık kaydı isteme, şarj hedefini ayarlama, senin uyguladığın bir Doze profilini yeniden uygulama; pil seviyesini, tüketim hızlarını, dün gecenin raporunu ve en çok pil kullanan üç uygulamanın adını okuma.</string>
 </resources>

@@ -401,7 +401,7 @@ internal class ActionPlanner(
                 Handle({ Got.Value(ActionValues.on(io.batterySaver())) }, PrivilegedAction.SetBatterySaver(before == ActionValues.ON))
             }
 
-            ActionType.FORCE_STOP, ActionType.RESET_STATS, null -> {
+            ActionType.FORCE_STOP, ActionType.RESET_STATS, ActionType.AUTOMATION_CALL, null -> {
                 null
             }
         }
