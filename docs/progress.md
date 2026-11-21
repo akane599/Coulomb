@@ -200,6 +200,23 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   release commands without running them. Tried with a throwaway key: signed, verified, 7.2 MB.
   `docs/releasing.md` has the steps, Obtainium included. **Waiting for the owner:** the key, the
   first version number and the release itself (`docs/questions.md`).
+- **Parity matrix and the unread sources (SPEC 2, 5, 18; ADR-0068).** The SPEC 18 audit found
+  parity rows without a screen and sources never read; each now has one, on stored data:
+  - App detail: CPU time (user and system), the modeled share of mobile radio time, syncs with
+    their total, each wakelock's longest hold and abandoned jobs.
+  - Drain: time by signal strength (Components), wakeup alarms an hour (Alarms), power monitor
+    energy per window (S16, a new collector read, listed as the device names its rails), the
+    wakelocks held now (S12, on demand), named references read since one or between any two
+    (SPEC 7.6), and spans for one stretch on battery.
+  - Night page: Doze's pauses, the maintenance windows Android records as Doze off.
+  - Health: the charge list became a searchable session history with time on battery.
+  - App detail: what the app has scheduled now (S13 jobs and constraints, S10 alarms waking or
+    not); Charging: every temperature sensor (S19); Now: refresh rate and brightness mode (S24).
+  - S11, S14, S15 and S17 are covered by other sources or wait for the phone; S22 waits for the
+    phone (no key says whether protection is on). Reasons in ADR-0068.
+  - Not seen on a device. One independent review of these commits found one finding above minor
+    (a reference older than the kept windows read as a shorter span, marked Measured) and two minor;
+    all fixed with tests (ADR-0068 "Reviewed").
 - **Still to come in P6:** SPEC 18's checklist; then the whole-app design gate's third run.
 
 ## P4 Core screens (gate deferred: protocol C)
