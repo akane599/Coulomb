@@ -10,7 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -59,6 +61,13 @@ class ShellScreenshotTest {
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Back").assertExists()
         compose.onRoot().captureRoboImage("src/test/screenshots/shell-inner-settings.png")
+        // SPEC 14.3: Privileges is reachable from an inner screen's bar too, and has no entry to itself.
+        compose.onNodeWithContentDescription("Privileges").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Privileges").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Privileges").assertExists()
     }
 
     /** SPEC 10.10: on expanded widths App detail opens beside Drain's list, and another row swaps it. */
@@ -73,6 +82,8 @@ class ShellScreenshotTest {
         compose.onNodeWithText("Rows").assertExists()
         compose.onNodeWithText("Detail 10456").assertExists()
         compose.onNodeWithText("Detail 10123").assertDoesNotExist()
+        // Beside its list the detail's bar leaves Privileges to the list's.
+        compose.onAllNodesWithContentDescription("Privileges").assertCountEquals(1)
         compose.onRoot().captureRoboImage("src/test/screenshots/shell-expanded-list-detail.png")
     }
 
@@ -86,6 +97,7 @@ class ShellScreenshotTest {
         compose.onNodeWithText("Rows").assertDoesNotExist()
         compose.onNodeWithText("Detail 10123").assertExists()
         compose.onNodeWithContentDescription("Back").assertExists()
+        compose.onNodeWithContentDescription("Privileges").assertExists()
     }
 
     /** A long app name in the top bar wraps in full; the bar grows and back stays beside it. */

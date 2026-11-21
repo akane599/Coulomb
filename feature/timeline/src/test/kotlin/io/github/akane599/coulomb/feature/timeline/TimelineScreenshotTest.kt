@@ -50,6 +50,11 @@ class TimelineScreenshotTest {
     @Config(qualifiers = "w412dp-h915dp-night-xhdpi")
     fun dayDark() = shoot("day-dark", dark = true) { Timeline(dayState()) }
 
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-night-xhdpi")
+    fun dayBlack() = shoot("day-black", dark = true, black = true) { Timeline(dayState()) }
+
     @Test
     @Config(qualifiers = "tr-$COMPACT")
     fun dayTurkish() = shoot("day-tr") { Timeline(dayState()) }
@@ -145,6 +150,7 @@ class TimelineScreenshotTest {
     private fun shoot(
         name: String,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         rtl: Boolean = false,
         content: @Composable () -> Unit,
@@ -155,7 +161,7 @@ class TimelineScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) { content() }
                 }
             }

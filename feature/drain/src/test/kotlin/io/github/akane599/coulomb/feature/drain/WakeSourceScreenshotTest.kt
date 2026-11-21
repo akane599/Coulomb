@@ -43,9 +43,19 @@ class WakeSourceScreenshotTest {
     @Test
     fun reason() = shoot("reason", WakeSourceState.Ready(REASON))
 
+    /** SPEC 10.10: as the detail pane beside Drain's list, about 550 dp of a 1000 dp window. */
+    @Test
+    @Config(qualifiers = "w560dp-h1400dp-xhdpi")
+    fun reasonPane() = shoot("reason-pane", WakeSourceState.Ready(REASON))
+
     @Test
     @Config(qualifiers = "w412dp-h1500dp-night-xhdpi")
     fun reasonDark() = shoot("reason-dark", WakeSourceState.Ready(REASON), dark = true)
+
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "w412dp-h1500dp-night-xhdpi")
+    fun reasonBlack() = shoot("reason-black", WakeSourceState.Ready(REASON), dark = true, black = true)
 
     @Test
     @Config(qualifiers = "tr-w412dp-h1500dp-xhdpi")
@@ -81,11 +91,12 @@ class WakeSourceScreenshotTest {
         name: String,
         state: WakeSourceState,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
     ) {
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale)) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         WakeSourceContent(state, retry = {}, onOpenApp = {}, zone = ZoneOffset.UTC, nowMs = WAKE_NOW)
                     }

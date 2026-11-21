@@ -54,6 +54,11 @@ class OnboardingScreenshotTest {
     @Config(qualifiers = "w412dp-h915dp-night-xhdpi")
     fun welcomeDark() = shoot("welcome-dark", OnboardingUiState(), dark = true)
 
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "w412dp-h915dp-night-xhdpi")
+    fun welcomeBlack() = shoot("welcome-black", OnboardingUiState(), dark = true, black = true)
+
     @Test
     fun welcomeText200() = shoot("welcome-200", OnboardingUiState(), fontScale = 2f)
 
@@ -204,6 +209,7 @@ class OnboardingScreenshotTest {
         state: OnboardingUiState,
         device: OnboardingDevice = OnboardingDevice(sdkInt = 36),
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         rtl: Boolean = false,
         capture: Boolean = true,
@@ -215,7 +221,7 @@ class OnboardingScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         OnboardingContent(state, device, NoActions, backProgress = backProgress)
                     }

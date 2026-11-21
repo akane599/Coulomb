@@ -48,9 +48,19 @@ class CompareScreenshotTest {
     @Test
     fun apps() = shoot("apps", compared())
 
+    /** SPEC 10.10: an expanded window beside the rail. */
+    @Test
+    @Config(qualifiers = "w920dp-h1000dp-xhdpi")
+    fun appsExpanded() = shoot("apps-expanded", compared())
+
     @Test
     @Config(qualifiers = "w412dp-h1400dp-night-xhdpi")
     fun appsDark() = shoot("apps-dark", compared(), dark = true)
+
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "w412dp-h1400dp-night-xhdpi")
+    fun appsBlack() = shoot("apps-black", compared(), dark = true, black = true)
 
     @Test
     @Config(qualifiers = "tr-w412dp-h1600dp-xhdpi")
@@ -156,6 +166,7 @@ class CompareScreenshotTest {
         name: String,
         state: CompareUiState,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         rtl: Boolean = false,
         lens: Lens = Lens.APPS,
@@ -166,7 +177,7 @@ class CompareScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         CompareContent(state = state, actions = NoActions, initialLens = lens)
                     }

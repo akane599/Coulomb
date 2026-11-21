@@ -46,6 +46,11 @@ class SettingsScreenshotTest {
     @Config(qualifiers = "w412dp-h2300dp-night-xhdpi")
     fun dark() = shoot("dark", CHANGED, dark = true)
 
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "w412dp-h2300dp-night-xhdpi")
+    fun black() = shoot("black", CHANGED.copy(theme = ThemeChoice.BLACK), dark = true, black = true)
+
     @Test
     @Config(qualifiers = "w412dp-h5200dp")
     fun text200() = shoot("200", CHANGED, fontScale = 2f)
@@ -114,6 +119,7 @@ class SettingsScreenshotTest {
         name: String,
         settings: UserSettings?,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         saveFailed: Boolean = false,
         rtl: Boolean = false,
@@ -126,7 +132,7 @@ class SettingsScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         SettingsContent(
                             settings,

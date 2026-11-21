@@ -190,8 +190,11 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
     a test. One second opinion on the design and one independent review of the code.
   - Not seen on a device; the Doze call waits for the same yes as the Action Center's writes
     (`docs/questions.md`).
-- **Still to come in P6:** DeX and expanded-layout polish, release signing, and SPEC 18's
-  checklist.
+- **True black and the wide layouts (ADR-0066).** Privileges is now in every top app bar (SPEC
+  14.3); every screen has a true black golden and the detail screens one at a pane's width.
+  Neither set of new goldens showed anything to fix. Not seen in a resizable window or in DeX.
+- **Still to come in P6:** release signing and SPEC 18's checklist; then the whole-app design
+  gate's third run.
 
 ## P4 Core screens (gate deferred: protocol C)
 

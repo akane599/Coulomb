@@ -31,6 +31,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -157,6 +158,7 @@ fun CoulombApp(
                 val panes = PaneMin * 2 * LocalDensity.current.fontScale.coerceAtLeast(1f)
                 val split = currentWindowWidth() == WindowWidth.Expanded && maxWidth >= panes
                 val strategy = remember(split) { ListDetailStrategy<NavKey>(split) }
+                SideEffect { navigator.split = split }
                 // An app's icon moves from its row to App detail (SPEC 11.6); beside the list, both stay put.
                 SharedTransitionLayout {
                     ProvideSharedTransition(this.takeIf { !split }) {
@@ -385,31 +387,36 @@ private fun appEntries(
             DestinationScreen(Destination.Drain, navigator::open) { screens.drain(navigator) }
         }
         entry<Route.DrainCompare>(metadata = ListDetailStrategy.list) {
-            InnerScreen(stringResource(DrainR.string.drain_compare_title), navigator::back) { screens.compare(navigator) }
+            InnerScreen(stringResource(DrainR.string.drain_compare_title), navigator) { screens.compare(navigator) }
         }
         entry<Route.AppDetail>(metadata = ListDetailStrategy.detail) { key ->
-            InnerScreen(screens.appDetailTitle(key.uid), navigator::back, pane = true) { screens.appDetail(navigator, key.uid) }
+            InnerScreen(screens.appDetailTitle(key.uid), navigator, pane = true, detail = true) { screens.appDetail(navigator, key.uid) }
         }
         entry<Route.WakeSource>(metadata = ListDetailStrategy.detail) { key ->
-            InnerScreen(stringResource(DrainR.string.wake_title), navigator::back, pane = true) {
+            InnerScreen(stringResource(DrainR.string.wake_title), navigator, pane = true, detail = true) {
                 screens.wakeSource(navigator, key.kind, key.tag)
             }
         }
         entry<Route.Timeline> { DestinationScreen(Destination.Timeline, navigator::open) { screens.timeline(navigator) } }
         entry<Route.NightReport>(metadata = ListDetailStrategy.list) {
-            InnerScreen(stringResource(TimelineR.string.night_report_title), navigator::back) { screens.nights(navigator) }
+            InnerScreen(stringResource(TimelineR.string.night_report_title), navigator) { screens.nights(navigator) }
         }
         entry<Route.Night>(metadata = ListDetailStrategy.detail) { key ->
-            InnerScreen(stringResource(TimelineR.string.night_title), navigator::back, pane = true) { screens.night(navigator, key.id) }
+            InnerScreen(
+                stringResource(TimelineR.string.night_title),
+                navigator,
+                pane = true,
+                detail = true,
+            ) { screens.night(navigator, key.id) }
         }
         entry<Route.Health>(metadata = ListDetailStrategy.list) {
             DestinationScreen(Destination.Health, navigator::open) { screens.health(navigator) }
         }
         entry<Route.ChargeSessions>(metadata = ListDetailStrategy.list) {
-            InnerScreen(stringResource(HealthR.string.health_all_sessions_title), navigator::back) { screens.chargeSessions(navigator) }
+            InnerScreen(stringResource(HealthR.string.health_all_sessions_title), navigator) { screens.chargeSessions(navigator) }
         }
         entry<Route.ChargeSession>(metadata = ListDetailStrategy.detail) { key ->
-            InnerScreen(stringResource(HealthR.string.health_session_title), navigator::back, pane = true) {
+            InnerScreen(stringResource(HealthR.string.health_session_title), navigator, pane = true, detail = true) {
                 screens.chargeSession(navigator, key.id)
             }
         }
@@ -422,23 +429,24 @@ private fun EntryProviderScope<NavKey>.barEntries(
     screens: AppScreens,
 ) {
     entry<Route.ActionCenter> {
-        InnerScreen(stringResource(R.string.screen_action_center), navigator::back, pane = true) { screens.actionCenter(navigator) }
+        InnerScreen(stringResource(R.string.screen_action_center), navigator, pane = true) { screens.actionCenter(navigator) }
     }
     entry<Route.Privileges> {
         InnerScreen(
             stringResource(R.string.screen_privileges),
-            navigator::back,
+            navigator,
             pane = true,
+            privileges = false,
         ) { screens.privileges() }
     }
     entry<Route.Settings> {
-        InnerScreen(stringResource(R.string.screen_settings), navigator::back, pane = true) { screens.settings(navigator) }
+        InnerScreen(stringResource(R.string.screen_settings), navigator, pane = true) { screens.settings(navigator) }
     }
     entry<Route.Data> {
-        InnerScreen(stringResource(R.string.screen_data), navigator::back, pane = true) { screens.data(navigator) }
+        InnerScreen(stringResource(R.string.screen_data), navigator, pane = true) { screens.data(navigator) }
     }
     entry<Route.Console> {
-        InnerScreen(stringResource(R.string.screen_console), navigator::back, pane = true) { screens.console(navigator) }
+        InnerScreen(stringResource(R.string.screen_console), navigator, pane = true) { screens.console(navigator) }
     }
 }
 
@@ -462,20 +470,34 @@ private fun DestinationScreen(
 }
 
 /**
- * A screen below a destination: back, then its name. A [pane] screen can change beside a list
- * (SPEC 10.10), so TalkBack announces its title when it does.
+ * A screen below a destination: back, its name, and Privileges, which SPEC 14.3 keeps reachable
+ * from every top app bar. The Privileges screen itself has none, and a [detail] drawn beside its
+ * list leaves it to the list's bar. A [pane] screen can change beside a list (SPEC 10.10), so
+ * TalkBack announces its title when it does.
  */
 @Composable
 private fun InnerScreen(
     title: String,
-    onBack: () -> Unit,
+    navigator: AppNavigator,
     pane: Boolean = false,
+    privileges: Boolean = true,
+    detail: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val offered = privileges && !(detail && navigator.detailBesideList)
     ShellScreen(
         title = title,
-        navigationIcon = { CoulombBackButton(onClick = onBack) },
+        navigationIcon = { CoulombBackButton(onClick = navigator::back) },
         modifier = if (pane && title.isNotEmpty()) Modifier.semantics { paneTitle = title } else Modifier,
+        actions = {
+            if (offered) {
+                CoulombIconButton(
+                    CoulombIcons.ShieldPerson,
+                    stringResource(R.string.screen_privileges),
+                    { navigator.open(Route.Privileges) },
+                )
+            }
+        },
         content = content,
     )
 }

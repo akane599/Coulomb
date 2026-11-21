@@ -61,6 +61,11 @@ class PrivilegesScreenshotTest {
     @Config(qualifiers = "$TALL-night")
     fun connectedDark() = shoot("connected-dark", linked(), dark = true)
 
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "$TALL-night")
+    fun connectedBlack() = shoot("connected-black", linked(), dark = true, black = true)
+
     @Test
     @Config(qualifiers = "w412dp-h5200dp")
     fun connectedText200() = shoot("connected-200", linked(), fontScale = 2f)
@@ -239,6 +244,7 @@ class PrivilegesScreenshotTest {
         state: PrivilegesUiState,
         device: PrivilegesDevice = DEVICE,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         rtl: Boolean = false,
     ) {
@@ -247,7 +253,7 @@ class PrivilegesScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         PrivilegesContent(state, device, NoActions)
                     }

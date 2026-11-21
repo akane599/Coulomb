@@ -666,7 +666,9 @@ reach 3:1.
 - **Bottom bar:** four destinations (Now, Drain, Timeline, Health), icons over Caption nav labels. The
   current one has a 64 × 32 dp `accent-fill` pill; its label stays Caption nav.
 - **Top app bar:** Title on the left, wrapping to a second line when long; Action Center, Privileges
-  and Settings as 48 dp icon buttons in `text-secondary`.
+  and Settings as 48 dp icon buttons in `text-secondary`. A screen below a destination has back,
+  its title and Privileges alone (SPEC 14.3); the Privileges screen has none, and a detail pane
+  beside its list leaves it to the list's bar (ADR-0066).
 - **Floating toolbar (Timeline):** `surface-raised`, 28 dp radius, floating shadow; range buttons 48 dp,
   the chosen one `accent-fill` with a check icon at the same weight; a hairline separator; a "Now" text
   button.

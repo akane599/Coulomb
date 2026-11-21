@@ -32,6 +32,16 @@ class AppNavigator internal constructor(
     /** The current destination's stack, first screen first. */
     val backStack: NavBackStack<NavKey> get() = stacks.getValue(current)
 
+    /** Whether the window has room for a list and its detail side by side (SPEC 10.10); the shell keeps it current. */
+    var split: Boolean by mutableStateOf(false)
+
+    /**
+     * Whether the detail on top of the stack is drawn beside its list, as [ListDetailStrategy]
+     * decides it: its bar then leaves to the list's bar what both would offer.
+     */
+    val detailBesideList: Boolean
+        get() = split && backStack.size >= 2 && backStack.last().isDetail() && backStack[backStack.lastIndex - 1].isList()
+
     /** Whether back stays in the app by switching to Now. */
     val backReturnsToNow: Boolean get() = current != Destination.Now && backStack.size == 1
 
@@ -107,6 +117,11 @@ class AppNavigator internal constructor(
             current != Destination.Now -> current = Destination.Now
         }
     }
+
+    /** A screen whose rows open a detail beside it on expanded widths; the entries marked [ListDetailStrategy.list]. */
+    private fun NavKey?.isList(): Boolean =
+        this is Route.Drain || this is Route.DrainCompare || this is Route.NightReport || this is Route.Health ||
+            this is Route.ChargeSessions
 
     /** A screen that shows beside its list on expanded widths. */
     private fun NavKey?.isDetail(): Boolean =

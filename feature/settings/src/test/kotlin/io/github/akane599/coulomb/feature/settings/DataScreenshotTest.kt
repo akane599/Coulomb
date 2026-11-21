@@ -62,6 +62,11 @@ class DataScreenshotTest {
     @Config(qualifiers = "w412dp-h1300dp-night-xhdpi")
     fun dark() = shoot("dark", IMPORTED, dark = true)
 
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "w412dp-h1300dp-night-xhdpi")
+    fun black() = shoot("black", IMPORTED, dark = true, black = true)
+
     @Test
     @Config(qualifiers = "tr-w412dp-h1300dp-xhdpi")
     fun turkish() = shoot("tr", IMPORTED)
@@ -82,6 +87,7 @@ class DataScreenshotTest {
         name: String,
         state: DataUiState,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         rtl: Boolean = false,
     ) {
@@ -91,7 +97,7 @@ class DataScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         DataContent(state, DataActions(), zone = ZoneOffset.UTC, nowMs = NOW)
                     }

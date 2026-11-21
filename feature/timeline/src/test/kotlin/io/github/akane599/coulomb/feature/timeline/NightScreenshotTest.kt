@@ -48,6 +48,16 @@ class NightScreenshotTest {
     @Test
     fun list() = shoot("list") { NightReportContent(Read.Ready(labNights()), {}, {}, zone = ZoneOffset.UTC, nowMs = NOW) }
 
+    /** SPEC 10.10: on an expanded window the list stands alone at full width until a night is chosen. */
+    @Test
+    @Config(qualifiers = "w920dp-h800dp-xhdpi")
+    fun listExpanded() = shoot("list-expanded") { NightReportContent(Read.Ready(labNights()), {}, {}, zone = ZoneOffset.UTC, nowMs = NOW) }
+
+    /** The night as the detail pane beside its list: about 550 dp of a 1000 dp window. */
+    @Test
+    @Config(qualifiers = "w560dp-h2400dp-xhdpi")
+    fun nightPane() = shoot("night-pane") { Night(labDetail()) }
+
     @Test
     @Config(qualifiers = "w412dp-h915dp-night-xhdpi")
     fun listDark() =
@@ -84,6 +94,11 @@ class NightScreenshotTest {
     @Test
     @Config(qualifiers = "$PAGE-night-xhdpi")
     fun nightDark() = shoot("night-dark", dark = true) { Night(labDetail()) }
+
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "$PAGE-night-xhdpi")
+    fun nightBlack() = shoot("night-black", dark = true, black = true) { Night(labDetail()) }
 
     @Test
     @Config(qualifiers = "tr-$PAGE-xhdpi")
@@ -132,6 +147,7 @@ class NightScreenshotTest {
     private fun shoot(
         name: String,
         dark: Boolean = false,
+        black: Boolean = false,
         fontScale: Float = 1f,
         rtl: Boolean = false,
         width: Dp? = null,
@@ -143,7 +159,7 @@ class NightScreenshotTest {
             DeviceConfigurationOverride(
                 DeviceConfigurationOverride.FontScale(fontScale) then DeviceConfigurationOverride.LayoutDirection(direction),
             ) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) {
                         Box(if (width != null) Modifier.width(width).fillMaxHeight() else Modifier.fillMaxSize()) { content() }
                     }

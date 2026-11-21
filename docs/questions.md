@@ -5,6 +5,11 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. The wide layouts (SPEC 10.10) are checked through screenshot tests at fixed widths
+  only. Not seen: a freeform or DeX window resized across the width classes, an external
+  display, the mouse wheel and the keyboard on the charts. Default in use: an emulator run in a
+  resizable window is queued with P6's device tests; DeX itself needs the phone and waits with
+  the other phone checks.
 - 2026-11-21. **The Automation API's permission keeps stock automation apps out** (ADR-0065 §1).
   SPEC 12.7 asks for a "signature-or-user-granted permission". Android grants a permission only to
   an app whose own manifest names it, so an automation app that was not built for Coulomb cannot be

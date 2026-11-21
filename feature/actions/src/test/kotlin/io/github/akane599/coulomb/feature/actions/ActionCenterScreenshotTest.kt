@@ -58,6 +58,11 @@ class ActionCenterScreenshotTest {
     @Config(qualifiers = "w412dp-h1900dp-night-xhdpi")
     fun onDark() = center("on-dark", READY, dark = true)
 
+    /** SPEC 11.4: the opt-in true black theme, which Settings now offers. */
+    @Test
+    @Config(qualifiers = "w412dp-h1900dp-night-xhdpi")
+    fun onBlack() = center("on-black", READY, dark = true, black = true)
+
     @Test
     @Config(qualifiers = "tr-w412dp-h1900dp-xhdpi")
     fun onTurkish() = center("on-tr", READY)
@@ -320,7 +325,8 @@ class ActionCenterScreenshotTest {
         dark: Boolean = false,
         fontScale: Float = 1f,
         note: ActionNote? = null,
-    ) = shoot(name, dark, fontScale) { ActionCenterContent(state, FlowState(note = note), CenterActions(), clock = CLOCK) }
+        black: Boolean = false,
+    ) = shoot(name, dark, fontScale, black) { ActionCenterContent(state, FlowState(note = note), CenterActions(), clock = CLOCK) }
 
     private fun sheet(
         name: String,
@@ -335,11 +341,12 @@ class ActionCenterScreenshotTest {
         name: String,
         dark: Boolean,
         fontScale: Float,
+        black: Boolean = false,
         content: @Composable () -> Unit,
     ) {
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale)) {
-                CoulombTheme(darkTheme = dark) {
+                CoulombTheme(darkTheme = dark, trueBlack = black) {
                     Box(Modifier.fillMaxSize().background(CoulombTheme.colors.bg)) { content() }
                 }
             }
