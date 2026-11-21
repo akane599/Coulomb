@@ -85,9 +85,10 @@ private fun night(
 }
 
 /**
- * The lab night as history: light Doze from 20 minutes in, deep from 42 with a maintenance window
- * every hour and a half; a wakeup every few minutes at first and every quarter of an hour once in
- * deep Doze, one six-minute sync at 03:10; the mobile radio now and then; Wi-Fi twice.
+ * The lab night as history: light Doze from 20 minutes in, deep from 42 with a two-minute
+ * maintenance window every hour and a half, which Android records as Doze off; a wakeup every
+ * few minutes at first and every quarter of an hour once in deep Doze, one six-minute sync at
+ * 03:10; the mobile radio now and then; Wi-Fi twice.
  */
 internal fun labTimeline(): Timeline {
     val from = NIGHT_START
@@ -98,7 +99,6 @@ internal fun labTimeline(): Timeline {
     while (at < to) {
         val deepEnd = minOf(at + 88 * MINUTE, to)
         doze += TrackSpan(at, deepEnd, TrackSpan.DOZE_DEEP)
-        if (deepEnd < to) doze += TrackSpan(deepEnd, minOf(deepEnd + 2 * MINUTE, to), TrackSpan.DOZE_LIGHT)
         at = deepEnd + 2 * MINUTE
     }
     val awake = ArrayList<TrackSpan>()

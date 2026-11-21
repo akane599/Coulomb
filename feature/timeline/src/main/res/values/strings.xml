@@ -48,6 +48,12 @@
     <string name="night_doze_not_reached">Not reached</string>
     <string name="night_doze_reached">Reached</string>
     <string name="night_awake">Awake</string>
+    <string name="night_doze_paused">Doze paused</string>
+    <plurals name="night_doze_paused_times">
+        <item quantity="one">%1$s time</item>
+        <item quantity="other">%1$s times</item>
+    </plurals>
+    <string name="night_doze_paused_note">%1$s in all: maintenance windows, or the phone was moved</string>
     <string name="night_timeline">Timeline</string>
     <!-- %1$s, %2$s: provenance names. -->
     <string name="night_timeline_sources">The level is %1$s; the tracks are %2$s.</string>

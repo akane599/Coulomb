@@ -48,6 +48,12 @@
     <string name="night_doze_not_reached">Ulaşılmadı</string>
     <string name="night_doze_reached">Ulaşıldı</string>
     <string name="night_awake">Uyanık</string>
+    <string name="night_doze_paused">Doze duraklaması</string>
+    <plurals name="night_doze_paused_times">
+        <item quantity="one">%1$s kez</item>
+        <item quantity="other">%1$s kez</item>
+    </plurals>
+    <string name="night_doze_paused_note">Toplam %1$s: bakım pencereleri ya da telefon hareket etti</string>
     <string name="night_timeline">Zaman çizelgesi</string>
     <string name="night_timeline_sources">Seviye: %1$s. Şeritler: %2$s.</string>
     <string name="night_no_history">Android’in bu süreye ait pil geçmişi saklı değil; bu yüzden zaman çizelgesi yok.</string>

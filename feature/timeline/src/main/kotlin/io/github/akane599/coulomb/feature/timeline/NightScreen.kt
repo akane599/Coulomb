@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -268,7 +270,7 @@ private fun NightStory(
     )
 }
 
-/** Deep Doze and the time awake, each only where it is known. */
+/** Deep Doze, Doze's pauses and the time awake, each only where it is known. */
 @Composable
 private fun NightFigures(
     night: NightSummary,
@@ -277,11 +279,15 @@ private fun NightFigures(
 ) {
     val type = CoulombTheme.typography
     val colors = CoulombTheme.colors
+    // Only from a history that covers the night: a gap in it is not a pause or time asleep.
+    val whole = timeline != null && timeline.unknown.sumOf(TrackSpan::durationMs) < MINUTE_MS
     val awakeMs =
-        timeline?.tracks?.get(TimelineTrack.AWAKE)?.sumOf { it.durationMs }?.takeIf {
-            timeline.unknown.sumOf(TrackSpan::durationMs) <
-                MINUTE_MS
-        }
+        timeline
+            ?.tracks
+            ?.get(TimelineTrack.AWAKE)
+            ?.sumOf { it.durationMs }
+            ?.takeIf { whole }
+    val pauses = timeline?.let { DozePauses.of(it.tracks[TimelineTrack.DOZE].orEmpty()) }?.takeIf { whole }
     // Deep sleep is in the story above; the strip adds what the story does not say.
     if (night.charged || (night.deepDozeReached == null && awakeMs == null)) return
     CoulombFigureStrip(Modifier.padding(top = CoulombSpacing.Space24)) {
@@ -306,6 +312,7 @@ private fun NightFigures(
                 }
             }
         }
+        pauses?.let { DozePausesFigure(it, formats) }
         awakeMs?.let { ms ->
             CoulombFigure(stringResource(R.string.night_awake), caption = null) {
                 Text(formats.held(ms), color = colors.textPrimary, style = type.title)
@@ -316,6 +323,49 @@ private fun NightFigures(
 }
 
 private const val MINUTE_MS = 60_000L
+
+/**
+ * SPEC 2, "maintenance windows": the times Doze let go between entering it and the night's end.
+ * Android reports Doze off to its statistics for each maintenance window, light or deep, and when
+ * motion or another event ends Doze (DeviceIdleController, android-16.0.0_r4 L2002-2040,
+ * L3863, L4052; android-17.0.0_r1 L2023-2061, L3926, L4115), so a gap between two Doze spans
+ * is one of those; a change from light to deep leaves none.
+ */
+@Immutable
+internal data class DozePauses(
+    val count: Int,
+    val totalMs: Long,
+) {
+    companion object {
+        /** Null before Doze began twice: one span has no pause to count. */
+        fun of(doze: List<TrackSpan>): DozePauses? {
+            val gaps =
+                doze
+                    .sortedBy { it.fromWallMs }
+                    .zipWithNext { a, b -> b.fromWallMs - a.toWallMs }
+                    .filter { it > 0 }
+            return if (doze.size < 2) null else DozePauses(gaps.size, gaps.sum())
+        }
+    }
+}
+
+@Composable
+private fun DozePausesFigure(
+    pauses: DozePauses,
+    formats: Formats,
+) {
+    CoulombFigure(
+        stringResource(R.string.night_doze_paused),
+        stringResource(R.string.night_doze_paused_note, formats.held(pauses.totalMs)).takeIf { pauses.count > 0 },
+    ) {
+        Text(
+            pluralStringResource(R.plurals.night_doze_paused_times, pauses.count, formats.integer(pauses.count.toLong())),
+            color = CoulombTheme.colors.textPrimary,
+            style = CoulombTheme.typography.title,
+        )
+        ProvenanceMark(Provenance.MEASURED)
+    }
+}
 
 /** The session as a compact timeline: the level, then the bands of [NIGHT_TRACKS] that hold anything. */
 @Composable
