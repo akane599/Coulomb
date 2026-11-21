@@ -11,8 +11,6 @@
     <string name="screen_action_center">Action Center</string>
     <string name="screen_privileges">Privileges</string>
     <string name="screen_settings">Settings</string>
-    <!-- Shown on a screen whose phase has not shipped yet (SPEC 17). -->
-    <string name="screen_not_built">Not built yet.</string>
     <!-- The notification channels of SPEC 12.1; Monitor is the collector's. -->
     <string name="surface_channel_charging">Charging</string>
     <string name="surface_channel_charging_about">Level, power and time to your target while the phone charges.</string>

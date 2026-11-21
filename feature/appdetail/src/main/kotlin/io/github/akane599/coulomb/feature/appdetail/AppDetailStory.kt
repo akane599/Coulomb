@@ -16,10 +16,12 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.insights.Contributor
 import io.github.akane599.coulomb.core.insights.DrainStory
 import io.github.akane599.coulomb.core.insights.InsightStore
+import io.github.akane599.coulomb.core.insights.Rules
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.insights.StoryInput
 import io.github.akane599.coulomb.core.model.InsightSeverity
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.core.model.insight.ActionId
 import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.model.story.Story
 import io.github.akane599.coulomb.core.model.story.StorySpan
@@ -27,6 +29,7 @@ import io.github.akane599.coulomb.core.model.story.StorySubject
 import io.github.akane599.coulomb.core.ui.insight.InsightCard
 import io.github.akane599.coulomb.core.ui.insight.InsightCardActions
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
+import io.github.akane599.coulomb.core.ui.insight.insightAction
 import io.github.akane599.coulomb.core.ui.story.StoryCopy
 import io.github.akane599.coulomb.core.ui.story.StoryLink
 
@@ -97,6 +100,14 @@ internal fun StoryAndInsight(
                         snoozeDay = { actions.snoozeInsight(id, InsightStore.SNOOZE_DAY_MS) },
                         snoozeWeek = { actions.snoozeInsight(id, InsightStore.SNOOZE_WEEK_MS) },
                         dismiss = { actions.dismissInsight(id) },
+                    ),
+                // Already on the app's page: "open the app's page" would lead nowhere.
+                action =
+                    insightAction(
+                        Rules.actions(card.insight.rule),
+                        card.insight,
+                        except = setOf(ActionId.OPEN_APP_DETAIL),
+                        onAction = actions.insightAction,
                     ),
                 modifier = Modifier.padding(top = if (sentences.isEmpty()) 0.dp else CoulombSpacing.Space16),
             )

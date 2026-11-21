@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.model.insight.ActionId
 import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
 import io.github.akane599.coulomb.core.model.insight.RuleId
 

@@ -28,7 +28,7 @@ import org.robolectric.annotation.GraphicsMode
 /** The settings built so far (SPEC 14.4): defaults, some on, a target set elsewhere, dark, 200%, Turkish. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [36], application = Application::class, qualifiers = "w412dp-h915dp-xhdpi")
+@Config(sdk = [36], application = Application::class, qualifiers = "w412dp-h1500dp-xhdpi")
 class SettingsScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
@@ -40,22 +40,22 @@ class SettingsScreenshotTest {
     fun changed() = shoot("changed", CHANGED)
 
     @Test
-    @Config(qualifiers = "w412dp-h915dp-night-xhdpi")
+    @Config(qualifiers = "w412dp-h1500dp-night-xhdpi")
     fun dark() = shoot("dark", CHANGED, dark = true)
 
     @Test
-    @Config(qualifiers = "w412dp-h1800dp")
+    @Config(qualifiers = "w412dp-h3200dp")
     fun text200() = shoot("200", CHANGED, fontScale = 2f)
 
     @Test
-    @Config(qualifiers = "tr-w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "tr-w412dp-h1500dp-xhdpi")
     fun turkish() = shoot("tr", CHANGED)
 
     @Test
     fun loading() = shoot("loading", null)
 
     @Test
-    @Config(qualifiers = "ar-w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "ar-w412dp-h1500dp-xhdpi")
     fun arabic() = shoot("ar", CHANGED, rtl = true)
 
     @Test

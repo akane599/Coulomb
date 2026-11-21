@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -68,6 +69,9 @@ import io.github.akane599.coulomb.core.designsystem.theme.WindowWidth
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
 import io.github.akane599.coulomb.core.model.WakeKind
+import io.github.akane599.coulomb.feature.actions.ActionCenterScreen
+import io.github.akane599.coulomb.feature.actions.AppActionsSection
+import io.github.akane599.coulomb.feature.actions.appActionsViewModel
 import io.github.akane599.coulomb.feature.appdetail.AppDetailScreen
 import io.github.akane599.coulomb.feature.appdetail.appDetailTitle
 import io.github.akane599.coulomb.feature.appdetail.appDetailViewModel
@@ -236,7 +240,9 @@ class AppScreens(
     val chargeSessions: @Composable (AppNavigator) -> Unit,
     val chargeSession: @Composable (AppNavigator, id: Long) -> Unit,
     val privileges: @Composable () -> Unit,
-    val settings: @Composable () -> Unit,
+    val settings: @Composable (AppNavigator) -> Unit,
+    /** SPEC 13, opened from the top app bar and from Settings. */
+    val actionCenter: @Composable (AppNavigator) -> Unit = {},
     /** One kernel record or wakeup reason (SPEC 10.5), beside Drain's list; [kind] is a `WakeKind`'s name. */
     val wakeSource: @Composable (AppNavigator, kind: String, tag: String) -> Unit = { _, _, _ -> },
 ) {
@@ -244,10 +250,13 @@ class AppScreens(
         val Default: AppScreens =
             AppScreens(
                 now = { navigator ->
-                    NowScreen(
-                        onSeeAllDrains = { navigator.select(Destination.Drain) },
-                        onOpenPrivileges = { navigator.open(Route.Privileges) },
-                    )
+                    InsightLinks(navigator) { onInsightAction ->
+                        NowScreen(
+                            onSeeAllDrains = { navigator.select(Destination.Drain) },
+                            onOpenPrivileges = { navigator.open(Route.Privileges) },
+                            onInsightAction = onInsightAction,
+                        )
+                    }
                 },
                 plugged = { rememberPlugged() },
                 charging = { ChargingScreen() },
@@ -269,7 +278,17 @@ class AppScreens(
                 },
                 compare = { navigator -> CompareScreen(onOpenApp = { navigator.openDetail(Route.AppDetail(it)) }) },
                 // One model per entry: both calls get the entry's instance for the UID.
-                appDetail = { _, uid -> AppDetailScreen(appDetailViewModel(uid)) },
+                appDetail = { navigator, uid ->
+                    InsightLinks(navigator) { onInsightAction ->
+                        AppDetailScreen(
+                            appDetailViewModel(uid),
+                            onInsightAction = onInsightAction,
+                            actionsSection = {
+                                AppActionsSection(appActionsViewModel(uid), onOpenActionCenter = { navigator.open(Route.ActionCenter) })
+                            },
+                        )
+                    }
+                },
                 appDetailTitle = { uid -> appDetailTitle(appDetailViewModel(uid)) },
                 timeline = { navigator ->
                     TimelineScreen(
@@ -308,7 +327,8 @@ class AppScreens(
                 },
                 chargeSession = { _, id -> ChargeSessionScreen(chargeSessionViewModel(id)) },
                 privileges = { PrivilegesScreen() },
-                settings = { SettingsScreen() },
+                settings = { navigator -> SettingsScreen(onOpenActionCenter = { navigator.open(Route.ActionCenter) }) },
+                actionCenter = { navigator -> ActionCenterScreen(onOpenPrivileges = { navigator.open(Route.Privileges) }) },
             )
     }
 }
@@ -364,16 +384,28 @@ private fun appEntries(
                 screens.chargeSession(navigator, key.id)
             }
         }
-        entry<Route.ActionCenter> { InnerScreen(stringResource(R.string.screen_action_center), navigator::back) { NotBuilt() } }
-        entry<Route.Privileges> {
-            InnerScreen(
-                stringResource(R.string.screen_privileges),
-                navigator::back,
-                pane = true,
-            ) { screens.privileges() }
-        }
-        entry<Route.Settings> { InnerScreen(stringResource(R.string.screen_settings), navigator::back, pane = true) { screens.settings() } }
+        barEntries(navigator, screens)
     }
+
+/** The screens the top app bar opens (DESIGN.md, Navigation). */
+private fun EntryProviderScope<NavKey>.barEntries(
+    navigator: AppNavigator,
+    screens: AppScreens,
+) {
+    entry<Route.ActionCenter> {
+        InnerScreen(stringResource(R.string.screen_action_center), navigator::back, pane = true) { screens.actionCenter(navigator) }
+    }
+    entry<Route.Privileges> {
+        InnerScreen(
+            stringResource(R.string.screen_privileges),
+            navigator::back,
+            pane = true,
+        ) { screens.privileges() }
+    }
+    entry<Route.Settings> {
+        InnerScreen(stringResource(R.string.screen_settings), navigator::back, pane = true) { screens.settings(navigator) }
+    }
+}
 
 /** A destination's first screen: its name, then Action Center, Privileges and Settings (DESIGN.md, Navigation). */
 @Composable
@@ -437,15 +469,4 @@ private fun ShellScreen(
             ProvideSharedVisibility(LocalNavAnimatedContentScope.current, content)
         }
     }
-}
-
-/** Placeholder for a screen whose phase has not shipped (SPEC 17); replaced screen by screen in P4 and P5. */
-@Composable
-private fun NotBuilt() {
-    Text(
-        text = stringResource(R.string.screen_not_built),
-        modifier = Modifier.padding(horizontal = currentGutter(), vertical = CoulombSpacing.Space24),
-        color = CoulombTheme.colors.textSecondary,
-        style = CoulombTheme.typography.body,
-    )
 }

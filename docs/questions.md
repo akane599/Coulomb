@@ -5,6 +5,18 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-21. **Needs a yes before it is run (device writes).** The Action Center's commands
+  (`appops set`, `am set-standby-bucket`, `cmd deviceidle whitelist`, `settings put global
+  device_idle_constants`, `cmd power set-mode`, `am force-stop`, `dumpsys batterystats --reset`)
+  are built from AOSP source and have never been run. Proposed: one run of each, with its revert,
+  on the API 37 emulator against a test app. Default in use: nothing is run; the engine is tested
+  against fakes, and every action is verified at run time by reading the value back (ADR-0060).
+- 2026-11-21. Three rows of SPEC 13 are not built as written, with the reasons in ADR-0060: "Deny
+  wakelocks" (AOSP records the setting and does not act on it), "Sensor restriction" (the command
+  restricts every app except the named one), and the Doze profile "Stock" (it restores the value
+  found on the phone, not an empty string, because the phone ships with its own). Default in use:
+  the first two are shown as not offered, with the reason. Whether One UI acts on the wakelock
+  setting would be a phone test.
 - 2026-11-21. **R15 waits for a two-minute look at the phone.** The rule needs "battery protection
   off". One UI keeps the choice in `global: protect_battery` (3 on the phone when its fixture was
   taken), and nothing Coulomb can read says what each number means; it is Samsung's own key, so

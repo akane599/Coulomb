@@ -59,6 +59,15 @@
     <string name="insight_snooze_day">Snooze for a day</string>
     <string name="insight_snooze_week">Snooze for a week</string>
     <string name="insight_dismiss">Dismiss</string>
+    <!-- The card's button (SPEC 9.2 "Action offered"): it names where it leads. -->
+    <string name="insight_action_app_actions">See actions</string>
+    <string name="insight_action_app">Open the app’s page</string>
+    <string name="insight_action_night">Open that night</string>
+    <string name="insight_action_nights">Open the Night Report</string>
+    <string name="insight_action_app_info">Open app info</string>
+    <string name="insight_action_location">Open location settings</string>
+    <string name="insight_action_health">Open Health</string>
+    <string name="insight_action_doze">Open the Action Center</string>
     <string name="insight_why">Why am I seeing this?</string>
     <string name="insight_why_title">Why you are seeing this</string>
     <string name="insight_column_what">What</string>

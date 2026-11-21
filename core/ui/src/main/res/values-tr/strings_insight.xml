@@ -58,6 +58,14 @@
     <string name="insight_snooze_day">Bir gün ertele</string>
     <string name="insight_snooze_week">Bir hafta ertele</string>
     <string name="insight_dismiss">Kapat</string>
+    <string name="insight_action_app_actions">Eylemleri gör</string>
+    <string name="insight_action_app">Uygulamanın sayfasını aç</string>
+    <string name="insight_action_night">O geceyi aç</string>
+    <string name="insight_action_nights">Gece Raporu’nu aç</string>
+    <string name="insight_action_app_info">Uygulama bilgilerini aç</string>
+    <string name="insight_action_location">Konum ayarlarını aç</string>
+    <string name="insight_action_health">Sağlık’ı aç</string>
+    <string name="insight_action_doze">Eylem Merkezi’ni aç</string>
     <string name="insight_why">Bunu neden görüyorum?</string>
     <string name="insight_why_title">Bunu neden görüyorsun</string>
     <string name="insight_column_what">Ne</string>

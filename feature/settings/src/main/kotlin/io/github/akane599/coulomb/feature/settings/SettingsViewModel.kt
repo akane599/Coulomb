@@ -83,4 +83,5 @@ internal class SettingsActions(
     val temperatureAlarm: (Int?) -> Unit = {},
     val insightsDigest: (Boolean) -> Unit = {},
     val insightsDigestMinute: (Int) -> Unit = {},
+    val openActionCenter: () -> Unit = {},
 )

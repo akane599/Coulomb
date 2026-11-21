@@ -60,6 +60,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.insights.Contributor
 import io.github.akane599.coulomb.core.insights.DrainStory
 import io.github.akane599.coulomb.core.insights.InsightStore
+import io.github.akane599.coulomb.core.insights.Rules
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.insights.StoryInput
 import io.github.akane599.coulomb.core.model.Provenance
@@ -77,6 +78,7 @@ import io.github.akane599.coulomb.core.ui.format.Rounding
 import io.github.akane599.coulomb.core.ui.insight.InsightCard
 import io.github.akane599.coulomb.core.ui.insight.InsightCardActions
 import io.github.akane599.coulomb.core.ui.insight.InsightCopy
+import io.github.akane599.coulomb.core.ui.insight.insightAction
 import io.github.akane599.coulomb.core.ui.privilege.PrivilegeIssueBlock
 import io.github.akane599.coulomb.core.ui.rememberAppIcon
 import io.github.akane599.coulomb.core.ui.story.StoryCopy
@@ -475,6 +477,7 @@ internal fun Insights(
                             snoozeWeek = { actions.snoozeInsight(id, InsightStore.SNOOZE_WEEK_MS) },
                             dismiss = { actions.dismissInsight(id) },
                         ),
+                    action = insightAction(Rules.actions(shown.insight.rule), shown.insight, onAction = actions.insightAction),
                 )
             }
         }

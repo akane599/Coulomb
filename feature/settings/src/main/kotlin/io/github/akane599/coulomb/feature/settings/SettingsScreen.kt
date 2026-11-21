@@ -33,6 +33,7 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
+import io.github.akane599.coulomb.core.ui.page.DataRow
 import io.github.akane599.coulomb.core.ui.page.Note
 import io.github.akane599.coulomb.core.ui.page.SectionTitle
 import java.time.ZoneOffset
@@ -41,12 +42,13 @@ import java.time.ZoneOffset
 @Composable
 public fun SettingsScreen(
     modifier: Modifier = Modifier,
+    onOpenActionCenter: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val saveFailed by viewModel.saveFailed.collectAsStateWithLifecycle()
     val actions =
-        remember(viewModel) {
+        remember(viewModel, onOpenActionCenter) {
             SettingsActions(
                 showSystemApps = viewModel::showSystemApps,
                 scaleToMeasured = viewModel::scaleToMeasured,
@@ -56,6 +58,7 @@ public fun SettingsScreen(
                 temperatureAlarm = viewModel::temperatureAlarm,
                 insightsDigest = viewModel::insightsDigest,
                 insightsDigestMinute = viewModel::insightsDigestMinute,
+                openActionCenter = onOpenActionCenter,
             )
         }
     // Nothing until the stored values are read, then one fade-in (SPEC 10.11).
@@ -107,6 +110,17 @@ internal fun SettingsContent(
             settings.componentBreakdown,
             actions.componentBreakdown,
             stringResource(R.string.settings_breakdown_note),
+        )
+        // SPEC 14.4 lists the Action Center here; its switch is on its own screen, with what turning it on grants.
+        DataRow(
+            name = stringResource(R.string.settings_action_center),
+            detail = stringResource(R.string.settings_action_center_note),
+            value = stringResource(if (settings.actionCenter) R.string.settings_on else R.string.settings_off),
+            mark = null,
+            share = null,
+            first = false,
+            modifier = Modifier.padding(top = CoulombSpacing.Space8),
+            onClick = actions.openActionCenter,
         )
     }
 }

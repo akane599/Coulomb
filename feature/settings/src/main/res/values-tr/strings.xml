@@ -115,6 +115,9 @@
     <string name="settings_charge_alarm_note">Seviye hedefe ulaştığında her şarjda bir kez çalar.</string>
     <string name="settings_temperature">Pil sıcaklığı alarmı</string>
     <string name="settings_temperature_note">Pil en az bu kadar ısındığında uyarır; 30 dakikada en çok bir kez.</string>
+    <string name="settings_action_center">Eylem Merkezi</string>
+    <string name="settings_action_center_note">Coulomb’un sizin için yapabileceği değişiklikler; her biri önce gösterilir ve geri alınabilir.</string>
+    <string name="settings_on">Açık</string>
     <string name="settings_off">Kapalı</string>
     <string name="settings_digest_title">İçgörüler</string>
     <string name="settings_digest">Yeni içgörülerin günlük özeti</string>

@@ -3,18 +3,18 @@
 
 package io.github.akane599.coulomb.core.insights
 
-import io.github.akane599.coulomb.core.insights.ActionId.DENY_WAKELOCKS
-import io.github.akane599.coulomb.core.insights.ActionId.OPEN_APP_DETAIL
-import io.github.akane599.coulomb.core.insights.ActionId.OPEN_LOCATION_PERMISSION
-import io.github.akane599.coulomb.core.insights.ActionId.RESTRICT_BACKGROUND
-import io.github.akane599.coulomb.core.insights.ActionId.STANDBY_BUCKET
+import io.github.akane599.coulomb.core.model.insight.ActionId.OPEN_APP_DETAIL
+import io.github.akane599.coulomb.core.model.insight.ActionId.OPEN_LOCATION_PERMISSION
+import io.github.akane599.coulomb.core.model.insight.ActionId.RESTRICT_BACKGROUND
+import io.github.akane599.coulomb.core.model.insight.ActionId.STANDBY_BUCKET
 import io.github.akane599.coulomb.core.model.insight.Evidence
 import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
 import io.github.akane599.coulomb.core.model.insight.RuleId
 
 /** The rules about one app or one wakelock tag (SPEC 9.2). */
 internal object AppRules {
-    private val wakelockActions = listOf(RESTRICT_BACKGROUND, STANDBY_BUCKET, DENY_WAKELOCKS)
+    /** SPEC 9.2 also lists "wakelock deny", which Android does not act on (ADR-0060 §7). */
+    private val wakelockActions = listOf(RESTRICT_BACKGROUND, STANDBY_BUCKET)
 
     /** R01: an app holds more than 2 h of partial wakelocks in 24 h. */
     val excessiveWakelock =

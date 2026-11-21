@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPEC 13 Action Center (ADR-0060). Sentence case, no exclamation marks. Buttons name what they do. -->
+<resources>
+    <string name="actions_loading">Loading</string>
+
+    <string name="actions_off_title">The Action Center is off</string>
+    <string name="actions_off_body">With it on, Coulomb can change a few settings of the phone and of single apps. Each change is shown before it runs, is logged with the value it replaced, and can be reverted. Nothing runs without your tap.</string>
+    <string name="actions_off_grant">Turning it on also gives Coulomb the permission to write system settings (WRITE_SECURE_SETTINGS).</string>
+    <string name="actions_turn_on">Turn on the Action Center</string>
+    <string name="actions_switch">Action Center</string>
+    <string name="actions_switch_note">Nothing runs without your tap.</string>
+    <string name="actions_save_failed">Coulomb couldn’t save this setting. Free some storage and try again.</string>
+    <string name="actions_no_worker">Coulomb’s helper process is not running, so nothing can be changed from here. Each action still shows its command, which you can run over adb.</string>
+    <string name="actions_open_privileges">Open Privileges</string>
+
+    <string name="actions_off_keep_title">Turn off the Action Center</string>
+    <!-- %1$s: how many changes. -->
+    <plurals name="actions_off_keep_body">
+        <item quantity="one">%1$s change Coulomb made is still in force. You can revert it now or keep it; it stays in the log either way.</item>
+        <item quantity="other">%1$s changes Coulomb made are still in force. You can revert them now or keep them; they stay in the log either way.</item>
+    </plurals>
+    <string name="actions_off_revert">Revert all, then turn off</string>
+    <string name="actions_off_keep">Keep and turn off</string>
+    <string name="actions_cancel">Cancel</string>
+
+    <string name="actions_doze">Doze</string>
+    <!-- %1$s: a duration. -->
+    <string name="actions_doze_idle_after">Left still and unplugged, this phone can enter deep Doze %1$s after the screen goes off.</string>
+    <string name="actions_doze_unreadable">Coulomb couldn’t read the Doze settings.</string>
+    <string name="actions_doze_external">Managed externally</string>
+    <string name="actions_doze_external_body">The Doze setting holds a value Coulomb did not write: the phone’s maker or another tool set it. Coulomb leaves it alone until you take it over.</string>
+    <string name="actions_doze_take_over">Take over this value</string>
+    <!-- %1$s: a date. -->
+    <string name="actions_doze_baseline">You took over the value found on %1$s. A profile keeps it and changes only what it needs.</string>
+    <string name="actions_doze_release">Stop managing it</string>
+    <!-- %1$s: a profile’s name. -->
+    <string name="actions_doze_applied">%1$s is applied.</string>
+    <string name="actions_doze_stock">Return to stock</string>
+    <string name="actions_doze_balanced">Balanced</string>
+    <string name="actions_doze_balanced_detail">Deep Doze about 30 min after the screen goes off</string>
+    <string name="actions_doze_aggressive">Aggressive</string>
+    <string name="actions_doze_aggressive_detail">Deep Doze about 10 min after the screen goes off, and longer idle stretches</string>
+    <!-- %1$s: a duration. -->
+    <string name="actions_doze_would_idle">after %1$s</string>
+    <string name="actions_doze_setting">The setting now</string>
+    <string name="actions_doze_changes">What it changes</string>
+
+    <string name="actions_device">Phone</string>
+    <string name="actions_saver">Battery saver</string>
+    <string name="actions_saver_on_detail">Limits background work and some effects until you turn it off or plug in.</string>
+    <string name="actions_saver_off_detail">Turns Android’s battery saver off.</string>
+    <string name="actions_reset">Reset battery statistics</string>
+    <string name="actions_reset_detail">Clears Android’s own battery history. It cannot be undone.</string>
+
+    <string name="actions_apps">Apps</string>
+    <string name="actions_apps_note">Actions for one app are on that app’s page, under Actions.</string>
+    <string name="actions_not_offered">Not offered</string>
+    <string name="actions_deny_wakelocks">Deny wakelocks</string>
+    <string name="actions_deny_wakelocks_why">Android records this setting and does not act on it, so it would change nothing.</string>
+    <string name="actions_sensors">Sensor restriction</string>
+    <string name="actions_sensors_why">The only command for it cuts off every other app’s sensors instead.</string>
+
+    <string name="actions_log">Log</string>
+    <string name="actions_log_empty">Nothing has been changed yet.</string>
+    <string name="actions_revert_all">Revert all</string>
+    <string name="actions_revert_all_title">Revert every change</string>
+    <!-- %1$s: how many changes. -->
+    <plurals name="actions_revert_all_body">
+        <item quantity="one">%1$s change is put back. A value that something else changed since is left as it is.</item>
+        <item quantity="other">%1$s changes are put back, newest first. A value that something else changed since is left as it is.</item>
+    </plurals>
+    <string name="actions_revert">Revert</string>
+    <string name="actions_log_active">In force</string>
+    <string name="actions_log_done">Done</string>
+    <string name="actions_log_reverted">Reverted</string>
+    <string name="actions_log_drifted">Changed outside Coulomb</string>
+    <!-- %1$s: the value before; %2$s: the value after. -->
+    <string name="actions_log_change">%1$s → %2$s</string>
+    <!-- %1$s: who or what; %2$s: what changed or when. -->
+    <string name="actions_log_joined">%1$s · %2$s</string>
+    <!-- %1$s: the value found. -->
+    <string name="actions_log_drift_value">Now %1$s. Coulomb leaves it as it is.</string>
+    <string name="actions_log_from_insight">Offered by an insight</string>
+    <string name="actions_log_bucket">Standby bucket</string>
+    <string name="actions_log_allowlist">Doze allowlist</string>
+    <string name="actions_log_profile">Doze profile</string>
+    <string name="actions_log_take_over">Doze value taken over</string>
+
+    <string name="actions_force_stop">Force stop</string>
+    <string name="actions_force_stop_effect">Stops the app now. It gets no alarms and shows no notifications until you open it again.</string>
+    <string name="actions_restrict">Restrict background</string>
+    <string name="actions_restrict_effect">Stops the app’s work in the background. Its notifications can be late.</string>
+    <string name="actions_bucket_rare">Standby bucket: Rare</string>
+    <string name="actions_bucket_rare_effect">Android holds back the app’s jobs, alarms and network. Android moves it back as you use the app.</string>
+    <string name="actions_bucket_restricted">Standby bucket: Restricted</string>
+    <string name="actions_bucket_restricted_effect">Android holds back the app’s jobs, alarms and network more than in any other bucket. Android moves it back as you use the app.</string>
+    <string name="actions_allowlist_add">Add to the Doze allowlist</string>
+    <string name="actions_allowlist_add_effect">Lets the app run and use the network while the phone dozes. This costs battery.</string>
+    <string name="actions_allowlist_remove">Remove from the Doze allowlist</string>
+    <string name="actions_allowlist_remove_effect">The app waits for Doze like other apps. Its notifications can be late.</string>
+    <string name="actions_profile_effect">Changes how soon the phone enters deep Doze when it is left still. Background work and some notifications wait longer.</string>
+    <string name="actions_take_over_effect">Coulomb records this value as the phone’s own and builds profiles on it. Nothing is written.</string>
+    <string name="actions_saver_turn_on">Turn on battery saver</string>
+    <string name="actions_saver_turn_off">Turn off battery saver</string>
+    <string name="actions_reset_effect">Android’s own battery statistics and history are cleared, for every app that reads them. Coulomb’s own records stay.</string>
+    <string name="actions_unknown">An action of another version</string>
+
+    <string name="actions_risk">Risk</string>
+    <string name="actions_risk_low">Low</string>
+    <string name="actions_risk_medium">Medium</string>
+    <string name="actions_risk_high">High</string>
+    <string name="actions_now">Now</string>
+    <string name="actions_now_before">Before</string>
+    <string name="actions_after">After</string>
+    <string name="actions_command">Command</string>
+    <string name="actions_copy">Copy command</string>
+    <string name="actions_clip_label">adb command</string>
+    <string name="actions_undo">To undo</string>
+    <string name="actions_undo_log">Revert it from the log, or run this command.</string>
+    <string name="actions_undo_none_stop">Nothing to undo: open the app and it runs again.</string>
+    <string name="actions_undo_none_reset">It cannot be undone.</string>
+    <string name="actions_undo_take_over">Stop managing it from the Action Center; the value stays.</string>
+    <string name="actions_reset_confirm_title">Reset Android’s battery statistics</string>
+    <string name="actions_reset_confirm_body">This is the second and last question. Once cleared, Android’s statistics cannot be brought back.</string>
+    <string name="actions_reset_confirm">Reset statistics</string>
+    <string name="actions_back">Back</string>
+
+    <string name="actions_value_allow">Allowed</string>
+    <string name="actions_value_ignore">Restricted</string>
+    <string name="actions_value_listed">On the list</string>
+    <string name="actions_value_unlisted">Not on the list</string>
+    <string name="actions_value_system_listed">System list</string>
+    <!-- %1$s: a profile’s name. -->
+    <string name="actions_doze_apply">Apply %1$s</string>
+    <string name="actions_value_on">On</string>
+    <string name="actions_value_off">Off</string>
+    <string name="actions_value_stopped">Stopped</string>
+    <string name="actions_value_reset">Reset</string>
+    <string name="actions_value_unset">Not set</string>
+    <string name="actions_bucket_exempted">Exempted</string>
+    <string name="actions_bucket_active">Active</string>
+    <string name="actions_bucket_working_set">Working set</string>
+    <string name="actions_bucket_frequent">Frequent</string>
+    <string name="actions_bucket_rare_name">Rare</string>
+    <string name="actions_bucket_restricted_name">Restricted</string>
+    <string name="actions_bucket_never">Never</string>
+
+    <string name="actions_block_off">The Action Center is off.</string>
+    <string name="actions_block_no_worker">Coulomb’s helper process is not running. You can run the command over adb.</string>
+    <string name="actions_block_unreadable">Coulomb couldn’t read the current value, so it changes nothing.</string>
+    <string name="actions_block_protected">Coulomb does not act on system apps, on itself or on the app that gives it access.</string>
+    <string name="actions_block_not_installed">The app is not installed in this profile.</string>
+    <string name="actions_block_already">Already set.</string>
+    <string name="actions_block_not_plain_allow">Something else set this app’s background mode. Coulomb changes it only from a plain “allowed”, so that it can put it back.</string>
+    <string name="actions_block_bucket_fixed">Android keeps this app’s bucket, or the app is already further out.</string>
+    <string name="actions_block_system_listed">On the system’s own list, which no command changes.</string>
+    <string name="actions_block_charging">Battery saver can’t change while the phone charges.</string>
+    <string name="actions_block_external">Take over the Doze setting first.</string>
+    <string name="actions_block_malformed">The Doze setting is not a list Coulomb can rewrite safely.</string>
+    <!-- %1$s: a duration. -->
+    <string name="actions_block_nothing">Nothing to change: this phone already enters deep Doze after %1$s.</string>
+    <string name="actions_block_nothing_plain">Nothing to change: this phone already dozes sooner.</string>
+    <string name="actions_block_profile_active">Return to stock first.</string>
+    <string name="actions_block_nothing_to_take">There is no outside value to take over.</string>
+    <string name="actions_block_in_force">Coulomb changed this already. Revert that change first.</string>
+    <string name="actions_block_not_active">There is nothing to revert.</string>
+
+    <string name="actions_result_done">Done.</string>
+    <string name="actions_result_reverted">Reverted.</string>
+    <!-- %1$s: the value Android set. -->
+    <string name="actions_result_short">Android set %1$s instead of what was asked. That is what the log holds.</string>
+    <string name="actions_result_unchanged">The command ran and nothing changed.</string>
+    <string name="actions_result_unverified">The command ran, but Coulomb couldn’t read the result. The change is in the log.</string>
+    <string name="actions_result_drifted">Something else changed this value since, so Coulomb left it as it is.</string>
+    <string name="actions_result_failed">The command failed and nothing was changed.</string>
+    <!-- %1$s: what the command printed. -->
+    <string name="actions_result_failed_detail">The command failed: %1$s</string>
+
+    <string name="actions_app_title">Actions</string>
+    <string name="actions_app_off">The Action Center is off, so Coulomb changes nothing about this app.</string>
+    <string name="actions_app_open_center">Open the Action Center</string>
+    <string name="actions_app_other_profile">This app is in another profile. Coulomb acts only on apps of the profile it runs in.</string>
+    <string name="actions_app_none">Coulomb found no installed app for this entry.</string>
+    <!-- %1$s: an app’s name. -->
+    <string name="actions_app_sheet_title">Actions for %1$s</string>
+    <string name="actions_app_packages">Package</string>
+</resources>

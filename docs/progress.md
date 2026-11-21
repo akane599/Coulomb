@@ -92,7 +92,26 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   platform's last-use records, read at most once a day.
   - R15 pending real device: what the numbers of One UI's protection setting mean
     (`docs/questions.md`). Until then the rule finds nothing.
-- **Still to build in P5:** the Action Center.
+- **Action Center (SPEC 13, 14.4, ADR-0060).** Off until turned on. Every operation was read in
+  AOSP for both releases before any code. The worker has one typed method per operation; the
+  engine in `:core:collect` reads the value, writes the log row, runs the command, reads the value
+  back and keeps, corrects or removes the row. Revert and "Revert all" write only where the value
+  is still the one Coulomb left; each heavy snapshot re-reads the active rows and marks a value
+  "Changed outside Coulomb" once. `:feature:actions` has the Action Center (Doze profiles, battery
+  saver, the statistics reset with two questions, the log), an app's actions as App detail's last
+  section, and the preview sheet with the exact command and its undo.
+  - Not built as SPEC 13.2 writes them, with the reason on screen: "Deny wakelocks" (AOSP records
+    the setting and does not act on it) and "Sensor restriction" (the command cuts off every other
+    app). "Stock" restores the value found on the phone, which is not empty on the S25.
+  - Insight cards now have their button (SPEC 9.2): the app's actions as a sheet in place, or the
+    screen the rule points at.
+  - Reviewed by an independent subagent; its seven findings are fixed: a Doze setting that could
+    not be read was marked as changed by something else, a second change over one in force made
+    the first read as drift, a refused write could become a delete, a command that timed out lost
+    its row, drift checks never reached rows past the newest 24, and two faults on screen.
+  - **Nothing here has run on a device.** The engine is tested against an in-memory phone
+    (32 tests); the first real writes wait for the owner's yes, also on the emulator
+    (`docs/questions.md`).
 
 ## P4 Core screens (gate deferred: protocol C)
 

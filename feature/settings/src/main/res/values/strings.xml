@@ -121,6 +121,9 @@
     <string name="settings_charge_alarm_note">Sounds once per charge when the level reaches the target.</string>
     <string name="settings_temperature">Battery temperature alarm</string>
     <string name="settings_temperature_note">Alerts when the battery is at least this warm, at most once in 30 minutes.</string>
+    <string name="settings_action_center">Action Center</string>
+    <string name="settings_action_center_note">Changes Coulomb can make for you, each shown first and revertible.</string>
+    <string name="settings_on">On</string>
     <string name="settings_off">Off</string>
     <string name="settings_digest_title">Insights</string>
     <string name="settings_digest">Daily digest of new insights</string>

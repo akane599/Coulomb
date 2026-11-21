@@ -3,26 +3,10 @@
 
 package io.github.akane599.coulomb.core.insights
 
+import io.github.akane599.coulomb.core.model.insight.ActionId
 import io.github.akane599.coulomb.core.model.insight.Evidence
 import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
 import io.github.akane599.coulomb.core.model.insight.RuleId
-
-/** What an insight's card can offer (SPEC 9.2 "Action offered"): an Action Center action or a place to open. */
-public enum class ActionId {
-    RESTRICT_BACKGROUND,
-    STANDBY_BUCKET,
-    DENY_WAKELOCKS,
-    OPEN_SESSION,
-    OPEN_NIGHT_REPORT,
-    OPEN_LOCATION_PERMISSION,
-    OPEN_SCANNING_SETTINGS,
-    OPEN_APP_DETAIL,
-    OPEN_HEALTH,
-    OPEN_BATTERY_PROTECTION,
-    OPEN_DOZE,
-    OPEN_SELF_DIAGNOSTIC,
-    SWITCH_TO_LITE,
-}
 
 /**
  * SPEC 9.1's rule contract. A rule is a pure function of stored data and its thresholds. It returns
@@ -96,6 +80,9 @@ internal fun Span.evidence(
 
 /** The engine's rules, R01 to R20 in order (SPEC 9.2). */
 public object Rules {
+    /** What [rule]'s card may offer, most wanted first; empty for a rule that only explains. */
+    public fun actions(rule: RuleId): List<ActionId> = offered[rule].orEmpty()
+
     public val all: List<Rule> =
         listOf(
             AppRules.excessiveWakelock,
@@ -119,4 +106,6 @@ public object Rules {
             DeviceRules.unattributedGap,
             DeviceRules.selfCost,
         )
+
+    private val offered: Map<RuleId, List<ActionId>> = all.associate { it.id to it.actions }
 }

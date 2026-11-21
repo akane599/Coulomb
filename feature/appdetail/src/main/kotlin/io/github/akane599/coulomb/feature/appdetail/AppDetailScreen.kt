@@ -52,6 +52,8 @@ import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.designsystem.theme.currentWindowWidth
 import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.model.insight.ActionId
+import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.model.story.Story
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -83,18 +85,20 @@ public fun appDetailTitle(viewModel: AppDetailViewModel): String {
 
 /**
  * App detail (SPEC 10.4): one app over the window chosen on Drain, with its story and the card of
- * its open Act insight. The actions arrive with the Action Center (ADR-0041); App info opens the
- * system's page for the app.
+ * its open Act insight. [actionsSection] is the Action Center's part (SPEC 10.4 item 8), which the
+ * app supplies; App info opens the system's page for the app.
  */
 @Composable
 public fun AppDetailScreen(
     viewModel: AppDetailViewModel,
     modifier: Modifier = Modifier,
+    onInsightAction: (ActionId, Insight) -> Unit = { _, _ -> },
+    actionsSection: @Composable () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val actions =
-        remember(viewModel, context) {
+        remember(viewModel, context, onInsightAction, actionsSection) {
             AppDetailActions(
                 retry = viewModel::retry,
                 openAppInfo = { packageName ->
@@ -110,6 +114,8 @@ public fun AppDetailScreen(
                 peekIcon = viewModel::peekIcon,
                 snoozeInsight = viewModel::snoozeInsight,
                 dismissInsight = viewModel::dismissInsight,
+                insightAction = onInsightAction,
+                actionsSection = actionsSection,
             )
         }
     AppDetailContent(state, actions, modifier)
@@ -123,6 +129,10 @@ internal class AppDetailActions(
     val peekIcon: (packageName: String, sizePx: Int) -> ImageBitmap? = { _, _ -> null },
     val snoozeInsight: (id: Long, forMs: Long) -> Unit = { _, _ -> },
     val dismissInsight: (id: Long) -> Unit = {},
+    /** The button of the Act insight's card: where it leads is the app's to say. */
+    val insightAction: (ActionId, Insight) -> Unit = { _, _ -> },
+    /** SPEC 10.4 item 8: the Action Center's actions for this app, which the app supplies. */
+    val actionsSection: @Composable () -> Unit = {},
 )
 
 /** The two tables a chart opens ("View as table", SPEC 11.8). */
@@ -261,6 +271,7 @@ private class Sections(
         scope.item(key = "woke", contentType = "woke") { Woke(view, formats, besideFirst) }
         scope.item(key = "network", contentType = "network") { Network(view, formats) }
         scope.item(key = "trend", contentType = "trend") { Trend(view, formats, zone) { viewTable(AppTable.TREND) } }
+        scope.item(key = "actions", contentType = "actions") { actions.actionsSection() }
         view.detail.iconPackage?.let { packageName ->
             scope.item(key = "app-info", contentType = "link") { AppInfoRow { actions.openAppInfo(packageName) } }
         }

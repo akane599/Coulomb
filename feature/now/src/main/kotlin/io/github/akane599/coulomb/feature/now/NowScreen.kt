@@ -44,6 +44,8 @@ import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.designsystem.theme.currentGutter
 import io.github.akane599.coulomb.core.designsystem.theme.currentSectionGap
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.insight.ActionId
+import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.DataTableSheet
 import io.github.akane599.coulomb.core.ui.format.Formats
@@ -63,6 +65,7 @@ public fun NowScreen(
     onSeeAllDrains: () -> Unit,
     onOpenPrivileges: () -> Unit,
     modifier: Modifier = Modifier,
+    onInsightAction: (ActionId, Insight) -> Unit = { _, _ -> },
     viewModel: NowViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -84,6 +87,7 @@ public fun NowScreen(
                 icon = viewModel::icon,
                 snoozeInsight = viewModel::snoozeInsight,
                 dismissInsight = viewModel::dismissInsight,
+                insightAction = onInsightAction,
             ),
         modifier = modifier,
     )
@@ -98,6 +102,8 @@ internal class NowActions(
     val icon: suspend (packageName: String, sizePx: Int) -> ImageBitmap?,
     val snoozeInsight: (id: Long, forMs: Long) -> Unit = { _, _ -> },
     val dismissInsight: (id: Long) -> Unit = {},
+    /** The button of an insight's card: where it leads is the app's to say. */
+    val insightAction: (ActionId, Insight) -> Unit = { _, _ -> },
 )
 
 /** What the Macrobenchmark waits for: Now's content once the verdict shows (SPEC 16.5). */
