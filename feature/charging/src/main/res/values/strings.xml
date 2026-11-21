@@ -72,4 +72,31 @@
         <item quantity="one">Show %1$s more</item>
         <item quantity="other">Show %1$s more</item>
     </plurals>
+    <string name="charging_temperatures_open">Every temperature sensor</string>
+    <string name="charging_temperatures">Temperatures now</string>
+    <string name="charging_temperatures_reading">Reading…</string>
+    <string name="charging_temperatures_failed">Android’s thermal service could not be read. Privileges says why.</string>
+    <string name="charging_temperatures_again">Read again</string>
+    <string name="charging_temperatures_status">Throttling: %1$s.</string>
+    <string name="charging_temperatures_overridden">This status was set by hand with a developer command, so it is not what the sensors say.</string>
+    <string name="charging_temperatures_none">The thermal service reported no sensor readings.</string>
+    <string name="charging_temperatures_sensors">Sensors</string>
+    <string name="charging_temperatures_cached">The last values Android kept, from when the throttling status last changed. They can be many degrees old.</string>
+    <string name="charging_temperatures_column_sensor">Sensor</string>
+    <string name="charging_temperatures_column_temp">Temperature</string>
+    <string name="charging_thermal_none">none</string>
+    <string name="charging_thermal_light">light</string>
+    <string name="charging_thermal_moderate">moderate</string>
+    <string name="charging_thermal_severe">severe</string>
+    <string name="charging_thermal_critical">critical</string>
+    <string name="charging_thermal_emergency">emergency</string>
+    <string name="charging_thermal_shutdown">shutting down</string>
+    <string name="charging_sensor_cpu">Processor</string>
+    <string name="charging_sensor_gpu">Graphics</string>
+    <string name="charging_sensor_battery">Battery</string>
+    <string name="charging_sensor_skin">Skin</string>
+    <string name="charging_sensor_usb">USB port</string>
+    <string name="charging_sensor_display">Display</string>
+    <string name="charging_sensor_modem">Modem</string>
+    <string name="charging_sensor_soc">Chip</string>
 </resources>

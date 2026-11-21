@@ -50,6 +50,7 @@ import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.Rules
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.Provenance
+import io.github.akane599.coulomb.core.model.dumpsys.ThermalDump
 import io.github.akane599.coulomb.core.model.insight.ActionId
 import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.ui.DataTable
@@ -96,6 +97,7 @@ public fun ChargingScreen(
                 dismissInsight = viewModel::dismissInsight,
                 insightAction = onInsightAction,
                 showAllInsights = viewModel::showAllInsights,
+                readThermal = viewModel::readThermal,
             )
         }
     ChargingContent(state, actions, modifier, targetAlarm = alarm, insights = insights.shown, moreInsights = insights.more)
@@ -111,6 +113,8 @@ internal class ChargingActions(
     val dismissInsight: (id: Long) -> Unit = {},
     val insightAction: (ActionId, Insight) -> Unit = { _, _ -> },
     val showAllInsights: () -> Unit = {},
+    /** S19 on demand; null where there is nothing to read with. */
+    val readThermal: (suspend () -> ThermalDump?)? = null,
 )
 
 /** Charging's column on wide windows, as Now's (ADR-0034). */
@@ -126,6 +130,7 @@ internal fun ChargingContent(
     insights: List<ShownInsight> = emptyList(),
     moreInsights: Int = 0,
 ) {
+    var thermalOpen by rememberSaveable { mutableStateOf(false) }
     val formats = rememberFormats()
     var table by rememberSaveable { mutableStateOf<String?>(null) }
     // The insight whose "Why am I seeing this?" is open, by id.
@@ -189,6 +194,7 @@ internal fun ChargingContent(
                                 },
                         )
                         Readings(now, formats)
+                        actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
                         Session(now, formats, zone, onViewTable = { table = CURVE_TABLE })
                         Target(now.targetPct, targetAlarm, formats, actions.setTarget, actions.openSettings)
                     }
@@ -205,6 +211,8 @@ internal fun ChargingContent(
             SCALE_TABLE -> DataTableSheet(scaleTable(shown, formats, zone), onDismiss = { table = null })
         }
     }
+    val readThermal = actions.readThermal
+    if (thermalOpen && readThermal != null) TemperaturesSheet(readThermal, onDismiss = { thermalOpen = false })
     insights.firstOrNull { it.insight.id == why }?.let { asked ->
         val nowMs = remember(asked.insight.id) { System.currentTimeMillis() }
         DataTableSheet(copy.evidence(asked.insight, zone, nowMs), onDismiss = { why = null })

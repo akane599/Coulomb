@@ -6,8 +6,10 @@ package io.github.akane599.coulomb.feature.charging
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +49,7 @@ import io.github.akane599.coulomb.core.model.insight.Evidence
 import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
 import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.model.insight.RuleId
+import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -66,6 +69,19 @@ import java.time.ZoneOffset
 class ChargingScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
+
+    /** Every temperature sensor (S19, on demand), as the sheet shows them once read. */
+    @Test
+    fun temperatures() {
+        compose.setContent {
+            CoulombTheme {
+                Column(Modifier.fillMaxSize().background(CoulombTheme.colors.surfaceRaised).padding(horizontal = 16.dp)) {
+                    TemperaturesBody(TemperaturesState.Read(Temperatures.of(labThermal())), rememberFormats())
+                }
+            }
+        }
+        compose.onRoot().captureRoboImage("src/test/screenshots/charging-temperatures.png")
+    }
 
     @Test
     fun labLight() = shoot("lab-light") { Charging(labNow()) }

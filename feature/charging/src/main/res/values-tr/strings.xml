@@ -72,4 +72,31 @@
         <item quantity="one">%1$s tane daha göster</item>
         <item quantity="other">%1$s tane daha göster</item>
     </plurals>
+    <string name="charging_temperatures_open">Tüm sıcaklık sensörleri</string>
+    <string name="charging_temperatures">Şu anki sıcaklıklar</string>
+    <string name="charging_temperatures_reading">Okunuyor…</string>
+    <string name="charging_temperatures_failed">Android’in ısı hizmeti okunamadı. Ayrıcalıklar nedenini gösterir.</string>
+    <string name="charging_temperatures_again">Yeniden oku</string>
+    <string name="charging_temperatures_status">Kısma: %1$s.</string>
+    <string name="charging_temperatures_overridden">Bu durum bir geliştirici komutuyla elle ayarlandı; sensörlerin söylediği değil.</string>
+    <string name="charging_temperatures_none">Isı hizmeti hiçbir sensör değeri bildirmedi.</string>
+    <string name="charging_temperatures_sensors">Sensörler</string>
+    <string name="charging_temperatures_cached">Android’in sakladığı son değerler; kısma durumu son değiştiğinde okundu. Birkaç derece eski olabilirler.</string>
+    <string name="charging_temperatures_column_sensor">Sensör</string>
+    <string name="charging_temperatures_column_temp">Sıcaklık</string>
+    <string name="charging_thermal_none">yok</string>
+    <string name="charging_thermal_light">hafif</string>
+    <string name="charging_thermal_moderate">orta</string>
+    <string name="charging_thermal_severe">ağır</string>
+    <string name="charging_thermal_critical">kritik</string>
+    <string name="charging_thermal_emergency">acil</string>
+    <string name="charging_thermal_shutdown">kapanıyor</string>
+    <string name="charging_sensor_cpu">İşlemci</string>
+    <string name="charging_sensor_gpu">Grafik</string>
+    <string name="charging_sensor_battery">Pil</string>
+    <string name="charging_sensor_skin">Yüzey</string>
+    <string name="charging_sensor_usb">USB girişi</string>
+    <string name="charging_sensor_display">Ekran</string>
+    <string name="charging_sensor_modem">Modem</string>
+    <string name="charging_sensor_soc">Yonga</string>
 </resources>

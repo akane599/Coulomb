@@ -8,12 +8,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.akane599.coulomb.core.collect.Collector
+import io.github.akane599.coulomb.core.collect.LiveReads
 import io.github.akane599.coulomb.core.collect.engine.VisibleScreen
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.data.ChargingRepository
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.InsightSeverity
+import io.github.akane599.coulomb.core.model.dumpsys.ThermalDump
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -62,7 +64,11 @@ public class ChargingViewModel
         private val charging: ChargingRepository,
         private val collector: Collector,
         private val insights: InsightStore,
+        private val live: LiveReads,
     ) : ViewModel() {
+        /** S19 on demand (ADR-0068): the thermal service's sensors now. */
+        internal suspend fun readThermal(): ThermalDump? = live.thermal()
+
         private val attempt = MutableStateFlow(0)
 
         internal val state: StateFlow<ChargingUiState> =
