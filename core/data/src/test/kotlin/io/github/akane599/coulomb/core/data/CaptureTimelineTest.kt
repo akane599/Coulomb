@@ -41,7 +41,8 @@ class CaptureTimelineTest {
             val db = CoulombDatabase.build(context)
             try {
                 val dispatchers = AppDispatchers(Dispatchers.IO, Dispatchers.Default)
-                val timelines = TimelineRepository(db.historyDao(), db.snapshotDao(), db.sampleDao(), db.sessionDao(), dispatchers)
+                val timelines =
+                    TimelineRepository(db.historyDao(), db.snapshotDao(), db.sampleDao(), db.sessionDao(), db.deviceDao(), dispatchers)
                 val nights = NightRepository(db.sessionDao(), db.snapshotDao(), db.historyDao(), dispatchers).nights.first()
                 val now = checkNotNull(db.snapshotDao().latest()).wallMs
                 val lines = ArrayList<String>()

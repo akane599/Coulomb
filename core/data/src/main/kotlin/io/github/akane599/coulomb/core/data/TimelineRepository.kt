@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.data
 
 import android.util.Log
 import io.github.akane599.coulomb.core.common.AppDispatchers
+import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.HistoryDao
 import io.github.akane599.coulomb.core.database.dao.SampleDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
@@ -14,6 +15,7 @@ import io.github.akane599.coulomb.core.database.entity.CorruptChunkException
 import io.github.akane599.coulomb.core.model.SessionKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,8 +33,16 @@ public class TimelineRepository
         private val snapshots: SnapshotDao,
         private val samples: SampleDao,
         private val sessions: SessionDao,
+        devices: DeviceDao,
         private val dispatchers: AppDispatchers,
     ) {
+        /** The name of each UID that has one: who a top-app stretch or a wakelock belongs to. */
+        public val labels: Flow<Map<Int, String>> =
+            devices
+                .observeUidMeta()
+                .map { rows -> rows.filter { it.label.isNotBlank() }.associate { it.uid to it.label } }
+                .distinctUntilChanged()
+
         /** Emits when a snapshot is stored: a span that reaches the present has more to show. */
         public val changes: Flow<Int> = snapshots.observeCount().distinctUntilChanged()
 

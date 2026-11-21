@@ -19,7 +19,14 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 internal class TimelineRepositoryTest : DrainDbTest() {
     private val repository by lazy {
-        TimelineRepository(db.historyDao(), snapshots, db.sampleDao(), sessions, AppDispatchers(Dispatchers.IO, Dispatchers.Default))
+        TimelineRepository(
+            db.historyDao(),
+            snapshots,
+            db.sampleDao(),
+            sessions,
+            db.deviceDao(),
+            AppDispatchers(Dispatchers.IO, Dispatchers.Default),
+        )
     }
 
     private fun event(
