@@ -41,6 +41,21 @@ found provenance marks that claimed more than the source gives, and copy that th
    Action Center's and onboarding's no-tap claims name what an allowed app may repeat, and an
    imported temperature threshold applies only while the alarm is on.
 
+## Run 4 (2026-11-22)
+
+The fourth gate run found where §1 and §2 did not reach (`docs/design-gates/2026-11-22-*-run-4.md`).
+
+7. **Every return is an app open, and an open screen learns its age.** `APP_OPENED` is posted at
+   each `onStart`, not only at `onCreate`, so a return from recents, a widget or the tile takes
+   Lite's one reading (the trigger policy already debounces it to a minute). Charging, which can
+   stand in for Now, gets pull to refresh. The screens read the clock again once, at the moment the
+   reading turns old, rather than only at resume; nothing ticks in between.
+8. **An old reading draws nothing as now.** Now's state line drops the current, and the time left
+   and the projection are left out; the note sits under the level and is worded by mode. In Lite,
+   Now's live current says Lite does not follow it, and Charging's head is "Readings". The Level
+   widget puts the time in the state's place and never drops it on one line, stepping the level
+   down to title size if it must.
+
 ## Verified
 
 Unit tests (sample counts, the 0.0 filter, the import threshold), every golden re-recorded and

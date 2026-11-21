@@ -228,7 +228,11 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   the alarms and the Live Update and says so, consumers are marked Modeled under their own head,
   discharge levels are Modeled, the temperatures sheet drops the S25's unread 0.0 °C sensor, the
   window chip wraps long names, and the no-tap and import copy match what the code does.
-- **Still to come in P6:** design gate run 4, then run 5; two consecutive clean runs pass the gate.
+- **Whole-app design gate, run 4 (2026-11-22).** Audit 0 critical, 5 major; critique 0 critical,
+  4 major, all where run 3's Lite fix did not reach (a return to the app took no reading, an open
+  screen never learned its age, Now's hero still drew an old reading as now, the 2×1 widget dropped
+  the time) plus a crushed section title. All fixed (ADR-0069 §7, §8), with stale and Lite goldens.
+- **Still to come in P6:** design gate run 5, then run 6; two consecutive clean runs pass the gate.
 
 ### SPEC 18 status (2026-11-22)
 
@@ -258,7 +262,7 @@ phone runs (ADR-0053); "owner" means an owner hard stop.
 | Four widgets, tile, automation API | Done | P5, ADR-0065; not seen on the phone |
 | Export, import, delete all data | Done | ADR-0062; system pickers not seen on a device |
 | `impeccable detect design-lab/` zero | Done | P3 gate |
-| Two consecutive whole-app audit and critique runs | Not yet | Runs 1 to 3 each found majors, all fixed; run 4 next |
+| Two consecutive whole-app audit and critique runs | Not yet | Runs 1 to 4 each found majors, all fixed; run 5 next |
 | Screenshot suite in all themes, three font scales, two widths, both languages | Done | CI composes every screen; `verifyRoborazziDebug` over all twelve screenshot modules passed against the committed goldens on 2026-11-22 |
 | WCAG AA contrast; TalkBack script | Partly | `ContrastTest`; TalkBack script on a device: phone or AVD run |
 | No INTERNET | Done | `verifyReleaseManifestPermissions` in CI |
