@@ -1185,7 +1185,7 @@ Commands that fail are recorded as unsupported, not skipped silently. Parsers mu
 
 ## 17. Delivery phases
 
-Seven phases, each closed by an exit gate; the agent never starts a phase while the previous gate is red, except that P3 starts while the P2 gate waits for its phone results (ADR-0019, ADR-0049). Data correctness comes before UI, and design direction is locked in HTML before any Compose screen is built.
+Seven phases, each closed by an exit gate; the agent never starts a phase while the previous gate is red, except that P3 starts while the P2 gate waits for its phone results (ADR-0019, ADR-0049), and that phone tests longer than five minutes run after P6's work: a gate that waits only for such a test is recorded as deferred and the next phase starts (owner decision, ADR-0053). Data correctness comes before UI, and design direction is locked in HTML before any Compose screen is built.
 
 &#91;embedded content: Delivery roadmap · 7 phases, 7 gates\]
 

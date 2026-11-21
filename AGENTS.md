@@ -12,7 +12,9 @@ data/device safety > measurement honesty > self-drain budget > functional spec >
    Cite the AOSP file and line range in a code comment.
 2. Never trust memory for library versions. Resolve the newest stable at build time and pin it in
    `gradle/libs.versions.toml`. Any non-stable pin needs an ADR.
-3. Work strictly in the phases of SPEC 17. A phase ends only when its exit gate passes.
+3. Work strictly in the phases of SPEC 17. A phase ends only when its exit gate passes. Phone tests
+   longer than five minutes run after P6's work; a gate waiting only for one is "deferred" and does
+   not hold the next phase (ADR-0053).
 4. Small Conventional Commits. Every commit builds and passes unit tests.
 5. Spec silent or ambiguous: choose the more accurate, cheaper-in-battery, easier-to-revert option and write an ADR.
 6. Never run destructive device actions without explicit owner confirmation: stats reset, uninstall,

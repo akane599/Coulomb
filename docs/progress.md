@@ -2,7 +2,26 @@
 
 One section per phase (SPEC 0.3.9, 17). Newest phase first.
 
-## P4 Core screens (in progress)
+## Deferred phone runs (ADR-0053, owner decision 2026-11-21)
+
+Phone tests longer than five minutes run after P6's work. P5 and P6 are built on the data already
+captured. Each run below needs the owner to say when; the phone must be unplugged and unused.
+
+| Run | Gate | Time | Needs |
+| --- | --- | --- | --- |
+| Protocol A, calibration | P2 | 30 min | Video at a fixed brightness |
+| Protocol C, attribution | P4 | 1 h | 20 min video, 10 min navigation, idle; then the system's battery usage screen |
+| Protocols E and G, drift demonstration | P5 | set when P5's work is done | |
+
+- Also waiting, under five minutes: a read-only pull of Coulomb's stored data (asked for on
+  2026-11-21; the phone's adb port was closed after its service visit) and an install of the
+  current build.
+
+## P5 Depth (in progress)
+
+Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols A and C.
+
+## P4 Core screens (gate deferred: protocol C)
 
 Started 2026-11-07, after the P3 gate passed. The P2 gate still waits for the phone night (ADR-0019).
 
@@ -70,7 +89,7 @@ Gate status (2026-11-10, SPEC 17):
     (the ADR-0029 notes below).
   - Until it is understood, an update is followed by a check that the collector runs, and by a
     launch if it does not.
-- P5 does not start while this gate is red (SPEC 17).
+- P5 started on 2026-11-21 while this gate waits for protocol C alone (ADR-0053).
 
 - Working rules from 2026-11-08 (ADR-0027):
   - work the spec calls optional is listed in `BACKLOG.md` and not built;
