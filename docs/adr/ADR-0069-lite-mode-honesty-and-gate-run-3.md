@@ -65,6 +65,16 @@ The fourth gate run found where §1 and §2 did not reach (`docs/design-gates/20
    notes are polite live regions, the tile is not lit from an old reading, and a section caption
    wraps only when it would take more than half the row.
 
+## Run 6 (2026-11-22)
+
+10. **What TalkBack and the widget say follows §8 too.** Charging's sheets are built from the same
+    stale-aware reading as its page, and its spoken summary leaves out "power now". Now and the
+    Level widget share one old-reading verdict that names its end (`lastReadingLine`). The 2×1
+    widget's time takes the longest form that fits beside the level, from `dayClock`; it goes under
+    the level where two lines fit; and where nothing fits (the smallest size at large text) the
+    level is drawn muted and TalkBack says the time, rather than cutting it. Reason: the honest
+    choice that never truncates (SPEC 12.4); a tap opens Now, which shows the time.
+
 ## Verified
 
 Unit tests (sample counts, the 0.0 filter, the import threshold), every golden re-recorded and

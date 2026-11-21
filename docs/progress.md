@@ -234,7 +234,10 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   the time) plus a crushed section title. All fixed (ADR-0069 §7, §8), with stale and Lite goldens.
 - **Whole-app design gate, run 5 (2026-11-22).** Audit 0 critical, 1 major; critique 0 critical,
   2 major: Charging and Now's verdict still drew an old reading as now. Fixed (ADR-0069 §9).
-- **Still to come in P6:** design gate run 6, then run 7; two consecutive clean runs pass the gate.
+- **Whole-app design gate, run 6 (2026-11-22).** Audit 0 critical, 2 major; critique 0 critical,
+  3 major: Charging's TalkBack table and summary, the widget's verdict and its cut time. Fixed
+  (ADR-0069 §10).
+- **Still to come in P6:** design gate run 7, then run 8; two consecutive clean runs pass the gate.
 
 ### SPEC 18 status (2026-11-22)
 
@@ -264,7 +267,7 @@ phone runs (ADR-0053); "owner" means an owner hard stop.
 | Four widgets, tile, automation API | Done | P5, ADR-0065; not seen on the phone |
 | Export, import, delete all data | Done | ADR-0062; system pickers not seen on a device |
 | `impeccable detect design-lab/` zero | Done | P3 gate |
-| Two consecutive whole-app audit and critique runs | Not yet | Runs 1 to 5 each found majors, all fixed; run 6 next |
+| Two consecutive whole-app audit and critique runs | Not yet | Runs 1 to 6 each found majors, all fixed; run 7 next |
 | Screenshot suite in all themes, three font scales, two widths, both languages | Done | CI composes every screen; `verifyRoborazziDebug` over all twelve screenshot modules passed against the committed goldens on 2026-11-22 |
 | WCAG AA contrast; TalkBack script | Partly | `ContrastTest`; TalkBack script on a device: phone or AVD run |
 | No INTERNET | Done | `verifyReleaseManifestPermissions` in CI |
