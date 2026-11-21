@@ -4,11 +4,15 @@
 package io.github.akane599.coulomb.core.ui.insight
 
 import android.content.res.Resources
+import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.insight.Evidence
+import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
 import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.model.insight.RuleId
+import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.R
 import io.github.akane599.coulomb.core.ui.format.Formats
+import java.time.ZoneId
 import kotlin.math.roundToLong
 
 /** An insight in words: what happened, then what the user can do or why nothing can be done (SPEC 1.1, 9). */
@@ -187,6 +191,76 @@ public class InsightCopy(
         }
     }
 
+    /**
+     * "Why am I seeing this?" (SPEC 9.4): the rule, its threshold, the measured value and the span
+     * it covers, as a table. Times within [zone]'s today read as clock times; older ones name the day.
+     */
+    public fun evidence(
+        insight: Insight,
+        zone: ZoneId,
+        nowWallMs: Long,
+    ): DataTable {
+        val e = insight.evidence
+        val period =
+            if (e.fromWallMs == e.toWallMs) {
+                formats.clock(e.toWallMs, zone, nowWallMs)
+            } else {
+                formats.range(formats.clock(e.fromWallMs, zone, nowWallMs), formats.clock(e.toWallMs, zone, nowWallMs))
+            }
+        val rows =
+            listOfNotNull(
+                R.string.insight_row_rule to resources.getString(ruleName(insight.rule)),
+                R.string.insight_row_measured to value(e.measured, e.unit),
+                R.string.insight_row_threshold to value(e.threshold, e.unit),
+                e.values["median"]?.let { R.string.insight_row_baseline to value(it, e.unit) },
+                R.string.insight_row_period to period,
+            )
+        return DataTable(
+            title = resources.getString(R.string.insight_why_title),
+            columns = listOf(resources.getString(R.string.insight_column_what), resources.getString(R.string.insight_column_value)),
+            rows = rows.map { (label, value) -> listOf(resources.getString(label), value) },
+            provenance = provenance(insight.rule),
+        )
+    }
+
+    /** A measured value or a threshold in its unit, as the cards write it. */
+    public fun value(
+        value: Double,
+        unit: EvidenceUnit,
+    ): String =
+        when (unit) {
+            EvidenceUnit.HOURS -> formats.hours(value)
+            EvidenceUnit.MINUTES -> minutes(value)
+            EvidenceUnit.PERCENT -> if (value < 1) smallPercent(value) else share(value)
+            EvidenceUnit.PERCENT_PER_HOUR -> rate(value)
+            EvidenceUnit.PER_HOUR -> resources.getString(R.string.insight_per_hour, formats.decimal(value))
+            EvidenceUnit.COUNT -> count(value)
+            EvidenceUnit.CELSIUS -> celsius(value)
+            EvidenceUnit.WATTS -> formats.watts(value).joined()
+            EvidenceUnit.POINTS -> resources.getString(R.string.insight_points, formats.decimal(value))
+            EvidenceUnit.DAYS -> resources.getString(R.string.insight_days, count(value))
+            EvidenceUnit.MAH -> formats.mah(value).joined()
+        }
+
+    /** Where the rule's measured value comes from (SPEC 6.7). */
+    private fun provenance(rule: RuleId): Provenance =
+        when (rule) {
+            RuleId.POOR_DEEP_SLEEP,
+            RuleId.HIGH_SCREEN_OFF_DRAIN,
+            RuleId.ALARM_STORM,
+            RuleId.WEAK_SIGNAL_TAX,
+            RuleId.UNATTRIBUTED_GAP,
+            -> Provenance.DERIVED
+
+            RuleId.CAPACITY_DROP -> Provenance.ESTIMATED
+
+            RuleId.UPDATE_REGRESSION, RuleId.SELF_COST -> Provenance.MODELED
+
+            else -> Provenance.MEASURED
+        }
+
+    private fun ruleName(rule: RuleId): Int = RULE_NAMES.getValue(rule)
+
     private fun capacityDrop(e: Evidence): InsightText {
         val days = ((e.toWallMs - e.fromWallMs) / MS_PER_DAY).roundToLong()
         val body = listOf(share(e.values["fromPct"] ?: 0.0), share(e.values["toPct"] ?: 0.0), formats.integer(days))
@@ -215,6 +289,32 @@ public class InsightCopy(
     private fun celsius(degrees: Double): String = formats.celsius(degrees * DECI).joined()
 
     private companion object {
+        val RULE_NAMES: Map<RuleId, Int> =
+            RuleId.entries
+                .zip(
+                    listOf(
+                        R.string.insight_rule_r01,
+                        R.string.insight_rule_r02,
+                        R.string.insight_rule_r03,
+                        R.string.insight_rule_r04,
+                        R.string.insight_rule_r05,
+                        R.string.insight_rule_r06,
+                        R.string.insight_rule_r07,
+                        R.string.insight_rule_r08,
+                        R.string.insight_rule_r09,
+                        R.string.insight_rule_r10,
+                        R.string.insight_rule_r11,
+                        R.string.insight_rule_r12,
+                        R.string.insight_rule_r13,
+                        R.string.insight_rule_r14,
+                        R.string.insight_rule_r15,
+                        R.string.insight_rule_r16,
+                        R.string.insight_rule_r17,
+                        R.string.insight_rule_r18,
+                        R.string.insight_rule_r19,
+                        R.string.insight_rule_r20,
+                    ),
+                ).toMap()
         const val MS_PER_DAY = 86_400_000.0
         const val PERCENT = 100.0
         const val DECI = 10.0

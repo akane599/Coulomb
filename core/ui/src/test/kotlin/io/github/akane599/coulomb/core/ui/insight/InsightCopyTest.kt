@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.model.InsightState
+import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.model.insight.Evidence
 import io.github.akane599.coulomb.core.model.insight.EvidenceUnit
 import io.github.akane599.coulomb.core.model.insight.Insight
@@ -16,6 +17,7 @@ import io.github.akane599.coulomb.core.ui.format.Formats
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import java.time.ZoneId
 import java.util.Locale
 
 /** SPEC 9.3 and 11.10: the words are specific, carry their numbers in the locale's form, and exist in both languages. */
@@ -132,5 +134,43 @@ class InsightCopyTest {
         assertThat(copy.plain(all[18], null).body).contains("ölçülen 1.240 mAh tüketimin 806 mAh kadarını")
         assertThat(copy.plain(all[19], null).title).isEqualTo("Coulomb bir günde pilin %0,5 kadarını kullandı")
         assertThat(copy.plain(all[14], null).title).isEqualTo("Pil 2 sa 30 dk boyunca %100’de kaldı")
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun theEvidenceTableNamesTheRuleItsThresholdAndWhatWasMeasured() {
+        val copy = copy("en")
+        val zone = ZoneId.of("UTC")
+        val wakelock = all[0].copy(evidence = all[0].evidence.copy(unit = EvidenceUnit.HOURS))
+        val table = copy.evidence(wakelock, zone, now)
+        assertThat(table.title).isEqualTo("Why you are seeing this")
+        assertThat(table.rows.map { row -> row.map { it.replace('\u00A0', ' ') } })
+            .containsExactly(
+                listOf("Rule", "Excessive wakelock"),
+                listOf("Measured", "2 h 34 min"),
+                listOf("Threshold", "2 h"),
+                // From the day before to now: only the earlier end names its day.
+                listOf("Period", "Thu 08:00 – 08:00"),
+            ).inOrder()
+        assertThat(table.provenance).isEqualTo(Provenance.MEASURED)
+        // A rule that compares with the user's own past shows that too.
+        val night = all[3].copy(evidence = all[3].evidence.copy(unit = EvidenceUnit.PERCENT_PER_HOUR))
+        assertThat(copy.evidence(night, zone, now).rows.map { it.first() })
+            .containsExactly("Rule", "Measured", "Threshold", "Your usual", "Period")
+            .inOrder()
+        assertThat(copy.evidence(night, zone, now).provenance).isEqualTo(Provenance.DERIVED)
+    }
+
+    @Test
+    @Config(qualifiers = "tr")
+    fun everyRuleAndUnitHasItsWordsInTheTable() {
+        val copy = copy("tr")
+        for (insight in all) {
+            val table = copy.evidence(insight, ZoneId.of("UTC"), now)
+            assertThat(table.rows.flatten().none { it.isBlank() || it.contains(Regex("%\\d\\$")) }).isTrue()
+        }
+        for (unit in EvidenceUnit.entries) assertThat(copy.value(1.5, unit)).isNotEmpty()
+        assertThat(copy.value(0.3, EvidenceUnit.PERCENT)).isEqualTo("%0,3")
+        assertThat(copy.value(12.5, EvidenceUnit.PER_HOUR)).isEqualTo("Saatte 12,5")
     }
 }

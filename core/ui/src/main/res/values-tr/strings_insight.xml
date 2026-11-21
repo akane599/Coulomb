@@ -49,4 +49,45 @@
     <string name="insight_r19_body">Android’in güç modeli, ölçülen %2$s tüketimin %1$s kadarını uygulamalara ve donanıma atadı. Kalanı modelin yerleştiremediği gerçek tüketimdir; yapılacak bir şey yok.</string>
     <string name="insight_r20_title">Coulomb bir günde pilin %1$s kadarını kullandı</string>
     <string name="insight_r20_body">Kendi bütçesi %1$s. Hafif mod daha az veri toplar.</string>
+
+    <!-- The card's chrome and the evidence table (SPEC 9.4). -->
+    <string name="insight_severity_act">Eylem gerek</string>
+    <string name="insight_severity_watch">İzle</string>
+    <string name="insight_severity_info">Bilgi</string>
+    <string name="insight_more">Diğer seçenekler</string>
+    <string name="insight_snooze_day">Bir gün ertele</string>
+    <string name="insight_snooze_week">Bir hafta ertele</string>
+    <string name="insight_dismiss">Kapat</string>
+    <string name="insight_why">Bunu neden görüyorum?</string>
+    <string name="insight_why_title">Bunu neden görüyorsun</string>
+    <string name="insight_column_what">Ne</string>
+    <string name="insight_column_value">Değer</string>
+    <string name="insight_row_rule">Kural</string>
+    <string name="insight_row_measured">Ölçülen</string>
+    <string name="insight_row_threshold">Eşik</string>
+    <string name="insight_row_period">Dönem</string>
+    <string name="insight_row_baseline">Olağan değerin</string>
+    <string name="insight_per_hour">Saatte %1$s</string>
+    <string name="insight_days">%1$s gün</string>
+    <string name="insight_points">%1$s puan</string>
+    <string name="insight_rule_r01">Aşırı uyanık tutma</string>
+    <string name="insight_rule_r02">Uzun uyanık tutma</string>
+    <string name="insight_rule_r03">Yetersiz derin uyku</string>
+    <string name="insight_rule_r04">Yüksek ekran kapalı tüketim</string>
+    <string name="insight_rule_r05">Alarm yağmuru</string>
+    <string name="insight_rule_r06">Arka planda konum</string>
+    <string name="insight_rule_r07">Zayıf sinyal</string>
+    <string name="insight_rule_r08">Yoğun tarama</string>
+    <string name="insight_rule_r09">Tutulan sensör</string>
+    <string name="insight_rule_r10">Çok sayıda arka plan işi</string>
+    <string name="insight_rule_r11">Sıcak şarj</string>
+    <string name="insight_rule_r12">Sıcak pil</string>
+    <string name="insight_rule_r13">Yavaş şarj</string>
+    <string name="insight_rule_r14">Kapasite düşüşü</string>
+    <string name="insight_rule_r15">Uzun süre %%100</string>
+    <string name="insight_rule_r16">Kullanılmayan etkin uygulama</string>
+    <string name="insight_rule_r17">Derin Doze yok</string>
+    <string name="insight_rule_r18">Güncellemeden sonra artan tüketim</string>
+    <string name="insight_rule_r19">Atanamayan tüketim</string>
+    <string name="insight_rule_r20">Coulomb’un kendi maliyeti</string>
 </resources>

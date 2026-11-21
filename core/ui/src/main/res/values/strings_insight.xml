@@ -50,4 +50,45 @@
     <string name="insight_r19_body">Android\'s power model assigned %1$s of the measured %2$s to apps and hardware. The rest is real drain the model cannot place; there is nothing to act on.</string>
     <string name="insight_r20_title">Coulomb used %1$s of the battery in a day</string>
     <string name="insight_r20_body">Its own budget is %1$s. Lite mode collects less.</string>
+
+    <!-- The card's chrome and the evidence table (SPEC 9.4). -->
+    <string name="insight_severity_act">Act</string>
+    <string name="insight_severity_watch">Watch</string>
+    <string name="insight_severity_info">Info</string>
+    <string name="insight_more">More options</string>
+    <string name="insight_snooze_day">Snooze for a day</string>
+    <string name="insight_snooze_week">Snooze for a week</string>
+    <string name="insight_dismiss">Dismiss</string>
+    <string name="insight_why">Why am I seeing this?</string>
+    <string name="insight_why_title">Why you are seeing this</string>
+    <string name="insight_column_what">What</string>
+    <string name="insight_column_value">Value</string>
+    <string name="insight_row_rule">Rule</string>
+    <string name="insight_row_measured">Measured</string>
+    <string name="insight_row_threshold">Threshold</string>
+    <string name="insight_row_period">Period</string>
+    <string name="insight_row_baseline">Your usual</string>
+    <string name="insight_per_hour">%1$s an hour</string>
+    <string name="insight_days">%1$s days</string>
+    <string name="insight_points">%1$s points</string>
+    <string name="insight_rule_r01">Excessive wakelock</string>
+    <string name="insight_rule_r02">Long wakelock</string>
+    <string name="insight_rule_r03">Poor deep sleep</string>
+    <string name="insight_rule_r04">High screen-off drain</string>
+    <string name="insight_rule_r05">Alarm storm</string>
+    <string name="insight_rule_r06">Background location</string>
+    <string name="insight_rule_r07">Weak signal</string>
+    <string name="insight_rule_r08">Heavy scanning</string>
+    <string name="insight_rule_r09">Sensor held</string>
+    <string name="insight_rule_r10">Job churn</string>
+    <string name="insight_rule_r11">Hot charging</string>
+    <string name="insight_rule_r12">Hot battery</string>
+    <string name="insight_rule_r13">Slow charging</string>
+    <string name="insight_rule_r14">Capacity drop</string>
+    <string name="insight_rule_r15">Long at 100%%</string>
+    <string name="insight_rule_r16">Unused active app</string>
+    <string name="insight_rule_r17">Doze never deep</string>
+    <string name="insight_rule_r18">More drain after an update</string>
+    <string name="insight_rule_r19">Unattributed drain</string>
+    <string name="insight_rule_r20">Coulomb\'s own cost</string>
 </resources>
