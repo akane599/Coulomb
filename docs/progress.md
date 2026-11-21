@@ -120,7 +120,20 @@ Started 2026-11-21 under ADR-0053, while the P2 and P4 gates wait for protocols 
   from "no history" and can be moved without two fingers; Settings asks for the notification
   permission when an alarm is turned on; the Health widget shows its range and every widget picks
   its lines by fit; a no-helper preview says how to undo; the Action Center's Turkish is in "sen".
-  - Next: the whole-app audit and critique, repeated until two runs in a row find nothing above minor.
+- **Whole-app `/impeccable` gate, run 1 (2026-11-21).** One independent audit (16/20) and one
+  critique (27/40) over every screen, both languages and the goldens. No critical; the audit found
+  2 major and the critique 6, two of them the same; all fixed (ADR-0061,
+  `docs/design-gates/2026-11-21-audit-whole-app-run-1.md` and `…-critique-whole-app-run-1.md`, with
+  every minor's disposition). The fixes: icon buttons were black on the dark ground; Charging's
+  target note denied an alarm that ships; insight notifications open Now, Charging shows the insights
+  that ask for action and Now offers "Show N more"; R03 and R04 name their stretch; a stopped Shizuku
+  is no longer called a loss of access; the monitor notification and "Back" are in Turkish and a
+  check keeps both languages complete.
+  - Run 1 does not count. Next: run 2 and 3 with fresh reviewers; two clean runs in a row end the gate.
+- **Settings rows still to come (SPEC 14.4), all in P6:** Monitoring mode (Full, Lite), the two
+  sampling intervals, Theme with true black, Language, Units, Automation API, Data retention, the
+  Developer console, and the self-cost line of SPEC 6.9. Lite mode was once planned with P4's
+  Settings (ADR-0018); it moves to P6 with the rest.
 
 ## P4 Core screens (gate deferred: protocol C)
 
