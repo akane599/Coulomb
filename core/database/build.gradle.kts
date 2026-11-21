@@ -18,7 +18,9 @@ android {
 
 androidComponents {
     onVariants { variant ->
-        variant.hostTests.values.forEach { test -> test.sources.assets?.addStaticSourceDirectory("$projectDir/schemas") }
+        // The app ships them too: an imported bundle is built in its own schema version and then
+        // migrated like any database (ADR-0062 §10).
+        variant.sources.assets?.addStaticSourceDirectory("$projectDir/schemas")
     }
 }
 
