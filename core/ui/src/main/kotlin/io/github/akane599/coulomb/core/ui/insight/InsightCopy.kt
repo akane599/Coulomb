@@ -11,6 +11,7 @@ import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.core.model.insight.RuleId
 import io.github.akane599.coulomb.core.ui.DataTable
 import io.github.akane599.coulomb.core.ui.R
+import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.Formats
 import java.time.ZoneId
 import kotlin.math.roundToLong
@@ -51,8 +52,9 @@ public class InsightCopy(
                 text(
                     R.string.insight_r02_title,
                     listOf(minutes(e.measured)),
-                    R.string.insight_r02_body,
-                    listOf(app, e.labels["tag"].orEmpty()),
+                    // The tag is a raw identifier: it may wrap after its separators, and an empty one is not quoted.
+                    if (e.labels["tag"].isNullOrEmpty()) R.string.insight_r02_body_unnamed else R.string.insight_r02_body,
+                    listOf(app, breakable(e.labels["tag"].orEmpty())),
                 )
             }
 

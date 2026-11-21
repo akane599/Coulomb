@@ -151,13 +151,18 @@ private fun Page(
     val formats = rememberFormats()
     Column(Modifier.fillMaxWidth()) {
         Head(detail)
-        SectionTitle(stringResource(R.string.wake_in_window), provenance = Provenance.MEASURED)
+        // The mark is for figures: a section that only says why it has none carries no mark.
+        SectionTitle(
+            stringResource(R.string.wake_in_window),
+            provenance = detail.entry?.let { Provenance.MEASURED },
+            // On a compact window Drain's selector is not on screen here.
+            caption = spanName(detail.span, formats),
+        )
         InWindow(detail.entry, detail.coverage, formats)
         if (detail.nights.isNotEmpty()) {
             SectionTitle(stringResource(R.string.wake_nights), provenance = Provenance.MEASURED)
             Nights(detail.nights, zone, nowMs, formats)
         }
-        // The mark is for figures: a section that only says why it has none carries no mark.
         SectionTitle(stringResource(R.string.wake_apps), provenance = detail.apps?.takeIf { it.wakes > 0 }?.let { Provenance.MEASURED })
         Apps(detail.apps, onOpenApp, zone, nowMs, formats)
         SectionTitle(stringResource(R.string.wake_do), provenance = null)
@@ -223,7 +228,7 @@ private fun InWindow(
             CoulombFigure(
                 stringResource(R.string.wake_held),
                 entry.screenOffShare?.let {
-                    stringResource(R.string.drain_screen_off_share, formats.share(it))
+                    stringResource(R.string.wake_screen_off_share, formats.share(it))
                 },
             ) {
                 Text(formats.held(entry.totalMs), color = colors.textPrimary, style = type.title)
@@ -254,22 +259,33 @@ private fun Nights(
     nights.forEachIndexed { index, night ->
         val entry = night.entry
         val amount = entry?.let { if (byTime) it.totalMs else it.count } ?: 0
-        val value =
-            when {
-                entry == null && night.coverage == Coverage.WHOLE -> stringResource(R.string.wake_night_none)
-                entry == null -> stringResource(R.string.wake_night_not_collected)
-                byTime -> formats.held(entry.totalMs)
-                else -> pluralStringResource(R.plurals.drain_times, entry.count.quantity(), formats.integer(entry.count))
-            }
         DataRow(
             name = formats.clock(night.night.startWallMs, zone, nowMs),
             detail = stringResource(R.string.wake_night_length, formats.duration(night.night.durationMs / MS_PER_MINUTE)),
-            value = value,
+            value = nightValue(night, byTime, formats),
             mark = null,
             share = if (entry != null && most > 0) amount.toDouble() / most else null,
             first = index == 0,
         )
     }
+}
+
+/** A night's figure: none, not collected, or its time or count, "at least" where the night was collected in part. */
+@Composable
+private fun nightValue(
+    night: WakeNight,
+    byTime: Boolean,
+    formats: Formats,
+): String {
+    val entry = night.entry
+    val figure =
+        when {
+            entry == null && night.coverage == Coverage.WHOLE -> stringResource(R.string.wake_night_none)
+            entry == null -> stringResource(R.string.wake_night_not_collected)
+            byTime -> formats.held(entry.totalMs)
+            else -> pluralStringResource(R.plurals.drain_times, entry.count.quantity(), formats.integer(entry.count))
+        }
+    return if (entry != null && night.coverage == Coverage.PARTIAL) stringResource(R.string.wake_at_least, figure) else figure
 }
 
 /** The apps that took the first wakelock after this wake, or why none can be named. */
@@ -325,11 +341,20 @@ private fun Apps(
 
 /** "What you can do" (SPEC 10.5): by what the record is, then by its part of the phone. Often nothing. */
 @StringRes
-private fun advice(detail: WakeSourceDetail): Int =
-    when {
-        detail.kind == WakeKind.SUSPEND_ABORT -> R.string.wake_do_abort
-        else -> ADVICE.getValue(detail.subsystem)
-    }
+private fun advice(detail: WakeSourceDetail): Int {
+    // "An app above" is said only under a list of apps.
+    val listed = detail.apps?.apps?.isNotEmpty() == true && detail.apps?.let { it.knownMs >= MS_PER_MINUTE && it.wakes > 0 } == true
+    val advice = if (detail.kind == WakeKind.SUSPEND_ABORT) R.string.wake_do_abort else ADVICE.getValue(detail.subsystem)
+    return if (listed) advice else WITHOUT_APPS[advice] ?: advice
+}
+
+/** The same advice where no app is listed above it. */
+private val WITHOUT_APPS: Map<Int, Int> =
+    mapOf(
+        R.string.wake_do_mobile to R.string.wake_do_mobile_no_apps,
+        R.string.wake_do_wifi to R.string.wake_do_wifi_no_apps,
+        R.string.wake_do_abort to R.string.wake_do_abort_no_apps,
+    )
 
 private val ADVICE: Map<WakeSubsystem, Int> =
     mapOf(

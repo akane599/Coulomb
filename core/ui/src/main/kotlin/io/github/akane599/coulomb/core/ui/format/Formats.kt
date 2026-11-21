@@ -21,6 +21,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -59,6 +60,7 @@ public class Formats(
     secondsPattern: String,
     hourPattern: String = clockPattern,
     dayClockPattern: String = "EEE $clockPattern",
+    dateClockPattern: String = "MMM d, $clockPattern",
     weekdayPattern: String = "EEE",
     dayPattern: String = "MMM d",
     dayYearPattern: String = "MMM d, yyyy",
@@ -83,6 +85,7 @@ public class Formats(
     private val clockSeconds = DateTimeFormatter.ofPattern(secondsPattern, locale)
     private val hour = DateTimeFormatter.ofPattern(hourPattern, locale)
     private val dayClock = DateTimeFormatter.ofPattern(dayClockPattern, locale)
+    private val dateClock = DateTimeFormatter.ofPattern(dateClockPattern, locale)
     private val weekday = DateTimeFormatter.ofPattern(weekdayPattern, locale)
     private val day = DateTimeFormatter.ofPattern(dayPattern, locale)
     private val dayYear = DateTimeFormatter.ofPattern(dayYearPattern, locale)
@@ -313,7 +316,8 @@ public class Formats(
 
     /**
      * [clock] that names the weekday when [wallMs] falls on another day than [nowMs]: "9:30 PM" today,
-     * "Thu 1:20 AM" otherwise, so a time a day or more away never reads as today's.
+     * "Thu 1:20 AM" otherwise, so a time a day or more away never reads as today's. A week or more
+     * away a weekday would read as this week's, so the date takes its place: "Nov 14, 1:20 AM".
      */
     public fun clock(
         wallMs: Long,
@@ -322,8 +326,22 @@ public class Formats(
     ): String {
         val time = Instant.ofEpochMilli(wallMs).atZone(zone)
         val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
-        return (if (time.toLocalDate() == today) clock else dayClock).format(time)
+        val daysAway = abs(ChronoUnit.DAYS.between(time.toLocalDate(), today))
+        return when {
+            daysAway == 0L -> clock
+            daysAway < DAYS_PER_WEEK -> dayClock
+            else -> dateClock
+        }.format(time)
     }
+
+    /**
+     * A clock time that always names its weekday: "Thu 7:42 AM". For a surface drawn once and read
+     * later, such as a widget, where "today" at drawing is not today at reading.
+     */
+    public fun dayClock(
+        wallMs: Long,
+        zone: ZoneId,
+    ): String = dayClock.format(Instant.ofEpochMilli(wallMs).atZone(zone))
 
     /**
      * An axis tick on the hour: "12 PM" in the 12-hour setting, "12:00" in the 24-hour one. Midnight
@@ -361,6 +379,7 @@ public class Formats(
         private const val MA_PER_A = 1_000.0
         private const val MV_PER_V = 1_000.0
         private const val MINUTES_PER_HOUR = 60L
+        private const val DAYS_PER_WEEK = 7L
         private const val MS_PER_MINUTE = 60_000L
         private const val MINUS = '−'
         private const val BYTES_STEP = 1_000L
@@ -433,6 +452,7 @@ private fun formats(
         // A tick needs no minutes in the 12-hour setting ("12 PM"); 24-hour keeps "12:00".
         hourPattern = DateFormat.getBestDateTimePattern(locale, if (is24Hour) "Hm" else "h"),
         dayClockPattern = DateFormat.getBestDateTimePattern(locale, "EEE${hours}m"),
+        dateClockPattern = DateFormat.getBestDateTimePattern(locale, "MMMd${hours}m"),
         weekdayPattern = DateFormat.getBestDateTimePattern(locale, "EEE"),
         dayPattern = DateFormat.getBestDateTimePattern(locale, "MMMd"),
         dayYearPattern = DateFormat.getBestDateTimePattern(locale, "MMMdyyyy"),

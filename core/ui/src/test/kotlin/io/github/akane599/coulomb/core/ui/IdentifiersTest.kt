@@ -14,6 +14,11 @@ class IdentifiersTest {
             breakable("HalcyonPush:NotificationWakeLock"),
         )
         assertEquals("app.\u200Bhalcyon/\u200B.\u200Bsync.\u200BSyncJob", breakable("app.halcyon/.sync.SyncJob"))
+        // A device-tree name: after its comma and hyphens, never inside a part.
+        assertEquals(
+            "qcom,\u200Bglink-\u200Bsmem-\u200Bnative-\u200Bxprt-\u200Bmodem",
+            breakable("qcom,glink-smem-native-xprt-modem"),
+        )
     }
 
     @Test

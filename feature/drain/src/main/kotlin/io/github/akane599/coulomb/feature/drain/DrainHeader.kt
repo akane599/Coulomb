@@ -50,6 +50,21 @@ import io.github.akane599.coulomb.core.ui.format.Formats
 import java.time.LocalDate
 import java.time.ZoneId
 
+/** The window's name, as the selector says it. */
+@Composable
+internal fun spanName(
+    span: DrainSpan,
+    formats: Formats,
+): String =
+    when (span) {
+        DrainSpan.SinceUnplugged -> stringResource(R.string.drain_since_unplugged)
+        DrainSpan.Today -> stringResource(R.string.drain_today)
+        DrainSpan.Last24Hours -> stringResource(R.string.drain_last_24h)
+        DrainSpan.LastNight -> stringResource(R.string.drain_last_night)
+        is DrainSpan.Night -> stringResource(R.string.drain_night)
+        is DrainSpan.Days -> formats.days(span.first, span.last)
+    }
+
 /** The window selector (DESIGN.md): three presets and More, which names a sheet window while one is chosen. */
 @Composable
 internal fun WindowChoice(

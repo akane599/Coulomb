@@ -8,14 +8,14 @@
     <string name="appdetail_window_night">Ekran kapalı süre</string>
     <string name="appdetail_window_last_night">Dün gece</string>
     <string name="appdetail_window_days">%1$s</string>
-    <string name="appdetail_window_note">Aralık: %1$s. Drain’de değiştirebilirsin.</string>
+    <string name="appdetail_window_note">Aralık: %1$s. Tüketim’de değiştirebilirsin.</string>
 
     <string name="appdetail_share_of_measured">Ölçülen %2$s içinde %1$s</string>
     <string name="appdetail_share_of_modeled">Android’in modellediği %2$s içinde %1$s</string>
     <string name="appdetail_share_scaled">Ölçülen %2$s içinde %1$s, Android’in modelinden ölçeklendi</string>
     <string name="appdetail_lower_bound">Daha kısa aralıklardan toplandı; bu değer ve aşağıdaki sayılar biraz düşük olabilir.</string>
     <string name="appdetail_charged">Arada şarj oldu; toplam yalnızca pilde geçen süreyi sayar.</string>
-    <string name="appdetail_no_use">Bu aralıkta bu uygulama için pil kullanımı kaydedilmedi. Küçük miktarlar Drain’de Küçük uygulamalar altında sayılır.</string>
+    <string name="appdetail_no_use">Bu aralıkta bu uygulama için pil kullanımı kaydedilmedi. Küçük miktarlar Tüketim’de Küçük uygulamalar altında sayılır.</string>
 
     <string name="appdetail_where">Nereye gitti</string>
     <string name="appdetail_components_chart">Bileşenlere göre %1$s: %2$s</string>

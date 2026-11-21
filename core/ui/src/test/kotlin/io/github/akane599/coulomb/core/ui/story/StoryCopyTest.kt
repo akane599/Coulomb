@@ -115,7 +115,7 @@ class StoryCopyTest {
                 "33% of that came from Halcyon keeping the phone awake for 34 min.",
                 "20% of it could not be assigned to any app or part.",
                 "The phone itself, idle and on standby, took 12% of it.",
-                "Halcyon kept the phone awake for 2 h 34 min.",
+                "Halcyon kept the phone awake for 2 h 34 min in a day.",
             ).inOrder()
         // Each sentence says what it is about, so a screen can link it.
         assertThat(copy.sentences(full).map { it.about })
@@ -135,7 +135,7 @@ class StoryCopyTest {
                 "Bunun %33 kadarı Halcyon’un telefonu 34 dk uyanık tutmasından geldi.",
                 "Bunun %20 kadarı hiçbir uygulamaya ya da parçaya atanamadı.",
                 "Telefonun kendisi, boşta ve beklemede, bunun %12 kadarını aldı.",
-                "Halcyon telefonu 2 sa 34 dk uyanık tuttu.",
+                "Halcyon telefonu bir günde 2 sa 34 dk uyanık tuttu.",
             ).inOrder()
         // A name that cannot take the suffix by rule gets a wording that needs none.
         val odd = full.copy(causes = listOf(StoryCause.App(10_300, "Maps 2", 0.5, wakeups = 12, heldAwakeMs = null)), anomaly = null)
@@ -184,7 +184,7 @@ class StoryCopyTest {
                 "Halcyon used 402 mAh in this stretch, 33% of the drain.",
                 "It woke the phone 41 times.",
                 "It kept the phone awake for 34 min.",
-                "Halcyon kept the phone awake for 2 h 34 min.",
+                "Halcyon kept the phone awake for 2 h 34 min in a day.",
             ).inOrder()
         assertThat(copy.plain(app.copy(appMah = null, appShare = null, causes = emptyList(), anomaly = null)))
             .containsExactly("Halcyon has no recorded use in this stretch.")

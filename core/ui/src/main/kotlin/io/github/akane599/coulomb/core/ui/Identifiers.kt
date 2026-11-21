@@ -7,7 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
 
 /**
- * A raw identifier ("PowerManagerService.WakeLocks", "app.halcyon/.sync.SyncJob") that may
+ * A raw identifier ("PowerManagerService.WakeLocks", "app.halcyon/.sync.SyncJob",
+ * "qcom,glink-smem-native-xprt-modem") that may
  * wrap after its separators, or inside a long camel-case name between its words, rather than
  * mid-word: a zero-width space marks each, but only inside a run without spaces long enough to
  * need it, so a name that can break between words still does and leaves no fragment alone on a
@@ -20,10 +21,10 @@ public fun breakable(raw: String): String =
             .replace(SEPARATORS) { it.value + ZERO_WIDTH_SPACE }
     }
 
-private val SEPARATORS = Regex("[./_:]")
+private val SEPARATORS = Regex("[./_:,-]")
 
 /** A name between separators too long for a narrow column, which alone breaks at its humps. */
-private val LONG_WORD = Regex("[^./_:\\s]{16,}")
+private val LONG_WORD = Regex("[^./_:,\\s-]{16,}")
 
 /** A lower-case letter followed by an upper-case one: "Notification|Wake|Lock". */
 private val CAMEL_HUMP = Regex("(\\p{Ll})(\\p{Lu})")

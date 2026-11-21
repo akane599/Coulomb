@@ -232,7 +232,7 @@
     <string name="wake_no_window">Bu aralıkta okunacak kayıt yok. Tüketim’de başka bir aralık seç.</string>
     <string name="wake_in_window">Bu aralıkta</string>
     <string name="wake_held">Tutuldu</string>
-    <string name="wake_count">Kez</string>
+    <string name="wake_count">Sayı</string>
     <string name="wake_woke">Telefonu uyandırdı</string>
     <string name="wake_none_in_window">Bu aralıkta görülmedi.</string>
     <string name="wake_not_collected">Bu aralıkta toplanmadı; çalışıp çalışmadığını Coulomb söyleyemez.</string>
@@ -240,6 +240,8 @@
     <string name="wake_nights">Gece gece</string>
     <string name="wake_night_length">Ekran %1$s kapalıydı</string>
     <string name="wake_night_none">Yok</string>
+    <string name="wake_at_least">En az %1$s</string>
+    <string name="wake_screen_off_share">%1$s ekran kapalıyken</string>
     <string name="wake_night_not_collected">Toplanmadı</string>
     <string name="wake_apps">Ardından gelen uygulamalar</string>
     <string name="wake_apps_no_history">Android’in geçmişi bunun ne zaman tutulduğunu kaydetmez; bu yüzden hiçbir uygulama onunla ilişkilendirilemez.</string>
@@ -254,8 +256,8 @@
         <item quantity="other">%1$s uyanmadan sonra bu sürede hiçbir şey uyanık tutma almadı.</item>
     </plurals>
     <plurals name="wake_apps_unnamed">
-        <item quantity="one">%1$s uyanmadan sonra geçmiş, onu kimin aldığını adlandırmıyor.</item>
-        <item quantity="other">%1$s uyanmadan sonra geçmiş, onu kimin aldığını adlandırmıyor.</item>
+        <item quantity="one">%1$s uyanmadan sonra ilk uyanık tutmayı kimin aldığı geçmişte yazmıyor.</item>
+        <item quantity="other">%1$s uyanmadan sonra ilk uyanık tutmayı kimin aldığı geçmişte yazmıyor.</item>
     </plurals>
     <plurals name="wake_app_wakes">
         <item quantity="one">%1$s uyanma</item>
@@ -267,9 +269,11 @@
     </plurals>
     <string name="wake_do">Ne yapabilirsin</string>
     <string name="wake_do_mobile">Mobil veri ve şebeke sinyalleşmesi modemi uyandırır. Genellikle arka planda eşitleme yapan ya da bildirim alan uygulamalardan kaynaklanır; zayıf sinyal her uyanmayı uzatır. Yukarıda bir uygulama öne çıkıyorsa arka plan verisini kısıtlamak işe yarar.</string>
+    <string name="wake_do_mobile_no_apps">Mobil veri ve şebeke sinyalleşmesi modemi uyandırır. Genellikle arka planda eşitleme yapan ya da bildirim alan uygulamalardan kaynaklanır; zayıf sinyal her uyanmayı uzatır. Tüketim’deki Kısmi uyanık tutmalar ve Alarmlar grupları arka planda hangi uygulamaların çalıştığını gösterir.</string>
     <string name="wake_do_wifi">Wi-Fi trafiği telefonu uyandırır: bildirimler, eşitleme ve ağdaki diğer cihazların ona seslenmesi. Yukarıda bir uygulama öne çıkıyorsa eşitleme ayarlarına bak. Ağın kendi trafiğini durdurmak senin elinde değil.</string>
-    <string name="wake_do_bluetooth">Bağlı bir saat, kulaklık ya da takip cihazı bunu meşgul eder. Kullanmadığın cihazın bağlantısını kesmek tek çaredir.</string>
-    <string name="wake_do_gps">Bir uygulama konum istiyor. Konum iznini “yalnızca uygulamayı kullanırken” yapmak arka plandaki istekleri durdurur.</string>
+    <string name="wake_do_wifi_no_apps">Wi-Fi trafiği telefonu uyandırır: bildirimler, eşitleme ve ağdaki diğer cihazların ona seslenmesi. Tüketim’deki Kısmi uyanık tutmalar ve Alarmlar grupları arka planda hangi uygulamaların çalıştığını gösterir. Ağın kendi trafiğini durdurmak senin elinde değil.</string>
+    <string name="wake_do_bluetooth">Genellikle bağlı bir saat, kulaklık ya da takip cihazı bunu meşgul eder. Kullanmadığın cihazın bağlantısını kesmek tek çaredir.</string>
+    <string name="wake_do_gps">Genellikle bir uygulama konum istiyordur. Uygulamanın konum iznini “yalnızca uygulamayı kullanırken” yapmak arka plandaki istekleri durdurur.</string>
     <string name="wake_do_nfc">NFC’yi kapatmak dışında bir şey yapılamaz.</string>
     <string name="wake_do_input">Bir şey yapılamaz. Bu, telefonun bir dokunuşa ya da tuşa verdiği yanıt.</string>
     <string name="wake_do_fingerprint">Bir şey yapılamaz. Sensör parmağı bekler; cepte dokunulduğunda sayı artar.</string>
@@ -281,5 +285,6 @@
     <string name="wake_do_android">Burada yapılacak bir şey yok. Bu Android’in kendi işleyişi; arkasındaki uygulamalar Tüketim’de Kısmi uyanık tutmalar altında.</string>
     <string name="wake_do_other">Coulomb’un bildiği bir şey yok. Bu sürücünün kendi kaydı ve onu değiştirdiği bilinen bir ayar yok.</string>
     <string name="wake_do_abort">Çoğu zaman bir şey yapılamaz. Telefon, bir şey hâlâ meşgulken uyumaya çalıştı; ad neyin meşgul olduğunu söyler. Yukarıda tek bir uygulamanın yanındaki yüksek sayı o uygulamayı işaret eder.</string>
+    <string name="wake_do_abort_no_apps">Çoğu zaman bir şey yapılamaz. Telefon, bir şey hâlâ meşgulken uyumaya çalıştı; ad neyin meşgul olduğunu söyler.</string>
     <string name="wake_title">Uyandırma kaynağı</string>
 </resources>

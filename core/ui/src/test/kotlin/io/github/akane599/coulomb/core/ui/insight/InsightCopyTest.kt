@@ -111,7 +111,7 @@ class InsightCopyTest {
     @Config(qualifiers = "en")
     fun englishCarriesItsNumbers() {
         val copy = copy("en")
-        assertThat(copy.plain(all[0], "Halcyon").title).isEqualTo("Halcyon kept the phone awake for 2 h 34 min")
+        assertThat(copy.plain(all[0], "Halcyon").title).isEqualTo("Halcyon kept the phone awake for 2 h 34 min in a day")
         assertThat(copy.plain(all[0], "Halcyon").body).startsWith("Android counts more than 2 h of wakelocks")
         assertThat(copy.plain(all[1], null).body).startsWith("An app held “*job*/sync” through one session.")
         assertThat(copy.plain(all[3], null).title).isEqualTo("Screen-off drain was 1.2 %/h")
@@ -121,7 +121,7 @@ class InsightCopyTest {
         assertThat(copy.plain(all[11], null).body).startsWith("Above 45.0 °C a battery ages quickly.")
         assertThat(copy.plain(all[13], null).body).startsWith("From 95% to 92% within 30 days.")
         assertThat(copy.plain(all[18], null).title).isEqualTo("35% of the drain is unattributed")
-        assertThat(copy.plain(all[18], null).body).startsWith("Android's power model assigned 806 mAh of the measured 1,240 mAh")
+        assertThat(copy.plain(all[18], null).body).startsWith("Android’s power model assigned 806 mAh of the measured 1,240 mAh")
         assertThat(copy.plain(all[19], null).title).isEqualTo("Coulomb used 0.5% of the battery in a day")
     }
 
@@ -129,7 +129,7 @@ class InsightCopyTest {
     @Config(qualifiers = "tr")
     fun turkishCarriesItsNumbersInItsOwnForm() {
         val copy = copy("tr")
-        assertThat(copy.plain(all[0], "Halcyon").title).isEqualTo("Halcyon telefonu 2 sa 34 dk uyanık tuttu")
+        assertThat(copy.plain(all[0], "Halcyon").title).isEqualTo("Halcyon telefonu bir günde 2 sa 34 dk uyanık tuttu")
         // SPEC 9.3's own examples of the form: "0,8 %/sa", "1.240 mAh".
         assertThat(copy.plain(all[3], null).title).isEqualTo("Ekran kapalıyken tüketim 1,2 %/sa oldu")
         assertThat(copy.plain(all[9], "Halcyon").title).isEqualTo("Halcyon bir günde 1.240 arka plan işi çalıştırdı")

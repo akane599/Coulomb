@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -64,6 +65,9 @@ private val ChipPadding = 10.dp
 
 /** The 48 dp overflow target takes the chip's 28 dp in the head, 10 dp hanging out above and below. */
 private val OverflowHang = 10.dp
+
+/** About 70 characters of Body. */
+private val TextMeasure = 560.dp
 
 /** A severity as a chip: Act is `critical`, Watch `caution`, Info `text-primary` on `surface-raised` (DESIGN.md, Chips). */
 @Composable
@@ -123,15 +127,21 @@ public fun InsightCard(
         Row(Modifier.fillMaxWidth().heightIn(min = ChipHeight), verticalAlignment = Alignment.CenterVertically) {
             SeverityChip(severity)
             Spacer(Modifier.weight(1f))
-            Overflow(actions, Modifier.hangVertically(OverflowHang).offset(x = CoulombSpacing.Space12))
+            Overflow(actions, text.title, Modifier.hangVertically(OverflowHang).offset(x = CoulombSpacing.Space12))
         }
+        // On a wide window the card is wider than a line should be long (SPEC 11.3).
         Text(
             text.title,
-            Modifier.padding(top = CoulombSpacing.Space12).semantics { heading() },
+            Modifier.widthIn(max = TextMeasure).padding(top = CoulombSpacing.Space12).semantics { heading() },
             color = colors.textPrimary,
             style = type.bodySubhead,
         )
-        Text(text.body, Modifier.padding(top = CoulombSpacing.Space4), color = colors.textSecondary, style = type.body)
+        Text(
+            text.body,
+            Modifier.widthIn(max = TextMeasure).padding(top = CoulombSpacing.Space4),
+            color = colors.textSecondary,
+            style = type.body,
+        )
         FlowRow(
             Modifier.padding(top = CoulombSpacing.Space8),
             horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space8),
@@ -151,12 +161,14 @@ public fun InsightCard(
 @Composable
 private fun Overflow(
     actions: InsightCardActions,
+    title: String,
     modifier: Modifier = Modifier,
 ) {
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
         CompositionLocalProvider(LocalContentColor provides CoulombTheme.colors.textSecondary) {
-            CoulombIconButton(CoulombIcons.MoreVert, stringResource(R.string.insight_more), onClick = { open = true })
+            // Named with its card: with two cards, "More options" twice says nothing.
+            CoulombIconButton(CoulombIcons.MoreVert, stringResource(R.string.insight_more_for, title), onClick = { open = true })
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             for ((label, run) in listOf(
