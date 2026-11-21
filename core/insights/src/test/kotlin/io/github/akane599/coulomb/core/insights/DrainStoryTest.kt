@@ -49,7 +49,14 @@ class DrainStoryTest {
     fun aStoryNamesTheThreeLargestCausesLargestFirst() {
         val story =
             DrainStory.compose(
-                StoryInput(StorySubject.ScreenOff, night, totalMah = 100.0, apps = apps, deviceMah = 8.0, deepSleepShare = 0.91),
+                StoryInput(
+                    StorySubject.ScreenOff(overnight = true),
+                    night,
+                    totalMah = 100.0,
+                    apps = apps,
+                    deviceMah = 8.0,
+                    deepSleepShare = 0.91,
+                ),
             )
         assertThat(story.causes)
             .containsExactly(
@@ -87,10 +94,10 @@ class DrainStoryTest {
                 // More severe than any, but from the day before.
                 insight(5, RuleId.HOT_BATTERY, null, fromWallMs = now - 30 * hour, toWallMs = now - 29 * hour),
             )
-        val story = DrainStory.compose(StoryInput(StorySubject.ScreenOff, night, 100.0, apps, open = open))
+        val story = DrainStory.compose(StoryInput(StorySubject.ScreenOff(overnight = true), night, 100.0, apps, open = open))
         // Two Act insights: the newer one.
         assertThat(story.anomaly?.id).isEqualTo(3)
-        assertThat(DrainStory.compose(StoryInput(StorySubject.ScreenOff, night, 100.0, apps)).anomaly).isNull()
+        assertThat(DrainStory.compose(StoryInput(StorySubject.ScreenOff(overnight = true), night, 100.0, apps)).anomaly).isNull()
     }
 
     @Test

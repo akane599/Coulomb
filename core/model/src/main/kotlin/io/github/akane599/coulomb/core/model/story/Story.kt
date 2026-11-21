@@ -10,8 +10,10 @@ public sealed interface StorySubject {
     /** The open discharge: since the charger was unplugged. */
     public data object SinceUnplugged : StorySubject
 
-    /** A stretch with the screen off, such as a night. */
-    public data object ScreenOff : StorySubject
+    /** A stretch with the screen off; [overnight] when it is the night's long one. */
+    public data class ScreenOff(
+        val overnight: Boolean,
+    ) : StorySubject
 
     /** One app in a window. A null [label] has no name yet. */
     public data class App(

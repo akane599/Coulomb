@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="story_full_stop">.</string>
+    <string name="story_unplugged">Şarjdan çıkalı %1$s oldu ve pil %2$s azaldı.</string>
+    <string name="story_unplugged_flat">Şarjdan çıkalı %1$s oldu; seviye henüz değişmedi.</string>
+    <string name="story_night">Gece ekran %1$s kapalıydı ve pil %2$s azaldı (%3$s).</string>
+    <string name="story_night_no_rate">Gece ekran %1$s kapalıydı ve pil %2$s azaldı.</string>
+    <string name="story_night_flat">Gece ekran %1$s kapalıydı; seviye değişmedi.</string>
+    <string name="story_screen_off">Ekran %1$s kapalıydı ve pil %2$s azaldı (%3$s).</string>
+    <string name="story_screen_off_no_rate">Ekran %1$s kapalıydı ve pil %2$s azaldı.</string>
+    <string name="story_screen_off_flat">Ekran %1$s kapalıydı; seviye değişmedi.</string>
+    <string name="story_rate">%1$s %2$s</string>
+    <string name="story_app">%1$s bu sürede %2$s kullandı; tüketimin %3$s kadarı.</string>
+    <string name="story_app_none">%1$s için bu sürede kayıtlı kullanım yok.</string>
+    <string name="story_app_wakeups">Telefonu %1$s kez uyandırdı.</string>
+    <string name="story_app_held">Telefonu %1$s uyanık tuttu.</string>
+
+    <string name="story_half_subject">yarısı</string>
+    <string name="story_half_object">yarısını</string>
+    <string name="story_share_subject">%1$s kadarı</string>
+    <string name="story_share_object">%1$s kadarını</string>
+    <!-- Used when the app's name cannot take the genitive suffix by rule. -->
+    <string name="story_owner">%1$s uygulamasının</string>
+    <string name="story_cause_wakeups">Bunun %1$s %2$s telefonu %3$s kez uyandırmasından geldi.</string>
+    <string name="story_cause_held">Bunun %1$s %2$s telefonu %3$s uyanık tutmasından geldi.</string>
+    <string name="story_cause_app">%2$s bunun %1$s kullandı.</string>
+    <string name="story_cause_device">Telefonun kendisi, boşta ve beklemede, bunun %1$s aldı.</string>
+    <string name="story_cause_unattributed">Bunun %1$s hiçbir uygulamaya ya da parçaya atanamadı.</string>
+    <!-- Used when the percentage's suffix cannot be formed by rule. -->
+    <string name="story_percent_in">%1$s kadarında</string>
+    <string name="story_deep_sleep">Cihaz zamanın %1$s derin uykudaydı.</string>
+</resources>

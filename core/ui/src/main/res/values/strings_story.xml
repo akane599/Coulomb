@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: The Coulomb contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- SPEC 9.3 Drain Story: a verdict, up to three causes, at most one anomaly. No sentence passes 22 words. -->
+    <string name="story_full_stop">.</string>
+    <string name="story_unplugged">Since unplugged %1$s ago, the battery fell %2$s.</string>
+    <string name="story_unplugged_flat">Unplugged %1$s ago; the level hasn’t changed yet.</string>
+    <string name="story_night">Your screen was off for %1$s overnight and the battery fell %2$s (%3$s).</string>
+    <string name="story_night_no_rate">Your screen was off for %1$s overnight and the battery fell %2$s.</string>
+    <string name="story_night_flat">Your screen was off for %1$s overnight; the level did not change.</string>
+    <string name="story_screen_off">Your screen was off for %1$s and the battery fell %2$s (%3$s).</string>
+    <string name="story_screen_off_no_rate">Your screen was off for %1$s and the battery fell %2$s.</string>
+    <string name="story_screen_off_flat">Your screen was off for %1$s; the level did not change.</string>
+    <string name="story_rate">%1$s %2$s</string>
+    <string name="story_app">%1$s used %2$s in this stretch, %3$s of the drain.</string>
+    <string name="story_app_none">%1$s has no recorded use in this stretch.</string>
+    <string name="story_app_wakeups">It woke the phone %1$s times.</string>
+    <string name="story_app_held">It kept the phone awake for %1$s.</string>
+
+    <string name="story_half_subject">Half</string>
+    <string name="story_half_object">half</string>
+    <string name="story_share_subject">%1$s</string>
+    <string name="story_share_object">%1$s</string>
+    <string name="story_owner">%1$s</string>
+    <string name="story_cause_wakeups">%1$s of that came from %2$s waking the phone %3$s times.</string>
+    <string name="story_cause_held">%1$s of that came from %2$s keeping the phone awake for %3$s.</string>
+    <string name="story_cause_app">%2$s used %1$s of it.</string>
+    <string name="story_cause_device">The phone itself, idle and on standby, took %1$s of it.</string>
+    <string name="story_cause_unattributed">%1$s of it could not be assigned to any app or part.</string>
+    <string name="story_percent_in">%1$s</string>
+    <string name="story_deep_sleep">The phone was in deep sleep %1$s of the time.</string>
+</resources>
