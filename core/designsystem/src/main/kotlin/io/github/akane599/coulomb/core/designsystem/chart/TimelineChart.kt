@@ -344,6 +344,16 @@ internal class TimeScale(
         return if (rtl) right - share * (right - left) else left + share * (right - left)
     }
 
+    /**
+     * The part of [marks], in time order and not overlapping, that touches the window: a week of
+     * wakeups is not placed to draw fifteen minutes of them (SPEC 10.6: virtualized by range).
+     */
+    fun inWindow(marks: List<TrackMark>): List<TrackMark> {
+        val first = marks.binarySearch { if (it.toMs < fromMs) -1 else 1 }.let { -it - 1 }
+        val end = marks.binarySearch { if (it.fromMs <= toMs) -1 else 1 }.let { -it - 1 }
+        return if (first < end) marks.subList(first, end) else emptyList()
+    }
+
     /** The time at pixel [x], kept inside the window. */
     fun at(x: Float): Long {
         val share = ((if (rtl) right - x else x - left) / (right - left)).coerceIn(0f, 1f)
@@ -432,8 +442,9 @@ private fun DrawScope.currentPanel(
     fun y(ma: Double) = (top + (range.max - ma) / (range.max - range.min) * (bottom - top)).toFloat()
     val zero = y(0.0)
     drawLine(ink.colors.textSecondary, Offset(scale.left, zero), Offset(scale.right, zero), Outline.toPx())
-    if (range.max > 0) value(scale, text.measure(labels.amps(range.max)), top, top, bottom)
-    if (range.min < 0) value(scale, text.measure(labels.amps(range.min)), bottom, top, bottom)
+    // Stacked, the panel's title sits right above it: the end values stay inside the panel.
+    if (range.max > 0) value(scale, text.measure(labels.amps(range.max)), top, top, bottom, inside = layout.stacked)
+    if (range.min < 0) value(scale, text.measure(labels.amps(range.min)), bottom, top, bottom, inside = layout.stacked)
     title(layout, scale, strong.measure(labels.current), top, bottom)
     val gap = maxOf(MIN_CURRENT_GAP_MS, ((scale.at(scale.right) - scale.at(scale.left)).let { abs(it) } * CURRENT_GAP_SHARE).toLong())
     val runs = ArrayList<MutableList<CurrentMark>>()
@@ -475,16 +486,19 @@ private fun DrawScope.currentPanel(
     }
 }
 
-/** A value label against the plot, centred on [y] but kept inside its panel. */
+/** A value label against the plot, centred on [y] but kept by its panel: wholly [inside] it, or half a line past its ends. */
+@Suppress("LongParameterList") // A label, its place and its bounds.
 private fun DrawScope.value(
     scale: TimeScale,
     label: TextLayoutResult,
     y: Float,
     top: Float,
     bottom: Float,
+    inside: Boolean = false,
 ) {
     val height = label.size.height
-    val at = (y - height / 2f).coerceIn(top - height / 2f, bottom - height / 2f)
+    val reach = if (inside) 0f else height / 2f
+    val at = (y - height / 2f).coerceIn(top - reach, (bottom - height + reach).coerceAtLeast(top - reach))
     drawText(label, topLeft = Offset(scale.valueStart(label.size.width, LabelGap.toPx()), at))
 }
 
@@ -550,7 +564,7 @@ private fun DrawScope.marks(
     val height = place.bottom - place.top
     val origin = minOf(scale.left, scale.right)
     val placed =
-        band.marks.map { mark ->
+        scale.inWindow(band.marks).map { mark ->
             val a = scale.x(mark.fromMs) - origin
             val b = scale.x(mark.toMs) - origin
             Triple(minOf(a, b), maxOf(a, b), mark.light)
