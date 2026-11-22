@@ -243,16 +243,20 @@ internal class CollectorEngine(
             ?.designCapacityMah
             ?.toDouble()
 
-    /** S3 and S21 at most once a day, at a heavy snapshot: one with [dump] (ADR-0042 §2). */
+    /**
+     * S3 and S21 at most once a day, at a heavy snapshot: one with [dump] (ADR-0042 §2), within
+     * what is left of its budget. With nothing left it waits for the next one (audit PERF-004).
+     */
     private suspend fun refreshHealth(
         dump: BatteryStatsDump?,
         elapsedNs: Long,
+        leftMs: Long,
     ) {
-        if (dump == null) return
+        if (dump == null || leftMs <= 0) return
         val last = healthReadAtNs
         if (last != null && elapsedNs - last < HEALTH_INTERVAL_NS) return
         healthReadAtNs = elapsedNs
-        healthReadings = health.readings()
+        healthReadings = health.readings(minOf(SOURCE_TIMEOUT_MS, leftMs))
     }
 
     /** Whether the sessions no longer match the device, as after a missed broadcast. */
@@ -309,8 +313,16 @@ internal class CollectorEngine(
      * mode says why. S4 comes right after S5 when the setting turns it on ([usage]); however it
      * goes, it never makes the snapshot partial (ADR-0035 §3).
      */
-    private suspend fun railRows(): List<RailEnergyEntity> =
-        rails.read().map { RailEnergyEntity(snapshotId = 0, rail = it.rail, energyUws = it.energyUws, readElapsedNs = it.readElapsedNs) }
+    private suspend fun railRows(leftMs: Long): List<RailEnergyEntity> =
+        if (leftMs <= 0) {
+            // The budget is spent: the windows on either side of this snapshot have no rails (audit PERF-004).
+            emptyList()
+        } else {
+            rails
+                .read(
+                    leftMs,
+                ).map { RailEnergyEntity(snapshotId = 0, rail = it.rail, energyUws = it.energyUws, readElapsedNs = it.readElapsedNs) }
+        }
 
     private suspend fun snapshot(
         trigger: SnapshotTrigger,
@@ -324,7 +336,7 @@ internal class CollectorEngine(
         val usage = stats?.let { usage(trigger, read, it, startNs) }
         val dump = stats?.dump?.takeIf { counterSource(stats.statuses) != null }
         rememberCapacity(dump)
-        refreshHealth(dump, reading.elapsedNs)
+        refreshHealth(dump, reading.elapsedNs, leftMs(startNs))
         val liveMode = heavy.liveMode()
         val kernelDue = wantHeavy && liveMode == PrivilegeMode.ROOT
         val files = kernelFiles(kernelDue, dump != null, startNs, read)
@@ -334,7 +346,7 @@ internal class CollectorEngine(
         val ingest = (history as? HistoryOutcome.Read)?.result
         val statuses = statuses(stats, usage, history, kernel)
         // S16 only beside S5: a window's rails are read between two heavy snapshots.
-        val rows = dump?.let { counterRows(it, usage).copy(railEnergy = railRows()) } ?: SnapshotRows()
+        val rows = dump?.let { counterRows(it, usage).copy(railEnergy = railRows(leftMs(startNs))) } ?: SnapshotRows()
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
         val blob = stats?.let { writeBlob(trigger, reading, boot, it, usage?.raw, kind == SnapshotKind.HEAVY) }

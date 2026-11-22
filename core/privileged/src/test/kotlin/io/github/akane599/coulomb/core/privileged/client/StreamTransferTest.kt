@@ -182,4 +182,22 @@ class StreamTransferTest {
             assertThat(r.value).isNull()
             assertThat(waited).isLessThan(5_000L)
         }
+
+    /** Audit PERF-004: after a timeout, a producer stuck in its call gets a short grace, not the full one. */
+    @Test
+    fun aTimedOutProducerGetsOnlyAShortGrace() =
+        runBlocking {
+            val release = CountDownLatch(1)
+            val started = now()
+            val r =
+                transfer.run(pipe(), 300, {
+                    release.await(30, TimeUnit.SECONDS)
+                    0
+                }, okStatus = 0) { count(it) }
+            val waited = now() - started
+            release.countDown()
+            assertThat(r.partial).isEqualTo(PartialReason.TIMEOUT)
+            // 300 ms, then at most the 250 ms grace, with room for a slow machine; the full grace is 5 s.
+            assertThat(waited).isLessThan(2_000L)
+        }
 }

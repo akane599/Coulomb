@@ -64,14 +64,14 @@ internal interface HealthSource {
     /** S20, then S23: read once per build while the stored value is unset (SPEC 6.3). */
     suspend fun designCapacity(): DesignCapacity?
 
-    /** S3 and S21, read at most once a day (SPEC 5: "Daily and Health screen"). */
-    suspend fun readings(): HealthReadings
+    /** S3 and S21, read at most once a day (SPEC 5: "Daily and Health screen"), within [timeoutMs]. */
+    suspend fun readings(timeoutMs: Long): HealthReadings
 
     /** No source: tests that are not about health. */
     object None : HealthSource {
         override suspend fun designCapacity(): DesignCapacity? = null
 
-        override suspend fun readings(): HealthReadings = HealthReadings.NONE
+        override suspend fun readings(timeoutMs: Long): HealthReadings = HealthReadings.NONE
     }
 }
 
@@ -84,11 +84,12 @@ internal data class RailReading(
 
 /** S16, read with each heavy snapshot when the device has power monitors (SPEC 5, ADR-0068). */
 internal interface RailSource {
-    suspend fun read(): List<RailReading>
+    /** Every monitor's reading, within [timeoutMs]; none when it runs out. */
+    suspend fun read(timeoutMs: Long): List<RailReading>
 
     /** No power monitors: tests that are not about them, and devices without any. */
     object None : RailSource {
-        override suspend fun read(): List<RailReading> = emptyList()
+        override suspend fun read(timeoutMs: Long): List<RailReading> = emptyList()
     }
 }
 

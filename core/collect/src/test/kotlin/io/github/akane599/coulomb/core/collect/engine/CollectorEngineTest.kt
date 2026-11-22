@@ -294,7 +294,7 @@ class CollectorEngineTest {
             return design
         }
 
-        override suspend fun readings(): HealthReadings {
+        override suspend fun readings(timeoutMs: Long): HealthReadings {
             readingReads++
             return HealthReadings(97, listOf(OemHealthValue("mSavedBatteryAsoc", 100)))
         }

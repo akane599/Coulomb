@@ -45,7 +45,7 @@ class ProfileLoadTest {
                 object : HealthSource {
                     override suspend fun designCapacity(): DesignCapacity? = error("the platform failed")
 
-                    override suspend fun readings(): HealthReadings = HealthReadings.NONE
+                    override suspend fun readings(timeoutMs: Long): HealthReadings = HealthReadings.NONE
                 }
             val engine =
                 CollectorEngine(db, device, FakeStats(clock), identity, clock, MemoryBlobs(), FakeLabels(mutableMapOf()), health = failing)

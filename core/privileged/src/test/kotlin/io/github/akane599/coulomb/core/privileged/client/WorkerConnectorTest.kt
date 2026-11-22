@@ -80,6 +80,33 @@ class WorkerConnectorTest {
             assertThat(c.state.value.status).isNotEqualTo(WorkerStatus.BOUND)
         }
 
+    /**
+     * Audit PERF-004: a caller with a deadline stops waiting for a slow bind, which is not counted
+     * as a timeout; it goes on, the next call finds the worker bound, and the idle unbind comes.
+     */
+    @Test
+    fun aCallerWithADeadlineLeavesASlowBindRunning() =
+        runTest {
+            api.defersConnect = true
+            val c = connector()
+            val call = async { c.call(waitMs = 1_000) { it.version } }
+            advanceTimeBy(1_001)
+            runCurrent()
+            assertThat(call.await()).isInstanceOf(WorkerCall.Unavailable::class.java)
+            assertThat(api.unbinds).isEmpty()
+            assertThat(c.state.value.failure).isNull()
+
+            advanceTimeBy(1_000)
+            api.connectLate()
+            runCurrent()
+            assertThat(c.state.value.status).isEqualTo(WorkerStatus.BOUND)
+            assertThat(c.call(waitMs = 1_000) { it.version }).isEqualTo(WorkerCall.Ok(FakeWorker.VERSION, WorkerOrigin(2000, 0)))
+            assertThat(api.binds).isEqualTo(1)
+            advanceTimeBy(WorkerConnector.IDLE_UNBIND_MS + 1)
+            runCurrent()
+            assertThat(api.unbinds).containsExactly(true)
+        }
+
     /** Audit CONC-010: the idle unbind reaches Shizuku before the next bind, so it cannot stop the new worker. */
     @Test
     fun theNextBindWaitsForTheIdleUnbind() =

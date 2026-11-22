@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.privileged.client
 
 import android.os.DeadObjectException
 import android.os.RemoteException
+import android.util.Log
 import io.github.akane599.coulomb.core.model.WorkerFailure
 import io.github.akane599.coulomb.core.model.WorkerStatus
 import io.github.akane599.coulomb.core.privileged.ICoulombPrivileged
@@ -13,7 +14,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -110,6 +113,9 @@ internal class WorkerConnector(
      */
     private var closing: Job? = null
 
+    /** A bind [acquireWithin] started that its caller stopped waiting for; at most one runs. */
+    private var background: Deferred<Bound?>? = null
+
     /** Debug drill (protocol F): binds never reach Shizuku, so the real 5 s timeout path runs. */
     @Volatile var simulateBindHang: Boolean = false
 
@@ -119,8 +125,11 @@ internal class WorkerConnector(
      * IllegalArgumentException, IllegalStateException, ...); every one becomes a result.
      */
     @Suppress("TooGenericExceptionCaught")
-    suspend fun <T> call(block: suspend (ICoulombPrivileged) -> T): WorkerCall<T> {
-        val bound = acquire() ?: return WorkerCall.Unavailable(_state.value.failure)
+    suspend fun <T> call(
+        waitMs: Long? = null,
+        block: suspend (ICoulombPrivileged) -> T,
+    ): WorkerCall<T> {
+        val bound = (if (waitMs == null) acquire() else acquireWithin(waitMs)) ?: return WorkerCall.Unavailable(_state.value.failure)
         begin()
         return try {
             WorkerCall.Ok(withContext(io) { block(bound.binder.worker) }, bound.origin)
@@ -211,6 +220,37 @@ internal class WorkerConnector(
                     api.unbindWorker(callback, remove)
                 }
         }
+    }
+
+    /**
+     * [acquire] waited for at most [waitMs]: a caller with a deadline does not wait out a slow
+     * bind (up to [bindTimeoutMs]), yet the bind is not cut short and counted as a timeout. It runs
+     * on in the connector's scope, so the next call finds the worker bound, and the idle unbind
+     * still comes after it (audit PERF-004).
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun acquireWithin(waitMs: Long): Bound? {
+        synchronized(lock) { bound }?.let { return it }
+        val pending =
+            synchronized(lock) {
+                background?.takeIf { it.isActive } ?: scope
+                    .async(io) {
+                        try {
+                            acquire()?.also {
+                                // Its caller may have gone: the idle unbind is scheduled as after a call.
+                                begin()
+                                end()
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            // A failure to bind is an unavailable worker, not a crash of the connector's scope.
+                            Log.w(TAG, "background bind failed", e)
+                            null
+                        }
+                    }.also { background = it }
+            }
+        return withTimeoutOrNull(waitMs.coerceAtLeast(0)) { pending.await() }
     }
 
     private suspend fun acquire(): Bound? =
@@ -375,6 +415,7 @@ internal class WorkerConnector(
     }
 
     internal companion object {
+        const val TAG = "WorkerConnector"
         const val BIND_TIMEOUT_MS = 5_000L
         const val IDLE_UNBIND_MS = 60_000L
         const val HANDSHAKE_ATTEMPTS = 2

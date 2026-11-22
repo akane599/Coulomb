@@ -40,12 +40,12 @@ internal class AndroidHealthSource(
         powerProfileMah()?.let { DesignCapacity(it, DesignCapacitySource.POWER_PROFILE) }
             ?: sysfsMah()?.let { DesignCapacity(it, DesignCapacitySource.SYSFS) }
 
-    override suspend fun readings(): HealthReadings = HealthReadings(systemSoh(), oem().health)
+    override suspend fun readings(timeoutMs: Long): HealthReadings = HealthReadings(systemSoh(), oem(timeoutMs).health)
 
     /** The OEM's facts from S21, for the Health screen's first-use date as well (ADR-0042 §3). */
-    suspend fun oem(): OemBattery {
+    suspend fun oem(timeoutMs: Long = PrivilegedAccess.DEFAULT_DUMP_TIMEOUT_MS): OemBattery {
         val result =
-            access.dumpService(SystemService.BATTERY) { input -> BatteryServiceParser.parse(input).value }
+            access.dumpService(SystemService.BATTERY, timeoutMs) { input -> BatteryServiceParser.parse(input).value }
         val dump = (result as? DumpResult.Complete)?.value ?: return OemBattery.NONE
         // Values frozen by `dumpsys battery set` are not the hardware's.
         return if (dump.updatesStopped) OemBattery.NONE else OemBatteryReader.read(dump.extras)

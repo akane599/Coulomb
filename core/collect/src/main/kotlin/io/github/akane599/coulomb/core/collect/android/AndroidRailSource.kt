@@ -7,6 +7,7 @@ import android.content.Context
 import android.os.OutcomeReceiver
 import android.os.PowerMonitor
 import android.os.PowerMonitorReadings
+import android.os.SystemClock
 import android.os.health.SystemHealthManager
 import io.github.akane599.coulomb.core.collect.engine.RailReading
 import io.github.akane599.coulomb.core.collect.engine.RailSource
@@ -28,11 +29,19 @@ internal class AndroidRailSource(
 ) : RailSource {
     private var monitors: List<PowerMonitor>? = null
 
-    override suspend fun read(): List<RailReading> {
+    override suspend fun read(timeoutMs: Long): List<RailReading> {
         val shm = context.getSystemService(SystemHealthManager::class.java) ?: return emptyList()
-        val supported = monitors ?: supported(shm)?.also { monitors = it } ?: return emptyList()
+        return read(shm, SystemClock.elapsedRealtime() + timeoutMs)
+    }
+
+    /** Both steps by [deadline], each within TIMEOUT_MS (audit PERF-004). */
+    private suspend fun read(
+        shm: SystemHealthManager,
+        deadline: Long,
+    ): List<RailReading> {
+        val supported = monitors ?: supported(shm, left(deadline))?.also { monitors = it } ?: return emptyList()
         if (supported.isEmpty()) return emptyList()
-        val readings = readings(shm, supported) ?: return emptyList()
+        val readings = readings(shm, supported, left(deadline)) ?: return emptyList()
         return supported.mapNotNull { monitor ->
             val energy = readings.getConsumedEnergy(monitor)
             if (energy == PowerMonitorReadings.ENERGY_UNAVAILABLE.toLong() || energy < 0) {
@@ -43,8 +52,13 @@ internal class AndroidRailSource(
         }
     }
 
-    private suspend fun supported(shm: SystemHealthManager): List<PowerMonitor>? =
-        withTimeoutOrNull(TIMEOUT_MS) {
+    private fun left(deadline: Long): Long = minOf(TIMEOUT_MS, deadline - SystemClock.elapsedRealtime())
+
+    private suspend fun supported(
+        shm: SystemHealthManager,
+        timeoutMs: Long,
+    ): List<PowerMonitor>? =
+        withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { cont ->
                 shm.getSupportedPowerMonitors(Runnable::run) { list -> if (cont.isActive) cont.resume(list) }
             }
@@ -53,8 +67,9 @@ internal class AndroidRailSource(
     private suspend fun readings(
         shm: SystemHealthManager,
         supported: List<PowerMonitor>,
+        timeoutMs: Long,
     ): PowerMonitorReadings? =
-        withTimeoutOrNull(TIMEOUT_MS) {
+        withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { cont ->
                 shm.getPowerMonitorReadings(
                     supported,

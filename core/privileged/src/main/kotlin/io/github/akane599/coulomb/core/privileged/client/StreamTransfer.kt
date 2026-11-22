@@ -83,8 +83,14 @@ internal class StreamTransfer(
             val consumed = withTimeoutOrNull(timeoutMs) { consumer.await() }
             // Early return, error or timeout: release the writer.
             pipe.closeInput()
-            val result = consumed ?: withTimeoutOrNull(graceMs) { consumer.await() }
-            val outcome = withTimeoutOrNull(graceMs) { producer.await() }
+            // After a timeout the producer is likely stuck in a call nothing can interrupt, and the
+            // consumer blocked on a read that closing the read end does not wake, since the worker
+            // still holds the write end. Waiting the full grace for either would hold the caller past
+            // its budget (audit PERF-004); a stream still flowing ends within the short one, as the
+            // writer meets the closed pipe. What does not finish goes on detached, as when cancelled.
+            val grace = if (consumed == null) minOf(graceMs, STUCK_GRACE_MS) else graceMs
+            val result = consumed ?: withTimeoutOrNull(grace) { consumer.await() }
+            val outcome = withTimeoutOrNull(grace) { producer.await() }
             if (result == null) consumer.cancel()
             if (outcome == null) producer.cancel()
             val timedOut = consumed == null
@@ -167,6 +173,9 @@ internal class StreamTransfer(
 
     private companion object {
         const val GRACE_MS = 5_000L
+
+        /** How long the consumer, then the producer, get to finish after the read timed out. */
+        const val STUCK_GRACE_MS = 250L
     }
 }
 

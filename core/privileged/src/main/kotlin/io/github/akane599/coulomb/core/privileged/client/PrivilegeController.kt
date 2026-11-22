@@ -649,30 +649,48 @@ internal class PrivilegeController(
         consume: suspend (InputStream) -> R,
         route: RoutePreference = RoutePreference.WORKER_FIRST,
     ): DumpResult<R> {
+        // One deadline for binding, streaming and the in-app fallback, so a caller's budget holds
+        // however the time goes (audit PERF-004).
+        val deadline = clock() + timeoutMs
+        val left = { (deadline - clock()).coerceAtLeast(0) }
         val sniffing: suspend (InputStream) -> Sniffed<R> = { raw ->
             val input = BufferedInputStream(raw, SNIFF_BUFFER)
             DumpDenial.check(input)?.let { Sniffed.Denied(it) } ?: Sniffed.Value(consume(input))
         }
         // In-app first: a result that is not Unavailable is final; otherwise the worker may still
         // serve it, and the in-app refusal is kept for when it cannot.
-        val inAppFirst = if (route == RoutePreference.IN_APP_FIRST) inApp?.let { dumpInApp(it, timeoutMs, isComplete, sniffing) } else null
+        val inAppFirst = if (route == RoutePreference.IN_APP_FIRST) inApp?.let { dumpInApp(it, left(), isComplete, sniffing) } else null
         if (inAppFirst != null && inAppFirst !is DumpResult.Unavailable) return inAppFirst
         // Null when the worker is unavailable (bind timeout, version mismatch) or failed before streaming.
         val fromWorker =
             if (workerUsableNow()) {
                 val call =
-                    connector.call { w ->
-                        transfer.run(pipes.create(), timeoutMs, { sink -> viaWorker(w, sink) }, WorkerStatusCode.OK, sniffing)
+                    connector.call(waitMs = left()) { w ->
+                        transfer.run(pipes.create(), left(), { sink -> viaWorker(w, sink) }, WorkerStatusCode.OK, sniffing)
                     }
                 (call as? WorkerCall.Ok)?.let { it.value.toSniffedResult(Route.WORKER, isComplete, it.origin) }
             } else {
                 null
             }
-        return fromWorker
-            ?: inApp?.takeIf { route == RoutePreference.WORKER_FIRST }?.let { dumpInApp(it, timeoutMs, isComplete, sniffing) }
-            ?: inAppFirst
-            ?: DumpResult.Unavailable(FailureReason.NO_ACCESS, noAccessDetail())
+        if (fromWorker != null) return fromWorker
+        val inAppAfter =
+            inApp?.takeIf { route == RoutePreference.WORKER_FIRST && left() > 0 }?.let { dumpInApp(it, left(), isComplete, sniffing) }
+        return inAppAfter ?: inAppFirst ?: noDump(timedOut = left() == 0L, timeoutMs)
     }
+
+    /**
+     * Why no route gave a dump: the worker was not bound within the deadline, and goes on binding
+     * for the next call; or there is no access.
+     */
+    private fun <R> noDump(
+        timedOut: Boolean,
+        timeoutMs: Long,
+    ): DumpResult<R> =
+        if (timedOut && workerUsableNow()) {
+            DumpResult.Unavailable(FailureReason.TIMEOUT, "worker not bound within $timeoutMs ms")
+        } else {
+            DumpResult.Unavailable(FailureReason.NO_ACCESS, noAccessDetail())
+        }
 
     /** T1 (SPEC 4.1). Null when the current grants cannot pass the service's own checks. */
     private suspend fun <R> dumpInApp(
