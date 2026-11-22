@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.akane599.coulomb.core.data.AppDetailReport
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombSpacing
 import io.github.akane599.coulomb.core.designsystem.theme.CoulombTheme
 import io.github.akane599.coulomb.core.insights.Contributor
@@ -35,6 +36,15 @@ import io.github.akane599.coulomb.core.ui.story.StoryLink
 
 /** A paragraph reads best under about 65 characters a line. */
 private val StoryMeasure = 560.dp
+
+/**
+ * Of the app's open insights, most severe first, the first whose evidence lies in [detail]'s
+ * window (SPEC 9.3): one from another date does not hide it (audit BUG-033).
+ */
+internal fun List<ShownInsight>.inWindow(detail: AppDetailReport): ShownInsight? {
+    val drains = detail.report.drains
+    return firstOrNull { it.insight.evidence.toWallMs >= drains.fromWallMs && it.insight.evidence.fromWallMs <= drains.toWallMs }
+}
 
 /**
  * The app's Drain Story over the window (SPEC 10.4, 9.3): what it did, and as its anomaly the

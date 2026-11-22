@@ -104,10 +104,19 @@ public class AppDetailViewModel
                             drains.app(span, uid).map<AppDetailReport?, Loaded?> { Loaded(span, it) }.onStart { emit(null) }
                         }
                     val scaled = settings.settings.map { it.scaleToMeasured }.distinctUntilChanged()
-                    // Open insights come most severe first, so the app's first is its highest.
-                    val insight = insights.observeShown(Int.MAX_VALUE).map { open -> open.firstOrNull { it.insight.uid == uid } }
-                    combine(details, scaled, insight) { loaded, scale, shown ->
-                        loaded?.let { AppDetailUiState.Ready(it.span, it.detail, scale, shown) } ?: AppDetailUiState.Loading
+                    val open = insights.observeShown(Int.MAX_VALUE).map { open -> open.filter { it.insight.uid == uid } }
+                    combine(details, scaled, open) { loaded, scale, mine ->
+                        loaded?.let {
+                            AppDetailUiState.Ready(
+                                it.span,
+                                it.detail,
+                                scale,
+                                it.detail?.let { detail ->
+                                    mine.inWindow(detail)
+                                },
+                            )
+                        }
+                            ?: AppDetailUiState.Loading
                     }.catch { emit(AppDetailUiState.Error) }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AppDetailUiState.Loading)
 
