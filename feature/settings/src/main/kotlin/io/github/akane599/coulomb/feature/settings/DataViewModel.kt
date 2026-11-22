@@ -138,7 +138,11 @@ internal interface DataHost {
 
     suspend fun rawBundle(out: OutputStream): RawBundleResult
 
-    suspend fun actionsInForce(): Int
+    /**
+     * How many Action Center changes are in force. With [eraseIfNone], it runs when there are none,
+     * with no change able to start during or after it (audit CONC-001).
+     */
+    suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)? = null): Int
 
     /** Stops the collector before a deletion; starts it again after one that failed, so it goes on as before. */
     fun collector(run: Boolean)
@@ -321,27 +325,34 @@ public class DataViewModel internal constructor(
     /** After the confirmation. The check is made again here: the answer may be minutes old. */
     internal fun deleteAll() {
         if (ui.value.work != DataWork.Idle) return
+        ui.update { it.copy(work = DataWork.Deleting, message = null) }
         viewModelScope.launch {
-            val inForce = host.actionsInForce()
-            if (inForce > 0) {
-                ui.update { it.copy(deleteAsk = DeleteAsk.Blocked(inForce)) }
-                return@launch
-            }
-            ui.update { it.copy(deleteAsk = null, work = DataWork.Deleting, message = null) }
             // Once confirmed, the erase and the restart after it finish even if the screen goes:
             // without the restart the process would keep the deleted boot and calibration in
             // memory (ADR-0062 §14; audit CONC-002). The screen also holds Back while deleting.
             withContext(NonCancellable) {
-                host.collector(run = false)
-                try {
-                    transfer.deleteAll()
-                } catch (e: SQLException) {
-                    Log.w(TAG, "delete failed", e)
-                    host.collector(run = true)
-                    ui.update { it.copy(work = DataWork.Idle, message = DataMessage.DELETE_FAILED) }
-                    return@withContext
+                var stopped = false
+                val inForce =
+                    try {
+                        // Checked again under the Action Center's lock: the answer may be minutes old,
+                        // and an automation call may log a change meanwhile (audit CONC-001).
+                        host.actionsInForce {
+                            ui.update { it.copy(deleteAsk = null) }
+                            host.collector(run = false)
+                            stopped = true
+                            transfer.deleteAll()
+                        }
+                    } catch (e: SQLException) {
+                        Log.w(TAG, "delete failed", e)
+                        if (stopped) host.collector(run = true)
+                        ui.update { it.copy(work = DataWork.Idle, message = DataMessage.DELETE_FAILED) }
+                        return@withContext
+                    }
+                if (inForce > 0) {
+                    ui.update { it.copy(work = DataWork.Idle, deleteAsk = DeleteAsk.Blocked(inForce)) }
+                } else {
+                    host.restart()
                 }
-                host.restart()
             }
         }
     }
@@ -424,7 +435,8 @@ private class AndroidDataHost(
         return raw.write(out, File(context.cacheDir, RAW_SCRATCH), origin)
     }
 
-    override suspend fun actionsInForce(): Int = actions.records.first().count { it.active }
+    override suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)?): Int =
+        if (eraseIfNone == null) actions.records.first().count { it.active } else actions.eraseWhenNoneInForce(eraseIfNone)
 
     override fun collector(run: Boolean) {
         if (run) {

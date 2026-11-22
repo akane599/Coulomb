@@ -39,8 +39,32 @@ public class ActionCenter internal constructor(
     /** The id of the last row a drift pass read; the next pass goes on from the row after it. */
     private var driftCursor = Long.MAX_VALUE
 
+    /** All data is being erased: no change starts until the process restarts (audit CONC-001). */
+    private var erasing = false
+
     /** The log, newest first. */
     public val records: Flow<List<ActionRecord>> = log.observe().map { rows -> rows.map(::record) }
+
+    /**
+     * Runs [erase], the deletion of all data, only while no change is in force, and returns how many
+     * are, without erasing, otherwise. The check and the erase hold the lock, so no action can log a
+     * change between them, and none starts after: the process restarts once the data is gone. An
+     * erase that throws opens the Action Center again (ADR-0062 §14; audit CONC-001).
+     */
+    public suspend fun eraseWhenNoneInForce(erase: suspend () -> Unit): Int =
+        lock.withLock {
+            val inForce = activeRows().size
+            if (inForce > 0) return@withLock inForce
+            erasing = true
+            var erased = false
+            try {
+                erase()
+                erased = true
+            } finally {
+                erasing = erased
+            }
+            0
+        }
 
     /** [request] against the phone as it is now. Reads; writes nothing. */
     public suspend fun preview(request: ActionRequest): ActionPreview = lock.withLock { plan(request).preview(request) }
@@ -55,7 +79,7 @@ public class ActionCenter internal constructor(
     ): ActionBoard =
         lock.withLock {
             val once = OnceIo(io)
-            val on = gate.enabled()
+            val on = enabled()
             val planner = ActionPlanner(once)
             val active = if (on) activeRows() else emptyList()
             val previews =
@@ -165,8 +189,10 @@ public class ActionCenter internal constructor(
         )
     }
 
+    private suspend fun enabled(): Boolean = !erasing && gate.enabled()
+
     private suspend fun plan(request: ActionRequest): Plan =
-        if (gate.enabled()) planner.plan(request) { hold(io) }.over(activeRows()) else planner.blocked(request, ActionBlock.OFF)
+        if (enabled()) planner.plan(request) { hold(io) }.over(activeRows()) else planner.blocked(request, ActionBlock.OFF)
 
     private suspend fun activeRows(): List<ActionLogEntity> = log.unreverted().filter { record(it).active }
 

@@ -128,6 +128,11 @@ main recommendations are taken.
     Settings and grants stay (SPEC 14.5). If an action is still in force it refuses first and names
     the Action Center: deleting the log would leave a write on the phone that nothing can revert
     (SPEC 1.2).
+    Amended 2026-11-22 (audit CONC-001): the last check and the erase hold the Action Center's
+    lock, and once the erase has run no action starts until the restart, so an automation call
+    cannot log a change between the check and the erase. An erase that fails opens it again.
+    Amended 2026-11-22 (audit DATA-008): a restored install's first start stays pending until the
+    reset of §15 is stored, so a start cut short runs it again.
 
 ### Backup
 

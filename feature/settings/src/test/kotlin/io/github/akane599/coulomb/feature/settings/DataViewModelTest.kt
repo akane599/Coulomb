@@ -177,7 +177,7 @@ class DataViewModelTest {
 
         override suspend fun rawBundle(out: OutputStream): RawBundleResult = raw.also { out.close() }
 
-        override suspend fun actionsInForce(): Int = inForce
+        override suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)?): Int = inForce.also { if (it == 0) eraseIfNone?.invoke() }
 
         override fun collector(run: Boolean) {
             events += if (run) "start" else "stop"
