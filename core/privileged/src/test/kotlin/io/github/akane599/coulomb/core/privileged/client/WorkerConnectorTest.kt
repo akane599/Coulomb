@@ -81,6 +81,79 @@ class WorkerConnectorTest {
         }
 
     /**
+     * Audit CONC-002: Shizuku hands a worker to every bind made on the tag, the given-up ones too.
+     * The worker of the bind that is under way is not theirs to stop.
+     */
+    @Test
+    fun aGivenUpBindDoesNotStopTheNextWorker() =
+        runTest {
+            api.fanOut = true
+            api.connects = false
+            val c =
+                WorkerConnector(
+                    api,
+                    backgroundScope,
+                    StandardTestDispatcher(testScheduler),
+                    FakeWorker.VERSION,
+                    { currentTime },
+                    bindKnownGood = { true },
+                )
+            val first = async { c.call { it.version } }
+            advanceTimeBy(WorkerConnector.BIND_TIMEOUT_MS + 1)
+            runCurrent()
+            assertThat(first.await()).isEqualTo(WorkerCall.Unavailable(WorkerFailure.BIND_TIMEOUT))
+            advanceTimeBy(WorkerConnector.RETRY_BACKOFF_MS[0] + 1)
+
+            api.connects = true
+            val second = c.call { it.version }
+            runCurrent()
+
+            assertThat(second).isEqualTo(WorkerCall.Ok(FakeWorker.VERSION, WorkerOrigin(2000, 0)))
+            assertThat(worker.destroyed).isEqualTo(0)
+            assertThat(c.state.value.status).isEqualTo(WorkerStatus.BOUND)
+        }
+
+    @Test
+    fun aCancelledColdBindDoesNotStopTheNextWorker() =
+        runTest {
+            api.fanOut = true
+            api.defersConnect = true
+            val c = connector()
+            val first = async { c.call { it.version } }
+            runCurrent()
+            first.cancel()
+            runCurrent()
+
+            val second = async { c.call { it.version } }
+            runCurrent()
+            assertThat(api.binds).isEqualTo(2)
+            api.connectLate()
+            runCurrent()
+
+            assertThat(second.await()).isEqualTo(WorkerCall.Ok(FakeWorker.VERSION, WorkerOrigin(2000, 0)))
+            assertThat(worker.destroyed).isEqualTo(0)
+        }
+
+    /** CONC-012 still holds under the fan-out: with no bind under way and none bound, a late worker is no one's. */
+    @Test
+    fun aLateWorkerOfAGivenUpBindIsStoppedWhenNoOneBinds() =
+        runTest {
+            api.fanOut = true
+            api.defersConnect = true
+            val c = connector()
+            val call = async { c.call { it.version } }
+            runCurrent()
+            call.cancel()
+            runCurrent()
+
+            api.connectLate()
+            runCurrent()
+
+            assertThat(worker.destroyed).isEqualTo(1)
+            assertThat(c.state.value.status).isNotEqualTo(WorkerStatus.BOUND)
+        }
+
+    /**
      * Audit PERF-004: a caller with a deadline stops waiting for a slow bind, which is not counted
      * as a timeout; it goes on, the next call finds the worker bound, and the idle unbind comes.
      */

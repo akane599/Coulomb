@@ -324,7 +324,8 @@ internal class WorkerConnector(
     /**
      * One bind, given up after [bindTimeoutMs] or when the caller is cancelled. A given-up bind is
      * unbound with remove; a worker that still connects to it later is stopped directly, since no
-     * one holds it and nothing would unbind it (audit CONC-012).
+     * one holds it and nothing would unbind it (audit CONC-012), unless another bind is under way
+     * or bound by then: that worker is theirs.
      */
     private suspend fun bindOnce(): Bound? {
         _state.update { it.copy(status = WorkerStatus.BINDING) }
@@ -333,9 +334,13 @@ internal class WorkerConnector(
         val callback =
             object : WorkerCallback {
                 override fun onConnected(binder: WorkerBinder) {
-                    if (!connected.complete(binder) && abandoned.get()) {
-                        scope.launch(io) { runCatching { binder.worker.destroy() } }
-                    }
+                    if (connected.complete(binder) || !abandoned.get()) return
+                    // Shizuku keeps a given-up bind's connection on the tag after an unbind with
+                    // remove, and hands it every worker that connects on the tag later (client
+                    // 13.1.5; audit CONC-002). So the worker is stopped only when no bind runs
+                    // and none is bound: then it can only be this bind's own late worker.
+                    val nobodys = synchronized(lock) { bound == null } && !bindMutex.isLocked
+                    if (nobodys) scope.launch(io) { runCatching { binder.worker.destroy() } }
                 }
 
                 override fun onDisconnected() {

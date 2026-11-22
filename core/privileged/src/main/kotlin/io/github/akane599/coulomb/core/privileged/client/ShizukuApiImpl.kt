@@ -14,6 +14,8 @@ import io.github.akane599.coulomb.core.privileged.worker.CoulombPrivilegedServic
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuProvider
 import rikka.sui.Sui
+import java.util.Collections
+import java.util.WeakHashMap
 
 /**
  * Shizuku API 13.1.5 (`dev.rikka.shizuku:api`, `:provider`). Signatures were checked in the
@@ -101,31 +103,48 @@ internal class ShizukuApiImpl(
         val result: Shizuku.OnRequestPermissionResultListener,
     )
 
+    /** Binds and unbinds come from different threads; guarded by itself. */
     private val connections = HashMap<WorkerCallback, ServiceConnection>()
+
+    /**
+     * Callbacks unbound before their bind ran: a caller cancelled right after the bind was
+     * launched. Such a bind is never sent, or it would stay with Shizuku with nothing to unbind it
+     * (audit CONC-002). Weak, so that an unbind whose bind never comes keeps nothing. Guarded by
+     * [connections].
+     */
+    private val unboundEarly: MutableSet<WorkerCallback> = Collections.newSetFromMap(WeakHashMap())
 
     override fun bindWorker(callback: WorkerCallback) {
         val connection =
-            connections.getOrPut(callback) {
-                object : ServiceConnection {
-                    override fun onServiceConnected(
-                        name: ComponentName?,
-                        service: IBinder?,
-                    ) {
-                        if (service == null || !service.pingBinder()) return callback.onDisconnected()
-                        callback.onConnected(AidlWorkerBinder(service))
-                    }
-
-                    override fun onServiceDisconnected(name: ComponentName?) = callback.onDisconnected()
-                }
+            synchronized(connections) {
+                if (unboundEarly.remove(callback)) return
+                connections.getOrPut(callback) { connectionOf(callback) }
             }
+        // Outside the lock: this call can block (Android 17 with official Shizuku).
         Shizuku.bindUserService(args, connection)
     }
+
+    private fun connectionOf(callback: WorkerCallback) =
+        object : ServiceConnection {
+            override fun onServiceConnected(
+                name: ComponentName?,
+                service: IBinder?,
+            ) {
+                if (service == null || !service.pingBinder()) return callback.onDisconnected()
+                callback.onConnected(AidlWorkerBinder(service))
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) = callback.onDisconnected()
+        }
 
     override fun unbindWorker(
         callback: WorkerCallback,
         remove: Boolean,
     ) {
-        val connection = connections.remove(callback) ?: return
+        val connection =
+            synchronized(connections) {
+                connections.remove(callback) ?: null.also { unboundEarly += callback }
+            } ?: return
         runCatching { Shizuku.unbindUserService(args, connection, remove) }
     }
 

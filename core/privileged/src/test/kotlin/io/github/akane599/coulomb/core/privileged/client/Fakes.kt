@@ -298,6 +298,13 @@ internal class FakeShizukuApi(
     var defersConnect = false
     private var deferred: WorkerCallback? = null
 
+    /**
+     * As the Shizuku 13.1.5 client does: every callback bound stays on the tag after an unbind
+     * with remove, and a worker that connects is handed to all of them, oldest first (audit CONC-002).
+     */
+    var fanOut = false
+    private val members = mutableListOf<WorkerCallback>()
+
     /** Binds and unbinds in the order they reached Shizuku. */
     val calls = mutableListOf<String>()
     var binds = 0
@@ -331,11 +338,19 @@ internal class FakeShizukuApi(
     override fun bindWorker(callback: WorkerCallback) {
         binds += 1
         calls += "bind"
+        if (fanOut) members += callback
         if (defersConnect) deferred = callback
         if (!connects || defersConnect) return
         val w = worker ?: return
         connected = callback
-        callback.onConnected(FakeWorkerBinder(w).also { lastBinder = it })
+        deliver(callback, FakeWorkerBinder(w).also { lastBinder = it })
+    }
+
+    private fun deliver(
+        to: WorkerCallback,
+        binder: FakeWorkerBinder,
+    ) {
+        if (fanOut) members.toList().forEach { it.onConnected(binder) } else to.onConnected(binder)
     }
 
     override fun unbindWorker(
@@ -349,7 +364,7 @@ internal class FakeShizukuApi(
     /** The worker connects to the bind [defersConnect] kept, as a slow manager's would. */
     fun connectLate(): FakeWorkerBinder {
         val binder = FakeWorkerBinder(checkNotNull(worker))
-        checkNotNull(deferred).onConnected(binder)
+        deliver(checkNotNull(deferred), binder)
         return binder
     }
 
