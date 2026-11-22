@@ -350,11 +350,21 @@ public class ActionCenter internal constructor(
 
                 // Android confirms nothing for a force stop, and there is no value to read.
                 !plan.type.stateful -> {
-                    if (ran?.ok == false) {
-                        log.delete(stored)
-                        ActionResult.Failed(ran.output)
-                    } else {
-                        ActionResult.Done(stored.id, plan.want)
+                    when {
+                        ran?.ok != false -> {
+                            ActionResult.Done(stored.id, plan.want)
+                        }
+
+                        // A reply lost to a timeout or a dead worker does not say the stop did not run:
+                        // its record stays, as a reset's does (ADR-0060 §14; audit DATA-019, DATA-001).
+                        ran.unclear -> {
+                            ActionResult.Unverified(stored.id)
+                        }
+
+                        else -> {
+                            log.delete(stored)
+                            ActionResult.Failed(ran.output)
+                        }
                     }
                 }
 

@@ -574,6 +574,17 @@ class ActionCenterTest {
             assertThat(log.all).hasSize(1)
         }
 
+    /** Audit DATA-001: nor does it say a force stop did not run. Its record is not a change in force. */
+    @Test
+    fun aForceStopWhoseReplyIsLostStaysOnRecord() =
+        runTest {
+            phone.stopUnclear = true
+            assertThat(center.run(ActionRequest.ForceStop(APP))).isInstanceOf(ActionResult.Unverified::class.java)
+            assertThat(log.all).hasSize(1)
+            assertThat(phone.acts).containsExactly(PrivilegedAction.ForceStop(APP))
+            assertThat(center.eraseWhenNoneInForce { }).isEqualTo(0)
+        }
+
     private companion object {
         /** In force is read three times before a rollback; the third read is the last before it. */
         const val ROLLBACK_EFFECTIVE_READS = 3

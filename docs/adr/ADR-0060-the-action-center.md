@@ -93,6 +93,10 @@ taken unless a section says otherwise.
     and a restart clear it by design.
 14. **Reset battery statistics** needs two confirmations and counts as done only when the
     command prints "Battery stats reset.".
+    Amended 2026-11-23 (audit DATA-019, DATA-001): a reply lost to a timeout or a dead worker
+    does not say the command did not run. A reset or a force stop whose reply is lost keeps its
+    record and answers "unverified"; neither record is a change in force. A failure the command
+    itself reported still leaves no record.
 
 ### Doze profiles
 

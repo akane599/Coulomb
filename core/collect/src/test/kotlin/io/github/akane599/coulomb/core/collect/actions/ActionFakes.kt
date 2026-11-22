@@ -49,6 +49,9 @@ internal class FakePhone : ActionIo {
 
     /** True: the reset's reply is lost, as to a timeout or a dead worker. */
     var resetUnclear = false
+
+    /** True: a force stop's reply is lost the same way. */
+    var stopUnclear = false
     val acts = mutableListOf<PrivilegedAction>()
     var reads = 0
 
@@ -102,9 +105,8 @@ internal class FakePhone : ActionIo {
         acts += action
         if (obeys) apply(action)
         afterAct(action)
-        if (action == PrivilegedAction.ResetBatteryStats &&
-            resetUnclear
-        ) {
+        val lost = (action == PrivilegedAction.ResetBatteryStats && resetUnclear) || (action is PrivilegedAction.ForceStop && stopUnclear)
+        if (lost) {
             return Ran(ok = false, noWorker = false, output = null, unclear = true)
         }
         return Ran(ok = reports, noWorker = false, output = if (action == PrivilegedAction.ResetBatteryStats) resetOutput else "")
