@@ -61,6 +61,19 @@ class AppNavigatorTest {
         assertThat(navigator.stacks.getValue(Destination.Now)).containsExactly(Route.Now, Route.Settings).inOrder()
     }
 
+    /** Audit BUG-060: a link to Drain's list shows the list, not the screen left open on Drain. */
+    @Test
+    fun aLinkToDrainShowsItsListOverWhatWasLeftOpen() {
+        navigator.select(Destination.Drain)
+        navigator.open(Route.DrainCompare)
+        navigator.select(Destination.Now)
+
+        navigator.show(Route.Drain)
+
+        assertThat(navigator.current).isEqualTo(Destination.Drain)
+        assertThat(navigator.backStack).containsExactly(Route.Drain)
+    }
+
     @Test
     fun choosingTheCurrentDestinationAgainReturnsToItsFirstScreen() {
         navigator.open(Route.ActionCenter)

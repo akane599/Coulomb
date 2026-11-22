@@ -260,12 +260,13 @@ class AppScreens(
                 now = { navigator ->
                     InsightLinks(navigator) { onInsightAction ->
                         NowScreen(
-                            onSeeAllDrains = { navigator.select(Destination.Drain) },
+                            // A link to Drain's list, not a tab tap: a screen left open on Drain does not hide it (audit BUG-060).
+                            onSeeAllDrains = { navigator.show(Route.Drain) },
                             onOpenPrivileges = { navigator.open(Route.Privileges) },
                             onInsightAction = onInsightAction,
                             // The detail belongs to Drain's list: back from it shows the list the row is in.
                             onOpenApp = {
-                                navigator.select(Destination.Drain)
+                                navigator.show(Route.Drain)
                                 navigator.openDetail(Route.AppDetail(it))
                             },
                         )
@@ -328,7 +329,7 @@ class AppScreens(
                         selected = navigator.openNight(Destination.Timeline),
                     )
                 },
-                night = { navigator, id -> NightScreen(nightViewModel(id), onOpenDrain = { navigator.select(Destination.Drain) }) },
+                night = { navigator, id -> NightScreen(nightViewModel(id), onOpenDrain = { navigator.show(Route.Drain) }) },
                 health = { navigator ->
                     HealthScreen(
                         onOpenSession = { navigator.openDetail(Route.ChargeSession(it)) },
@@ -341,7 +342,7 @@ class AppScreens(
                     ChargeSessionsScreen(
                         onOpenSession = { navigator.openDetail(Route.ChargeSession(it)) },
                         selected = navigator.openSession(Destination.Health),
-                        onOpenDrain = { navigator.select(Destination.Drain) },
+                        onOpenDrain = { navigator.show(Route.Drain) },
                     )
                 },
                 chargeSession = { _, id -> ChargeSessionScreen(chargeSessionViewModel(id)) },
@@ -358,7 +359,7 @@ class AppScreens(
                 actionCenter = { navigator ->
                     ActionCenterScreen(
                         onOpenPrivileges = { navigator.open(Route.Privileges) },
-                        onOpenDrain = { navigator.select(Destination.Drain) },
+                        onOpenDrain = { navigator.show(Route.Drain) },
                     )
                 },
             )
