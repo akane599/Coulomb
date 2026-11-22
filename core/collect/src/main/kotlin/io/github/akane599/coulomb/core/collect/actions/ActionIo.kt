@@ -28,6 +28,8 @@ internal data class Ran(
     val ok: Boolean,
     val noWorker: Boolean,
     val output: String?,
+    /** The reply was lost (a timeout, the worker died): the command may have run. */
+    val unclear: Boolean = false,
 )
 
 /** Everything the engine reads from and writes to the phone, so it can be tested without one. */

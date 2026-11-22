@@ -117,8 +117,18 @@ internal class WorkerActionIo(
 
     override suspend fun act(action: PrivilegedAction): Ran =
         when (val result = access.act(action)) {
-            is PrivilegedResult.Success -> Ran(ok = true, noWorker = false, output = result.value)
-            is PrivilegedResult.Failure -> Ran(ok = false, noWorker = result.reason == FailureReason.NO_ACCESS, output = result.detail)
+            is PrivilegedResult.Success -> {
+                Ran(ok = true, noWorker = false, output = result.value)
+            }
+
+            is PrivilegedResult.Failure -> {
+                Ran(
+                    ok = false,
+                    noWorker = result.reason == FailureReason.NO_ACCESS,
+                    output = result.detail,
+                    unclear = result.reason == FailureReason.TIMEOUT || result.reason == FailureReason.WORKER_DIED,
+                )
+            }
         }
 
     override fun commandLine(action: PrivilegedAction): String = ActionCommands.adbLine(access.actionArgv(action))

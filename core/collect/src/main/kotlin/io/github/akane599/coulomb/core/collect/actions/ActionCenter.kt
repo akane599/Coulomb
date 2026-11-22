@@ -254,7 +254,7 @@ public class ActionCenter internal constructor(
                 }
 
                 plan.type == ActionType.RESET_STATS -> {
-                    resetDone(stored, ran?.output)
+                    resetDone(stored, ran)
                 }
 
                 // Android confirms nothing for a force stop, and there is no value to read.
@@ -276,11 +276,14 @@ public class ActionCenter internal constructor(
 
     private suspend fun resetDone(
         row: ActionLogEntity,
-        output: String?,
+        ran: Ran?,
     ): ActionResult {
-        if (output?.contains(ActionCommands.RESET_DONE) == true) return ActionResult.Done(row.id, row.afterValue)
+        if (ran?.output?.contains(ActionCommands.RESET_DONE) == true) return ActionResult.Done(row.id, row.afterValue)
+        // A reply lost to a timeout or a dead worker does not say the reset did not run: the
+        // record of an irreversible command stays (ADR-0060 §14; audit DATA-019).
+        if (ran?.unclear == true) return ActionResult.Unverified(row.id)
         log.delete(row)
-        return ActionResult.Failed(output)
+        return ActionResult.Failed(ran?.output)
     }
 
     private suspend fun readBack(
@@ -330,14 +333,32 @@ public class ActionCenter internal constructor(
         return false
     }
 
-    /** A profile that is written but not in force is undone at once; its row goes only when the undo is read back. */
+    /**
+     * A profile that is written but not in force is undone at once. The undo goes only over the
+     * value Coulomb wrote, and the row goes only when the baseline is read back: a read that fails
+     * is not the baseline, so a change never exists without its row (ADR-0060 §21, §22b; audit
+     * DATA-004, CONC-007).
+     */
     private suspend fun rollBack(
         plan: Plan,
         row: ActionLogEntity,
     ): ActionResult {
+        val held = plan.read()
+        when {
+            held !is Got.Value -> return ActionResult.Unverified(row.id)
+
+            same(held.value, plan.before) -> return forget(row)
+
+            // Another manager wrote the setting in the meantime: its value is not overwritten.
+            !same(held.value, plan.want) -> return drifted(row, held.value)
+        }
         plan.undo?.let { io.act(it) }
-        val now = (plan.read() as? Got.Value)?.value
-        if (same(now, plan.before)) log.delete(row)
+        val now = plan.read()
+        return if (now is Got.Value && same(now.value, plan.before)) forget(row) else ActionResult.Unverified(row.id)
+    }
+
+    private suspend fun forget(row: ActionLogEntity): ActionResult {
+        log.delete(row)
         return ActionResult.Failed(null)
     }
 

@@ -45,8 +45,17 @@ internal class FakePhone : ActionIo {
     var saver = false
     var plugged = false
     var resetOutput = ActionCommands.RESET_DONE
+
+    /** True: the reset's reply is lost, as to a timeout or a dead worker. */
+    var resetUnclear = false
     val acts = mutableListOf<PrivilegedAction>()
     var reads = 0
+
+    /** Runs after each command; a test changes the phone there, as a worker drop or another manager would. */
+    var afterAct: (PrivilegedAction) -> Unit = {}
+
+    /** Runs at each read of the controller's values. */
+    var onEffectiveRead: () -> Unit = {}
 
     private fun <T> got(value: () -> T): Got<T> {
         reads++
@@ -66,11 +75,13 @@ internal class FakePhone : ActionIo {
 
     override suspend fun dozeConstants(): Got<String?> = got { doze }
 
-    override suspend fun dozeEffectiveMs(): Got<Map<String, Long>> =
-        got {
+    override suspend fun dozeEffectiveMs(): Got<Map<String, Long>> {
+        onEffectiveRead()
+        return got {
             val overrides = if (dozeTakesEffect) DozeProfiles.pairs(doze).orEmpty() else emptyMap()
             stockMs + overrides.mapNotNull { (key, value) -> value.toLongOrNull()?.let { key to it } }
         }
+    }
 
     override val canAct: Boolean get() = worker
 
@@ -89,6 +100,12 @@ internal class FakePhone : ActionIo {
         if (!worker) return Ran(ok = false, noWorker = true, output = null)
         acts += action
         if (obeys) apply(action)
+        afterAct(action)
+        if (action == PrivilegedAction.ResetBatteryStats &&
+            resetUnclear
+        ) {
+            return Ran(ok = false, noWorker = false, output = null, unclear = true)
+        }
         return Ran(ok = reports, noWorker = false, output = if (action == PrivilegedAction.ResetBatteryStats) resetOutput else "")
     }
 

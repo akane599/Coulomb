@@ -468,6 +468,44 @@ class ActionCenterTest {
             assertThat(log.all).isEmpty()
         }
 
+    /** Audit DATA-004: a worker that drops before the undo leaves the profile on the phone, so its row stays. */
+    @Test
+    fun aRollbackThatCannotReadKeepsTheRowAndWritesNothing() =
+        runTest {
+            phone.dozeTakesEffect = false
+            var effectiveReads = 0
+            phone.onEffectiveRead = { if (++effectiveReads == ROLLBACK_EFFECTIVE_READS) phone.readable = false }
+            val result = center.run(ActionRequest.ApplyDozeProfile(DozeProfile.BALANCED))
+            assertThat(result).isInstanceOf(ActionResult.Unverified::class.java)
+            assertThat(phone.doze).isNotNull()
+            assertThat(phone.acts).hasSize(1)
+            assertThat(log.all).hasSize(1)
+        }
+
+    /** Audit CONC-007: a value another manager wrote during the check is not overwritten. */
+    @Test
+    fun aRollbackLeavesAValueAnotherManagerWrote() =
+        runTest {
+            phone.dozeTakesEffect = false
+            var effectiveReads = 0
+            phone.onEffectiveRead = { if (++effectiveReads == ROLLBACK_EFFECTIVE_READS) phone.doze = "inactive_to=60000" }
+            val result = center.run(ActionRequest.ApplyDozeProfile(DozeProfile.BALANCED))
+            assertThat(result).isInstanceOf(ActionResult.Drifted::class.java)
+            assertThat(phone.doze).isEqualTo("inactive_to=60000")
+            assertThat(log.all.single().externalDriftValue).isEqualTo("inactive_to=60000")
+        }
+
+    /** The undo ran but its result cannot be read: the row stays rather than claim the baseline. */
+    @Test
+    fun anUndoThatCannotBeReadBackKeepsTheRow() =
+        runTest {
+            phone.dozeTakesEffect = false
+            phone.afterAct = { if (phone.acts.size == 2) phone.readable = false }
+            val result = center.run(ActionRequest.ApplyDozeProfile(DozeProfile.BALANCED))
+            assertThat(result).isInstanceOf(ActionResult.Unverified::class.java)
+            assertThat(log.all).hasSize(1)
+        }
+
     @Test
     fun aValueThatIsNotPairsIsNeitherTakenOverNorRewritten() =
         runTest {
@@ -526,4 +564,18 @@ class ActionCenterTest {
             assertThat(record.active).isFalse()
             assertThat(record.revertCommand).isNull()
         }
+
+    /** Audit DATA-019: a lost reply does not say the reset did not run, so its record stays. */
+    @Test
+    fun aResetWhoseReplyIsLostStaysOnRecord() =
+        runTest {
+            phone.resetUnclear = true
+            assertThat(center.run(ActionRequest.ResetBatteryStats)).isInstanceOf(ActionResult.Unverified::class.java)
+            assertThat(log.all).hasSize(1)
+        }
+
+    private companion object {
+        /** In force is read three times before a rollback; the third read is the last before it. */
+        const val ROLLBACK_EFFECTIVE_READS = 3
+    }
 }
