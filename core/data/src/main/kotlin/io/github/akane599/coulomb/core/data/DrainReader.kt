@@ -171,6 +171,8 @@ internal class DrainReader
          * consecutive windows, the whole-UID row where a window has one, each window shared among
          * the days it overlaps by wall time ([dayShares]). A screen-off window lasts the whole
          * night, so the evening's part stays on its own day. A day no window overlaps has none.
+         * A window that named [WindowUidEntity.MAX_NAMED_UIDS] UIDs without this one may have
+         * folded it into small apps, so its days are [DayUse.partial] (audit DATA-017).
          */
         private suspend fun trend(
             uid: Int,
@@ -186,10 +188,16 @@ internal class DrainReader
                     .atStartOfDay(z)
                     .toInstant()
                     .toEpochMilli()
+            val spans = windows.consecutiveWindows(fromMs, toMs)
             val withData = HashSet<LocalDate>()
-            windows.consecutiveSpans(fromMs, toMs).forEach { withData += dayShares(it.fromWallMs, it.toWallMs, z, first, today).keys }
+            spans.forEach { withData += dayShares(it.fromWallMs, it.toWallMs, z, first, today).keys }
             val perDay = HashMap<LocalDate, Double>()
-            windows.consecutiveUse(uid, fromMs, toMs).groupBy { it.windowId }.values.forEach { rows ->
+            val use = windows.consecutiveUse(uid, fromMs, toMs).groupBy { it.windowId }
+            val folded = HashSet<LocalDate>()
+            spans
+                .filter { it.windowId !in use && it.namedUids >= WindowUidEntity.MAX_NAMED_UIDS }
+                .forEach { folded += dayShares(it.fromWallMs, it.toWallMs, z, first, today).keys }
+            use.values.forEach { rows ->
                 val whole = rows.filter { it.component == WindowDrainsBuilder.ALL_COMPONENTS }
                 val mah = whole.ifEmpty { rows }.sumOf { it.mAh }
                 val window = rows.first()
@@ -199,7 +207,10 @@ internal class DrainReader
             }
             return (0 until TREND_DAYS).map { offset ->
                 val day = first.plusDays(offset)
-                DayUse(day, if (day in withData) perDay[day] ?: 0.0 else null)
+                val mah = if (day in withData) perDay[day] ?: 0.0 else null
+                val partial = day in folded
+                // Nothing kept but a fold: no figure, not a measured zero.
+                DayUse(day, mah?.takeUnless { partial && it == 0.0 }, partial)
             }
         }
 

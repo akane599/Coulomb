@@ -107,10 +107,18 @@
     <string name="appdetail_trend_updated_on">Uygulama %1$s tarihinde güncellendi.</string>
     <string name="appdetail_trend_chart">Son 14 günde %1$s: %2$s</string>
     <string name="appdetail_trend_day_gap">%1$s kayıt yok</string>
+    <string name="appdetail_trend_day_not_kept">%1$s saklanmadı</string>
+    <string name="appdetail_trend_day_at_least">%1$s en az %2$s</string>
+    <plurals name="appdetail_trend_partial">
+        <item quantity="one">Bir gün bu uygulama bir süre Coulomb’un sakladığı en büyük 30 uygulamanın dışında kaldı; o gün kullanımının yalnızca bir kısmını gösterir.</item>
+        <item quantity="other">%1$s gün bu uygulama bir süre Coulomb’un sakladığı en büyük 30 uygulamanın dışında kaldı; o günler kullanımının yalnızca bir kısmını gösterir.</item>
+    </plurals>
     <string name="appdetail_trend_table">%1$s, son 14 gün</string>
     <string name="appdetail_column_day">Gün</string>
     <string name="appdetail_column_mah">mAh</string>
     <string name="appdetail_no_records">Kayıt yok</string>
+    <string name="appdetail_not_kept">Saklanmadı</string>
+    <string name="appdetail_at_least">En az %1$s</string>
 
     <string name="appdetail_app_info">Uygulama bilgisi</string>
 

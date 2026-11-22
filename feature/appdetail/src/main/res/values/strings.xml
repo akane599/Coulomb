@@ -114,10 +114,18 @@
     <string name="appdetail_trend_updated_on">App updated on %1$s.</string>
     <string name="appdetail_trend_chart">%1$s over the last 14 days: %2$s</string>
     <string name="appdetail_trend_day_gap">%1$s no records</string>
+    <string name="appdetail_trend_day_not_kept">%1$s not kept</string>
+    <string name="appdetail_trend_day_at_least">%1$s at least %2$s</string>
+    <plurals name="appdetail_trend_partial">
+        <item quantity="one">On one day this app was outside the 30 largest that Coulomb keeps for part of the time, so that day shows only part of its use.</item>
+        <item quantity="other">On %1$s days this app was outside the 30 largest that Coulomb keeps for part of the time, so those days show only part of its use.</item>
+    </plurals>
     <string name="appdetail_trend_table">%1$s, last 14 days</string>
     <string name="appdetail_column_day">Day</string>
     <string name="appdetail_column_mah">mAh</string>
     <string name="appdetail_no_records">No records</string>
+    <string name="appdetail_not_kept">Not kept</string>
+    <string name="appdetail_at_least">At least %1$s</string>
 
     <!-- SPEC 10.4 item 8; the restrictions arrive with the Action Center (P5). -->
     <string name="appdetail_app_info">App info</string>

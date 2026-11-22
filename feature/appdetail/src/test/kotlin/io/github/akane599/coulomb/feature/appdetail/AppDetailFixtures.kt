@@ -80,11 +80,17 @@ internal fun labReport(drains: WindowDrains = labDrains()): DrainReport =
         components = emptyList(),
     )
 
-/** The lab's 14 days: 100 to 140 mAh until the update on 3 November, then 236 to 402. */
-internal fun labTrend(gapDays: Set<Int> = emptySet()): List<DayUse> {
+/**
+ * The lab's 14 days: 100 to 140 mAh until the update on 3 November, then 236 to 402. A partial day
+ * that is also a gap is one no window kept the app on (audit DATA-017).
+ */
+internal fun labTrend(
+    gapDays: Set<Int> = emptySet(),
+    partialDays: Set<Int> = emptySet(),
+): List<DayUse> {
     val mah = listOf(112.0, 104.0, 131.0, 140.0, 118.0, 100.0, 126.0, 122.0, 236.0, 288.0, 310.0, 344.0, 297.0, 402.0)
     return mah.mapIndexed { index, value ->
-        DayUse(TODAY.minusDays((mah.lastIndex - index).toLong()), value.takeUnless { index in gapDays })
+        DayUse(TODAY.minusDays((mah.lastIndex - index).toLong()), value.takeUnless { index in gapDays }, index in partialDays)
     }
 }
 

@@ -119,6 +119,13 @@ public data class WindowUidEntity(
 
         /** The sum of the UIDs not stored one by one. */
         public const val OTHER_UID: Int = -2
+
+        /**
+         * At most this many UIDs above the floor keep their own rows, besides Coulomb's own. A window
+         * with this many named UIDs may have folded a larger one into [OTHER_UID] by rank, so an app
+         * missing from it is not known to be below the floor (ADR-0041 §4; audit DATA-017).
+         */
+        public const val MAX_NAMED_UIDS: Int = 30
     }
 }
 

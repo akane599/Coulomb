@@ -207,6 +207,17 @@ class AppDetailScreenshotTest {
         compose.onRoot().captureRoboImage("src/test/screenshots/appdetail-trend-table.png")
     }
 
+    /** Audit DATA-017: a day the app was folded into small apps for part of reads "at least", one never kept "Not kept". */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun hardenedTrendTable() {
+        shoot("harden-trend-table", ready(hardenedDetail()), capture = false)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("View as table"))
+        compose.onAllNodesWithText("View as table").onLast().performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/appdetail-harden-trend-table.png")
+    }
+
     @Suppress("LongParameterList") // Test variants.
     private fun shoot(
         name: String,
@@ -287,7 +298,7 @@ private fun hardenedDetail() =
                 modeledMah = 124_000.0,
             ),
         brokenDown = false,
-        trend = labTrend(gapDays = setOf(3, 4, 10)),
+        trend = labTrend(gapDays = setOf(3, 4, 10), partialDays = setOf(4, 11)),
         counters = AppCounters(alarmWakeups = 123_456),
         label = "Very Long Navigation And Offline Maps Application Name",
     ).let { it.copy(report = it.report.copy(lowerBound = true, chargedInSpan = true)) }

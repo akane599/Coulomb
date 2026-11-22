@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.akane599.coulomb.core.data.DayUse
 import io.github.akane599.coulomb.core.data.ProcessStates
 import io.github.akane599.coulomb.core.designsystem.chart.DailyBarChart
 import io.github.akane599.coulomb.core.designsystem.chart.DailyBarLabels
@@ -419,19 +420,27 @@ internal fun Trend(
     val today = stringResource(R.string.appdetail_trend_today)
     val dayName = { index: Int -> if (index == days.lastIndex) today else formats.days(days[index].day, days[index].day) }
     val gap = stringResource(R.string.appdetail_trend_day_gap, "%s")
+    val notKept = stringResource(R.string.appdetail_trend_day_not_kept, "%s")
+    val atLeast = stringResource(R.string.appdetail_trend_day_at_least, "%1\$s", "%2\$s")
     val chart = stringResource(R.string.appdetail_trend_chart)
     val summary =
-        remember(scale, formats, chart, gap, today, name) {
+        remember(scale, formats, chart, gap, notKept, atLeast, today, name) {
             chart.format(
                 name,
                 days.indices.joinToString(", ") { index ->
-                    days[index].mah?.let { "${dayName(index)} ${formats.mah(it).joined()}" } ?: gap.format(dayName(index))
+                    val day = days[index]
+                    val mah = day.mah
+                    when {
+                        mah == null -> (if (day.partial) notKept else gap).format(dayName(index))
+                        day.partial -> atLeast.format(dayName(index), formats.mah(mah).joined())
+                        else -> "${dayName(index)} ${formats.mah(mah).joined()}"
+                    }
                 },
             )
         }
     val bars = remember(scale) { days.map { it.mah } }
     Column(Modifier.fillMaxWidth()) {
-        val empty = scale.gaps == days.size
+        val empty = scale.empty
         SectionTitle(stringResource(R.string.appdetail_trend), Provenance.MODELED.takeUnless { empty })
         if (empty) {
             StandIn(stringResource(R.string.appdetail_trend_all_gaps), top = 0.dp)
@@ -467,9 +476,27 @@ internal fun Trend(
                         formats.integer(it.toLong()),
                     )
                 },
+                scale.partials.takeIf { it > 0 }?.let {
+                    pluralStringResource(R.plurals.appdetail_trend_partial, it, formats.integer(it.toLong()))
+                },
             )
         Note(notes.joinToString(" "), top = CoulombSpacing.Space12)
         ViewTableButton(onViewTable)
+    }
+}
+
+/** A day's figure in the trend's table: "at least" where the app was folded into small apps for part of it. */
+@Composable
+private fun trendCell(
+    day: DayUse,
+    formats: Formats,
+): String {
+    val mah = day.mah
+    return when {
+        mah == null && day.partial -> stringResource(R.string.appdetail_not_kept)
+        mah == null -> stringResource(R.string.appdetail_no_records)
+        day.partial -> stringResource(R.string.appdetail_at_least, formats.mah(mah).number)
+        else -> formats.mah(mah).number
     }
 }
 
@@ -508,7 +535,7 @@ internal fun tableOf(
                 rows =
                     detail.trend.map { day ->
                         val label = if (day.day == today) stringResource(R.string.appdetail_trend_today) else formats.days(day.day, day.day)
-                        listOf(label, day.mah?.let { formats.mah(it).number } ?: stringResource(R.string.appdetail_no_records))
+                        listOf(label, trendCell(day, formats))
                     },
                 provenance = Provenance.MODELED,
             )

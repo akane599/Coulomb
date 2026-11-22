@@ -145,7 +145,13 @@ internal class TrendScale(
     /** The gridlines above the axis, bottom up. */
     val lines: List<Double> get() = (1..QUARTERS).map { top * it / QUARTERS }
 
-    val gaps: Int get() = days.count { it.mah == null }
+    /** Days no window covered. */
+    val gaps: Int get() = days.count { it.mah == null && !it.partial }
+
+    /** Days the app was folded into small apps for part of, so their bars show part of its use. */
+    val partials: Int get() = days.count { it.partial }
+
+    val empty: Boolean get() = days.all { it.mah == null }
 
     companion object {
         const val QUARTERS = 4

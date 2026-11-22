@@ -271,6 +271,62 @@ internal class AppDetailReaderTest : DrainDbTest() {
             assertThat(byDaysBack.filterKeys { it !in setOf(13L, 5L, 1L) }.values.toSet()).containsExactly(null)
         }
 
+    /**
+     * Audit DATA-017: a window that named the most UIDs it keeps without the app may have folded it
+     * into small apps by rank, so its day is partial: a lower bound, or no figure where no window kept
+     * the app. A window with fewer named UIDs left the app out only below the floor: a modeled zero.
+     */
+    @Test
+    fun aDayAFullWindowLeftTheAppOutOfIsPartial() =
+        runTest {
+            val now = BASE_WALL
+            val today = day(now)
+
+            fun at(
+                daysBack: Long,
+                hour: Int,
+            ) = today
+                .minusDays(daysBack)
+                .atStartOfDay(ZoneOffset.UTC)
+                .plusHours(hour.toLong())
+                .toInstant()
+                .toEpochMilli()
+
+            var elapsed = 0L
+
+            suspend fun windowEnding(
+                wallMs: Long,
+                rows: WindowRows,
+            ) = store(window(heavy(++elapsed * HOUR_S, wallMs = wallMs - 1), heavy(++elapsed * HOUR_S, wallMs = wallMs)), rows)
+
+            val full =
+                WindowRows(
+                    uids =
+                        (0 until WindowUidEntity.MAX_NAMED_UIDS).map { uid(FULL_FIRST + it, 5.0) } +
+                            uid(WindowUidEntity.OTHER_UID, 3.0),
+                )
+            windowEnding(at(3, 10), full)
+            windowEnding(at(2, 9), WindowRows(uids = listOf(uid(APP, 2.0))))
+            windowEnding(at(2, 15), full)
+            windowEnding(at(1, 12), WindowRows(uids = listOf(uid(OTHER_APP, 4.0), uid(WindowUidEntity.OTHER_UID, 0.05))))
+
+            val detail = checkNotNull(reader.readApp(DrainSpan.Last24Hours, APP, empty(), now))
+            val byDaysBack =
+                detail.trend.associateBy {
+                    java.time.temporal.ChronoUnit.DAYS
+                        .between(it.day, today)
+                }
+
+            assertThat(byDaysBack.getValue(3).mah).isNull()
+            assertThat(byDaysBack.getValue(3).partial).isTrue()
+            assertThat(byDaysBack.getValue(2).mah).isWithin(1e-9).of(2.0)
+            assertThat(byDaysBack.getValue(2).partial).isTrue()
+            assertThat(byDaysBack.getValue(1).mah).isEqualTo(0.0)
+            assertThat(byDaysBack.getValue(1).partial).isFalse()
+            assertThat(byDaysBack.getValue(4).mah).isNull()
+            assertThat(byDaysBack.getValue(4).partial).isFalse()
+        }
+
     /** §4: a night's screen-off window is shared between the evening and the morning by wall time. */
     @Test
     fun theTrendSharesANightBetweenItsDays() =
@@ -361,3 +417,5 @@ internal class AppDetailReaderTest : DrainDbTest() {
 
     private fun day(wallMs: Long): LocalDate = Instant.ofEpochMilli(wallMs).atZone(ZoneOffset.UTC).toLocalDate()
 }
+
+private const val FULL_FIRST = 20_000

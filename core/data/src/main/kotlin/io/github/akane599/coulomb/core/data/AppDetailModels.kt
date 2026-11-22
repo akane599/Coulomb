@@ -138,11 +138,17 @@ public data class AppCounters(
 }
 
 /**
- * The app's mAh on one local day (ADR-0041 §4): summed over the consecutive windows that end that
- * day, or null when no window does. Modeled; a lower bound by under 0.1 mAh a window where the app
- * was folded into small apps.
+ * The app's mAh on one local day (ADR-0041 §4): its share of each consecutive window that overlaps
+ * the day, or null when no window does. Modeled. Below the floor an app adds under 0.1 mAh a window
+ * without a row of its own.
  */
 public data class DayUse(
     val day: LocalDate,
     val mah: Double?,
+    /**
+     * Some window of the day named the most UIDs it keeps without this app, so it may have been
+     * folded into small apps above the floor: [mah] is a lower bound, and null when no window kept
+     * it (audit DATA-017).
+     */
+    val partial: Boolean = false,
 )
