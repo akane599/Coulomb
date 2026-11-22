@@ -54,3 +54,7 @@ Facts about `material3` 1.5.0-rc01 (ADR-0030):
   the same convention, for its `/impeccable` gate.
 - CI does not compare images yet. That waits until the screens settle, so a moving design does not
   fail every push.
+  Amended 2026-11-22 (audit TEST-001): the whole-app design gate passed, so the screens have
+  settled. `tools/ci/check.sh unit` runs the tests with `roborazzi.test.verify`, and CI and the
+  pre-push hook compare every screenshot with its golden. A changed screen records its goldens
+  with `recordRoborazziDebug` in the same commit.

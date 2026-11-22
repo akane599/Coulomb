@@ -16,7 +16,8 @@ step() {
               python3 -I tools/validation/report.py --self-test
               python3 -I tools/ci/translations.py
               run spotlessCheck detekt checkModuleBoundaries ;;
-    unit)     run test :build-logic:convention:test ;;
+    # The screenshot tests compare against the committed goldens (SPEC 16.4; ADR-0031, audit TEST-001).
+    unit)     run test :build-logic:convention:test -Proborazzi.test.verify=true ;;
     lint)     run :app:lintDebug ;;
     manifest) run :app:verifyDebugManifestPermissions :app:verifyReleaseManifestPermissions :app:verifyBenchmarkManifestPermissions ;;
     assemble) run :app:assembleDebug :app:assembleRelease :benchmark:assembleBenchmark ;;
