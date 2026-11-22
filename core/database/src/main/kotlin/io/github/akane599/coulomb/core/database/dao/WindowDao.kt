@@ -141,6 +141,12 @@ public data class UidWindowUse(
     val mAh: Double,
 )
 
+/** A UID with power in the consecutive window that ends at [snapshotId]. */
+public data class SnapshotUid(
+    val snapshotId: Long,
+    val uid: Int,
+)
+
 /**
  * One consecutive window of a chain, in order: what its measured drain came from, whether it started
  * on battery, the levels at its ends, and which records it kept. A span's Estimated total takes its
@@ -338,6 +344,25 @@ public abstract class WindowDao {
         toBootSeq: Int,
         toElapsedNs: Long,
     ): ChainTotals
+
+    /**
+     * The apps with power in each consecutive window that ends after the first snapshot and before
+     * the last: an app gone from the last snapshot's counters was there at the latest window it
+     * used power in (audit BUG-062). Folded and device rows are left out.
+     */
+    @Query(
+        "SELECT DISTINCT w.toSnapshotId AS snapshotId, u.uid AS uid FROM window_uid u " +
+            "JOIN window_result w ON w.id = u.windowId JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND u.mAh > 0 AND u.uid >= 0 " +
+            "AND (s.bootSeq > :fromBootSeq OR (s.bootSeq = :fromBootSeq AND s.elapsedNs > :fromElapsedNs)) " +
+            "AND (s.bootSeq < :toBootSeq OR (s.bootSeq = :toBootSeq AND s.elapsedNs < :toElapsedNs))",
+    )
+    public abstract suspend fun usersBetween(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<SnapshotUid>
 
     /** As [chainTotals], each window in time order ([ChainStep]). */
     @Query(

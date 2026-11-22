@@ -126,6 +126,9 @@ internal class FakeStats(
     var usageSleepMs = 0L
     var usage: ((UsageRead) -> UsageRead)? = null
 
+    /** Apps the next dump reports beside the video app. */
+    var otherUids: List<UidStats> = emptyList()
+
     /** The statuses the next dump reports; S5 whole by default. */
     var statuses = mapOf("S5" to SourceStatus.OK)
 
@@ -159,7 +162,7 @@ internal class FakeStats(
                         powerSummary = PowerSummary(capacityMah = 5_000.0),
                         powerUse = listOf(SipperPower(SipperKind.UNKNOWN, uid = null, mah = mah(sinceMs))),
                     ),
-                uids = listOf(UidStats(10_100, packages = listOf("com.example.video"), powerMah = mah(sinceMs))),
+                uids = listOf(UidStats(10_100, packages = listOf("com.example.video"), powerMah = mah(sinceMs))) + otherUids,
                 uidsComplete = true,
             )
         clock.elapsedNs += statsTakesMs * NS_PER_MS

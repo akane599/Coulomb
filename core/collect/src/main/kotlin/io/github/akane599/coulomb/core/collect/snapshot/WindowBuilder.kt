@@ -152,11 +152,17 @@ internal object WindowBuilder {
      * the changes between two snapshots add up to the change between the outer ones, so loading
      * the others would change nothing. Each step is judged over every snapshot it spans
      * ([Attribution.step]), so a reset or a restart between two pruned snapshots still counts.
-     * Reads only the snapshot rows, not their counters.
+     * [keep] adds snapshots by their index in [path]: where an app was last seen before its
+     * counters went, since a counter that disappears does not add up (audit BUG-062). Reads only
+     * the snapshot rows, not their counters.
      */
-    fun links(path: List<SnapshotEntity>): List<Link> {
+    fun links(
+        path: List<SnapshotEntity>,
+        keep: Set<Int> = emptySet(),
+    ): List<Link> {
         val epochs = path.map(::epochOf)
         val around = sortedSetOf(0, path.lastIndex)
+        keep.filterTo(around) { it in path.indices }
         epochs.zipWithNext().forEachIndexed { i, (a, b) ->
             if (Attribution.resetBetween(a, b) || Attribution.systemRestartBetween(a, b)) {
                 around += i

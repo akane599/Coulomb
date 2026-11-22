@@ -511,9 +511,33 @@ internal class SnapshotWriter(
             snapshots
                 .heavyBetween(start.bootSeq, start.elapsedNs, end.bootSeq, end.elapsedNs)
                 .filter { sameSource(it, end) }
-        return WindowBuilder.links(listOf(start) + between + end).map { (s, step) ->
-            WindowEnd(s, if (s.id == end.id && endRows != null) endRows else snapshots.rows(s.id), step)
+        val path = listOf(start) + between + end
+        val last = endRows ?: snapshots.rows(end.id)
+        return WindowBuilder.links(path, lastSeen(path, last)).map { (s, step) ->
+            WindowEnd(s, if (s.id == end.id) last else snapshots.rows(s.id), step)
         }
+    }
+
+    /**
+     * Where in [path] each app gone from the end's counters last used power, by the consecutive
+     * windows: its counter disappeared, so the change from the start to the end no longer holds
+     * its use, and the chain keeps that snapshot (audit BUG-062).
+     */
+    private suspend fun lastSeen(
+        path: List<SnapshotEntity>,
+        endRows: SnapshotRows,
+    ): Set<Int> {
+        // Two ends and nothing between: no step to keep.
+        if (path.size <= 2) return emptySet()
+        val start = path.first()
+        val end = path.last()
+        val present = endRows.uidPower.mapTo(HashSet()) { it.uid }
+        val at = path.withIndex().associate { (i, s) -> s.id to i }
+        return windows
+            .usersBetween(start.bootSeq, start.elapsedNs, end.bootSeq, end.elapsedNs)
+            .filter { it.uid !in present }
+            .groupBy { it.uid }
+            .mapNotNullTo(HashSet()) { (_, seen) -> seen.mapNotNull { at[it.snapshotId] }.maxOrNull() }
     }
 
     private fun hasCounters(snapshot: SnapshotEntity) = snapshot.kind == SnapshotKind.HEAVY && !snapshot.countersPruned
