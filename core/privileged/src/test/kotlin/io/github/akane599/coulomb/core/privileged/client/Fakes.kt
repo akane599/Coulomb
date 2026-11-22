@@ -213,7 +213,12 @@ internal class FakeWorker(
         sources: Int,
         pipe: ParcelFileDescriptor?,
     ): Int {
-        if (kernelStatus == WorkerStatusCode.OK) pipes.output(pipe!!).write(kernelFiles)
+        if (kernelStatus == WorkerStatusCode.OK) {
+            val out = pipes.output(pipe!!)
+            out.write(kernelFiles)
+            out.flush()
+        }
+        if (dieDuringDump) throw DeadObjectException()
         return kernelStatus
     }
 

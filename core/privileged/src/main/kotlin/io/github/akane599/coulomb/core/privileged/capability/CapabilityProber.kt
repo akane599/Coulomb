@@ -455,10 +455,20 @@ public class CapabilityProber
             val files = access.readKernelFiles(KernelFrames.ALL_SOURCES) { it.readBytes() }
             val frames = files.valueOrNull()?.let(KernelFrames::walk)
             val cost = "read_ms" to ((files as? DumpResult.Complete)?.durationMs?.toString() ?: "-")
+            // What a read cut short did not reach says nothing about those paths (audit BUG-006).
+            val whole = frames?.takeIf { files is DumpResult.Complete && it.ended }
+
+            fun row(
+                id: CapabilityId,
+                found: (KernelFrames) -> Capability,
+            ): Capability =
+                whole?.let(found)
+                    ?: frames?.let { cap(id, DEGRADED, T3_ROOT, CUT_SHORT, null, mapOf("paths_read" to it.read.size.toString())) }
+                    ?: failed(id, files, T3_ROOT)
             return listOf(
-                frames?.let { wakeupSources(it, cost) } ?: failed(CapabilityId.WAKEUP_SOURCES, files, T3_ROOT),
-                frames?.let { suspendStats(it, cost) } ?: failed(CapabilityId.SUSPEND_STATS, files, T3_ROOT),
-                frames?.let(::wakeupReasons) ?: failed(CapabilityId.WAKEUP_REASONS, files, T3_ROOT),
+                row(CapabilityId.WAKEUP_SOURCES) { wakeupSources(it, cost) },
+                row(CapabilityId.SUSPEND_STATS) { suspendStats(it, cost) },
+                row(CapabilityId.WAKEUP_REASONS, ::wakeupReasons),
                 kernelLog(),
             )
         }
@@ -509,7 +519,7 @@ public class CapabilityProber
             return when {
                 reason in frames.read && time in frames.read -> available(id, T3_ROOT)
                 reason in frames.read -> cap(id, DEGRADED, T3_ROOT, "no last_suspend_time", null)
-                else -> closedPath(id, frames.failed[reason] ?: -1)
+                else -> frames.failed[reason]?.let { closedPath(id, it) } ?: cap(id, DEGRADED, T3_ROOT, "not in the read", null)
             }
         }
 
@@ -529,7 +539,7 @@ public class CapabilityProber
             return if (result is DumpResult.Complete && trailer != null) {
                 available(id, T3_ROOT, detail)
             } else {
-                cap(id, DEGRADED, T3_ROOT, "read cut short", null, detail)
+                cap(id, DEGRADED, T3_ROOT, CUT_SHORT, null, detail)
             }
         }
 
@@ -749,6 +759,7 @@ public class CapabilityProber
         ) = Capability(id, state, tier, reason, fix, System.currentTimeMillis(), config.fingerprint, detail)
 
         private companion object {
+            const val CUT_SHORT = "read cut short"
             const val PROPERTY_MANUFACTURING_DATE = 7
             const val PROPERTY_FIRST_USAGE_DATE = 8
             const val PROPERTY_CHARGING_POLICY = 9
