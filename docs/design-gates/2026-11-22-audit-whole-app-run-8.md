@@ -14,11 +14,11 @@
 
 ## Findings and dispositions
 
-All open, minor or nit; none blocks the gate.
+None blocks the gate. The minors were fixed after it (ADR-0069 §13).
 
 | # | Sev | Finding | Disposition |
 |---|---|---|---|
-| 1 | Minor | On an old reading, five times on Now and Charging (level table, last-discharge caption, Charging's "Since" caption, summary start, curve table) still judge days by the reading. | Open, minor. |
-| 2 | Minor | The Last night widget at 250×110 dp with 200% text falls to the bare rate, with no day and no spoken time. | Open, minor. |
-| 3 | Minor | The Level widget's clock glyph sits beside the Modeled ring at the same size and reads as a second mark. | Open, minor (also critique run 8 #1). |
+| 1 | Minor | On an old reading, five times on Now and Charging (level table, last-discharge caption, Charging's "Since" caption, summary start, curve table) still judge days by the reading. | Fixed after the gate (ADR-0069 §13). |
+| 2 | Minor | The Last night widget at 250×110 dp with 200% text falls to the bare rate, with no day and no spoken time. | Fixed after the gate (ADR-0069 §13). |
+| 3 | Minor | The Level widget's clock glyph sits beside the Modeled ring at the same size and reads as a second mark. | Fixed after the gate (ADR-0069 §13). |
 | — | Nit | The glyph does not scale with text; phase words stay present tense on an old reading; a trailing "·" in Turkish at 200%. | Open, nit. |

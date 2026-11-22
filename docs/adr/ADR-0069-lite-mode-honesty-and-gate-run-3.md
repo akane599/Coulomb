@@ -90,6 +90,16 @@ The fourth gate run found where §1 and §2 did not reach (`docs/design-gates/20
     reading, the Last night widget's bare form, the clock glyph beside the mark) are recorded open
     in its gate files and are not built under the gate.
 
+## After the gate (2026-11-22)
+
+13. **Run 8's minors are fixed.** Every time on Now and Charging judges its day by the resumed
+    clock (the level table, the last discharge, the session's start, its summary and table), and
+    App detail's evidence by the clock when the sheet opens, as Charging's does. The Last night
+    widget's bare form keeps the night's day beside the figure where it fits and always says it.
+    The Level widget's old-reading glyph is the icon family's Schedule, before the number and
+    sized with the text, so it does not read as a fifth provenance mark. An explicit parameter
+    carries the clock rather than a CompositionLocal, which the project's lint forbids.
+
 ## Verified
 
 Unit tests (sample counts, the 0.0 filter, the import threshold), every golden re-recorded and

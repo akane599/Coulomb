@@ -14,10 +14,10 @@
 
 ## Findings and dispositions
 
-All open, minor or nit; none blocks the gate.
+None blocks the gate. The minors were fixed after it (ADR-0069 §13).
 
 | # | Sev | Finding | Disposition |
 |---|---|---|---|
-| 1 | Minor | The widget's clock glyph is hand-drawn, round, and next to the provenance ring; nothing on the widget explains it. | Open, minor (audit run 8 #3). |
-| 2 | Minor | App detail's "Why am I seeing this?" judges days by the window's end, not the clock. | Open, minor. |
-| — | Nit | English Lite note "when you open it"; the scale table's Target row under "Reading". | Open, nit. |
+| 1 | Minor | The widget's clock glyph is hand-drawn, round, and next to the provenance ring; nothing on the widget explains it. | Fixed after the gate (ADR-0069 §13). |
+| 2 | Minor | App detail's "Why am I seeing this?" judges days by the window's end, not the clock. | Fixed after the gate (ADR-0069 §13). |
+| — | Nit | English Lite note "when you open it"; the scale table's Target row under "Reading". | The note is fixed ("when you open Coulomb"); the column stays, open nit. |

@@ -241,7 +241,7 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   major, the first of two consecutive clean runs. Its minors are fixed (ADR-0069 §11).
 - **Whole-app design gate, run 8 (2026-11-22). Clean:** audit and critique both 0 critical, 0
   major. With run 7, two consecutive clean runs: **the whole-app design gate passes** (SPEC 11.12,
-  ADR-0069 §12). Run 8's minors are recorded open in its gate files.
+  ADR-0069 §12). Run 8's minors were fixed after it (ADR-0069 §13).
 - **P6 status (2026-11-22).** Everything SPEC 18 asks that the build server can prove is done. What
   is left waits on a device or the owner (the table below): the queued emulator runs (a resizable
   window, the Automation API with a caller app, Settings' new rows and Lite mode on a device), which
