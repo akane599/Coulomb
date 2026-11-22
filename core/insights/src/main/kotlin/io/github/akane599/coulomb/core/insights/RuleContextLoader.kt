@@ -7,6 +7,7 @@ import io.github.akane599.coulomb.core.database.dao.SampleDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
 import io.github.akane599.coulomb.core.database.dao.WindowDao
+import io.github.akane599.coulomb.core.database.dao.covers
 import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
@@ -129,7 +130,8 @@ public class RuleContextLoader(
             wifiScanMs = busiestApp(UidKeys.WIFI_SCAN_MS, chain),
             bleScanMs = busiestApp(UidKeys.BLE_SCAN_MS, chain),
             signal = SignalUse(bins, modeled?.takeIf { it > 0 }?.let { modem / it }),
-            self = capacity?.let { SelfCost(own, it) },
+            // Without a modeled window there is no model's share to read, not a share of zero (audit DATA-014).
+            self = capacity?.takeIf { modeled != null }?.let { SelfCost(own, it) },
         )
     }
 
@@ -244,12 +246,7 @@ public class RuleContextLoader(
         val chain = Chain(from, to)
         if (device(DeviceKeys.DEEP_DOZE_COUNT, chain) > 0) return true
         val links = windows.chainLinks(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
-        val whole =
-            links.firstOrNull()?.fromSnapshotId == from.id &&
-                links.last().toSnapshotId == to.id &&
-                links.zipWithNext().all { (a, b) -> a.toSnapshotId == b.fromSnapshotId } &&
-                links.all { it.device }
-        return if (whole) false else null
+        return if (links.covers(from.id, to.id)) false else null
     }
 
     /**

@@ -8,6 +8,7 @@ import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
+import io.github.akane599.coulomb.core.database.entity.WindowResultEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,9 +27,9 @@ internal class SelfCostReaderTest : DrainDbTest() {
             val to = heavy(2 * DAY_S + 7_200)
             // Before the day: not counted.
             store(window(old, from), WindowRows(uids = listOf(uid(OWN, 9.0))))
-            store(window(from, middle), WindowRows(uids = listOf(uid(OWN, 1.5), uid(APP, 20.0))))
+            store(window(from, middle).modeled(), WindowRows(uids = listOf(uid(OWN, 1.5), uid(APP, 20.0))))
             // A component row of the same UID is part of its total, not more of it.
-            store(window(middle, to), WindowRows(uids = listOf(uid(OWN, 0.5), uid(OWN, 0.4, component = "cpu"))))
+            store(window(middle, to).modeled(), WindowRows(uids = listOf(uid(OWN, 0.5), uid(OWN, 0.4, component = "cpu"))))
             db.deviceDao().upsertProfile(DeviceProfileEntity(FP, "t", "t", 37, 3_700_000, 5_000, "power_profile", 1, 1, true, null, null))
 
             val cost = checkNotNull(reader().lastDay(OWN, FP))
@@ -37,7 +38,26 @@ internal class SelfCostReaderTest : DrainDbTest() {
             assertThat(cost.pct).isWithin(1e-9).of(0.04)
             assertThat(cost.fromWallMs).isEqualTo(wall(from))
             assertThat(cost.toWallMs).isEqualTo(wall(to))
+            assertThat(cost.partial).isFalse()
         }
+
+    /** Audit DATA-014: no model's figures is no reading, and a stretch without them makes the reading partial. */
+    @Test
+    fun withoutAModeledWindowThereIsNoReadingAndAMissingOneMakesItPartial() =
+        runTest {
+            val from = heavy(0)
+            val middle = heavy(3_600)
+            val to = heavy(7_200)
+            // A window without S5's device section has no model's share to give.
+            store(window(from, middle), WindowRows(uids = listOf(uid(OWN, 1.0))))
+            assertThat(reader().lastDay(OWN, FP)).isNull()
+
+            store(window(middle, to).modeled(), WindowRows(uids = listOf(uid(OWN, 0.5))))
+            val cost = checkNotNull(reader().lastDay(OWN, FP))
+            assertThat(cost.partial).isTrue()
+        }
+
+    private fun WindowResultEntity.modeled() = copy(modeledMah = 5.0)
 
     @Test
     fun nothingBeforeTwoHeavySnapshotsAndNoShareWithoutACapacity() =
@@ -46,7 +66,7 @@ internal class SelfCostReaderTest : DrainDbTest() {
             val from = heavy(0)
             assertThat(reader().lastDay(OWN, FP)).isNull()
             val to = heavy(3_600)
-            store(window(from, to), WindowRows(uids = listOf(uid(OWN, 1.0))))
+            store(window(from, to).modeled(), WindowRows(uids = listOf(uid(OWN, 1.0))))
 
             val cost = checkNotNull(reader().lastDay(OWN, FP))
 

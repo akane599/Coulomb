@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
 import io.github.akane599.coulomb.core.database.dao.WindowDao
+import io.github.akane599.coulomb.core.database.dao.covers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -21,6 +22,8 @@ public data class SelfCost(
     val capacityMah: Double?,
     val fromWallMs: Long,
     val toWallMs: Long,
+    /** Some of the span has no window with the power model's figures: [ownMah] leaves it out (audit DATA-014). */
+    val partial: Boolean = false,
 ) {
     /** Percent of the battery over the span; null without a capacity. */
     val pct: Double? get() = capacityMah?.takeIf { it > 0 }?.let { ownMah / it * PERCENT }
@@ -42,8 +45,9 @@ public class SelfCostReader
     ) {
         /**
          * The day up to the latest heavy snapshot for [ownUid]; null until two heavy snapshots
-         * of the last day are stored. [fingerprint] picks the phone's design capacity where no
-         * estimate has settled.
+         * of the last day are stored, and while no window between them has the power model's
+         * figures, which is not a share of zero. [fingerprint] picks the phone's design capacity
+         * where no estimate has settled.
          */
         public suspend fun lastDay(
             ownUid: Int,
@@ -53,14 +57,15 @@ public class SelfCostReader
                 val to = snapshots.latestHeavy() ?: return@withContext null
                 val from = snapshots.firstHeavyFrom(to.wallMs - DAY_MS) ?: return@withContext null
                 val before = from.bootSeq < to.bootSeq || (from.bootSeq == to.bootSeq && from.elapsedNs < to.elapsedNs)
-                if (!before) return@withContext null
+                val links = windows.chainLinks(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
+                if (!before || links.none { it.device }) return@withContext null
                 val own =
                     windows
                         .chainUids(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
                         .filter { it.uid == ownUid && it.component == WindowDrainsBuilder.ALL_COMPONENTS }
                         .sumOf { it.mAh }
                 val capacity = sessions.latestHealthEstimateMah() ?: devices.profile(fingerprint)?.designCapacityMah?.toDouble()
-                SelfCost(own, capacity, from.wallMs, to.wallMs)
+                SelfCost(own, capacity, from.wallMs, to.wallMs, partial = !links.covers(from.id, to.id))
             }
 
         private companion object {

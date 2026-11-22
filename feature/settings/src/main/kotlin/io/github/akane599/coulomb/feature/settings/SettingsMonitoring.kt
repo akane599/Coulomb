@@ -92,10 +92,21 @@ private fun OwnUseRow(
     DataRow(
         name = stringResource(R.string.settings_own_use),
         detail =
-            if (cost == null) {
-                stringResource(R.string.settings_own_use_none)
-            } else {
-                stringResource(R.string.settings_own_use_since, formats.clock(cost.fromWallMs, device.zone, device.nowMs))
+            when {
+                cost == null -> {
+                    stringResource(R.string.settings_own_use_none)
+                }
+
+                cost.partial -> {
+                    stringResource(
+                        R.string.settings_own_use_since_partial,
+                        formats.clock(cost.fromWallMs, device.zone, device.nowMs),
+                    )
+                }
+
+                else -> {
+                    stringResource(R.string.settings_own_use_since, formats.clock(cost.fromWallMs, device.zone, device.nowMs))
+                }
             },
         // Without a capacity there is no share to state; the charge itself is still known.
         value = cost?.let { it.pct?.let(formats::finePercent) ?: formats.mah(it.ownMah).joined() } ?: DASH,

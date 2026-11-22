@@ -130,6 +130,7 @@
     <string name="settings_retention_note">Yoksa okumalar 14 gün sonra bir dakikalık ortalamalara dönüşür. Oturumlar ve günlük değerler her durumda saklanır.</string>
     <string name="settings_own_use">Coulomb’un kendi kullanımı</string>
     <string name="settings_own_use_since">%1$s sonrası, Android’in tahminiyle. Coulomb’un bütçesi günde pilin %%0,3’ü.</string>
+    <string name="settings_own_use_since_partial">%1$s sonrası en az bu kadar: Android’in tahmini bu sürenin bir kısmı için yok. Coulomb’un bütçesi günde pilin %%0,3’ü.</string>
     <string name="settings_own_use_none">Henüz ölçülmedi. Android’in istatistiklerinin iki kez okunması gerekir.</string>
     <string name="settings_about">Hakkında</string>
     <string name="settings_version">Sürüm</string>

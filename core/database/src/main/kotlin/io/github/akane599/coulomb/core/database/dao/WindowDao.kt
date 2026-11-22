@@ -168,6 +168,19 @@ public data class ChainLink(
     val device: Boolean,
 )
 
+/**
+ * Whether these links join end to end from snapshot [fromId] to snapshot [toId], each with the
+ * device's counters: only then do their sums cover the whole span (audit BUG-058, DATA-014).
+ */
+public fun List<ChainLink>.covers(
+    fromId: Long,
+    toId: Long,
+): Boolean =
+    firstOrNull()?.fromSnapshotId == fromId &&
+        last().toSnapshotId == toId &&
+        zipWithNext().all { (a, b) -> a.toSnapshotId == b.fromSnapshotId } &&
+        all { it.device }
+
 /** The per-UID records of one window. The uid and component rows' `windowId` is ignored on insert. */
 public data class WindowRows(
     val uids: List<WindowUid> = emptyList(),

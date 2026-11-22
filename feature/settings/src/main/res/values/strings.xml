@@ -139,6 +139,7 @@
     <string name="settings_own_use">Coulomb’s own use</string>
     <!-- %1$s: a time, "Thu 2:05 PM". -->
     <string name="settings_own_use_since">Since %1$s, by Android’s estimate. Coulomb’s budget is 0.3%% of the battery a day.</string>
+    <string name="settings_own_use_since_partial">At least, since %1$s: Android’s estimate is missing for part of that time. Coulomb’s budget is 0.3%% of the battery a day.</string>
     <string name="settings_own_use_none">Not measured yet. It takes two readings of Android’s statistics.</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
