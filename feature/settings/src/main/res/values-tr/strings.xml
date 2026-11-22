@@ -191,6 +191,7 @@
     <string name="data_said_export_failed">Dışa aktarım kaydedilemedi ve dosya tutulmadı. Boş alanı denetleyip yeniden dene.</string>
     <string name="data_said_raw_partial">Kaydedildi, ama bir döküm yarıda kesildi ya da eksik. Hangisi olduğunu dosyadaki README söyler.</string>
     <string name="data_said_raw_unavailable">Coulomb şu an Android’in pil istatistiklerini okuyamıyor; dosya tutulmadı. Yetkiler’i denetleyip yeniden dene.</string>
+    <string name="data_said_export_left">Dışa aktarma bitmedi ve Coulomb yarım kalan dosyayı kaldıramadı. Kaydettiğiniz yerden silin.</string>
     <string name="data_import">İçe aktar</string>
     <string name="data_import_about">Başka bir telefondan gelen paket ayrı bir geçmiş olarak tutulur. Bu telefonun rakamlarını hiç değiştirmez ve onu istediğin zaman silebilirsin.</string>
     <string name="data_import_action">Coulomb paketi içe aktar</string>

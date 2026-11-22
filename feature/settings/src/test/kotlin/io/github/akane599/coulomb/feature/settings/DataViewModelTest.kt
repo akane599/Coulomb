@@ -149,6 +149,17 @@ class DataViewModelTest {
             assertThat(host.discarded).hasSize(2)
         }
 
+    /** Audit BUG-039: a provider that keeps the unfinished file is not said to have kept nothing. */
+    @Test
+    fun anUnfinishedFileThatCouldNotBeRemovedIsSaid() =
+        runTest {
+            val model = model()
+            host.opens = false
+            host.deletes = false
+            model.export(ExportKind.CSV, FILE)
+            assertThat(model.settled().message).isEqualTo(DataMessage.EXPORT_LEFT)
+        }
+
     private class FakeHost : DataHost {
         var inForce = 0
         var opens = true
@@ -163,12 +174,15 @@ class DataViewModelTest {
 
         override fun now(): Long = 1_800_000_000_000
 
-        override fun output(uri: Uri): OutputStream? = if (opens) ByteArrayOutputStream().also { written = it } else null
+        var deletes = true
 
-        override fun input(uri: Uri): InputStream = ByteArrayInputStream(reading)
+        override suspend fun output(uri: Uri): OutputStream? = if (opens) ByteArrayOutputStream().also { written = it } else null
 
-        override fun discard(uri: Uri) {
+        override suspend fun input(uri: Uri): InputStream = ByteArrayInputStream(reading)
+
+        override suspend fun discard(uri: Uri): Boolean {
             discarded += uri
+            return deletes
         }
 
         override suspend fun settingsJson(): String = "{\"theme\":\"DARK\"}"

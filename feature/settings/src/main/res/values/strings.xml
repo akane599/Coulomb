@@ -204,6 +204,7 @@
     <string name="data_said_export_failed">Couldn’t save the export, and no file was kept. Check the free space and try again.</string>
     <string name="data_said_raw_partial">Saved, but one dump was cut short or missing. The README in the file says which.</string>
     <string name="data_said_raw_unavailable">Coulomb can’t read Android’s battery statistics now, so no file was kept. Check Privileges, then try again.</string>
+    <string name="data_said_export_left">The export didn’t finish, and Coulomb couldn’t remove the unfinished file. Delete it where you saved it.</string>
     <string name="data_import">Import</string>
     <string name="data_import_about">A bundle from another phone is kept as its own history. It never changes this phone’s figures, and you can delete it at any time.</string>
     <string name="data_import_action">Import a Coulomb bundle</string>

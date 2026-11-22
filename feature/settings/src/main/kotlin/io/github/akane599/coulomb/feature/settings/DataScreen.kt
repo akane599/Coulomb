@@ -412,6 +412,7 @@ private fun DataMessage.words(): Int =
         DataMessage.EXPORT_FAILED -> R.string.data_said_export_failed
         DataMessage.RAW_PARTIAL -> R.string.data_said_raw_partial
         DataMessage.RAW_UNAVAILABLE -> R.string.data_said_raw_unavailable
+        DataMessage.EXPORT_LEFT -> R.string.data_said_export_left
         DataMessage.IMPORTED -> R.string.data_said_imported
         DataMessage.SETTINGS_APPLIED -> R.string.data_said_settings_applied
         DataMessage.ARCHIVE_DELETED -> R.string.data_said_archive_deleted

@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.settings
 
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.database.SQLException
@@ -29,6 +30,7 @@ import io.github.akane599.coulomb.core.data.ImportResult
 import io.github.akane599.coulomb.core.datastore.SettingsTransfer
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
@@ -82,6 +84,9 @@ internal enum class DataMessage {
 
     /** Neither dump could be read: no file was kept. */
     RAW_UNAVAILABLE,
+
+    /** The export did not finish and its unfinished file could not be removed (audit BUG-039). */
+    EXPORT_LEFT,
     IMPORTED,
     SETTINGS_APPLIED,
     ARCHIVE_DELETED,
@@ -125,12 +130,13 @@ internal data class DataUiState(
 internal interface DataHost {
     fun now(): Long
 
-    fun output(uri: Uri): OutputStream?
+    /** Opens the document off the main thread; null when the provider refuses it (audit CONC-008, BUG-038). */
+    suspend fun output(uri: Uri): OutputStream?
 
-    fun input(uri: Uri): InputStream?
+    suspend fun input(uri: Uri): InputStream?
 
-    /** Removes a document an export created and did not finish. */
-    fun discard(uri: Uri)
+    /** Removes a document an export created and did not finish; false when it may still be there (audit BUG-039). */
+    suspend fun discard(uri: Uri): Boolean
 
     suspend fun settingsJson(): String
 
@@ -206,9 +212,12 @@ public class DataViewModel internal constructor(
                     Log.w(TAG, "export failed", e)
                     ui.update { it.copy(message = DataMessage.EXPORT_FAILED) }
                 } finally {
-                    // Cancelled, failed or empty: a half-written file would pass for an export.
-                    if (!kept) host.discard(uri)
-                    ui.update { it.copy(work = DataWork.Idle) }
+                    // Cancelled, failed or empty: a half-written file would pass for an export. Also
+                    // after a cancel, and said when the provider kept it.
+                    withContext(NonCancellable) {
+                        if (!kept && !host.discard(uri)) ui.update { it.copy(message = DataMessage.EXPORT_LEFT) }
+                        ui.update { it.copy(work = DataWork.Idle) }
+                    }
                 }
             }
     }
@@ -395,35 +404,40 @@ private class AndroidDataHost(
 ) : DataHost {
     override fun now(): Long = System.currentTimeMillis()
 
-    override fun output(uri: Uri): OutputStream? =
-        try {
-            // "wt": a document the picker reused is cut to this export's length.
-            context.contentResolver.openOutputStream(uri, "wt")
-        } catch (e: IOException) {
-            Log.w(TAG, "the document could not be opened", e)
-            null
-        }
+    // "wt": a document the picker reused is cut to this export's length.
+    override suspend fun output(uri: Uri): OutputStream? = document("the document could not be opened") { openOutputStream(uri, "wt") }
 
-    override fun input(uri: Uri): InputStream? =
-        try {
-            context.contentResolver.openInputStream(uri)
-        } catch (e: IOException) {
-            Log.w(TAG, "the file could not be opened", e)
-            null
-        }
+    override suspend fun input(uri: Uri): InputStream? = document("the file could not be opened") { openInputStream(uri) }
 
-    override fun discard(uri: Uri) {
-        try {
-            DocumentsContract.deleteDocument(context.contentResolver, uri)
-        } catch (e: IOException) {
-            Log.w(TAG, "an unfinished export could not be removed", e)
-        } catch (e: SecurityException) {
-            // A provider that lets a document be written and not deleted: the file stays, cut short.
-            Log.w(TAG, "an unfinished export could not be removed", e)
-        } catch (e: UnsupportedOperationException) {
-            Log.w(TAG, "an unfinished export could not be removed", e)
+    // A provider may let a document be written and not deleted: the file stays, cut short.
+    override suspend fun discard(uri: Uri): Boolean =
+        document("an unfinished export could not be removed") { DocumentsContract.deleteDocument(this, uri) } == true
+
+    /**
+     * A provider call, off the main thread: a cloud provider may block on the network. A provider
+     * that refuses (a revoked grant, a document gone, a call it does not support) gives null.
+     */
+    private suspend fun <T> document(
+        failure: String,
+        call: ContentResolver.() -> T?,
+    ): T? =
+        withContext(Dispatchers.IO) {
+            try {
+                context.contentResolver.call()
+            } catch (e: IOException) {
+                Log.w(TAG, failure, e)
+                null
+            } catch (e: SecurityException) {
+                Log.w(TAG, failure, e)
+                null
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, failure, e)
+                null
+            } catch (e: UnsupportedOperationException) {
+                Log.w(TAG, failure, e)
+                null
+            }
         }
-    }
 
     override suspend fun settingsJson(): String = settings.toJson()
 
