@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * interpreted. Used only inside the worker process (SPEC 4.3). Output beyond [maxBytes] is dropped
  * and reported as truncated; a command still running after [timeoutMs] is killed.
  */
-internal class ShellRunner(
+internal open class ShellRunner(
     private val timeoutMs: Long,
 ) {
     class Result(
@@ -28,8 +28,8 @@ internal class ShellRunner(
         val stdoutText: String get() = stdout.toString(Charsets.UTF_8)
     }
 
-    /** Writes stdout to [sink] when given, else collects it into [Result.stdout]. */
-    fun run(
+    /** Writes stdout to [sink] when given, else collects it into [Result.stdout]. Open for the worker's tests. */
+    open fun run(
         argv: List<String>,
         sink: OutputStream?,
         maxBytes: Long,

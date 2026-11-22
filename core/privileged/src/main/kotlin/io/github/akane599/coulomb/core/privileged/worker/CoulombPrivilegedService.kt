@@ -47,15 +47,18 @@ import kotlin.system.exitProcess
  * fallback). There is deliberately no no-arg constructor: without a Context the worker could not
  * learn Coulomb's uid, so on an older server it fails to start and the app falls back (SPEC 4.5).
  */
-public class CoulombPrivilegedService(
+public class CoulombPrivilegedService internal constructor(
     context: Context,
+    private val shell: ShellRunner,
 ) : ICoulombPrivileged.Stub() {
+    /** The constructor Shizuku and Sui call, and the one `consumer-rules.pro` keeps. */
+    public constructor(context: Context) : this(context, ShellRunner(WorkerLimits.COMMAND_TIMEOUT_MS))
+
     private val ownerUid: Int = context.applicationInfo.uid
     private val ownerPackage: String = context.packageName
     private val packageManager: PackageManager = context.packageManager
     private val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     private val version: Long = runCatching { packageManager.getPackageInfo(ownerPackage, 0).longVersionCode }.getOrDefault(-1L)
-    private val shell = ShellRunner(WorkerLimits.COMMAND_TIMEOUT_MS)
 
     // --- identity -------------------------------------------------------------------------------
 

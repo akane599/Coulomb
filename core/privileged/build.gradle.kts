@@ -11,6 +11,11 @@ android {
     defaultConfig.consumerProguardFiles("consumer-rules.pro")
     // JVM tests exercise the state machine with fakes; android.* stubs return defaults.
     testOptions.unitTests.isReturnDefaultValues = true
+    testOptions.unitTests.all {
+        // The worker's own tests run under Robolectric, which reaches FileDescriptor internals on
+        // API 36 (as in :core:database).
+        it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED")
+    }
 }
 
 dependencies {
@@ -22,6 +27,8 @@ dependencies {
     implementation(libs.hiddenapibypass)
     implementation(libs.kotlinx.coroutines.android)
 
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
 }
