@@ -71,7 +71,7 @@ internal fun Timeline.series(
             if (spaced) grouped = true
             val spans = this.tracks[track].orEmpty()
             when (track) {
-                TimelineTrack.SIGNAL -> TimelineBand(name(track), track.ink, line = signal(spans), stepped = true, spaced = spaced)
+                TimelineTrack.SIGNAL -> TimelineBand(name(track), track.ink, line = signalLine(spans), stepped = true, spaced = spaced)
                 TimelineTrack.TEMPERATURE -> TimelineBand(name(track), track.ink, line = temperatureLine(), spaced = spaced)
                 else -> TimelineBand(name(track), track.ink, marks = marks(track, spans), spaced = spaced)
             }
@@ -116,22 +116,48 @@ private fun marks(
     }
 }
 
-/** Each strength from its start to its end, as a share of the strongest. */
-private fun signal(spans: List<TrackSpan>): List<TrackValue> =
-    spans.flatMap { span ->
+/**
+ * Each strength from its start to its end, as a share of the strongest. A span that does not begin
+ * where the one before ended, as after a history gap, starts a new segment (audit BUG-054).
+ */
+internal fun signalLine(spans: List<TrackSpan>): List<TrackValue> {
+    var end: Long? = null
+    return spans.flatMap { span ->
         val share = span.value.toFloat() / TrackSpan.SIGNAL_MAX
-        listOf(TrackValue(span.fromWallMs, share), TrackValue(span.toWallMs, share))
+        val starts = end != span.fromWallMs
+        end = span.toWallMs
+        listOf(TrackValue(span.fromWallMs, share, starts), TrackValue(span.toWallMs, share))
     }
+}
 
-private fun Timeline.temperatureLine(): List<TrackValue> {
+/**
+ * The readings between the span's coolest and warmest. A reading stands until the next, but not
+ * across a stretch the history did not cover: the line stops where it begins and starts again
+ * at the next reading (audit BUG-054).
+ */
+internal fun Timeline.temperatureLine(): List<TrackValue> {
     val low = temperature.minOfOrNull { it.deciC } ?: return emptyList()
     val high = temperature.maxOf { it.deciC }
     val range = (high - low).coerceAtLeast(1)
-    val line = temperature.map { TrackValue(it.wallMs, (it.deciC - low).toFloat() / range) }
-    // A reading stands until the next: the line runs on to where the history ends.
-    val end = knownUntilWallMs?.takeIf { it > temperature.last().wallMs } ?: return line
-    return line + TrackValue(end, line.last().share)
+    val line = ArrayList<TrackValue>()
+    temperature.forEachIndexed { index, reading ->
+        val share = (reading.deciC - low).toFloat() / range
+        val before = temperature.getOrNull(index - 1)
+        val hole = before?.let { gapFrom(it.wallMs, reading.wallMs) }
+        if (before != null && hole != null) line += TrackValue(hole, line.last().share)
+        line += TrackValue(reading.wallMs, share, startsSegment = hole != null)
+    }
+    // The last reading runs on to where the history ends, or to a gap before that.
+    val last = temperature.last().wallMs
+    val until = knownUntilWallMs?.takeIf { it > last } ?: return line
+    return line + TrackValue(gapFrom(last, until) ?: until, line.last().share)
 }
+
+/** Where the first stretch the history did not cover begins between [from] and [to]; null without one. */
+private fun Timeline.gapFrom(
+    from: Long,
+    to: Long,
+): Long? = unknown.filter { it.durationMs > 0 && it.toWallMs > from && it.fromWallMs < to }.minOfOrNull { maxOf(it.fromWallMs, from) }
 
 /** Tick steps in minutes, shortest first. */
 private val STEPS_MIN = listOf(1L, 5L, 15L, 30L, 60L, 180L, 360L, 720L, 1_440L)

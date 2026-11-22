@@ -6,6 +6,7 @@ package io.github.akane599.coulomb.feature.timeline
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.data.CurrentPoint
 import io.github.akane599.coulomb.core.data.LevelPoint
+import io.github.akane599.coulomb.core.data.TemperaturePoint
 import io.github.akane599.coulomb.core.data.Timeline
 import io.github.akane599.coulomb.core.data.TimelineTrack
 import io.github.akane599.coulomb.core.data.TrackSpan
@@ -144,6 +145,29 @@ class TimelineLookupTest {
                     timeline.tracks + (TimelineTrack.AWAKE to timeline.tracks.getValue(TimelineTrack.AWAKE) + TrackSpan(at(15), at(16))),
             )
         assertThat(afterGap.wakeups).isEqualTo(5)
+    }
+
+    /** Audit BUG-054: the signal's and the temperature's lines lift the pen over a stretch without history. */
+    @Test
+    fun theValueLinesStopAtAGap() {
+        val signal =
+            signalLine(
+                listOf(TrackSpan(at(15), at(30), value = 3), TrackSpan(at(30), at(50), value = 3), TrackSpan(at(70), at(90), value = 3)),
+            )
+        assertThat(signal.map { it.startsSegment }).containsExactly(true, false, false, false, true, false).inOrder()
+
+        val warm =
+            timeline.copy(
+                temperature = listOf(TemperaturePoint(at(20), 300), TemperaturePoint(at(40), 320)),
+                unknown = listOf(TrackSpan(at(0), at(15)), TrackSpan(at(30), at(35))),
+                knownUntilWallMs = at(120),
+            )
+        val line = warm.temperatureLine()
+        // The first reading stands until the gap, the second starts again and stands to the end.
+        assertThat(line.map { it.atMs to it.startsSegment })
+            .containsExactly(at(20) to false, at(30) to false, at(40) to true, at(120) to false)
+            .inOrder()
+        assertThat(line[1].share).isEqualTo(0f)
     }
 
     /** Audit DATA-016: a gap is not off, so a timeline the history did not cover reads as a lower bound. */

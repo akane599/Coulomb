@@ -58,11 +58,15 @@ public data class TrackMark(
     val light: Boolean = false,
 )
 
-/** A track's value at a time, as a share of the band's height from 0 (bottom) to 1. */
+/**
+ * A track's value at a time, as a share of the band's height from 0 (bottom) to 1. [startsSegment]
+ * lifts the pen before it: what lies between it and the value before is not known.
+ */
 @Immutable
 public data class TrackValue(
     val atMs: Long,
     val share: Float,
+    val startsSegment: Boolean = false,
 )
 
 /**
@@ -629,7 +633,7 @@ private fun DrawScope.valueLine(
         val x = scale.x(value.atMs)
         val y = bottom - value.share.coerceIn(0f, 1f) * (bottom - top)
         val before = last
-        if (before == null) {
+        if (before == null || value.startsSegment) {
             path.moveTo(x, y)
         } else {
             if (band.stepped) path.lineTo(x, before)
