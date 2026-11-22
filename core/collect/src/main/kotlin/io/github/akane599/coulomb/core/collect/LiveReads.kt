@@ -40,8 +40,16 @@ public class LiveReads
         /** S10: pending alarms and the alarms delivered since boot. */
         public suspend fun alarms(): AlarmDump? = read(SystemService.ALARM) { AlarmParser.parse(it).value }
 
-        /** S13: scheduled jobs and what holds them back, and the recent job statistics. */
-        public suspend fun jobs(): JobSchedulerDump? = read(SystemService.JOB_SCHEDULER) { JobSchedulerParser.parse(it).value }
+        /**
+         * S13: scheduled jobs and what holds them back, and the recent job statistics. The parser
+         * keeps the jobs it could read; when its report is not complete the list may be short, and a
+         * short list would read as a measured count, so it is withheld (ADR-0013; audit BUG-015).
+         */
+        public suspend fun jobs(): JobSchedulerDump? =
+            read(SystemService.JOB_SCHEDULER) { input ->
+                val parsed = JobSchedulerParser.parse(input)
+                if (parsed.report.complete) parsed.value else parsed.value.copy(registeredJobs = null)
+            }
 
         /** A whole dump's value; a partial or failed one is null, as a view says it could not read. */
         private suspend fun <T> read(

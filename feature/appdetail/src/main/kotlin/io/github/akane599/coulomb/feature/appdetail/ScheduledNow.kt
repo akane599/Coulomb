@@ -87,7 +87,8 @@ internal data class ScheduledAlarms(
     val pending: Int,
     /**
      * Of [pending], those that wake the phone; null when another profile runs the same package, since
-     * a pending alarm names its package but not its uid.
+     * a pending alarm names its package but not its uid, or when the package's pending rows do not
+     * add up to the per-uid count, so they are not the same alarms.
      */
     val pendingWakeups: Int?,
     /** Until the soonest pending alarm, in ms; null without one, without the dump's clock, or as [pendingWakeups]. */
@@ -114,12 +115,18 @@ internal data class ScheduledAlarms(
                     .orEmpty()
                     .takeUnless { shared }
             val now = dump.nowElapsedMs
+            // The per-uid count is exact; a uid it does not list has none pending.
+            val perUid = dump.pendingPerUid?.let { it[uid] ?: 0 }
+            // The package's rows describe the counted alarms only when their numbers agree. One UI's
+            // dump lists rows the count leaves out (Android System: 6 counted, 11 waking rows) and
+            // queues the count includes but the list does not, and a clone with no deliveries since
+            // boot is not seen as shared above (audit BUG-019, BUG-016).
+            val detail = byPackage?.takeIf { perUid == null || it.size == perUid }
             return ScheduledAlarms(
-                // The per-uid count is exact; a uid it does not list has none pending.
-                pending = dump.pendingPerUid?.let { it[uid] ?: 0 } ?: byPackage?.size ?: return null,
-                pendingWakeups = byPackage?.count { it.type?.wakeup == true },
+                pending = perUid ?: byPackage?.size ?: return null,
+                pendingWakeups = detail?.count { it.type?.wakeup == true },
                 nextInMs =
-                    now?.let { byPackage?.minOfOrNull { alarm -> alarm.whenElapsedMs }?.minus(it)?.coerceAtLeast(0) },
+                    now?.let { detail?.minOfOrNull { alarm -> alarm.whenElapsedMs }?.minus(it)?.coerceAtLeast(0) },
                 delivered = stats.sumOf { app -> app.alarms.sumOf { it.count } },
                 deliveredWakeups = stats.sumOf { it.wakeups },
             )

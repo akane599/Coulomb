@@ -47,6 +47,22 @@ class ScheduledNowTest {
         assertEquals(12, alarms.deliveredWakeups)
     }
 
+    /**
+     * Audit BUG-019, as on the S25's One UI dump: the package's rows and the exact per-uid count
+     * disagree, in either direction, so the rows are not the counted alarms. The count holds; the
+     * split and the next do not.
+     */
+    @Test
+    fun rowsThatDoNotAddUpToTheCountGiveNoSplit() {
+        for (counted in listOf(1, 3, 0)) {
+            val dump = labAlarms().copy(pendingPerUid = mapOf(UID to counted))
+            val alarms = checkNotNull(ScheduledNow.of(UID, PACKAGE, null, dump).alarms)
+            assertEquals(counted, alarms.pending)
+            assertNull(alarms.pendingWakeups)
+            assertNull(alarms.nextInMs)
+        }
+    }
+
     @Test
     fun aDumpThatCouldNotBeReadWholeIsUnknownNotNone() {
         val now = ScheduledNow.of(UID, PACKAGE, JobSchedulerDump(null, null), AlarmDump(1, 1, null, null, null))
