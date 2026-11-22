@@ -189,14 +189,13 @@ public class HealthRepository
         private suspend fun firstCountedDay(): LocalDate? =
             sessions.firstCounted(SessionKind.CHARGE)?.let { Instant.ofEpochMilli(it.startWall).atZone(zone.zone()).toLocalDate() }
 
+        /** On the clock the session ended on, read by the boot's elapsed time (audit BUG-003). */
         private suspend fun curve(session: SessionEntity): List<ChargeCurvePoint> {
             val end = session.endElapsedNs ?: return emptyList()
+            val offset = session.endOffsetMs() ?: return emptyList()
             val raw = samples.samples(session.bootSeq, session.startElapsedNs, end + 1)
-            if (raw.isNotEmpty()) return HealthReader.curve(raw)
-            val endWall = session.endWall ?: return emptyList()
-            return HealthReader.aggregateCurve(
-                samples.aggregatesBetween(MINUTE_S, session.startWall, endWall + 1).filter { it.bootSeq == session.bootSeq },
-            )
+            if (raw.isNotEmpty()) return HealthReader.curve(raw, offset)
+            return HealthReader.aggregateCurve(samples.aggregates(MINUTE_S, session.bootSeq, session.startElapsedNs, end + 1), offset)
         }
 
         private fun DeviceProfileEntity.design(): DesignCapacity? {

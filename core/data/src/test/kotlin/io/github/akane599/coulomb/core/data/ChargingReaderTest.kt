@@ -107,6 +107,16 @@ class ChargingReaderTest {
         assertThat(ChargingReader.now(ramp, 0, emptyList(), listOf(desk), 80).charger).isEqualTo(LiveCharger.Learning(AC))
     }
 
+    /** Audit BUG-003: the clock set back an hour mid-charge; the curve still runs forward, ending now. */
+    @Test
+    fun aClockSetBackMidChargeKeepsTheCurveInOrder() {
+        val samples = climb(from = 20, to = 60).mapIndexed { i, s -> if (i >= 20) s.copy(wallMs = s.wallMs - 3_600_000L) else s }
+        val now = ChargingReader.now(samples, 0, emptyList(), listOf(desk), targetPct = 80)
+        assertThat(now.curve.map { it.wallMs }).isInStrictOrder()
+        assertThat(now.curve.last().wallMs).isEqualTo(samples.last().wallMs)
+        assertThat(now.curve.last().wallMs - now.curve.first().wallMs).isEqualTo(40 * MS_PER_MIN)
+    }
+
     /** One sample a minute, a level a minute, at 4 A and 4.0 V, warming 0.1 °C a minute. */
     private fun climb(
         from: Int,

@@ -162,7 +162,8 @@ internal object HealthReader {
     fun row(session: SessionEntity): ChargeSessionRow =
         ChargeSessionRow(
             id = session.id,
-            startWallMs = session.startWall,
+            // Its length is the elapsed clock's (audit BUG-003).
+            startWallMs = session.startOnEndClock(),
             endWallMs = session.endWall ?: session.startWall,
             fromPct = session.startLevel,
             toPct = session.endLevel ?: session.startLevel,
@@ -174,16 +175,30 @@ internal object HealthReader {
     fun charger(profile: ChargerProfileEntity): Charger =
         Charger(profile.id, profile.name, profile.plugType, profile.baselineW, profile.firstSeenWall, profile.lastSeenWall)
 
-    /** The curve from raw samples; power is null for a sample stored before calibration. */
-    fun curve(samples: List<BatterySampleEntity>): List<ChargeCurvePoint> =
+    /**
+     * The curve from raw samples; power is null for a sample stored before calibration. Placed by
+     * elapsed time at wall = elapsed + [offsetMs], one clock for the whole curve (audit BUG-003).
+     */
+    fun curve(
+        samples: List<BatterySampleEntity>,
+        offsetMs: Long,
+    ): List<ChargeCurvePoint> =
         samples.map { s ->
-            ChargeCurvePoint(s.wallMs, s.levelPct, s.currentUa?.let { watts(it, s.voltageMv) }, s.tempDeciC)
+            ChargeCurvePoint(offsetMs + s.elapsedNs / NS_PER_MS, s.levelPct, s.currentUa?.let { watts(it, s.voltageMv) }, s.tempDeciC)
         }
 
-    /** The curve from minute aggregates, once the samples are compacted (SPEC 7.7). */
-    fun aggregateCurve(rows: List<SampleAggregateEntity>): List<ChargeCurvePoint> =
+    /** The curve from minute aggregates, once the samples are compacted (SPEC 7.7), placed as [curve]. */
+    fun aggregateCurve(
+        rows: List<SampleAggregateEntity>,
+        offsetMs: Long,
+    ): List<ChargeCurvePoint> =
         rows.map { a ->
-            ChargeCurvePoint(a.startWallMs, a.levelLastPct, a.currentMeanUa?.let { watts(it, a.voltageMeanMv) }, a.tempMeanDeciC)
+            ChargeCurvePoint(
+                offsetMs + a.startElapsedNs / NS_PER_MS,
+                a.levelLastPct,
+                a.currentMeanUa?.let { watts(it, a.voltageMeanMv) },
+                a.tempMeanDeciC,
+            )
         }
 
     /** The stored stress index (ADR-0037 §3: the level's ordinal). */

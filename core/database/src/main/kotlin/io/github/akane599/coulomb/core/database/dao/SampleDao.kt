@@ -73,6 +73,18 @@ public abstract class SampleDao {
         toWall: Long,
     ): List<SampleAggregateEntity>
 
+    /** [bootSeq]'s rows of [resolutionS] starting in `[fromElapsedNs, toElapsedNs)`, as a session reads them. */
+    @Query(
+        "SELECT * FROM sample_aggregate WHERE resolutionS = :resolutionS AND bootSeq = :bootSeq " +
+            "AND startElapsedNs >= :fromElapsedNs AND startElapsedNs < :toElapsedNs ORDER BY startElapsedNs",
+    )
+    public abstract suspend fun aggregates(
+        resolutionS: Int,
+        bootSeq: Int,
+        fromElapsedNs: Long,
+        toElapsedNs: Long,
+    ): List<SampleAggregateEntity>
+
     /**
      * How long the level was at or above [level] in `[fromWall, toWall)`, and how long Coulomb
      * watched, in ms (ADR-0044 §2). The level holds from each sample to the next of its boot:

@@ -99,7 +99,9 @@ public class ChargingRepository
             val read =
                 session?.let { s -> live.read(s.bootSeq, s.startElapsedNs, sample.elapsedNs, samples::samples) }.orEmpty()
             val charge = read.ifEmpty { listOf(sample) }
-            return ChargingReader.now(charge, session?.startWall ?: sample.wallMs, inputs.history, inputs.profiles, inputs.target)
+            // On today's clock, by the boot's elapsed time, as the curve is (audit BUG-003).
+            val start = session?.let { sample.offsetMs() + it.startElapsedNs / NS_PER_MS } ?: sample.wallMs
+            return ChargingReader.now(charge, start, inputs.history, inputs.profiles, inputs.target)
         }
 
         private suspend fun readHistory(
@@ -125,6 +127,7 @@ public class ChargingRepository
         private companion object {
             /** Past charges read for the time estimate; it uses at most ten that cover the levels. */
             const val HISTORY = 30
+            const val NS_PER_MS = 1_000_000L
         }
     }
 

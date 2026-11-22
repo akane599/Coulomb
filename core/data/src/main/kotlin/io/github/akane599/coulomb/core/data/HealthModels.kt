@@ -131,7 +131,8 @@ public data class DischargeSessionRow(
         fun of(session: SessionEntity): DischargeSessionRow =
             DischargeSessionRow(
                 id = session.id,
-                startWallMs = session.startWall,
+                // Its length is the elapsed clock's (audit BUG-003).
+                startWallMs = session.startOnEndClock(),
                 endWallMs = session.endWall ?: session.startWall,
                 fromPct = session.startLevel,
                 toPct = session.endLevel ?: session.startLevel,

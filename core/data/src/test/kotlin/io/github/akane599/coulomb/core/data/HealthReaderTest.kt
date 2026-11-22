@@ -7,6 +7,7 @@ import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.analytics.CapacityEstimate
 import io.github.akane599.coulomb.core.analytics.StressLevel
 import io.github.akane599.coulomb.core.database.dao.LevelTime
+import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
 import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
 import io.github.akane599.coulomb.core.database.entity.HealthSummaryEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
@@ -65,6 +66,52 @@ class HealthReaderTest {
         cycleEquivalents = null,
         closeReason = SessionCloseReason.STATE_CHANGED,
         quality = 1.0,
+    )
+
+    /**
+     * Audit BUG-003: the clock moved two hours forward during a two-hour session. Its rows keep the
+     * elapsed length, end where the clock says, and its curve runs forward on that one clock.
+     */
+    @Test
+    fun aClockCorrectionDuringASessionKeepsItsLengthAndItsCurveInOrder() {
+        val moved = charge(start = 40).copy(endWall = 4 * 3_600_000L)
+
+        val row = HealthReader.row(moved)
+        assertThat(row.endWallMs - row.startWallMs).isEqualTo(2 * 3_600_000L)
+        assertThat(row.endWallMs).isEqualTo(4 * 3_600_000L)
+        val discharge = DischargeSessionRow.of(moved.copy(kind = SessionKind.DISCHARGE, startLevel = 90, endLevel = 70))
+        assertThat(discharge.pctPerHour).isWithin(1e-9).of(10.0)
+
+        val samples =
+            (0..4).map { i ->
+                val elapsedMs = i * 1_800_000L
+                // The clock jumps two hours at the third sample; the stored walls go back and forth.
+                sampleAt(elapsedNs = elapsedMs * 1_000_000, wallMs = elapsedMs + if (i >= 2) 7_200_000 else 0)
+            }
+        val curve = HealthReader.curve(samples, moved.endOffsetMs()!!)
+        assertThat(curve.map { it.wallMs }).isInOrder()
+        assertThat(curve.last().wallMs).isEqualTo(4 * 3_600_000L)
+        assertThat(curve.first().wallMs).isEqualTo(2 * 3_600_000L)
+    }
+
+    private fun sampleAt(
+        elapsedNs: Long,
+        wallMs: Long,
+    ) = BatterySampleEntity(
+        bootSeq = 1,
+        elapsedNs = elapsedNs,
+        wallMs = wallMs,
+        levelPct = 50,
+        chargeUah = null,
+        currentUa = 2_000_000,
+        currentRaw = null,
+        voltageMv = 4_000,
+        tempDeciC = 300,
+        plugType = 1,
+        status = 2,
+        screenOn = false,
+        dozeState = 0,
+        thermalStatus = 0,
     )
 
     @Test

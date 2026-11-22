@@ -65,10 +65,11 @@ internal object ChargingReader {
             startWallMs = startWallMs,
             startLevelPct = samples.first().levelPct,
             // Signed, unlike a closed charge's curve: power out of the battery is not zero (gate harden).
+            // Placed by elapsed time on the latest reading's clock (audit BUG-003).
             curve =
                 samples.map {
                     ChargeCurvePoint(
-                        it.wallMs,
+                        last.wallMs - (last.elapsedNs - it.elapsedNs) / NS_PER_MS,
                         it.levelPct,
                         it.currentUa?.let { ua ->
                             ua * it.voltageMv.toDouble() / NW_PER_W
@@ -116,4 +117,5 @@ internal object ChargingReader {
     private const val MATCH_SPAN_NS = 120_000_000_000L
     private const val NW_PER_W = 1e9
     private const val UA_PER_MA = 1_000.0
+    private const val NS_PER_MS = 1_000_000L
 }
