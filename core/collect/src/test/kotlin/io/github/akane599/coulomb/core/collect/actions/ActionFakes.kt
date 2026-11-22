@@ -168,13 +168,22 @@ internal class FakeLog : ActionLog {
 
     val all: List<ActionLogEntity> get() = rows.value
 
+    /** Thrown by the next insert or update, as Room throws a full disk or a locked file. */
+    var failing: Exception? = null
+
+    private fun fail() {
+        failing?.let { throw it }
+    }
+
     override suspend fun insert(row: ActionLogEntity): Long {
+        fail()
         val id = nextId++
         rows.value = listOf(row.copy(id = id)) + rows.value
         return id
     }
 
     override suspend fun update(row: ActionLogEntity) {
+        fail()
         rows.value = rows.value.map { if (it.id == row.id) row else it }
     }
 

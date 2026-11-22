@@ -3,6 +3,8 @@
 
 package io.github.akane599.coulomb.core.collect.actions
 
+import android.database.SQLException
+import android.util.Log
 import io.github.akane599.coulomb.core.analytics.DozeProfile
 import io.github.akane599.coulomb.core.analytics.DozeProfiles
 import io.github.akane599.coulomb.core.database.entity.ActionLogEntity
@@ -41,6 +43,9 @@ public class ActionCenter internal constructor(
 
     /** All data is being erased: no change starts until the process restarts (audit CONC-001). */
     private var erasing = false
+
+    /** The row whose command was sent in the current [guarded] call, if one was. */
+    private var sent: Long? = null
 
     /** The log, newest first. */
     public val records: Flow<List<ActionRecord>> = log.observe().map { rows -> rows.map(::record) }
@@ -97,30 +102,55 @@ public class ActionCenter internal constructor(
         insightId: Long? = null,
     ): ActionResult =
         lock.withLock {
-            val plan = plan(request)
-            val block = plan.block
-            val prior = prior(plan, activeRows())
-            when {
-                block != null -> {
-                    ActionResult.Blocked(block)
-                }
+            checkNotNull(guarded { runLocked(request, origin, insightId) })
+        }
 
-                prior == null -> {
-                    execute(plan, origin, insightId)
-                }
+    private suspend fun runLocked(
+        request: ActionRequest,
+        origin: ActionOrigin,
+        insightId: Long?,
+    ): ActionResult {
+        val plan = plan(request)
+        val block = plan.block
+        val prior = prior(plan, activeRows())
+        return when {
+            block != null -> {
+                ActionResult.Blocked(block)
+            }
 
-                // The earlier change is no longer what the phone holds: that is drift, and this is a new change.
-                !same(plan.before, prior.afterValue) -> {
-                    drifted(prior, plan.before)
-                    execute(plan, origin, insightId)
-                }
+            prior == null -> {
+                execute(plan, origin, insightId)
+            }
 
-                // What is asked is the earlier change undone ([over] refuses anything else): one row, reverted.
-                else -> {
-                    revert(prior)
-                }
+            // The earlier change is no longer what the phone holds: that is drift, and this is a new change.
+            !same(plan.before, prior.afterValue) -> {
+                drifted(prior, plan.before)
+                execute(plan, origin, insightId)
+            }
+
+            // What is asked is the earlier change undone ([over] refuses anything else): one row, reverted.
+            else -> {
+                revert(prior)
             }
         }
+    }
+
+    /**
+     * Runs [block] and turns a failed log read or write into a result (audit BUG-059): before any
+     * command it changed nothing on the phone; after one, the row stays as first written, so the
+     * change is on record and reads as unverified. Nothing is sent again.
+     */
+    private suspend fun guarded(block: suspend () -> ActionResult?): ActionResult? {
+        sent = null
+        return try {
+            block()
+        } catch (e: SQLException) {
+            Log.w(TAG, "the action log failed", e)
+            sent?.let { ActionResult.Unverified(it) } ?: ActionResult.Blocked(ActionBlock.NO_LOG)
+        } finally {
+            sent = null
+        }
+    }
 
     /**
      * Puts back what row [id] replaced. Allowed while the Action Center is off: undoing is never
@@ -128,8 +158,12 @@ public class ActionCenter internal constructor(
      */
     public suspend fun revert(id: Long): ActionResult =
         lock.withLock {
-            val row = log.row(id)?.takeIf { record(it).active } ?: return@withLock ActionResult.Blocked(ActionBlock.NOT_ACTIVE)
-            revert(row)
+            checkNotNull(
+                guarded {
+                    val row = log.row(id)?.takeIf { record(it).active } ?: return@guarded ActionResult.Blocked(ActionBlock.NOT_ACTIVE)
+                    revert(row)
+                },
+            )
         }
 
     /** SPEC 13.1 "Revert all": every active row, newest first. */
@@ -137,10 +171,15 @@ public class ActionCenter internal constructor(
         lock.withLock {
             val results = ArrayList<ActionResult>()
             // Read again before each: reverting a profile is what frees the baseline under it.
-            for (id in log.unreverted().filter { record(it).active }.map { it.id }) {
-                log.row(id)?.takeIf { record(it).active }?.let { results += revert(it) }
-            }
-            results
+            val stopped =
+                guarded {
+                    for (id in log.unreverted().filter { record(it).active }.map { it.id }) {
+                        log.row(id)?.takeIf { record(it).active }?.let { results += revert(it) }
+                        sent = null
+                    }
+                    null
+                }
+            results + listOfNotNull(stopped)
         }
 
     /**
@@ -271,6 +310,7 @@ public class ActionCenter internal constructor(
                 )
             // The row first: a command whose row was never written could not be found again.
             val stored = row.copy(id = log.insert(row))
+            sent = stored.id
             val ran = plan.write?.let { io.act(it) }
             when {
                 // Never sent.
@@ -387,6 +427,7 @@ public class ActionCenter internal constructor(
         plan: Plan,
         row: ActionLogEntity,
     ): ActionResult {
+        sent = row.id
         plan.undo?.let { io.act(it) }
         val now = plan.read()
         return if (now is Got.Value && same(now.value, plan.before)) forget(row) else ActionResult.Unverified(row.id)
@@ -417,6 +458,7 @@ public class ActionCenter internal constructor(
         undo: PrivilegedAction,
     ): ActionResult =
         withContext(NonCancellable) {
+            sent = row.id
             val ran = io.act(undo)
             val after = if (ran.noWorker) null else handle.read()
             val value = (after as? Got.Value)?.value
@@ -492,3 +534,5 @@ public class ActionCenter internal constructor(
         val PROFILES = DozeProfile.entries.associateBy { it.name.lowercase() }
     }
 }
+
+private const val TAG = "Coulomb"

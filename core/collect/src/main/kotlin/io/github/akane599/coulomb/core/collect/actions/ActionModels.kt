@@ -151,6 +151,9 @@ public enum class ActionBlock {
 
     /** Revert: the row is reverted already, has drifted, or holds nothing to put back. */
     NOT_ACTIVE,
+
+    /** The action log could not be read or written, so no command was sent (audit BUG-059). */
+    NO_LOG,
 }
 
 /**

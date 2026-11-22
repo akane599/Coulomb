@@ -194,6 +194,7 @@
     <string name="actions_block_nothing_to_take">There is no outside value to take over.</string>
     <string name="actions_block_in_force">Coulomb changed this already. Revert that change first.</string>
     <string name="actions_block_not_active">There is nothing to revert.</string>
+    <string name="actions_block_no_log">Coulomb couldn’t read or write its action log, so nothing was changed.</string>
 
     <string name="actions_result_done">Done.</string>
     <string name="actions_result_reverted">Reverted.</string>

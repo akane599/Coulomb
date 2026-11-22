@@ -180,6 +180,7 @@
     <string name="actions_block_nothing_to_take">Devralınacak dış bir değer yok.</string>
     <string name="actions_block_in_force">Coulomb bunu zaten değiştirdi. Önce o değişikliği geri al.</string>
     <string name="actions_block_not_active">Geri alınacak bir şey yok.</string>
+    <string name="actions_block_no_log">Coulomb işlem kaydını okuyamadı ya da yazamadı, bu yüzden hiçbir şey değiştirilmedi.</string>
 
     <string name="actions_result_done">Yapıldı.</string>
     <string name="actions_result_reverted">Geri alındı.</string>

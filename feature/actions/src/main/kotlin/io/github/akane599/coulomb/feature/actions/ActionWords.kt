@@ -178,6 +178,7 @@ internal object ActionWords {
             ActionBlock.NOTHING_TO_TAKE_OVER -> R.string.actions_block_nothing_to_take
             ActionBlock.IN_FORCE -> R.string.actions_block_in_force
             ActionBlock.NOT_ACTIVE -> R.string.actions_block_not_active
+            ActionBlock.NO_LOG -> R.string.actions_block_no_log
         }
 
     /**

@@ -62,7 +62,7 @@ permission. The result data is a reason word, and the result extra
 | `drifted` | Something else changed the Doze setting since Coulomb set it, so Coulomb leaves it. |
 | `failed`, `unverified` | With codes 13 and 14. |
 | `timeout` | With code 14: the answer was due before the work ended. Coulomb's action log has the outcome. |
-| `no_worker`, `unreadable`, `managed_externally`, `malformed`, `nothing_to_change`, `in_force`, `not_active` | The Action Center's own reason for not applying or reverting a profile, as its screen would give it. |
+| `no_worker`, `unreadable`, `managed_externally`, `malformed`, `nothing_to_change`, `in_force`, `not_active`, `no_log` | The Action Center's own reason for not applying or reverting a profile, as its screen would give it. |
 
 ### Limits
 
