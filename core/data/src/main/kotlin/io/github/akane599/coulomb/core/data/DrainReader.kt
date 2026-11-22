@@ -87,10 +87,12 @@ internal class DrainReader
                 DrainInputs(stored, references, discharge.firstOrNull(), meta, latest.firstOrNull()?.id)
             }.distinctUntilChanged()
 
+        /** The report for [span]; [nowWallMs] says which local day is today. */
         suspend fun read(
             span: DrainSpan,
             inputs: DrainInputs,
-        ): DrainReport? = bounds(span, inputs)?.let { report(span, it, inputs) }
+            nowWallMs: Long = System.currentTimeMillis(),
+        ): DrainReport? = bounds(span, inputs, nowWallMs)?.let { report(span, it, inputs) }
 
         /**
          * [uid] over [span] (ADR-0041): Drain's report for the span, the app's parts of it, its
@@ -102,7 +104,7 @@ internal class DrainReader
             inputs: DrainInputs,
             nowWallMs: Long,
         ): AppDetailReport? {
-            val bounds = bounds(span, inputs) ?: return null
+            val bounds = bounds(span, inputs, nowWallMs) ?: return null
             val report = report(span, bounds, inputs)
             val app = report.drains.apps.firstOrNull { it.uid == uid }
             val total = app?.mah ?: 0.0
@@ -414,6 +416,7 @@ internal class DrainReader
         private suspend fun bounds(
             span: DrainSpan,
             inputs: DrainInputs,
+            nowWallMs: Long,
         ): Bounds? =
             when (span) {
                 DrainSpan.SinceUnplugged -> {
@@ -421,7 +424,7 @@ internal class DrainReader
                 }
 
                 DrainSpan.Today -> {
-                    today(inputs)
+                    today(inputs, nowWallMs)
                 }
 
                 DrainSpan.Last24Hours -> {
@@ -470,14 +473,25 @@ internal class DrainReader
             return inputs.stored.firstOrNull { it.fromSnapshotId == start }
         }
 
-        /** The reference window from today's first heavy snapshot; before one is stored, the chain up to the latest. */
-        private suspend fun today(inputs: DrainInputs): Bounds? {
+        /**
+         * The reference window from today's first heavy snapshot; before one is stored, the chain up
+         * to the latest. None while the reference is another local day's than [nowWallMs]'s: after
+         * midnight, before the day's first heavy snapshot, or after the clock was set back, it would
+         * show another day under Today (audit BUG-006).
+         */
+        private suspend fun today(
+            inputs: DrainInputs,
+            nowWallMs: Long,
+        ): Bounds? {
             val start = inputs.references.firstOrNull { it.autoKind == AutoReference.TODAY }?.snapshotId ?: return null
+            val from = snapshots.snapshot(start) ?: return null
+            val z = zone.zone()
+            val day = { wallMs: Long -> Instant.ofEpochMilli(wallMs).atZone(z).toLocalDate() }
+            if (day(from.wallMs) != day(nowWallMs)) return null
             val stored = inputs.stored.firstOrNull { it.fromSnapshotId == start }
             if (stored != null) return of(stored)
-            val from = snapshots.snapshot(start)
             val to = snapshots.latestHeavy()
-            return if (from != null && to != null && before(from, to)) Bounds(from, to, null) else null
+            return if (to != null && before(from, to)) Bounds(from, to, null) else null
         }
 
         private suspend fun lastNight(): Bounds? {

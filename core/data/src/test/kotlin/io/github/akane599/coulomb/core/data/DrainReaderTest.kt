@@ -472,7 +472,7 @@ internal class DrainReaderTest : DrainDbTest() {
             val b = heavy(2_000)
             store(window(a, b).copy(measuredMah = 25.0, modeledMah = 20.0), WindowRows(uids = listOf(uid(APP, 15.0))))
 
-            val report = checkNotNull(reader.read(DrainSpan.Today, empty(listOf(reference(AutoReference.TODAY, a)))))
+            val report = checkNotNull(reader.read(DrainSpan.Today, empty(listOf(reference(AutoReference.TODAY, a))), wall(b)))
 
             assertThat(report.drains.measuredMah).isEqualTo(25.0)
             assertThat(report.drains.modeledMah).isEqualTo(20.0)
@@ -491,8 +491,29 @@ internal class DrainReaderTest : DrainDbTest() {
             assertThat(reader.read(DrainSpan.LastNight, empty())).isNull()
             val a = heavy(1_000)
             assertThat(reader.read(DrainSpan.Last24Hours, empty())).isNull()
-            assertThat(reader.read(DrainSpan.Today, empty(listOf(reference(AutoReference.TODAY, a))))).isNull()
+            assertThat(reader.read(DrainSpan.Today, empty(listOf(reference(AutoReference.TODAY, a))), wall(a))).isNull()
             assertThat(reader.read(DrainSpan.SinceUnplugged, empty())).isNull()
+        }
+
+    /** Audit BUG-006: a TODAY reference from another local day is not today, stored window or not. */
+    @Test
+    fun aTodayReferenceFromAnotherDayIsNotToday() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            store(window(a, b).copy(measuredMah = 25.0, modeledMah = 20.0), WindowRows(uids = listOf(uid(APP, 15.0))))
+            val today = store(window(a, b, WindowKind.REFERENCE).copy(measuredMah = 25.0, modeledMah = 20.0))
+            val dayMs = 86_400_000L
+            for (inputs in listOf(
+                empty(listOf(reference(AutoReference.TODAY, a))),
+                empty(listOf(reference(AutoReference.TODAY, a))).copy(stored = listOf(today)),
+            )) {
+                assertThat(reader.read(DrainSpan.Today, inputs, wall(b))).isNotNull()
+                // The next day, before its first heavy snapshot.
+                assertThat(reader.read(DrainSpan.Today, inputs, wall(b) + dayMs)).isNull()
+                // The clock set back a day.
+                assertThat(reader.read(DrainSpan.Today, inputs, wall(a) - dayMs)).isNull()
+            }
         }
 
     /**

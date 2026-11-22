@@ -706,7 +706,8 @@ internal class CollectorEngine(
     private suspend fun firstHeavyOfDay(reading: LightReading): Boolean {
         val snapshots = db.snapshotDao()
         val today = snapshots.autoReference(AutoReference.TODAY)?.let { snapshots.snapshot(it.snapshotId) } ?: return true
-        return localDay(today.wallMs) < localDay(reading.wallMs)
+        // Another day, earlier too after the clock was set back: TODAY moves to this snapshot (audit BUG-006).
+        return localDay(today.wallMs) != localDay(reading.wallMs)
     }
 
     private fun localDay(wallMs: Long): Long =
