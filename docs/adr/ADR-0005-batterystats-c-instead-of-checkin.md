@@ -32,3 +32,5 @@ fallback, and the worker allowlist (19.1). `--checkin` must never be sent to a d
 
 - The checkin parser (P2) must accept history lines inside `-c` output.
 - `SPEC.md` is unchanged; this ADR records the substitution. Listed under "Decisions to review".
+- Amended 2026-11-22 (audit DOC-001): SPEC S6, the parsing rules in 5 and the capture list in 16.2
+  now name `-c` too, as 19.1 already did, so no line of the spec sends `--checkin`.

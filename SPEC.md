@@ -319,7 +319,7 @@ Every number in Coulomb comes from one of the sources below; the agent MUST NOT 
 | S3 | `BatteryManager` health properties: state of health, manufacturing date, first-usage date, charging policy | T1 | Daily and on Health screen open | Health card; constants verified against API 36/37 sources |
 | S4 | `BatteryUsageStats` via `BatteryStatsManager` / `IBatteryStats` | T2 (T1 fallback) | Heavy snapshots | Per-UID mAh by power component and process state; device totals; stats start timestamp |
 | S5 | `dumpsys batterystats --proto` | T2 | Heavy snapshots | Partial wakelocks, kernel wakelocks, wakeup reasons, alarms, jobs, syncs, sensors, network, CPU, radio activity, signal and brightness bins, Doze times |
-| S6 | `dumpsys batterystats --checkin` | T2 | Fallback when proto is missing | Same fields as S5, CSV form |
+| S6 | `dumpsys batterystats -c` (checkin form; never `--checkin`, ADR-0005) | T2 | Fallback when proto is missing | Same fields as S5, CSV form |
 | S7 | `dumpsys batterystats -c --history-start <cursor>` (checkin form, ADR-0014) | T2 | After each heavy snapshot, incremental from the last `NEXT:` cursor | Event timeline: screen, plug, top app, wakelock, job, sync, alarm, GPS, radios, Doze, wakeup reasons |
 | S8 | Kernel wakelock dump (`dumpsys suspend_control_internal`, probe) | T2 | Heavy snapshots | Kernel wakelocks and suspend stats without root |
 | S9 | `/sys/class/wakeup/wakeupN/*`, wakeup sources | T3 | Heavy snapshots | Raw counters per kernel wakeup source: active, event, wakeup and expire counts; active, total, max and prevent-suspend times (ADR-0028) |
@@ -346,7 +346,7 @@ Every number in Coulomb comes from one of the sources below; the agent MUST NOT 
 
 - All parsers live in `:core:parsing`, are pure Kotlin, streaming and side-effect free.
 - Proto parsing uses Wire-generated classes from the AOSP `batterystats` protos, pinned to the AOSP tags for API 36 and 37 (Apache-2.0, attribution in `NOTICE`).
-- Text parsers (`--checkin`, `dumpsys` outputs) are versioned by SDK level and OEM. Unknown fields go into a raw map and are counted; the count appears in the capability report.
+- Text parsers (the `-c` checkin form, `dumpsys` outputs) are versioned by SDK level and OEM. Unknown fields go into a raw map and are counted; the count appears in the capability report.
 - No parser may throw on malformed input. Bad sections become `ParseIssue` records with byte offsets.
 - Every parser has golden tests against real fixtures (16.2).
 
@@ -1125,7 +1125,7 @@ Capture on each device and OS build, through ADB, into `fixtures/<device>/<build
 ```
 adb shell dumpsys batterystats -h
 adb shell dumpsys batterystats --proto > batterystats.proto.bin
-adb shell dumpsys batterystats --checkin > batterystats.checkin.txt
+adb shell dumpsys batterystats -c > batterystats.checkin.txt
 adb shell dumpsys batterystats --history > batterystats.history.txt
 adb shell dumpsys alarm > alarm.txt
 adb shell dumpsys deviceidle > deviceidle.txt
