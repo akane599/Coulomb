@@ -86,6 +86,27 @@ class ComparisonTest {
         assertRow(alarms.rows.single(), 6.0, 12.0)
     }
 
+    /** Audit BUG-052: a component one source does not name is not known there, not zero. */
+    @Test
+    fun aComponentFromAnotherSourceIsNotKnownNotZero() {
+        val detailed =
+            period(yesterday, components = listOf(ComponentDrain(PowerComponent.SCREEN, 60.0), ComponentDrain(PowerComponent.GNSS, 20.0)))
+                .let { it.copy(report = it.report?.copy(componentsNotBrokenDownMah = 0.0)) }
+        val coarse =
+            period(today, components = listOf(ComponentDrain(PowerComponent.SCREEN, 80.0), ComponentDrain(PowerComponent.OTHER, 30.0)))
+
+        val rows = compare(detailed, coarse, includeSystem = false).components
+        val gnss = rows.single { it.key == "component-GNSS" }
+        assertEquals(10.0, gnss.first!!, 1e-9)
+        assertNull(gnss.second)
+        assertNull(gnss.change)
+        // Named by both: compared as before.
+        assertRow(rows.single { it.key == "component-SCREEN" }, 30.0, 40.0)
+        // From one source, a component left out used nothing.
+        val both = compare(coarse, coarse.copy(days = yesterday), includeSystem = false).components
+        assertTrue(both.all { it.change != null })
+    }
+
     @Test
     fun rowsRankByTheSizeOfTheirChangeAndAMissingAppIsZero() {
         val first = period(yesterday, apps = listOf(app(HALCYON, 100.0), app(WAYLINE, 60.0)))

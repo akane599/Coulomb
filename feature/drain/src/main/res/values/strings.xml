@@ -288,6 +288,8 @@
     <string name="drain_compare_up">up %1$s</string>
     <string name="drain_compare_down">down %1$s</string>
     <string name="drain_compare_same">no change</string>
+    <string name="drain_compare_not_reported">not reported</string>
+    <string name="drain_compare_change_unknown">change not known</string>
     <!-- Notes about one period. %1$s: First period or Second period. -->
     <string name="drain_compare_note_no_records">%1$s: no records for these days. Choose other days to compare.</string>
     <!-- %2$s: the shortest time a rate needs. -->

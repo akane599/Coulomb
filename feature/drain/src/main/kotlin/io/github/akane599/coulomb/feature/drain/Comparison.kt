@@ -247,7 +247,7 @@ internal fun compare(
         second = second,
         apps = rows(appFigures(a, includeSystem), appFigures(b, includeSystem)),
         hiddenSystem = if (includeSystem) 0 else hidden.size,
-        components = rows(componentFigures(a), componentFigures(b)),
+        components = componentRows(a, b),
         wakes =
             WakeGroup.entries.map { group ->
                 wakeGroup(group, a, viewsA?.first { it.group == group }, b, viewsB?.first { it.group == group })
@@ -266,9 +266,15 @@ private class Figures(
     /** The time the amounts were counted over. */
     val basisMs: Long,
     val amounts: Map<String, Pair<CompareSubject, Double>>,
+    /** A record the period does not name used nothing; false when its source may just not name it. */
+    val absentIsZero: Boolean = true,
 ) {
-    /** Per hour of [basisMs]; null when too little time was counted to give a rate. */
-    fun perHour(key: String): Double? = if (basisMs < MIN_RATE_MS) null else (amounts[key]?.second ?: 0.0) / (basisMs / MS_PER_HOUR)
+    /** Per hour of [basisMs]; null when too little time was counted to give a rate, or the record is not known. */
+    fun perHour(key: String): Double? {
+        if (basisMs < MIN_RATE_MS) return null
+        val amount = amounts[key]?.second ?: if (absentIsZero) 0.0 else return null
+        return amount / (basisMs / MS_PER_HOUR)
+    }
 }
 
 /**
@@ -292,8 +298,28 @@ private fun appFigures(
     return Figures(report.onBatteryMs, amounts)
 }
 
+/**
+ * Components per hour on battery in both periods. A component one period does not name is zero
+ * there when both read the same source; when one read S4's detail and the other S5's coarse rows
+ * (ADR-0035 §7), it may only be folded into another, so that side is not known and the row has no
+ * change (audit BUG-052).
+ */
+private fun componentRows(
+    a: DrainReport?,
+    b: DrainReport?,
+): List<ComparedRow> {
+    val sameSource = a == null || b == null || a.detailedComponents == b.detailedComponents
+    return rows(componentFigures(a, sameSource), componentFigures(b, sameSource))
+}
+
+/** S4's detailed components: its windows hold at least half the span's modeled total (ADR-0035 §7). */
+private val DrainReport.detailedComponents: Boolean get() = componentsNotBrokenDownMah != null
+
 /** Components per hour on battery: the device's power for each, apps included. */
-private fun componentFigures(report: DrainReport?): Figures? {
+private fun componentFigures(
+    report: DrainReport?,
+    absentIsZero: Boolean,
+): Figures? {
     report ?: return null
     return Figures(
         report.onBatteryMs,
@@ -301,6 +327,7 @@ private fun componentFigures(report: DrainReport?): Figures? {
             "component-${it.component}" to
                 (CompareSubject.Component(it.component) to it.mah)
         },
+        absentIsZero,
     )
 }
 

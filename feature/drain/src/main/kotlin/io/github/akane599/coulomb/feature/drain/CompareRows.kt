@@ -481,8 +481,10 @@ private fun CompareRow(
     val type = CoulombTheme.typography
     val before = row.first ?: 0.0
     val after = row.second ?: 0.0
-    val change = after - before
+    // Null when a side is not known, as a component one source does not name.
+    val change = row.change
     val figure = rowFigure(before, after, formats)
+    val notReported = stringResource(R.string.drain_compare_not_reported)
     val spoken = spokenRow(detail?.let { stringResource(R.string.drain_compare_row_name_tag, name, it) } ?: name, row, unit, formats)
     val clickable = if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier
     Row(
@@ -508,19 +510,23 @@ private fun CompareRow(
             NameBesideValue(
                 name = { RowName(name, detail, monoName, monoDetail) },
                 value = {
-                    FigureText(
-                        rate(unit, formats.signedAmount(change)),
-                        numberStyle = type.data,
-                        unitStyle = type.data.copy(fontWeight = type.body.fontWeight),
-                    )
+                    if (change == null) {
+                        Text(stringResource(R.string.drain_compare_change_unknown), color = colors.textSecondary, style = type.caption)
+                    } else {
+                        FigureText(
+                            rate(unit, formats.signedAmount(change)),
+                            numberStyle = type.data,
+                            unitStyle = type.data.copy(fontWeight = type.body.fontWeight),
+                        )
+                    }
                 },
             )
             val fraction = { rate: Double -> if (scale > 0) (rate / scale).toFloat() else 0f }
             PairedBars(
                 first = fraction(before),
                 second = fraction(after),
-                firstText = figure(before),
-                secondText = figure(after),
+                firstText = row.first?.let(figure) ?: notReported,
+                secondText = row.second?.let(figure) ?: notReported,
                 modifier = Modifier.padding(top = CoulombSpacing.Space8),
             )
         }
@@ -579,8 +585,10 @@ private fun spokenRow(
     val change = after - before
     val step = formats.amount(abs(change))
     val figure = rowFigure(before, after, formats)
+    val notReported = stringResource(R.string.drain_compare_not_reported)
     val direction =
         when {
+            row.change == null -> stringResource(R.string.drain_compare_change_unknown)
             formats.roundsToZero(change) -> stringResource(R.string.drain_compare_same)
             change > 0 -> stringResource(R.string.drain_compare_up, stringResource(unit.template, step))
             else -> stringResource(R.string.drain_compare_down, stringResource(unit.template, step))
@@ -588,8 +596,8 @@ private fun spokenRow(
     return stringResource(
         R.string.drain_compare_row_spoken,
         name,
-        stringResource(unit.template, figure(before)),
-        stringResource(unit.template, figure(after)),
+        row.first?.let { stringResource(unit.template, figure(it)) } ?: notReported,
+        row.second?.let { stringResource(unit.template, figure(it)) } ?: notReported,
         direction,
     )
 }

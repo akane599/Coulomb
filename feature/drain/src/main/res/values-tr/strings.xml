@@ -271,6 +271,8 @@
     <string name="drain_compare_up">%1$s artış</string>
     <string name="drain_compare_down">%1$s azalış</string>
     <string name="drain_compare_same">değişim yok</string>
+    <string name="drain_compare_not_reported">bildirilmedi</string>
+    <string name="drain_compare_change_unknown">değişim bilinmiyor</string>
     <string name="drain_compare_note_no_records">%1$s: bu günler için kayıt yok. Karşılaştırmak için başka günler seç.</string>
     <string name="drain_compare_note_short_battery">%1$s: pilde %2$s altında, oranlar için çok az. Daha uzun bir dönem seç.</string>
     <string name="drain_compare_note_no_stats">%1$s: Android’in pil istatistikleri toplanmadı, bu yüzden uygulama ve bileşen oranı yok.</string>
