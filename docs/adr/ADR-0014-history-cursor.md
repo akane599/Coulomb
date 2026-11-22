@@ -117,3 +117,20 @@ These findings changed the parser, or the collector still has to act on them:
   earlier than the one before it (`BatteryStatsHistory` L1810-1814, both tags). A record written with a
   time below an earlier read's cursor is never printed. How often this happens on the phone is an
   open question for protocol A.
+
+## Amendment 2026-11-23: a `NEXT:` after lost boundaries needs a clean end (audit SEC-004)
+
+"Only a `NEXT:` on the last line is kept" held only when the dump ended where the platform ended
+it. A read cut by the reader's deadline, its size cap or a dead worker also has a last line, and
+after lost boundaries that line can be app text: a forged `NEXT:` far in the future became the
+cursor, and every later read asked for records from there and got none.
+
+- The parser forgets the candidate `NEXT:` when its stream fails, so a cut read after lost
+  boundaries has no cursor.
+- The collector keeps such a read's `NEXT:` only when the dump ended cleanly (`Complete`, or
+  `Partial` for content the consumer found incomplete, which is what lost boundaries are).
+- The ingest moves no cursor to a time after now on the boot's own clock (elapsed + the boot's
+  history offset, with the pairing slack of ADR-0018). The platform cannot print one.
+- A cursor already stored in the future by an earlier version is not rewound: telling a forged
+  value from a real one needs a read from 0, which costs a whole history walk on every phone to
+  repair a state no phone is known to be in. "Delete all data" clears it.

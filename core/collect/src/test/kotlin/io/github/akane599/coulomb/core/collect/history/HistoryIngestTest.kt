@@ -222,6 +222,60 @@ class HistoryIngestTest {
         assertThat(gap.endMonotonicMs).isEqualTo(first)
     }
 
+    /**
+     * Audit SEC-004: an unplaced read's NEXT can come out of an app's wakelock tag. One that lies
+     * after now on the boot's own clock is not the platform's: nothing moves, and the reads after
+     * it go on from the real NEXT.
+     */
+    @Test
+    fun anUnplacedReadWhoseNextLiesInTheFutureMovesNothing() {
+        val previous = ReadEnd(5, shift, first - 1, (first - 1 - shift) * 1_000_000, HistoryState(emptyMap()))
+        val nowElapsedMs = first - shift + 10_000
+
+        fun read(
+            next: Long,
+            count: Long,
+            complete: Boolean,
+            cursor: Long,
+            end: ReadEnd?,
+        ) = HistoryIngest.ingest(
+            ReadInput(
+                records = emptyList(),
+                history =
+                    BatteryHistory(
+                        null,
+                        nextCursorMs = next,
+                        firstRecordMs = null,
+                        recordCount = count,
+                        gapBeforeFirstRecord = false,
+                    ),
+                cursorMs = cursor,
+                previous = end,
+                bootSeq = 5,
+                storedOffsetMs = shift,
+                wallMinusElapsedMs = wallMinusElapsed,
+                nowElapsedMs = nowElapsedMs,
+                clockChanged = false,
+                complete = complete,
+            ),
+        )
+
+        val forged = read(next = 9_000_000_000_000_000, count = 1, complete = false, cursor = first, end = previous)
+        assertThat(forged.nextCursorMs).isNull()
+        assertThat(forged.gaps).isEmpty()
+        assertThat(forged.end).isEqualTo(previous)
+
+        // The cursor did not move, so a clean read with nothing new advances to the real NEXT.
+        val clean = read(next = first + 5_000, count = 0, complete = true, cursor = first, end = forged.end)
+        assertThat(clean.nextCursorMs).isEqualTo(first + 5_000)
+        assertThat(clean.gaps).isEmpty()
+
+        // An unplaced read whose NEXT is not past now is still a gap up to it, as before.
+        val honest = read(next = first + 5_000, count = 1, complete = false, cursor = first, end = previous)
+        assertThat(honest.nextCursorMs).isEqualTo(first + 5_000)
+        assertThat(honest.gaps.single().reason).isEqualTo(HistoryGapReason.READ_DESYNC)
+    }
+
     @Test
     fun anUnplacedReadIsAGapAndTheNextReadGoesOn() {
         val previous = ReadEnd(5, shift, first - 1, (first - 1 - shift) * 1_000_000, HistoryState(emptyMap()))

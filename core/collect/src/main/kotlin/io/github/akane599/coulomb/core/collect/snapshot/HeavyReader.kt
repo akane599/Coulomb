@@ -18,6 +18,7 @@ import io.github.akane599.coulomb.core.parsing.batterystats.BatteryStatsProtoPar
 import io.github.akane599.coulomb.core.parsing.batterystats.UsageStatsProtoParser
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DumpResult
+import io.github.akane599.coulomb.core.privileged.PartialReason
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.statsReadable
@@ -154,23 +155,8 @@ internal class HeavyReader(
                 isComplete = { it.report.complete },
                 route = RoutePreference.IN_APP_FIRST,
             ) { input -> BatteryHistoryParser.parse(input, cursorMs) { batch -> records.add(batch) } }
-        val parsed = result.parsed()
-        val status =
-            when {
-                parsed == null -> SourceStatus.FAILED
-                result is DumpResult.Complete && parsed.report.complete -> SourceStatus.OK
-                else -> SourceStatus.PARTIAL
-            }
-        // A read cut short has no NEXT: and cannot be placed; the ingest keeps the cursor for it.
-        return HistoryRead(records.records, records.frame(parsed?.value), status)
+        return historyOf(result, records)
     }
-
-    private fun <R> DumpResult<R>.parsed(): R? =
-        when (this) {
-            is DumpResult.Complete -> value
-            is DumpResult.Partial -> value
-            is DumpResult.Unavailable -> null
-        }
 
     /** Copies what a parser reads, up to [cap] bytes; past that the copy is dropped, not cut. */
     private class CappedCopy(
@@ -215,8 +201,40 @@ internal class HeavyReader(
 
         /** The largest raw dump copied for a blob; the phone's proto is 273 KB. */
         const val MAX_RAW_BYTES: Int = 8 * 1024 * 1024
+
+        /**
+         * [result] as the ingest takes it. A read whose times cannot be placed keeps its `NEXT:`
+         * only when the dump ended cleanly: [DumpResult.Complete], or [PartialReason.TRUNCATED],
+         * which is the end of the stream with the producer's OK. After lost record boundaries the
+         * parser keeps the last line's `NEXT:`, which is the platform's only at the dump's real
+         * end; a timeout, a dead worker or a failed producer can cut the stream right after one
+         * an app put in a wakelock tag (ADR-0014; audit SEC-004). The cursor then stays, and the
+         * catch-up read tries again. A placed read's `NEXT:` is only ever the platform's line.
+         */
+        fun historyOf(
+            result: DumpResult<Parsed<BatteryHistory>>,
+            records: BoundedRecords,
+        ): HistoryRead {
+            val parsed = result.parsed()
+            val status =
+                when {
+                    parsed == null -> SourceStatus.FAILED
+                    result is DumpResult.Complete && parsed.report.complete -> SourceStatus.OK
+                    else -> SourceStatus.PARTIAL
+                }
+            val endedCleanly = result is DumpResult.Complete || (result as? DumpResult.Partial)?.reason == PartialReason.TRUNCATED
+            val history = parsed?.value?.let { if (it.firstRecordMs == null && !endedCleanly) it.copy(nextCursorMs = null) else it }
+            return HistoryRead(records.records, records.frame(history), status)
+        }
     }
 }
+
+private fun <R> DumpResult<R>.parsed(): R? =
+    when (this) {
+        is DumpResult.Complete -> value
+        is DumpResult.Partial -> value
+        is DumpResult.Unavailable -> null
+    }
 
 /**
  * A history read's records, up to [max]. Past it none are kept and the read is framed as one whose

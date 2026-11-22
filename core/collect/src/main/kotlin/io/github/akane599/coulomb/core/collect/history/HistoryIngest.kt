@@ -123,6 +123,10 @@ internal object HistoryIngest {
             // unplaced read (audit DATA-007). One that did not move NEXT on is read again.
             history.recordCount == 0L && next <= input.cursorMs -> unchanged(input)
 
+            // An unplaced read's NEXT cannot lie after now on the boot's own clock (elapsed + offset,
+            // ADR-0018); one that does came out of app text, not from the platform (audit SEC-004).
+            first == null && pastNow(input, next) -> unchanged(input)
+
             first == null -> unplaced(input, next, maxOf(input.cursorMs, next))
 
             else -> placed(input, first, next)
@@ -143,6 +147,16 @@ internal object HistoryIngest {
         val offset = currentOffset(input, current, first, next, startedHere) ?: return unchanged(input)
         val newOffset = offset.takeIf { input.storedOffsetMs == null || startedHere }
         return Placer(input, first, next, maxOf(input.cursorMs, next), segments, offset).place(newOffset)
+    }
+
+    /** `NEXT − 1` lies after now on the current boot's clock. False while that boot's offset is not known. */
+    private fun pastNow(
+        input: ReadInput,
+        next: Long,
+    ): Boolean {
+        val offset = input.storedOffsetMs ?: input.previous?.takeIf { it.bootSeq == input.bootSeq }?.offsetMs ?: return false
+        // Compared this way round: a NEXT near Long.MAX_VALUE must not overflow.
+        return next - 1 > input.nowElapsedMs + offset + PAIRING_SLACK_MS
     }
 
     /** Nothing usable: keep everything as it was. */

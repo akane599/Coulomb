@@ -13,6 +13,8 @@ import io.github.akane599.coulomb.core.model.parse.ParseReport
 import io.github.akane599.coulomb.core.parsing.Fixtures
 import org.junit.Test
 import java.io.ByteArrayInputStream
+import java.io.IOException
+import java.io.InputStream
 import kotlin.random.Random
 
 class BatteryHistoryParserTest {
@@ -289,6 +291,42 @@ class BatteryHistoryParserTest {
         val top = read.records.single { it.kind == HistoryKind.TOP_APP }
         assertThat(top.tag).isEqualTo("\"e$forged")
         assertThat(top.uid).isEqualTo(10_005)
+    }
+
+    /** A pipe closed under the reader, as a timed-out transfer's is: it fails where the bytes end. */
+    private class FailingAfter(
+        bytes: ByteArray,
+    ) : InputStream() {
+        private val inner = ByteArrayInputStream(bytes)
+
+        override fun read(): Int = inner.read().let { if (it < 0) throw IOException("closed") else it }
+
+        override fun read(
+            b: ByteArray,
+            off: Int,
+            len: Int,
+        ): Int = inner.read(b, off, len).let { if (it < 0) throw IOException("closed") else it }
+    }
+
+    /**
+     * Audit SEC-004: once the tag pool is full an app's wakelock tag prints unescaped, and it can
+     * hold lines that read `NEXT: <far future>`. A read that fails among them never reached the
+     * dump's last line, so none of them is the platform's.
+     */
+    @Test
+    fun aReadThatFailsAfterADesyncKeepsNoNext() {
+        val text =
+            "$VERS\n" +
+                "9,h,0,Bl=50,+r\n" +
+                "9,h,100,w=u0a50:\"x\n" +
+                "NEXT: 9000000000000000\n" +
+                "NEXT: 9000000000000000\n" +
+                "NEXT: 90000"
+        val result = BatteryHistoryParser.parse(FailingAfter(text.encodeToByteArray()), cursorMs = 1_000) { }
+        assertThat(result.report.complete).isFalse()
+        assertThat(result.value.recordCount).isGreaterThan(0L)
+        assertThat(result.value.firstRecordMs).isNull()
+        assertThat(result.value.nextCursorMs).isNull()
     }
 
     @Test

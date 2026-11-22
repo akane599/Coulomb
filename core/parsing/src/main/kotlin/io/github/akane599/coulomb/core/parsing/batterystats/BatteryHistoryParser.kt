@@ -165,6 +165,9 @@ private class HistoryWalk(
         e: Exception,
     ): Nothing? {
         cut = true
+        // A read that failed never reached the dump's last line: a NEXT: read after a desync may
+        // be an app's tag text (ADR-0014, audit SEC-004).
+        lastLineNext = null
         issue(lines.offset, BatteryHistoryParser.SOURCE, "$what: ${e.javaClass.simpleName}")
         return null
     }
