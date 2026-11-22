@@ -199,7 +199,7 @@ class NowScreenshotTest {
         val state = discharging()
         compose.setContent {
             CoulombTheme {
-                DataTableSheet(tableOf(OpenTable.CURRENT, state, rememberFormats(), ZoneOffset.UTC), onDismiss = {})
+                DataTableSheet(tableOf(OpenTable.CURRENT, state, rememberFormats(), ZoneOffset.UTC, state.battery.wallMs), onDismiss = {})
             }
         }
         // The sheet is a window of its own, so the capture takes the whole screen.

@@ -543,6 +543,8 @@ internal fun TopDrains(
     formats: Formats,
     zone: ZoneId,
     actions: NowActions,
+    // The clock the last discharge's time judges its day by (gate run 8).
+    day: Long = state.battery.wallMs,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -567,7 +569,7 @@ internal fun TopDrains(
         val captions =
             buildList {
                 if (state.battery.plugged && drains != null) {
-                    add(stringResource(R.string.now_last_discharge, formats.clock(drains.toWallMs, zone, state.battery.wallMs)))
+                    add(stringResource(R.string.now_last_discharge, formats.clock(drains.toWallMs, zone, day)))
                 }
                 if (drains != null && state.topDrains.isNotEmpty()) {
                     // DESIGN.md: the list caption names the denominator of every share.

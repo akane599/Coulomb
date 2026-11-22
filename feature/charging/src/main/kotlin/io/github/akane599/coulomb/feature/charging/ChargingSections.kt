@@ -426,12 +426,14 @@ internal fun Session(
     zone: ZoneId,
     onViewTable: () -> Unit,
     stale: Boolean = false,
+    // The clock the session's start judges its day by (gate run 8).
+    day: Long = now.wallMs,
 ) {
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(
             stringResource(R.string.charging_session),
             provenance = null,
-            caption = stringResource(R.string.charging_since, formats.clock(now.startWallMs, zone, now.wallMs)),
+            caption = stringResource(R.string.charging_since, formats.clock(now.startWallMs, zone, day)),
         )
         if (now.curve.size < 2) {
             StandIn(stringResource(R.string.charging_no_curve), top = 0.dp)
@@ -439,7 +441,7 @@ internal fun Session(
         }
         val from = formats.percent(now.startLevelPct)
         val to = formats.percent(now.levelPct)
-        val start = formats.clock(now.startWallMs, zone, now.wallMs)
+        val start = formats.clock(now.startWallMs, zone, day)
         val summary =
             // "Power now" would be false of an old reading (ADR-0069).
             now.watts?.takeUnless { stale }?.let {

@@ -227,7 +227,9 @@ private fun Ready(
     }
     table?.let { open -> DataTableSheet(tableOf(open, view, formats), onDismiss = { table = null }) }
     if (why && insight != null) {
-        DataTableSheet(words.insights.evidence(insight.insight, zone, view.detail.report.drains.toWallMs), onDismiss = { why = false })
+        // Days judged by the clock when the sheet opens, as on Charging, not by the window's end (gate run 8).
+        val opened = remember(insight.insight.id) { System.currentTimeMillis() }
+        DataTableSheet(words.insights.evidence(insight.insight, zone, opened), onDismiss = { why = false })
     }
 }
 

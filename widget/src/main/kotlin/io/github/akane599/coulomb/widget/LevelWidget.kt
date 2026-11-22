@@ -30,6 +30,7 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.Text
 import io.github.akane599.coulomb.core.common.OpenRequest
+import io.github.akane599.coulomb.core.designsystem.icon.CoulombIcons
 import io.github.akane599.coulomb.core.model.Provenance
 import io.github.akane599.coulomb.core.ui.format.Formats
 import io.github.akane599.coulomb.core.ui.format.formatsFor
@@ -84,7 +85,8 @@ private val LabelLine = 18.dp
 private val VerdictGap = 4.dp
 private val BesideGap = 16.dp
 private val StateGap = 8.dp
-private val OldReadingSize = 12.dp
+private val OldReadingSize = 16.dp
+private const val OLD_READING_MAX_SCALE = 1.5f
 
 /** The width the level and its state take beside the verdict. */
 private val LevelColumn = 96.dp
@@ -205,7 +207,7 @@ private fun chooseLine(
  * The level on one line with its state, or an old reading's time, where the width holds both. The
  * time takes the longest form that fits beside the level at hero or title size; with none, it goes
  * under the level where the height holds two lines. Where neither holds (the smallest size, or the
- * 2×1 at large text) the level is drawn muted with a small clock, so neither colour alone nor a bare
+ * 2×1 at large text) the level is drawn muted with a small clock before it, so neither colour alone nor a bare
  * number says it is now, and TalkBack says its time; a tap opens Now, which shows it (ADR-0069).
  * Never cut (SPEC 12.4).
  */
@@ -229,21 +231,23 @@ private fun OneLine(
     val style = if (large) WidgetType.hero else WidgetType.title
     val untimed = line == null && times.isNotEmpty()
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (untimed) {
+            // Before the number, from the icon family, sized with the text: never read as a fifth
+            // provenance mark beside the ring (gate run 8).
+            Image(
+                provider = ImageProvider(CoulombIcons.Schedule),
+                contentDescription = null,
+                modifier = GlanceModifier.size(OldReadingSize * scale.coerceAtMost(OLD_READING_MAX_SCALE)),
+                colorFilter = ColorFilter.tint(WidgetColors.textSecondary),
+            )
+            Spacer(GlanceModifier.width(StateGap / 2))
+        }
         Figure(
             percent,
             Provenance.MODELED,
             if (untimed) style.copy(color = WidgetColors.textSecondary) else style,
             spokenNote = times.firstOrNull()?.takeIf { untimed },
         )
-        if (untimed) {
-            Spacer(GlanceModifier.width(StateGap / 2))
-            Image(
-                provider = ImageProvider(R.drawable.widget_old_reading),
-                contentDescription = null,
-                modifier = GlanceModifier.size(OldReadingSize),
-                colorFilter = ColorFilter.tint(WidgetColors.textSecondary),
-            )
-        }
         if (line != null) {
             Spacer(GlanceModifier.defaultWeight())
             Text(line, style = WidgetType.label, maxLines = 1)

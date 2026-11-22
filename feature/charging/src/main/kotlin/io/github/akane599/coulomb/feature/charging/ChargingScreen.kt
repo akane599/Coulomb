@@ -225,7 +225,7 @@ internal fun ChargingContent(
                             )
                             Readings(now, formats, lite || stale)
                             actions.readThermal?.let { TemperaturesRow { thermalOpen = true } }
-                            Session(now, formats, zone, onViewTable = { table = CURVE_TABLE }, stale = stale)
+                            Session(now, formats, zone, onViewTable = { table = CURVE_TABLE }, stale = stale, day = now.dayAt(nowMs))
                             Target(
                                 now.targetPct,
                                 targetAlarm,
@@ -247,7 +247,7 @@ internal fun ChargingContent(
     val shown = remember(table, ready == null) { ready }
     if (shown != null) {
         when (table) {
-            CURVE_TABLE -> DataTableSheet(curveTable(shown, formats, zone), onDismiss = { table = null })
+            CURVE_TABLE -> DataTableSheet(curveTable(shown, formats, zone, shown.dayAt(nowMs)), onDismiss = { table = null })
             SCALE_TABLE -> DataTableSheet(scaleTable(shown, formats, zone), onDismiss = { table = null })
         }
     }
@@ -346,6 +346,7 @@ private fun curveTable(
     now: ChargingNow,
     formats: Formats,
     zone: ZoneId,
+    day: Long,
 ): DataTable {
     val power = now.curve.any { it.watts != null }
     val title = stringResource(R.string.charging_table_curve)
@@ -356,10 +357,10 @@ private fun curveTable(
             stringResource(R.string.charging_column_power).takeIf { power },
         )
     // Formatted once per snapshot, not at each recomposition while the sheet is open.
-    return remember(now, formats, zone, title, columns) { curveTableOf(now, formats, zone, title, columns, power) }
+    return remember(now, formats, zone, title, columns, day) { curveTableOf(now, formats, zone, title, columns, power, day) }
 }
 
-@Suppress("LongParameterList") // A snapshot, its formats and its headings.
+@Suppress("LongParameterList") // A snapshot, its formats, its headings and the day it is judged by.
 private fun curveTableOf(
     now: ChargingNow,
     formats: Formats,
@@ -367,6 +368,7 @@ private fun curveTableOf(
     title: String,
     columns: List<String>,
     power: Boolean,
+    day: Long,
 ): DataTable =
     DataTable(
         title = title,
@@ -375,10 +377,10 @@ private fun curveTableOf(
             now.curve.asReversed().map { point ->
                 listOfNotNull(
                     // A reading from an earlier day names it (gate harden); today's keep their seconds.
-                    if (sameDay(point.wallMs, now.wallMs, zone)) {
+                    if (sameDay(point.wallMs, day, zone)) {
                         formats.clockWithSeconds(point.wallMs, zone)
                     } else {
-                        formats.clock(point.wallMs, zone, now.wallMs)
+                        formats.clock(point.wallMs, zone, day)
                     },
                     formats.percent(point.levelPct),
                     if (power) point.watts?.let { formats.signedWatts(it).joined() } ?: DASH else null,
@@ -433,6 +435,12 @@ private fun rememberResumedNowMs(changesAt: Long?): Long {
 /** A ready state's reading as the page shows it at [nowMs]; null otherwise. */
 private fun ChargingUiState.shownNow(nowMs: Long?): ChargingNow? =
     (this as? ChargingUiState.Ready)?.now?.let { it.shown(it.isStaleAt(nowMs)) }
+
+/**
+ * The clock a time on this screen judges its day by: the resumed one, or in a golden the reading's.
+ * An old reading's times on its own day would otherwise read as today's (gate run 8).
+ */
+private fun ChargingNow.dayAt(nowMs: Long?): Long = nowMs ?: wallMs
 
 /** Whether the page shows a time to the target: one is known and the level is below it. */
 private fun ChargingNow.showsTargetTime(): Boolean = toTarget != null && levelPct < targetPct

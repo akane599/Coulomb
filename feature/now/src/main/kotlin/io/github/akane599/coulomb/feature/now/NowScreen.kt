@@ -194,7 +194,7 @@ internal fun NowContent(
                                 SessionStrip(state.discharge, formats)
                                 screen?.let { ScreenContextNote(it, formats) }
                             }
-                            TopDrains(state, formats, zone, actions)
+                            TopDrains(state, formats, zone, actions, day = state.clock(nowMs))
                             val more = state.moreInsights
                             Insights(
                                 state.insights,
@@ -218,7 +218,7 @@ internal fun NowContent(
     val ready = state as? NowUiState.Ready
     val open = table
     if (ready != null && open != null) {
-        DataTableSheet(table = tableOf(open, ready, formats, zone), onDismiss = { table = null })
+        DataTableSheet(table = tableOf(open, ready, formats, zone, ready.clock(nowMs)), onDismiss = { table = null })
     }
     // An insight that left the list while its sheet was open closes the sheet with it.
     val asked = ready?.insights?.firstOrNull { it.insight.id == why }
@@ -233,6 +233,7 @@ internal fun tableOf(
     state: NowUiState.Ready,
     formats: Formats,
     zone: ZoneId,
+    day: Long,
 ): DataTable {
     val time = stringResource(R.string.now_column_time)
     return when (open) {
@@ -242,7 +243,7 @@ internal fun tableOf(
                 columns = listOf(time, stringResource(R.string.now_column_level)),
                 rows =
                     state.levels.map {
-                        listOf(formats.clock(it.wallMs, zone, state.battery.wallMs), formats.percent(it.levelPct))
+                        listOf(formats.clock(it.wallMs, zone, day), formats.percent(it.levelPct))
                     },
                 provenance = Provenance.MODELED,
             )
@@ -322,5 +323,8 @@ internal fun rememberResumedNowMs(changesAt: Long?): Long {
     return now
 }
 
-/** The clock an evidence sheet judges its days by: the resumed one, or in a golden the reading's (gate run 7). */
+/**
+ * The clock a time on this screen judges its day by: the resumed one, or in a golden the reading's.
+ * An old reading's times on its own day would otherwise read as today's (gate runs 7 and 8).
+ */
 private fun NowUiState.Ready.clock(nowMs: Long?): Long = nowMs ?: battery.wallMs
