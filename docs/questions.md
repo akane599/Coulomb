@@ -5,6 +5,17 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-22. **An app removed inside a long window (audit BUG-062).** A reference, day or
+  session window diffs the counters at its ends, and keeps a snapshot between them only around a
+  reset, a restart or, since 79eba39, the last place an app gone from the end's counters was seen.
+  Retention deletes the counters of such snapshots after 2 h (ADR-0015), so a window rebuilt
+  later (Today and Since unplugged are rebuilt at every screen open; a day window at the next
+  day's first heavy snapshot) again loses the earlier use of an app removed more than 2 h before.
+  A whole fix stores something new: keep that snapshot's counters until the day window spanning
+  it is built, as the restart edges are (ADR-0055), which needs a marker on the snapshot, or carry
+  the removed app's last counters forward into later snapshots until the next reset. Either is a
+  data format change and needs a second opinion (ADR-0027). Default in use: the 2 h fix only; a
+  removed app's use can be missing from a long window, never counted twice.
 - 2026-11-21. **Release key and the first release (hard stop, SPEC 0.6).** The build signs a
   release when four environment variables name a key, and `tools/release/build.sh` builds and
   checks the APK without publishing (ADR-0067, `docs/releasing.md`). Still the owner's: creating
