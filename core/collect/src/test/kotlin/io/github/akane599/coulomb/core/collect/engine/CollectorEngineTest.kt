@@ -69,8 +69,9 @@ class CollectorEngineTest {
     @After
     fun close() = db.close()
 
+    /** An engine whose service is running, as in Full mode: its receivers watch from the start. */
     private fun engine(health: HealthSource = HealthSource.None) =
-        CollectorEngine(db, device, stats, identity, clock, MemoryBlobs(), labels, health = health)
+        CollectorEngine(db, device, stats, identity, clock, MemoryBlobs(), labels, health = health).also { it.watching(true) }
 
     private suspend fun reliableCounter() =
         db.deviceDao().upsertProfile(
@@ -679,6 +680,36 @@ class CollectorEngineTest {
             assertThat(discharges.single { it.closeReason == null }.startLevel).isEqualTo(80)
             assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)?.snapshotId)
                 .isEqualTo(db.snapshotDao().latest()?.id)
+        }
+
+    /**
+     * Audit BUG-007: Lite stops the service but the process lives on. A charge between two Lite
+     * snapshots of the same process ends the discharge session, as it would after a process start.
+     */
+    @Test
+    fun aChargeWhileLiteHadTheServiceStoppedEndsTheDischargeSession() =
+        runTest {
+            val engine = engine()
+            device.set(hours = 1.0, level = 30, chargeMah = 1_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            engine.watching(false)
+
+            device.set(hours = 7.0, level = 80, chargeMah = 4_000.0, screenOn = true)
+            assertThat(engine.handle(SnapshotTrigger.LITE_PERIODIC)).isEqualTo(Action.HEAVY)
+
+            val discharges = db.sessionDao().observeRecent(SessionKind.DISCHARGE, 10).first()
+            assertThat(discharges.single { it.closeReason != null }.closeReason).isEqualTo(SessionCloseReason.DATA_GAP)
+            assertThat(discharges.single { it.closeReason == null }.startLevel).isEqualTo(80)
+
+            // Back in Full, the service watches again from its first snapshot on.
+            engine.watching(true)
+            device.set(hours = 8.0, level = 79, chargeMah = 3_950.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            device.set(hours = 9.0, level = 78, chargeMah = 3_900.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+            // The screen stayed on throughout, so its session is one; the screen off was seen.
+            val screenOn = db.sessionDao().observeRecent(SessionKind.SCREEN_ON, 10).first()
+            assertThat(screenOn.single().closeReason).isEqualTo(SessionCloseReason.STATE_CHANGED)
         }
 
     @Test

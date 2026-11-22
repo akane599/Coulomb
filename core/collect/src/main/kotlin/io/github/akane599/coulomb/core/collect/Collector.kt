@@ -149,6 +149,8 @@ public class Collector
         /** The service is running: samplers and the screen-on snapshot timer start. */
         internal fun attach() {
             if (attached != null) return
+            // Before the service's first trigger, which it posts after this: from here its receivers watch.
+            actor.post(CollectorEvent.Watching(on = true))
             val first = light.read()
             device.value = DeviceFlags(first.plugged, first.screenOn)
             attached =
@@ -162,6 +164,8 @@ public class Collector
         internal fun detach() {
             attached?.cancel()
             attached = null
+            // Lite can keep the process: the next snapshot reads what changed from the history.
+            actor.post(CollectorEvent.Watching(on = false))
         }
 
         internal fun noteDevice(

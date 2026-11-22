@@ -77,6 +77,16 @@ internal class CollectorEngine(
     private var lastHistoryFailed = false
     private var lastCatchUpNs: Long? = null
     private var firstOfProcess = true
+
+    /** The service's receivers are attached: plug and screen changes arrive as they happen. */
+    private var watching = false
+
+    /**
+     * The receivers stayed attached from the last snapshot to now. Lite stops the service but can
+     * keep the process, so a live process is not a watched one (audit BUG-007): without this, the
+     * history's flips between two Lite snapshots were ignored and sessions joined across them.
+     */
+    private var watchedSinceLast = false
     private var heavyOwed = false
     private var owedTrigger: SnapshotTrigger? = null
     private var lastSnapshotElapsedNs: Long? = null
@@ -116,8 +126,17 @@ internal class CollectorEngine(
         }
         // A screen asked, but no heavy snapshot ran: the screen gets windows to the latest one (ADR-0032 §3).
         if (trigger in REFERENCE_TRIGGERS && action != Action.HEAVY) referencesToLatest(reading)
-        if (action != Action.NONE) firstOfProcess = false
+        if (action != Action.NONE) {
+            firstOfProcess = false
+            watchedSinceLast = watching
+        }
         return action
+    }
+
+    /** The service attached ([on]) or detached its receivers; events arrive in order with the triggers. */
+    fun watching(on: Boolean) {
+        watching = on
+        if (!on) watchedSinceLast = false
     }
 
     private suspend fun referencesToLatest(reading: LightReading) {
@@ -133,7 +152,7 @@ internal class CollectorEngine(
     ) = WriteContext(
         reading = reading,
         previousHeavy = previousHeavy,
-        watched = !firstOfProcess,
+        watched = watchedSinceLast,
         changedUnseen = unseen,
         counterReliable = profile?.chargeCounterReliable == true,
         capacityMah = capacityMah,
@@ -311,7 +330,7 @@ internal class CollectorEngine(
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
         val blob = stats?.let { writeBlob(trigger, reading, boot, it, usage?.raw, kind == SnapshotKind.HEAVY) }
-        val unseen = if (firstOfProcess) unseenKinds(ingest) + chargedUnseen(reading, boot) else emptySet()
+        val unseen = if (!watchedSinceLast) unseenKinds(ingest) + chargedUnseen(reading, boot) else emptySet()
         val entity =
             entity(reading, boot, trigger, kind, dump).copy(
                 historyCursorMs = ingest?.nextCursorMs,

@@ -47,6 +47,11 @@ Screen-on sampling, Theme, Language, Units, Data retention and the Developer con
    process did not see cancels itself. The row's note says what Lite gives up: live current,
    exact session times and the two alarms. Reason: SPEC 7.1, with the least that can go wrong
    when settings arrive from a backup or a file.
+   Amended 2026-11-22 (audit BUG-007): Lite keeps the process when Android lets it, so the engine
+   counts a stretch as watched only while the service's receivers stayed attached since the last
+   snapshot (`CollectorEngine.watching`), not while the process lived. A Lite snapshot reads the
+   history and the level for what changed in between, as after a process start, so a session
+   never joins across a plug or screen change Coulomb did not see.
 6. **"Longer raw retention" is one switch: 60 days instead of 14.** Raw samples only; every other
    line of SPEC 7.7 stays. A setting can lengthen the time, never shorten it. By
    `SizeBudgetTest`'s rates (5,000 samples a day at 77 bytes) the 46 further days add about 18 MB

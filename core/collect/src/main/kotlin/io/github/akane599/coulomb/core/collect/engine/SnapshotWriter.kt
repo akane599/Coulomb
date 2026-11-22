@@ -53,7 +53,10 @@ internal data class WriteContext(
     val reading: LightReading,
     /** The heavy snapshot before this one, read before it was stored. */
     val previousHeavy: SnapshotEntity?,
-    /** Coulomb was not watching before this snapshot (its process just started). */
+    /**
+     * The service's receivers watched from the previous snapshot to this one: false after a process
+     * start, and while Lite has the service stopped (audit BUG-007).
+     */
     val watched: Boolean,
     /** Kinds whose state changed unseen, from the history read (only when not [watched]). */
     val changedUnseen: Set<SessionKind>,

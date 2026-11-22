@@ -28,6 +28,11 @@ internal sealed interface CollectorEvent {
 
     /** Dumps may have become possible: take an owed heavy snapshot. */
     data object PrivilegesChanged : CollectorEvent
+
+    /** The service attached or detached its receivers (audit BUG-007). */
+    data class Watching(
+        val on: Boolean,
+    ) : CollectorEvent
 }
 
 /**
@@ -51,6 +56,7 @@ internal class CollectorActor(
                             is CollectorEvent.Trigger -> engine.handle(event.trigger)
                             is CollectorEvent.Sample -> engine.sample(event.reading).let { null }
                             CollectorEvent.PrivilegesChanged -> engine.privilegesChanged()
+                            is CollectorEvent.Watching -> engine.watching(event.on).let { null }
                         }
                     if (action == Action.LIGHT || action == Action.HEAVY) notify(heavy = action == Action.HEAVY)
                 } catch (e: CancellationException) {
