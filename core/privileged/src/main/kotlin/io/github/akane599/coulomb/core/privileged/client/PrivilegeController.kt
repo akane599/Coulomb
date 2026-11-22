@@ -36,6 +36,7 @@ import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
 import io.github.akane599.coulomb.core.privileged.WorkerStatusCode
 import io.github.akane599.coulomb.core.privileged.dumpableInApp
+import io.github.akane599.coulomb.core.privileged.system.CmdCommands
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -500,11 +501,18 @@ internal class PrivilegeController(
     override fun adbBootstrapCommands(includeWriteSecureSettings: Boolean): List<String> =
         bootstrapKinds(includeWriteSecureSettings).map(::adbCommand)
 
-    private fun adbCommand(kind: GrantKind): String =
-        when (val p = kind.durable) {
-            null -> "adb shell appops set ${config.packageName} GET_USAGE_STATS allow"
-            else -> "adb shell pm grant ${config.packageName} ${p.permission}"
-        }
+    /**
+     * One bootstrap step as a line to copy: the worker's own command ([CmdCommands]), so it names
+     * Coulomb's Android user as the worker does. Without `--user` the shell grants to the current
+     * user, which for a work-profile copy of Coulomb is another app instance (audit BUG-009).
+     */
+    private fun adbCommand(kind: GrantKind): String {
+        val userId = config.uid / PER_USER_RANGE
+        val argv =
+            kind.durable?.let { CmdCommands.grant(config.packageName, it, userId) }
+                ?: CmdCommands.allowUsageStats(config.packageName, userId)
+        return ActionCommands.adbLine(argv)
+    }
 
     override suspend fun bootstrap(includeWriteSecureSettings: Boolean): BootstrapReport =
         bootstrapMutex.withLock {

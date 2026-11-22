@@ -58,10 +58,11 @@ class PrivilegeControllerTest {
     private fun TestScope.controller(
         debuggable: Boolean = true,
         processStartMs: Long? = null,
+        uid: Int = UID,
     ): PrivilegeController {
         val io = StandardTestDispatcher(testScheduler)
         return PrivilegeController(
-            config = PrivilegeConfig(PACKAGE, UID, FakeWorker.VERSION, debuggable, FINGERPRINT),
+            config = PrivilegeConfig(PACKAGE, uid, FakeWorker.VERSION, debuggable, FINGERPRINT),
             platform = PrivilegePlatform(api, grants, ledger, binderGrants, inApp, pipes) { foreground },
             scope = backgroundScope,
             io = io,
@@ -372,7 +373,7 @@ class PrivilegeControllerTest {
             assertThat(byKind.getValue(GrantKind.BATTERY_STATS).outcome).isEqualTo(GrantOutcome.GRANTED)
             // The fake app-op call "succeeds" without changing anything: verification catches it.
             assertThat(byKind.getValue(GrantKind.USAGE_STATS).outcome).isEqualTo(GrantOutcome.NOT_VERIFIED)
-            assertThat(report.adbCommands).containsExactly("adb shell appops set $PACKAGE GET_USAGE_STATS allow")
+            assertThat(report.adbCommands).containsExactly("adb shell cmd appops set --user 0 $PACKAGE GET_USAGE_STATS allow")
             assertThat(binderGrants.calls).contains("grant BATTERY_STATS $PACKAGE 0")
             assertThat(c.diagnostics.value.binderGrantPathWorked).isTrue()
         }
@@ -387,12 +388,32 @@ class PrivilegeControllerTest {
             assertThat(report.items.map { it.outcome }.toSet()).containsExactly(GrantOutcome.NO_PRIVILEGED_PATH)
             assertThat(report.adbCommands)
                 .containsExactly(
-                    "adb shell pm grant $PACKAGE android.permission.BATTERY_STATS",
-                    "adb shell pm grant $PACKAGE android.permission.DUMP",
-                    "adb shell pm grant $PACKAGE android.permission.PACKAGE_USAGE_STATS",
-                    "adb shell appops set $PACKAGE GET_USAGE_STATS allow",
-                    "adb shell pm grant $PACKAGE android.permission.INTERACT_ACROSS_USERS",
+                    "adb shell cmd package grant --user 0 $PACKAGE android.permission.BATTERY_STATS",
+                    "adb shell cmd package grant --user 0 $PACKAGE android.permission.DUMP",
+                    "adb shell cmd package grant --user 0 $PACKAGE android.permission.PACKAGE_USAGE_STATS",
+                    "adb shell cmd appops set --user 0 $PACKAGE GET_USAGE_STATS allow",
+                    "adb shell cmd package grant --user 0 $PACKAGE android.permission.INTERACT_ACROSS_USERS",
                 ).inOrder()
+        }
+
+    /**
+     * Audit BUG-009: the lines name Coulomb's Android user, as the worker's own commands do. A copy
+     * in a work profile (user 10) would otherwise hand the grants to the owner's copy.
+     */
+    @Test
+    fun adbLinesNameCoulombsAndroidUser() =
+        runTest {
+            val inWorkProfile = controller(uid = WORK_PROFILE_UID)
+            inWorkProfile.start()
+            runCurrent()
+
+            val offered = inWorkProfile.adbBootstrapCommands(includeWriteSecureSettings = true)
+            val afterFailure = inWorkProfile.bootstrap().adbCommands
+
+            assertThat(offered).contains("adb shell cmd package grant --user 10 $PACKAGE android.permission.DUMP")
+            assertThat(offered).contains("adb shell cmd appops set --user 10 $PACKAGE GET_USAGE_STATS allow")
+            assertThat((offered + afterFailure).filterNot { " --user 10 " in it }).isEmpty()
+            assertThat(afterFailure).isNotEmpty()
         }
 
     @Test
@@ -572,6 +593,7 @@ class PrivilegeControllerTest {
     private companion object {
         const val PACKAGE = "io.github.akane599.coulomb"
         const val UID = 10_123
+        const val WORK_PROFILE_UID = 1_010_123
         const val FINGERPRINT = "test/build/1"
         const val MANAGER = "moe.shizuku.privileged.api@13.6.0"
     }
