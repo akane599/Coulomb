@@ -106,9 +106,9 @@
     <string name="actions_bucket_restricted">Bekleme grubu: Kısıtlı</string>
     <string name="actions_bucket_restricted_effect">Android, uygulamanın işlerini, alarmlarını ve ağ erişimini diğer bütün gruplardan daha çok erteler. Uygulamayı kullandıkça Android onu geri taşır.</string>
     <string name="actions_allowlist_add">Doze izin listesine ekle</string>
-    <string name="actions_allowlist_add_effect">Telefon Doze’dayken uygulamanın çalışmasına ve ağı kullanmasına izin verir. Bu, pil harcar.</string>
+    <string name="actions_allowlist_add_effect">Telefon Doze’dayken uygulamanın çalışmasına ve ağı kullanmasına, kurulu olduğu her profilde izin verir: Android bu listeyi bütün telefon için tutar. Bu, pil harcar.</string>
     <string name="actions_allowlist_remove">Doze izin listesinden çıkar</string>
-    <string name="actions_allowlist_remove_effect">Uygulama, diğerleri gibi Doze’u bekler. Bildirimleri gecikebilir.</string>
+    <string name="actions_allowlist_remove_effect">Uygulama, kurulu olduğu her profilde diğerleri gibi Doze’u bekler. Bildirimleri gecikebilir.</string>
     <string name="actions_profile_effect">Telefon hareketsiz bırakıldığında derin Doze’a ne kadar çabuk gireceğini değiştirir. Arka plan işleri ve bazı bildirimler daha uzun bekler.</string>
     <string name="actions_take_over_effect">Coulomb bu değeri telefonun kendi değeri olarak kaydeder ve profilleri onun üzerine kurar. Hiçbir şey yazılmaz.</string>
     <string name="actions_saver_turn_on">Pil tasarrufunu aç</string>

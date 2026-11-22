@@ -152,7 +152,11 @@ taken unless a section says otherwise.
 27. **An app's actions are App detail's last section** (SPEC 10.4 item 8), with the value each
     would change. The three values are read when the section shows and the Action Center is on,
     each once per look; off, nothing is read. An app of another user or profile is not acted on:
-    every command names the user Coulomb runs as.
+    every command names the user Coulomb runs as. The Doze allowlist is the one Android gives no
+    per-profile form: it keeps package names for the whole phone and stores their app ids
+    (services/core/java/com/android/server/DeviceIdleController.java, android-17.0.0_r1
+    L2989-3015, L5053-5081), so adding or removing an app reaches its copy in every profile. The
+    action's effect says so before it is confirmed (amended 2026-11-22, audit BUG-021).
 28. **An insight card's button** (SPEC 9.2 "Action offered") opens the app's actions as a sheet
     over the screen the card is on, for a rule that offers one; the list and a chosen action's
     preview share the sheet, and what runs from it is logged with the insight. The other offered

@@ -117,9 +117,9 @@
     <string name="actions_bucket_restricted">Standby bucket: Restricted</string>
     <string name="actions_bucket_restricted_effect">Android holds back the app’s jobs, alarms and network more than in any other bucket. Android moves it back as you use the app.</string>
     <string name="actions_allowlist_add">Add to the Doze allowlist</string>
-    <string name="actions_allowlist_add_effect">Lets the app run and use the network while the phone dozes. This costs battery.</string>
+    <string name="actions_allowlist_add_effect">Lets the app run and use the network while the phone dozes, in every profile it is installed in: Android keeps one list for the whole phone. This costs battery.</string>
     <string name="actions_allowlist_remove">Remove from the Doze allowlist</string>
-    <string name="actions_allowlist_remove_effect">The app waits for Doze like other apps. Its notifications can be late.</string>
+    <string name="actions_allowlist_remove_effect">The app waits for Doze like other apps, in every profile it is installed in. Its notifications can be late.</string>
     <string name="actions_profile_effect">Changes how soon the phone enters deep Doze when it is left still. Background work and some notifications wait longer.</string>
     <string name="actions_take_over_effect">Coulomb records this value as the phone’s own and builds profiles on it. Nothing is written.</string>
     <string name="actions_saver_turn_on">Turn on battery saver</string>
