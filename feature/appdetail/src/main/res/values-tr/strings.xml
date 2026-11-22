@@ -110,8 +110,8 @@
     <string name="appdetail_trend_day_not_kept">%1$s saklanmadı</string>
     <string name="appdetail_trend_day_at_least">%1$s en az %2$s</string>
     <plurals name="appdetail_trend_partial">
-        <item quantity="one">Bir gün bu uygulama bir süre Coulomb’un sakladığı en büyük 30 uygulamanın dışında kaldı; o gün kullanımının yalnızca bir kısmını gösterir.</item>
-        <item quantity="other">%1$s gün bu uygulama bir süre Coulomb’un sakladığı en büyük 30 uygulamanın dışında kaldı; o günler kullanımının yalnızca bir kısmını gösterir.</item>
+        <item quantity="one">Coulomb her aralığın en büyük 30 uygulamasını saklar. Bir gün bu uygulama bir süre bunların altında kaldı; o gün yalnızca saklananı gösterir.</item>
+        <item quantity="other">Coulomb her aralığın en büyük 30 uygulamasını saklar. %1$s gün bu uygulama bir süre bunların altında kaldı; o günler yalnızca saklananı gösterir.</item>
     </plurals>
     <string name="appdetail_trend_table">%1$s, son 14 gün</string>
     <string name="appdetail_column_day">Gün</string>

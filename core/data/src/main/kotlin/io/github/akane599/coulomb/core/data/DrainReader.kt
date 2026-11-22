@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.database.dao.ChainComponent
 import io.github.akane599.coulomb.core.database.dao.ChainStep
 import io.github.akane599.coulomb.core.database.dao.ChainTotals
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
+import io.github.akane599.coulomb.core.database.dao.NamedWindow
 import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
 import io.github.akane599.coulomb.core.database.dao.WindowDao
@@ -171,8 +172,8 @@ internal class DrainReader
          * consecutive windows, the whole-UID row where a window has one, each window shared among
          * the days it overlaps by wall time ([dayShares]). A screen-off window lasts the whole
          * night, so the evening's part stays on its own day. A day no window overlaps has none.
-         * A window that named [WindowUidEntity.MAX_NAMED_UIDS] UIDs without this one may have
-         * folded it into small apps, so its days are [DayUse.partial] (audit DATA-017).
+         * A window that kept the most UIDs it keeps without this one may have folded it into small
+         * apps by rank ([NamedWindow.mayHaveFolded]), so its days are [DayUse.partial] (audit DATA-017).
          */
         private suspend fun trend(
             uid: Int,
@@ -195,7 +196,7 @@ internal class DrainReader
             val use = windows.consecutiveUse(uid, fromMs, toMs).groupBy { it.windowId }
             val folded = HashSet<LocalDate>()
             spans
-                .filter { it.windowId !in use && it.namedUids >= WindowUidEntity.MAX_NAMED_UIDS }
+                .filter { it.windowId !in use && it.mayHaveFolded }
                 .forEach { folded += dayShares(it.fromWallMs, it.toWallMs, z, first, today).keys }
             use.values.forEach { rows ->
                 val whole = rows.filter { it.component == WindowDrainsBuilder.ALL_COMPONENTS }

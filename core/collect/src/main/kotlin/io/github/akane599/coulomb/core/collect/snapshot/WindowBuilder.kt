@@ -63,7 +63,7 @@ internal data class WindowSettings(
  * [WindowUidEntity.OTHER_UID].
  */
 internal object WindowBuilder {
-    const val MIN_UID_MAH: Double = 0.1
+    const val MIN_UID_MAH: Double = WindowUidEntity.MIN_NAMED_MAH
     const val MAX_UIDS: Int = WindowUidEntity.MAX_NAMED_UIDS
     const val MIN_WAKE_MS: Long = 1_000
     const val MAX_WAKES_PER_KIND: Int = 30

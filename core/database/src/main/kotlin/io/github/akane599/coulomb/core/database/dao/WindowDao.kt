@@ -117,13 +117,20 @@ public data class ChainStat(
     val value: Long,
 )
 
-/** A consecutive window's wall-clock ends and how many UIDs its detail rows name (ADR-0041 §4). */
+/** A consecutive window's wall-clock ends and what its detail rows name and fold (ADR-0041 §4). */
 public data class NamedWindow(
     val windowId: Long,
     val fromWallMs: Long,
     val toWallMs: Long,
+    /** UIDs with rows that add up to at least [WindowUidEntity.MIN_NAMED_MAH]. */
     val namedUids: Int,
-)
+    /** The window's small apps, [WindowUidEntity.OTHER_UID]. */
+    val otherMah: Double,
+) {
+    /** It kept the most UIDs it keeps and folded at least one floor's worth: an app it lacks may be in the fold. */
+    val mayHaveFolded: Boolean
+        get() = namedUids >= WindowUidEntity.MAX_NAMED_UIDS && otherMah >= WindowUidEntity.MIN_NAMED_MAH
+}
 
 /** One UID's row in a consecutive window, with the window's wall-clock ends (ADR-0041 §4). */
 public data class UidWindowUse(
@@ -408,11 +415,15 @@ public abstract class WindowDao {
 
     /**
      * The consecutive windows that overlap `[fromWallMs, toWallMs)` and keep their records, the days
-     * with data, and how many UIDs each named (ADR-0041 §4).
+     * with data; per window, how many UIDs it named at or above the floor (a UID's rows summed, as
+     * `WindowBuilder` ranked them) and what it put in [WindowUidEntity.OTHER_UID] (ADR-0041 §4).
      */
     @Query(
         "SELECT w.id AS windowId, f.wallMs AS fromWallMs, s.wallMs AS toWallMs, " +
-            "(SELECT COUNT(DISTINCT u.uid) FROM window_uid u WHERE u.windowId = w.id AND u.uid >= 0) AS namedUids " +
+            "(SELECT COUNT(*) FROM (SELECT u.uid FROM window_uid u WHERE u.windowId = w.id AND u.uid >= 0 " +
+            "GROUP BY u.uid HAVING SUM(u.mAh) >= ${WindowUidEntity.MIN_NAMED_MAH})) AS namedUids, " +
+            "(SELECT IFNULL(SUM(o.mAh), 0) FROM window_uid o WHERE o.windowId = w.id " +
+            "AND o.uid = ${WindowUidEntity.OTHER_UID}) AS otherMah " +
             "FROM window_result w " +
             "JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
             "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND w.detailPruned = 0 " +

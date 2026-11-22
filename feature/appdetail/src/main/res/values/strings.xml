@@ -117,8 +117,8 @@
     <string name="appdetail_trend_day_not_kept">%1$s not kept</string>
     <string name="appdetail_trend_day_at_least">%1$s at least %2$s</string>
     <plurals name="appdetail_trend_partial">
-        <item quantity="one">On one day this app was outside the 30 largest that Coulomb keeps for part of the time, so that day shows only part of its use.</item>
-        <item quantity="other">On %1$s days this app was outside the 30 largest that Coulomb keeps for part of the time, so those days show only part of its use.</item>
+        <item quantity="one">Coulomb keeps the 30 largest apps of each stretch. On one day this app was below them for a while, so that day shows only what was kept.</item>
+        <item quantity="other">Coulomb keeps the 30 largest apps of each stretch. On %1$s days this app was below them for a while, so those days show only what was kept.</item>
     </plurals>
     <string name="appdetail_trend_table">%1$s, last 14 days</string>
     <string name="appdetail_column_day">Day</string>

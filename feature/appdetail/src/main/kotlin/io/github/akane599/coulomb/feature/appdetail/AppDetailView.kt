@@ -151,7 +151,8 @@ internal class TrendScale(
     /** Days the app was folded into small apps for part of, so their bars show part of its use. */
     val partials: Int get() = days.count { it.partial }
 
-    val empty: Boolean get() = days.all { it.mah == null }
+    /** No window covered any day; a day the app was not kept still shows, with its note. */
+    val empty: Boolean get() = days.all { it.mah == null && !it.partial }
 
     companion object {
         const val QUARTERS = 4

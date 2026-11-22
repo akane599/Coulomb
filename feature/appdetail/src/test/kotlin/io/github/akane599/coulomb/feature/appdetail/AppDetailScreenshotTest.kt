@@ -151,6 +151,12 @@ class AppDetailScreenshotTest {
     @Config(qualifiers = "$PAGE-xhdpi")
     fun trendAllGaps() = shoot("trend-all-gaps", ready(labDetail(trend = labTrend(gapDays = (0..13).toSet()))))
 
+    /** Audit DATA-017: an app no window kept for 14 days: the chart's frame and why, not "no records". */
+    @Test
+    @Config(qualifiers = "$PAGE-xhdpi")
+    fun trendNeverKept() =
+        shoot("trend-never-kept", ready(labDetail(trend = labTrend(gapDays = (0..13).toSet(), partialDays = (0..13).toSet()))))
+
     @Test
     @Config(qualifiers = "tr-$PAGE-xhdpi")
     fun turkish() = shoot("tr", ready())

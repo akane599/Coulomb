@@ -309,6 +309,24 @@ internal class AppDetailReaderTest : DrainDbTest() {
             windowEnding(at(2, 9), WindowRows(uids = listOf(uid(APP, 2.0))))
             windowEnding(at(2, 15), full)
             windowEnding(at(1, 12), WindowRows(uids = listOf(uid(OTHER_APP, 4.0), uid(WindowUidEntity.OTHER_UID, 0.05))))
+            // 29 above the floor and Coulomb's own small row: no rank fold, so the app was below the floor.
+            windowEnding(
+                at(5, 12),
+                WindowRows(
+                    uids =
+                        (0 until WindowUidEntity.MAX_NAMED_UIDS - 1).map { uid(FULL_FIRST + it, 5.0) } +
+                            listOf(uid(OWN_UID, 0.03), uid(WindowUidEntity.OTHER_UID, 0.02)),
+                ),
+            )
+            // 30 above the floor, but less than one floor's worth folded: nothing ranked away.
+            windowEnding(
+                at(6, 12),
+                WindowRows(
+                    uids =
+                        (0 until WindowUidEntity.MAX_NAMED_UIDS).map { uid(FULL_FIRST + it, 5.0) } +
+                            uid(WindowUidEntity.OTHER_UID, 0.05),
+                ),
+            )
 
             val detail = checkNotNull(reader.readApp(DrainSpan.Last24Hours, APP, empty(), now))
             val byDaysBack =
@@ -325,6 +343,10 @@ internal class AppDetailReaderTest : DrainDbTest() {
             assertThat(byDaysBack.getValue(1).partial).isFalse()
             assertThat(byDaysBack.getValue(4).mah).isNull()
             assertThat(byDaysBack.getValue(4).partial).isFalse()
+            for (daysBack in listOf(5L, 6L)) {
+                assertThat(byDaysBack.getValue(daysBack).mah).isEqualTo(0.0)
+                assertThat(byDaysBack.getValue(daysBack).partial).isFalse()
+            }
         }
 
     /** §4: a night's screen-off window is shared between the evening and the morning by wall time. */
@@ -419,3 +441,6 @@ internal class AppDetailReaderTest : DrainDbTest() {
 }
 
 private const val FULL_FIRST = 20_000
+
+/** Coulomb's own UID in these rows: kept below the floor. */
+private const val OWN_UID = 10_999
