@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.akane599.coulomb.core.data.DrainReport
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.NamedReference
 import io.github.akane599.coulomb.core.designsystem.component.CoulombOutlinedButton
@@ -371,12 +373,28 @@ private fun ReadyContent(
             }
         }
     }
-    val report = state.report
-    // The reconcile table divides by the measured total: a refresh, or a sheet restored onto
-    // another window, can take that total away while the sheet is open (audit BUG-042).
-    val open = table?.takeIf { it != DrainTable.RECONCILE || (report?.drains?.measuredMah ?: 0.0) > 0.0 }
-    if (report != null && table != null && open == null) LaunchedEffect(Unit) { table = null }
-    if (open != null && report != null) DataTableSheet(tableOf(open, report, formats), onDismiss = { table = null })
+    TableSheet(table, state.report, formats) { table = null }
+}
+
+/**
+ * The open table's sheet. The reconcile table divides by the measured total: a refresh, or a sheet
+ * restored onto another window, can take that total away while it is open, and then it closes
+ * (audit BUG-042).
+ */
+@Composable
+private fun TableSheet(
+    table: DrainTable?,
+    report: DrainReport?,
+    formats: Formats,
+    onDismiss: () -> Unit,
+) {
+    if (table == null || report == null) return
+    if (table == DrainTable.RECONCILE && (report.drains.measuredMah ?: 0.0) <= 0.0) {
+        val dismiss by rememberUpdatedState(onDismiss)
+        LaunchedEffect(Unit) { dismiss() }
+        return
+    }
+    DataTableSheet(tableOf(table, report, formats), onDismiss = onDismiss)
 }
 
 /** The window selector, and a privilege issue under it. */

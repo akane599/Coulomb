@@ -344,14 +344,23 @@ public class ActionCenter internal constructor(
         row: ActionLogEntity,
     ): ActionResult {
         val held = plan.read()
-        when {
-            held !is Got.Value -> return ActionResult.Unverified(row.id)
+        return when {
+            held !is Got.Value -> ActionResult.Unverified(row.id)
 
-            same(held.value, plan.before) -> return forget(row)
+            same(held.value, plan.before) -> forget(row)
 
             // Another manager wrote the setting in the meantime: its value is not overwritten.
-            !same(held.value, plan.want) -> return drifted(row, held.value)
+            !same(held.value, plan.want) -> drifted(row, held.value)
+
+            else -> undo(plan, row)
         }
+    }
+
+    /** Writes the baseline back over Coulomb's value; the row goes once the baseline reads back. */
+    private suspend fun undo(
+        plan: Plan,
+        row: ActionLogEntity,
+    ): ActionResult {
         plan.undo?.let { io.act(it) }
         val now = plan.read()
         return if (now is Got.Value && same(now.value, plan.before)) forget(row) else ActionResult.Unverified(row.id)
