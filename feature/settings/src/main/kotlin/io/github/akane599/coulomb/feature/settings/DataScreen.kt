@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
@@ -172,6 +173,8 @@ internal fun DataContent(
             style = CoulombTheme.typography.body,
         )
         CoulombOutlinedButton(stringResource(R.string.data_delete_action), actions.askDeleteAll, enabled = idle)
+        // Back waits while the erase runs: the process restarts when it ends (audit CONC-002).
+        BackHandler(enabled = state.work == DataWork.Deleting) {}
         if (state.work == DataWork.Deleting) Working(stringResource(R.string.data_deleting), cancel = null)
         state.message?.takeIf { it.aboutDelete }?.let { Said(it) }
     }

@@ -30,6 +30,7 @@ import io.github.akane599.coulomb.core.datastore.SettingsTransfer
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -326,16 +328,21 @@ public class DataViewModel internal constructor(
                 return@launch
             }
             ui.update { it.copy(deleteAsk = null, work = DataWork.Deleting, message = null) }
-            host.collector(run = false)
-            try {
-                transfer.deleteAll()
-            } catch (e: SQLException) {
-                Log.w(TAG, "delete failed", e)
-                host.collector(run = true)
-                ui.update { it.copy(work = DataWork.Idle, message = DataMessage.DELETE_FAILED) }
-                return@launch
+            // Once confirmed, the erase and the restart after it finish even if the screen goes:
+            // without the restart the process would keep the deleted boot and calibration in
+            // memory (ADR-0062 §14; audit CONC-002). The screen also holds Back while deleting.
+            withContext(NonCancellable) {
+                host.collector(run = false)
+                try {
+                    transfer.deleteAll()
+                } catch (e: SQLException) {
+                    Log.w(TAG, "delete failed", e)
+                    host.collector(run = true)
+                    ui.update { it.copy(work = DataWork.Idle, message = DataMessage.DELETE_FAILED) }
+                    return@withContext
+                }
+                host.restart()
             }
-            host.restart()
         }
     }
 

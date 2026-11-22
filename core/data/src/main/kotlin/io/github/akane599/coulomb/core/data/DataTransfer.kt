@@ -263,7 +263,11 @@ public class DataTransfer
             withContext(dispatchers.io) {
                 busy.withLock {
                     database.clearAllTables()
-                    context.noBackupFilesDir.resolve(SNAPSHOTS).deleteRecursively()
+                    // Where the collector writes them (`FileBlobStore(context.filesDir)`, folder
+                    // "snapshots"; excluded from backup in data_extraction_rules.xml). Audit DATA-001.
+                    context.filesDir.resolve(SNAPSHOTS).deleteRecursively()
+                    // The raw export's scratch folder (DataViewModel), anything half-written there.
+                    context.cacheDir.resolve(RAW_EXPORT_SCRATCH).deleteRecursively()
                     archiveRoot.deleteRecursively()
                     scratch.deleteRecursively()
                     list()
@@ -353,6 +357,7 @@ public class DataTransfer
         private companion object {
             const val ARCHIVES = "archives"
             const val SNAPSHOTS = "snapshots"
+            const val RAW_EXPORT_SCRATCH = "raw-export"
             const val SCRATCH = "transfer"
             const val TAG = "DataTransfer"
             const val STAGING = ".staging-"

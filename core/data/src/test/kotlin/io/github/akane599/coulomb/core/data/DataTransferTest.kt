@@ -97,13 +97,17 @@ class DataTransferTest {
             val out = ByteArrayOutputStream()
             transfer.exportBundle(out, nowWallMs = 1_800_000_000_000, settings = "{}")
             transfer.import(ByteArrayInputStream(out.toByteArray()))
-            val snapshots = context.noBackupFilesDir.resolve("snapshots").apply { mkdirs() }
-            snapshots.resolve("1-5").writeText("x")
+            // Where the collector's FileBlobStore writes them (audit DATA-001).
+            val snapshots = context.filesDir.resolve("snapshots").apply { mkdirs() }
+            snapshots.resolve("1-5.s5.pb.gz").writeText("x")
+            val rawScratch = context.cacheDir.resolve("raw-export").apply { mkdirs() }
+            rawScratch.resolve("part").writeText("x")
 
             transfer.deleteAll()
 
             assertThat(boots(db)).isEqualTo(0)
             assertThat(snapshots.exists()).isFalse()
+            assertThat(rawScratch.exists()).isFalse()
             assertThat(transfer.archives.value).isEmpty()
             assertThat(context.noBackupFilesDir.resolve("archives").exists()).isFalse()
         }
