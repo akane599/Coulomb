@@ -132,13 +132,17 @@ sealed interface Alert {
 }
 
 /**
- * SPEC 12.3. The charge target alarm fires when the level crosses the target while plugged, so it
- * fires once per charge and never for a level that was already there when Coulomb started. The
- * temperature alarm fires at or above its threshold, at most once per [TEMPERATURE_REST_MS].
+ * SPEC 12.3. The charge target alarm fires when the level crosses the target while plugged, once
+ * per charge: a dip and a second crossing on the same charger say nothing more (audit BUG-012),
+ * and a level that was already there when Coulomb started says nothing. The temperature alarm
+ * fires at or above its threshold, at most once per [TEMPERATURE_REST_MS].
  */
 class AlertRules {
     private var lastLevel: Int? = null
     private var lastPlugged = false
+
+    /** The target alarm rang since the phone was last seen unplugged. */
+    private var rang = false
     private var hotAtMs: Long? = null
 
     @Suppress("LongParameterList") // One reading and the two alarms' settings.
@@ -153,7 +157,9 @@ class AlertRules {
         val before = lastLevel?.takeIf { lastPlugged }
         lastLevel = levelPct
         lastPlugged = plugged
-        val reached = plugged && targetPct != null && before != null && before < targetPct && levelPct >= targetPct
+        if (!plugged) rang = false
+        val reached = !rang && plugged && targetPct != null && before != null && before < targetPct && levelPct >= targetPct
+        if (reached) rang = true
         val rested = hotAtMs?.let { atMs - it >= TEMPERATURE_REST_MS } ?: true
         val hot = hotFromDeciC != null && tempDeciC >= hotFromDeciC && rested
         if (hot) hotAtMs = atMs

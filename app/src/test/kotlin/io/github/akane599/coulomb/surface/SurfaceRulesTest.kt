@@ -102,6 +102,13 @@ class SurfaceRulesTest {
         // Once per charge: staying there or going on says nothing more.
         assertThat(rules.next(80, true, 300, 2, 80, null)).isEmpty()
         assertThat(rules.next(81, true, 300, 3, 80, null)).isEmpty()
+        // Audit BUG-012: a dip under load and a second crossing on the same charger neither.
+        assertThat(rules.next(79, true, 300, 4, 80, null)).isEmpty()
+        assertThat(rules.next(80, true, 300, 5, 80, null)).isEmpty()
+        // A new charge after an unplug rings again.
+        rules.next(70, false, 300, 6, 80, null)
+        rules.next(79, true, 300, 7, 80, null)
+        assertThat(rules.next(80, true, 300, 8, 80, null)).containsExactly(Alert.TargetReached(80))
     }
 
     @Test
