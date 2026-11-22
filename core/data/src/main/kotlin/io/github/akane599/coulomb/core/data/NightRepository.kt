@@ -9,6 +9,7 @@ import io.github.akane599.coulomb.core.database.dao.BootClock
 import io.github.akane599.coulomb.core.database.dao.HistoryDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
+import io.github.akane599.coulomb.core.database.dao.StoredHistoryEvent
 import io.github.akane599.coulomb.core.database.entity.CorruptChunkException
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.model.SessionKind
@@ -149,30 +150,40 @@ public class NightRepository
         /**
          * Whether deep Doze began in [session], from the history's Doze states (S7): the collector
          * stores none with the session. Null until a history read past the session's end is stored,
-         * and when the history holds nothing at all for the session.
+         * when the history holds nothing at all for the session, and when it never saw deep Doze but
+         * has a gap there, which may hold it (audit DATA-010). Deep Doze seen after a gap was
+         * reached, at a time not known.
          */
         private suspend fun dozeOf(session: SessionEntity): DozeReached? {
             val end = session.endElapsedNs
             val known = doze[session.id]
             if (known != null || end == null || session.deepIdleReached != null) return known
-            val events =
-                try {
-                    if (history.readAfter(session.bootSeq, end)) {
-                        history.eventsOf(DOZE_KINDS, session.bootSeq, session.startElapsedNs, session.bootSeq, end)
-                    } else {
-                        emptyList()
-                    }
-                } catch (e: CorruptChunkException) {
-                    Log.w(TAG, "history of session ${session.id} does not decode; its Doze is not known", e)
-                    emptyList()
-                }
-            if (events.isEmpty()) return null
+            val events = dozeEvents(session, end)
             val deep = events.firstOrNull { it.event.type == HistoryKind.DEVICE_IDLE && it.event.value == DEEP }
-            return DozeReached(deep != null, deep?.let { it.event.elapsedMs - session.startElapsedNs / NS_PER_MS }).also {
-                doze[session.id] =
-                    it
+            val until = deep?.let { it.event.elapsedMs * NS_PER_MS } ?: end
+            val gapped = events.isNotEmpty() && history.gaps(session.bootSeq, session.startElapsedNs, session.bootSeq, until).isNotEmpty()
+            val afterMs = deep?.let { it.event.elapsedMs - session.startElapsedNs / NS_PER_MS }?.takeUnless { gapped }
+            return when {
+                events.isEmpty() || (deep == null && gapped) -> null
+                else -> DozeReached(deep != null, afterMs).also { doze[session.id] = it }
             }
         }
+
+        /** The session's Doze, CPU and level events; none until a read past [end] is stored, or when they do not decode. */
+        private suspend fun dozeEvents(
+            session: SessionEntity,
+            end: Long,
+        ): List<StoredHistoryEvent> =
+            try {
+                if (history.readAfter(session.bootSeq, end)) {
+                    history.eventsOf(DOZE_KINDS, session.bootSeq, session.startElapsedNs, session.bootSeq, end)
+                } else {
+                    emptyList()
+                }
+            } catch (e: CorruptChunkException) {
+                Log.w(TAG, "history of session ${session.id} does not decode; its Doze is not known", e)
+                emptyList()
+            }
 
         private companion object {
             const val TAG = "NightRepository"
