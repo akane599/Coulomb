@@ -147,6 +147,13 @@ main recommendations are taken.
 15. **Auto Backup keeps the settings, without the flags that open something.** A restored phone
     starts with `onboarded`, the Action Center and the automation API off, whatever the old phone
     had: each stands for a grant or a consent given on that phone.
+    Amended 2026-11-23 (audit DATA-002): while that reset could not be stored, the settings read
+    as it would leave them, so a restored consent opens nothing in that process either; the next
+    settings write stores the reset with itself and the first start then counts as done. A start
+    with no mark at all is a first start even when the database is there (it was "an install
+    from before the marks" until now): a first start whose pending mark could not be written
+    must not pass for a finished one. Every released build writes the marks, so only a
+    development install from before 2026-11-21 is reset once more. Owner delegated the choice.
 
 ## Consequences
 

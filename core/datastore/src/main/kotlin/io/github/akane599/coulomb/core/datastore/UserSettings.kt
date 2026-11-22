@@ -6,8 +6,12 @@ package io.github.akane599.coulomb.core.datastore
 import androidx.datastore.core.DataStore
 import io.github.akane599.coulomb.core.datastore.proto.Settings
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -89,56 +93,70 @@ public class SettingsStore
     internal constructor(
         private val store: DataStore<Settings>,
     ) {
+        /** True from a failed [startedFromBackup] until a write stores its reset (ADR-0062 §15; audit DATA-002). */
+        private val resetOwed = MutableStateFlow(false)
+
+        /** One at a time on the owed path, so two first writes do not apply the reset over each other. */
+        private val owedWrites = Mutex()
+
+        /** False while a restored install's reset is owed; the app marks its first start done once it is stored. */
+        public val resetStored: Flow<Boolean> = resetOwed.map { !it }
+
+        /**
+         * The settings as stored. While a restored install's reset is owed they read as that reset
+         * would leave them: nothing that stands for a consent given on another install is on.
+         */
         public val settings: Flow<UserSettings> =
-            store.data
-                .map {
-                    UserSettings(
-                        showSystemApps = it.show_system_apps,
-                        scaleToMeasured = it.scale_to_measured,
-                        componentBreakdown = it.component_breakdown,
-                        // 0 is unset; a value outside the range (an older or edited file) falls back too.
-                        chargeTargetPct =
-                            it.charge_target_pct.takeIf { pct -> pct in UserSettings.CHARGE_TARGETS }
-                                ?: UserSettings.DEFAULT_CHARGE_TARGET,
-                        onboarded = it.onboarded,
-                        chargeAlarm = it.charge_alarm,
-                        temperatureAlarmDeciC =
-                            when (val stored = it.temperature_alarm_deci_c) {
-                                ALARM_OFF -> null
-                                in UserSettings.TEMPERATURE_ALARMS -> stored
-                                else -> UserSettings.DEFAULT_TEMPERATURE_ALARM
-                            },
-                        insightsDigest = !it.insights_digest_off,
-                        insightsDigestMinute =
-                            (it.insights_digest_minute_plus_one - 1).takeIf { minute -> minute in 0 until UserSettings.MINUTES_PER_DAY }
-                                ?: UserSettings.DEFAULT_DIGEST_MINUTE,
-                        actionCenter = it.action_center,
-                        theme = ThemeChoice.entries.getOrElse(it.theme) { ThemeChoice.SYSTEM },
-                        fahrenheit = it.fahrenheit,
-                        liteMode = it.lite_mode,
-                        screenOnSamplingS =
-                            it.screen_on_sampling_s.takeIf { s -> s in UserSettings.SAMPLING_S } ?: UserSettings.DEFAULT_SAMPLING_S,
-                        longRawRetention = it.long_raw_retention,
-                        developerConsole = it.developer_console,
-                        automation = it.automation,
-                    )
-                }.distinctUntilChanged()
+            combine(store.data, resetOwed) { stored, owed -> read(if (owed) stored.withoutConsents() else stored) }
+                .distinctUntilChanged()
+
+        private fun read(stored: Settings): UserSettings =
+            UserSettings(
+                showSystemApps = stored.show_system_apps,
+                scaleToMeasured = stored.scale_to_measured,
+                componentBreakdown = stored.component_breakdown,
+                // 0 is unset; a value outside the range (an older or edited file) falls back too.
+                chargeTargetPct =
+                    stored.charge_target_pct.takeIf { pct -> pct in UserSettings.CHARGE_TARGETS }
+                        ?: UserSettings.DEFAULT_CHARGE_TARGET,
+                onboarded = stored.onboarded,
+                chargeAlarm = stored.charge_alarm,
+                temperatureAlarmDeciC =
+                    when (val alarm = stored.temperature_alarm_deci_c) {
+                        ALARM_OFF -> null
+                        in UserSettings.TEMPERATURE_ALARMS -> alarm
+                        else -> UserSettings.DEFAULT_TEMPERATURE_ALARM
+                    },
+                insightsDigest = !stored.insights_digest_off,
+                insightsDigestMinute =
+                    (stored.insights_digest_minute_plus_one - 1).takeIf { minute -> minute in 0 until UserSettings.MINUTES_PER_DAY }
+                        ?: UserSettings.DEFAULT_DIGEST_MINUTE,
+                actionCenter = stored.action_center,
+                theme = ThemeChoice.entries.getOrElse(stored.theme) { ThemeChoice.SYSTEM },
+                fahrenheit = stored.fahrenheit,
+                liteMode = stored.lite_mode,
+                screenOnSamplingS =
+                    stored.screen_on_sampling_s.takeIf { s -> s in UserSettings.SAMPLING_S } ?: UserSettings.DEFAULT_SAMPLING_S,
+                longRawRetention = stored.long_raw_retention,
+                developerConsole = stored.developer_console,
+                automation = stored.automation,
+            )
 
         public suspend fun showSystemApps(show: Boolean) {
-            store.updateData { it.copy(show_system_apps = show) }
+            update { it.copy(show_system_apps = show) }
         }
 
         public suspend fun scaleToMeasured(scale: Boolean) {
-            store.updateData { it.copy(scale_to_measured = scale) }
+            update { it.copy(scale_to_measured = scale) }
         }
 
         public suspend fun componentBreakdown(on: Boolean) {
-            store.updateData { it.copy(component_breakdown = on) }
+            update { it.copy(component_breakdown = on) }
         }
 
         /** Onboarding is done: the app opens on Now from here on (ADR-0047 §1). */
         public suspend fun onboarded() {
-            store.updateData { it.copy(onboarded = true) }
+            update { it.copy(onboarded = true) }
         }
 
         /**
@@ -147,66 +165,87 @@ public class SettingsStore
          * this install has neither. Nothing changes on an install that has no settings yet.
          */
         public suspend fun startedFromBackup() {
-            store.updateData { it.copy(onboarded = false, action_center = false, automation = false) }
+            // Owed before the write: if it fails, this process still reads the consents as off, and
+            // the next write stores the reset with itself (audit DATA-002).
+            resetOwed.value = true
+            update { it }
         }
 
+        /**
+         * One settings write. While a restored install's reset is owed, the write stores the reset
+         * with it, so once a write has gone through what is read is what the file holds.
+         */
+        private suspend fun update(transform: (Settings) -> Settings) {
+            if (!resetOwed.value) {
+                store.updateData { transform(it) }
+                return
+            }
+            owedWrites.withLock {
+                val owed = resetOwed.value
+                store.updateData { current -> transform(if (owed) current.withoutConsents() else current) }
+                resetOwed.value = false
+            }
+        }
+
+        private fun Settings.withoutConsents(): Settings = copy(onboarded = false, action_center = false, automation = false)
+
         public suspend fun chargeAlarm(on: Boolean) {
-            store.updateData { it.copy(charge_alarm = on) }
+            update { it.copy(charge_alarm = on) }
         }
 
         /** Stores the alarm's threshold, held to [UserSettings.TEMPERATURE_ALARMS]; null turns the alarm off. */
         public suspend fun temperatureAlarm(deciC: Int?) {
             val stored = deciC?.coerceIn(UserSettings.TEMPERATURE_ALARMS) ?: ALARM_OFF
-            store.updateData { it.copy(temperature_alarm_deci_c = stored) }
+            update { it.copy(temperature_alarm_deci_c = stored) }
         }
 
         public suspend fun actionCenter(on: Boolean) {
-            store.updateData { it.copy(action_center = on) }
+            update { it.copy(action_center = on) }
         }
 
         public suspend fun theme(choice: ThemeChoice) {
-            store.updateData { it.copy(theme = choice.ordinal) }
+            update { it.copy(theme = choice.ordinal) }
         }
 
         public suspend fun fahrenheit(on: Boolean) {
-            store.updateData { it.copy(fahrenheit = on) }
+            update { it.copy(fahrenheit = on) }
         }
 
         public suspend fun liteMode(on: Boolean) {
-            store.updateData { it.copy(lite_mode = on) }
+            update { it.copy(lite_mode = on) }
         }
 
         /** Stores the interval, held to [UserSettings.SAMPLING_S]. */
         public suspend fun screenOnSampling(seconds: Int) {
-            store.updateData { it.copy(screen_on_sampling_s = seconds.coerceIn(UserSettings.SAMPLING_S)) }
+            update { it.copy(screen_on_sampling_s = seconds.coerceIn(UserSettings.SAMPLING_S)) }
         }
 
         public suspend fun longRawRetention(on: Boolean) {
-            store.updateData { it.copy(long_raw_retention = on) }
+            update { it.copy(long_raw_retention = on) }
         }
 
         public suspend fun developerConsole(on: Boolean) {
-            store.updateData { it.copy(developer_console = on) }
+            update { it.copy(developer_console = on) }
         }
 
         public suspend fun automation(on: Boolean) {
-            store.updateData { it.copy(automation = on) }
+            update { it.copy(automation = on) }
         }
 
         public suspend fun insightsDigest(on: Boolean) {
-            store.updateData { it.copy(insights_digest_off = !on) }
+            update { it.copy(insights_digest_off = !on) }
         }
 
         /** Stores the minute of the day from which the digest may post. */
         public suspend fun insightsDigestMinute(minute: Int) {
             val held = minute.coerceIn(0, UserSettings.MINUTES_PER_DAY - 1)
-            store.updateData { it.copy(insights_digest_minute_plus_one = held + 1) }
+            update { it.copy(insights_digest_minute_plus_one = held + 1) }
         }
 
         /** Stores [pct], held to [UserSettings.CHARGE_TARGETS]. */
         public suspend fun chargeTarget(pct: Int) {
             val held = pct.coerceIn(UserSettings.CHARGE_TARGETS)
-            store.updateData { it.copy(charge_target_pct = held) }
+            update { it.copy(charge_target_pct = held) }
         }
 
         private companion object {

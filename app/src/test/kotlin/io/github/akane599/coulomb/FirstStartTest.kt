@@ -32,10 +32,16 @@ class FirstStartTest {
         assertThat(FirstStart.check(folder.root)).isFalse()
     }
 
+    /**
+     * Audit DATA-002: a database without any mark is a first start whose pending mark could not be
+     * written, or a development install from before the marks. Either way the reset runs.
+     */
     @Test
-    fun anInstallFromBeforeTheMarkHasItsDatabase() {
+    fun aDatabaseWithoutAnyMarkIsStillAFirstStart() {
         File(folder.root, CoulombDatabase.FILE_NAME).writeText("")
-        assertThat(FirstStart.check(folder.root)).isFalse()
+        assertThat(FirstStart.check(folder.root)).isTrue()
+        assertThat(FirstStart.check(folder.root)).isTrue()
+        FirstStart.done(folder.root)
         assertThat(FirstStart.check(folder.root)).isFalse()
     }
 }

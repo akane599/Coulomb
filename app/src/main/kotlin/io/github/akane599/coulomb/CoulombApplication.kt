@@ -63,6 +63,12 @@ class CoulombApplication : Application() {
                     FirstStart.done(noBackupFilesDir)
                 } catch (e: IOException) {
                     Log.w(TAG, "restored settings not reset; again at the next start", e)
+                    // Until a later write stores the reset, this process reads the consents as off;
+                    // the start is done once one has (ADR-0062 §15; audit DATA-002).
+                    scope.launch {
+                        settings.resetStored.first { it }
+                        FirstStart.done(noBackupFilesDir)
+                    }
                 }
             }
             // A backup made before the surfaces' memory was excluded may still bring it: its digest
@@ -125,10 +131,13 @@ private fun PrivilegeState.settled(): Boolean =
     }
 
 /**
- * Whether this is the first start of this install. The database and the marks live in the directory
- * Auto Backup never copies (SPEC 14.5), so on a phone restored from a backup none is there while the
- * settings are; an install from before the marks has its database. A first start stays pending until
- * [done], so a reset that failed runs again (audit DATA-008).
+ * Whether this is the first start of this install. The marks live in the directory Auto Backup
+ * never copies (SPEC 14.5), so on a phone restored from a backup none is there while the settings
+ * are. A first start stays pending until [done], so a reset that failed runs again (audit
+ * DATA-008). No mark at all counts as a first start even when the database is there: a first
+ * start whose pending mark could not be written must not pass for a finished one (audit DATA-002).
+ * Every released build writes the marks; only a development install from before them is reset
+ * once more.
  */
 internal object FirstStart {
     private const val MARK = "started"
@@ -140,13 +149,12 @@ internal object FirstStart {
         if (mark.exists()) return false
         val pending = File(noBackup, PENDING)
         if (pending.exists()) return true
-        val first = !File(noBackup, CoulombDatabase.FILE_NAME).exists()
         try {
-            if (first) pending.createNewFile() else mark.createNewFile()
+            pending.createNewFile()
         } catch (e: IOException) {
             Log.w(TAG, "no first-start mark", e)
         }
-        return first
+        return true
     }
 
     /** The first start's reset is stored. */
