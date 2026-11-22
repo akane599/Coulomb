@@ -225,6 +225,7 @@
     <string name="data_settings_use">Use its settings</string>
     <string name="data_settings_keep">Keep mine</string>
     <string name="data_said_settings_applied">Settings applied.</string>
+    <string name="data_said_settings_failed">Couldn’t apply the settings, and none were changed. Check the free space and try again.</string>
     <string name="data_archives">Imported histories</string>
     <string name="data_archive_name">History from %1$s</string>
     <string name="data_archive_origin">Imported from a file</string>

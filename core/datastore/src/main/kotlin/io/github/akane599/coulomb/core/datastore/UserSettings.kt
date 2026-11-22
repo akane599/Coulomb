@@ -85,6 +85,19 @@ public data class UserSettings(
     }
 }
 
+/** The settings a bundle may set on any phone (ADR-0062 §12); null leaves one as it is here. */
+public data class NeutralSettings(
+    val showSystemApps: Boolean? = null,
+    val scaleToMeasured: Boolean? = null,
+    val chargeTargetPct: Int? = null,
+    /** Taken only while the alarm is already on here. */
+    val temperatureAlarmDeciC: Int? = null,
+    val insightsDigestMinute: Int? = null,
+    val theme: ThemeChoice? = null,
+    val fahrenheit: Boolean? = null,
+    val screenOnSamplingS: Int? = null,
+)
+
 /** Reads and writes [UserSettings] in Proto DataStore (SPEC 8.1). */
 @Suppress("TooManyFunctions") // One setter per row of SPEC 14.4, each holding its value to the spec's range.
 @Singleton
@@ -246,6 +259,28 @@ public class SettingsStore
         public suspend fun chargeTarget(pct: Int) {
             val held = pct.coerceIn(UserSettings.CHARGE_TARGETS)
             update { it.copy(charge_target_pct = held) }
+        }
+
+        /** Stores [neutral] as one write: all of it or, when the write fails, none (audit CONC-006). */
+        public suspend fun applyNeutral(neutral: NeutralSettings) {
+            update { s ->
+                s.copy(
+                    show_system_apps = neutral.showSystemApps ?: s.show_system_apps,
+                    scale_to_measured = neutral.scaleToMeasured ?: s.scale_to_measured,
+                    charge_target_pct = neutral.chargeTargetPct?.coerceIn(UserSettings.CHARGE_TARGETS) ?: s.charge_target_pct,
+                    // A threshold means on, and the alarm stays as it is here.
+                    temperature_alarm_deci_c =
+                        neutral.temperatureAlarmDeciC
+                            ?.takeIf { s.temperature_alarm_deci_c != ALARM_OFF }
+                            ?.coerceIn(UserSettings.TEMPERATURE_ALARMS) ?: s.temperature_alarm_deci_c,
+                    insights_digest_minute_plus_one =
+                        neutral.insightsDigestMinute?.let { it.coerceIn(0, UserSettings.MINUTES_PER_DAY - 1) + 1 }
+                            ?: s.insights_digest_minute_plus_one,
+                    theme = neutral.theme?.ordinal ?: s.theme,
+                    fahrenheit = neutral.fahrenheit ?: s.fahrenheit,
+                    screen_on_sampling_s = neutral.screenOnSamplingS?.coerceIn(UserSettings.SAMPLING_S) ?: s.screen_on_sampling_s,
+                )
+            }
         }
 
         private companion object {

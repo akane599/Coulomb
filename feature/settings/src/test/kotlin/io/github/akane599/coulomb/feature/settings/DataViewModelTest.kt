@@ -32,6 +32,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -100,6 +101,29 @@ class DataViewModelTest {
 
             assertThat(host.events).containsExactly("stop", "restart").inOrder()
             assertThat(boots()).isEqualTo(0)
+        }
+
+    /** Audit CONC-006: settings that could not be stored stay on offer, and the screen says so. */
+    @Test
+    fun aFailedSettingsWriteKeepsTheOfferAndSaysSo() =
+        runTest {
+            val model = model()
+            model.export(ExportKind.BUNDLE, FILE)
+            model.settled()
+            host.reading = host.written.toByteArray()
+            model.import(FILE)
+            model.state.first { it.work == DataWork.Idle && it.message == DataMessage.IMPORTED }
+
+            host.settingsFail = true
+            model.applyOfferedSettings()
+            val failed = model.state.first { it.message != DataMessage.IMPORTED }
+            assertThat(failed.message).isEqualTo(DataMessage.SETTINGS_FAILED)
+            assertThat(failed.offeredSettings).isNotNull()
+
+            host.settingsFail = false
+            model.applyOfferedSettings()
+            val applied = model.state.first { it.message == DataMessage.SETTINGS_APPLIED }
+            assertThat(applied.offeredSettings).isNull()
         }
 
     /**
@@ -223,7 +247,9 @@ class DataViewModelTest {
 
         override suspend fun settingsJson(): String = "{\"theme\":\"DARK\"}"
 
-        override suspend fun applySettings(json: String): Boolean = true
+        var settingsFail = false
+
+        override suspend fun applySettings(json: String): Boolean = if (settingsFail) throw IOException("disk full") else true
 
         override suspend fun rawBundle(out: OutputStream): RawBundleResult = raw.also { out.close() }
 

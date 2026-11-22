@@ -89,6 +89,7 @@ internal enum class DataMessage {
     EXPORT_LEFT,
     IMPORTED,
     SETTINGS_APPLIED,
+    SETTINGS_FAILED,
     ARCHIVE_DELETED,
     IMPORT_NOT_A_BUNDLE,
     IMPORT_NEWER,
@@ -101,7 +102,7 @@ internal enum class DataMessage {
     DELETE_FAILED,
     ;
 
-    val aboutImport: Boolean get() = name.startsWith("IMPORT") || this == SETTINGS_APPLIED || this == ARCHIVE_DELETED
+    val aboutImport: Boolean get() = name.startsWith("IMPORT") || name.startsWith("SETTINGS") || this == ARCHIVE_DELETED
     val aboutDelete: Boolean get() = this == DELETE_FAILED
 }
 
@@ -293,16 +294,24 @@ public class DataViewModel internal constructor(
     /** Uses the imported bundle's neutral settings on this phone (ADR-0062 §12). */
     internal fun applyOfferedSettings() {
         val json = ui.value.offeredSettings ?: return
-        ui.update { it.copy(offeredSettings = null) }
         viewModelScope.launch {
             val applied =
                 try {
                     host.applySettings(json)
                 } catch (e: IOException) {
                     Log.w(TAG, "settings write failed", e)
-                    false
+                    null
                 }
-            if (applied) ui.update { it.copy(message = DataMessage.SETTINGS_APPLIED) }
+            ui.update {
+                when (applied) {
+                    true -> it.copy(offeredSettings = null, message = DataMessage.SETTINGS_APPLIED)
+
+                    false -> it.copy(offeredSettings = null)
+
+                    // Nothing was stored: the offer stays, to try again (audit CONC-006).
+                    null -> it.copy(message = DataMessage.SETTINGS_FAILED)
+                }
+            }
         }
     }
 

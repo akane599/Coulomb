@@ -3,11 +3,13 @@
 
 package io.github.akane599.coulomb.core.datastore
 
+import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.datastore.proto.Settings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -19,6 +21,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.io.IOException
 
 /** The settings a bundle carries, and the few of them a file may set (ADR-0062 §12). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -116,5 +119,91 @@ class SettingsTransferTest {
             assertThat(SettingsTransfer(store).apply("""{"theme": {"name": "DARK"}}""")).isFalse()
             assertThat(SettingsTransfer(store).apply("""{"theme": "DARK"} x""")).isFalse()
             assertThat(store.settings.first()).isEqualTo(UserSettings(fahrenheit = true))
+        }
+
+    /** A store on [file] that counts its writes and fails the first while [fails] is set. */
+    private class Counting(
+        private val real: DataStore<Settings>,
+        var fails: Boolean,
+    ) : DataStore<Settings> {
+        var writes = 0
+        override val data: Flow<Settings> = real.data
+
+        override suspend fun updateData(transform: suspend (t: Settings) -> Settings): Settings {
+            if (writes++ == 0 && fails) throw IOException("disk full")
+            return real.updateData(transform)
+        }
+    }
+
+    private fun TestScope.counting(
+        file: File,
+        fails: Boolean,
+    ) = Counting(
+        DataStoreFactory.create(
+            serializer = SettingsSerializer,
+            corruptionHandler = ReplaceFileCorruptionHandler { Settings() },
+            scope = backgroundScope,
+            produceFile = { file },
+        ),
+        fails,
+    )
+
+    private val wholeFile =
+        JSONObject()
+            .put("show_system_apps", true)
+            .put("scale_to_measured", true)
+            .put("charge_target_pct", 90)
+            .put("temperature_alarm_deci_c", 450)
+            .put("insights_digest_minute", 450)
+            .put("theme", "BLACK")
+            .put("fahrenheit", true)
+            .put("screen_on_sampling_s", 10)
+            .toString()
+
+    /** Audit CONC-006: a file's settings are stored together or not at all. */
+    @Test
+    fun theWholeFileIsOneWrite() =
+        runTest(UnconfinedTestDispatcher()) {
+            val counting = counting(folder.root.resolve("one.pb"), fails = false)
+            val store = SettingsStore(counting)
+
+            assertThat(SettingsTransfer(store).apply(wholeFile)).isTrue()
+
+            assertThat(counting.writes).isEqualTo(1)
+            assertThat(store.settings.first()).isEqualTo(
+                UserSettings(
+                    showSystemApps = true,
+                    scaleToMeasured = true,
+                    chargeTargetPct = 90,
+                    temperatureAlarmDeciC = 450,
+                    insightsDigestMinute = 450,
+                    theme = ThemeChoice.BLACK,
+                    fahrenheit = true,
+                    screenOnSamplingS = 10,
+                ),
+            )
+        }
+
+    @Test
+    fun aFailedWriteAppliesNothingFromTheFile() =
+        runTest(UnconfinedTestDispatcher()) {
+            val store = SettingsStore(counting(folder.root.resolve("none.pb"), fails = true))
+
+            val applied = runCatching { SettingsTransfer(store).apply(wholeFile) }
+
+            assertThat(applied.exceptionOrNull()).isInstanceOf(IOException::class.java)
+            assertThat(store.settings.first()).isEqualTo(UserSettings())
+        }
+
+    /** The alarm's threshold is taken only while the alarm is on here, as before. */
+    @Test
+    fun anAlarmThatIsOffHereStaysOff() =
+        runTest(UnconfinedTestDispatcher()) {
+            val store = store(folder.root.resolve("off.pb"))
+            store.temperatureAlarm(null)
+
+            assertThat(SettingsTransfer(store).apply(wholeFile)).isTrue()
+
+            assertThat(store.settings.first().temperatureAlarmDeciC).isNull()
         }
 }

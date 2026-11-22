@@ -212,6 +212,7 @@
     <string name="data_settings_use">Onun ayarlarını kullan</string>
     <string name="data_settings_keep">Benimkiler kalsın</string>
     <string name="data_said_settings_applied">Ayarlar uygulandı.</string>
+    <string name="data_said_settings_failed">Ayarlar uygulanamadı ve hiçbiri değiştirilmedi. Boş alanı denetleyip yeniden dene.</string>
     <string name="data_archives">İçe aktarılan geçmişler</string>
     <string name="data_archive_name">%1$s geçmişi</string>
     <string name="data_archive_origin">Bir dosyadan içe aktarıldı</string>

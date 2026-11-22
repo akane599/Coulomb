@@ -415,6 +415,7 @@ private fun DataMessage.words(): Int =
         DataMessage.EXPORT_LEFT -> R.string.data_said_export_left
         DataMessage.IMPORTED -> R.string.data_said_imported
         DataMessage.SETTINGS_APPLIED -> R.string.data_said_settings_applied
+        DataMessage.SETTINGS_FAILED -> R.string.data_said_settings_failed
         DataMessage.ARCHIVE_DELETED -> R.string.data_said_archive_deleted
         DataMessage.IMPORT_NOT_A_BUNDLE -> R.string.data_said_not_a_bundle
         DataMessage.IMPORT_NEWER -> R.string.data_said_newer

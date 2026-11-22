@@ -55,19 +55,19 @@ public class SettingsTransfer
          */
         public suspend fun apply(json: String): Boolean {
             val file = flat(json) ?: return false
-            (file[SHOW_SYSTEM_APPS] as? Boolean)?.let { store.showSystemApps(it) }
-            (file[SCALE_TO_MEASURED] as? Boolean)?.let { store.scaleToMeasured(it) }
-            (file[CHARGE_TARGET_PCT] as? Int)?.takeIf { it in UserSettings.CHARGE_TARGETS }?.let { store.chargeTarget(it) }
-            val alarmOn = store.settings.first().temperatureAlarmDeciC != null
-            (file[TEMPERATURE_ALARM_DECI_C] as? Int)
-                ?.takeIf { alarmOn && it in UserSettings.TEMPERATURE_ALARMS }
-                ?.let { store.temperatureAlarm(it) }
-            (file[INSIGHTS_DIGEST_MINUTE] as? Int)
-                ?.takeIf { it in 0 until UserSettings.MINUTES_PER_DAY }
-                ?.let { store.insightsDigestMinute(it) }
-            (file[THEME] as? String)?.let { name -> ThemeChoice.entries.firstOrNull { it.name == name } }?.let { store.theme(it) }
-            (file[FAHRENHEIT] as? Boolean)?.let { store.fahrenheit(it) }
-            (file[SCREEN_ON_SAMPLING_S] as? Int)?.takeIf { it in UserSettings.SAMPLING_S }?.let { store.screenOnSampling(it) }
+            // Read and checked first, then stored as one write: all of it, or none when the write fails (audit CONC-006).
+            store.applyNeutral(
+                NeutralSettings(
+                    showSystemApps = file[SHOW_SYSTEM_APPS] as? Boolean,
+                    scaleToMeasured = file[SCALE_TO_MEASURED] as? Boolean,
+                    chargeTargetPct = (file[CHARGE_TARGET_PCT] as? Int)?.takeIf { it in UserSettings.CHARGE_TARGETS },
+                    temperatureAlarmDeciC = (file[TEMPERATURE_ALARM_DECI_C] as? Int)?.takeIf { it in UserSettings.TEMPERATURE_ALARMS },
+                    insightsDigestMinute = (file[INSIGHTS_DIGEST_MINUTE] as? Int)?.takeIf { it in 0 until UserSettings.MINUTES_PER_DAY },
+                    theme = (file[THEME] as? String)?.let { name -> ThemeChoice.entries.firstOrNull { it.name == name } },
+                    fahrenheit = file[FAHRENHEIT] as? Boolean,
+                    screenOnSamplingS = (file[SCREEN_ON_SAMPLING_S] as? Int)?.takeIf { it in UserSettings.SAMPLING_S },
+                ),
+            )
             return true
         }
 
