@@ -319,10 +319,18 @@ internal class AutomationEngine(
     private fun answer(result: ActionResult): AutomationAnswer =
         when (result) {
             is ActionResult.Done -> AutomationAnswer(Result.DONE)
+
             is ActionResult.Unchanged -> AutomationAnswer(Result.UNCHANGED)
+
+            // The log could not be written, so nothing ran: version 1 has "failed" for that (audit BUG-059).
+            is ActionResult.Blocked if result.reason == ActionBlock.NO_LOG -> AutomationAnswer(Result.FAILED, Reason.FAILED)
+
             is ActionResult.Blocked -> AutomationAnswer(Result.BLOCKED, reason(result.reason))
+
             is ActionResult.Unverified -> AutomationAnswer(Result.UNVERIFIED, Reason.UNVERIFIED)
+
             is ActionResult.Drifted -> AutomationAnswer(Result.BLOCKED, Reason.DRIFTED)
+
             is ActionResult.Failed -> AutomationAnswer(Result.FAILED, Reason.FAILED)
         }
 
