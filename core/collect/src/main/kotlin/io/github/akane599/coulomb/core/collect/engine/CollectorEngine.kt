@@ -619,6 +619,7 @@ internal class CollectorEngine(
                 wallMinusElapsed,
                 nowNs / NS_PER_MS,
                 changed,
+                complete = read.status == SourceStatus.OK,
             )
         return HistoryOutcome.Read(read, HistoryIngest.ingest(input))
     }

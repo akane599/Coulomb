@@ -244,6 +244,36 @@ class HistoryIngestTest {
         assertThat(gap.endMonotonicMs).isEqualTo(first + 9_000)
     }
 
+    /** Audit DATA-007: a record that failed before any printed moved NEXT on, so its span is a gap. */
+    @Test
+    fun aReadThatFailedBeforeItsFirstRecordIsAGap() {
+        val previous = ReadEnd(5, shift, first - 1, (first - 1 - shift) * 1_000_000, HistoryState(emptyMap()))
+
+        fun failedRead(next: Long) =
+            ReadInput(
+                records = emptyList(),
+                history = BatteryHistory(null, nextCursorMs = next, firstRecordMs = null, recordCount = 0, gapBeforeFirstRecord = false),
+                cursorMs = first,
+                previous = previous,
+                bootSeq = 5,
+                storedOffsetMs = shift,
+                wallMinusElapsedMs = wallMinusElapsed,
+                nowElapsedMs = first - shift + 10_000,
+                clockChanged = false,
+                complete = false,
+            )
+        val result = HistoryIngest.ingest(failedRead(first + 1))
+        assertThat(result.gaps.single().reason).isEqualTo(HistoryGapReason.READ_DESYNC)
+        assertThat(result.gaps.single().endMonotonicMs).isEqualTo(first)
+        assertThat(result.nextCursorMs).isEqualTo(first + 1)
+        assertThat(result.end?.state).isNull()
+        // A failed read whose NEXT did not move on is read again from the same place.
+        val again = HistoryIngest.ingest(failedRead(first))
+        assertThat(again.gaps).isEmpty()
+        assertThat(again.nextCursorMs).isNull()
+        assertThat(again.end).isEqualTo(previous)
+    }
+
     @Test
     fun aReadWithNothingNewKeepsTheCursor() {
         val previous = ReadEnd(5, shift, first - 1, 0, null)

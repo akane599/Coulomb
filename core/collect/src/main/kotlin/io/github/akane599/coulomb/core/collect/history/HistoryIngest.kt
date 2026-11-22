@@ -47,6 +47,11 @@ internal data class ReadInput(
     val nowElapsedMs: Long,
     /** `ACTION_TIME_CHANGED` arrived while the read ran: no pairing can be trusted. */
     val clockChanged: Boolean,
+    /**
+     * The dump ended and the parser found nothing wrong. A read with no records that is not
+     * complete may have lost one: a record that failed to print still moves `NEXT:` on.
+     */
+    val complete: Boolean = true,
 )
 
 internal data class ReadResult(
@@ -110,8 +115,16 @@ internal object HistoryIngest {
         // A cursor above NEXT is kept (ADR-0014).
         return when {
             next == null -> unchanged(input)
-            history.recordCount == 0L -> unchanged(input).copy(nextCursorMs = maxOf(input.cursorMs, next))
+
+            // Nothing new: the cursor moves to NEXT and nothing is lost.
+            history.recordCount == 0L && input.complete -> unchanged(input).copy(nextCursorMs = maxOf(input.cursorMs, next))
+
+            // A record failed before any printed, and NEXT went past it: a gap, as for any
+            // unplaced read (audit DATA-007). One that did not move NEXT on is read again.
+            history.recordCount == 0L && next <= input.cursorMs -> unchanged(input)
+
             first == null -> unplaced(input, next, maxOf(input.cursorMs, next))
+
             else -> placed(input, first, next)
         }
     }
