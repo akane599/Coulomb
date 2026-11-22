@@ -40,6 +40,7 @@ import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
 import io.github.akane599.coulomb.core.model.AutoReference
 import io.github.akane599.coulomb.core.model.Breakdown
+import io.github.akane599.coulomb.core.model.SessionCloseReason
 import io.github.akane599.coulomb.core.model.SessionKind
 import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.WindowKind
@@ -242,7 +243,8 @@ internal class SnapshotWriter(
         context: WriteContext,
     ): SessionEntity {
         val endWall = session.endWall ?: context.reading.wallMs
-        val window = SessionHealth.capacityWindow(session.kind, session.startLevel, samples, context.counterReliable)
+        val interrupted = session.closeReason == SessionCloseReason.DATA_GAP
+        val window = SessionHealth.capacityWindow(session.kind, session.startLevel, samples, context.counterReliable, interrupted)
         if (window != null && Capacity.rejection(window) == null) {
             sessions.insertCapacityEstimate(
                 CapacityEstimateEntity(

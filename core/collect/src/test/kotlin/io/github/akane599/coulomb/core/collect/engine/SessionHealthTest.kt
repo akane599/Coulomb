@@ -24,6 +24,8 @@ class SessionHealthTest {
                 (31..80).mapIndexed { i, level -> sample(2 + i, level, 1_550_000L + 50_000L * (i + 1)) } +
                 listOf(sample(60, 80, 4_200_000))
         val window = checkNotNull(SessionHealth.capacityWindow(SessionKind.CHARGE, 30, samples, counterReliable = true))
+        // Audit BUG-041: the same samples in a session closed on a data gap are not one charge.
+        assertThat(SessionHealth.capacityWindow(SessionKind.CHARGE, 30, samples, counterReliable = true, interrupted = true)).isNull()
         // From the step to 31% to the step to 80%: 49 points and 49 × 50 mAh.
         assertThat(window.deltaSocPct).isEqualTo(49.0)
         assertThat(window.deltaChargeUah).isEqualTo(49 * 50_000L)

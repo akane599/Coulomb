@@ -34,14 +34,17 @@ internal object SessionHealth {
      * Only samples with a charge reading count, and the window must move the session's way. At both ends the true
      * level has just crossed a step, so ΔSoC is exact; the session's own ends could be up to a point
      * off each. Null with fewer than two such changes. [samples] are the session's, in time order.
+     * Null for an [interrupted] session, one closed on a data gap: a plug change Coulomb did not
+     * see may lie between its samples, so they need not be one charge or discharge (audit BUG-041).
      */
     fun capacityWindow(
         kind: SessionKind,
         startLevel: Int,
         samples: List<BatterySampleEntity>,
         counterReliable: Boolean,
+        interrupted: Boolean = false,
     ): CapacityWindow? {
-        if (kind !in KINDS) return null
+        if (kind !in KINDS || interrupted) return null
         val sign = if (kind == SessionKind.CHARGE) 1 else -1
         val changes =
             samples.indices.filter {
