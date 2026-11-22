@@ -18,6 +18,17 @@ class FirstStartTest {
     @Test
     fun aNewOrRestoredInstallIsAFirstStartOnce() {
         assertThat(FirstStart.check(folder.root)).isTrue()
+        FirstStart.done(folder.root)
+        assertThat(FirstStart.check(folder.root)).isFalse()
+    }
+
+    /** Audit DATA-008: a reset that failed, even once the database exists, runs at the next start. */
+    @Test
+    fun aFirstStartWhoseResetFailedStaysPending() {
+        assertThat(FirstStart.check(folder.root)).isTrue()
+        File(folder.root, CoulombDatabase.FILE_NAME).writeText("")
+        assertThat(FirstStart.check(folder.root)).isTrue()
+        FirstStart.done(folder.root)
         assertThat(FirstStart.check(folder.root)).isFalse()
     }
 
