@@ -129,8 +129,8 @@ internal class WorkerConnector(
         waitMs: Long? = null,
         block: suspend (ICoulombPrivileged) -> T,
     ): WorkerCall<T> {
+        // The worker comes with its lease; end() gives it back.
         val bound = (if (waitMs == null) acquire() else acquireWithin(waitMs)) ?: return WorkerCall.Unavailable(_state.value.failure)
-        begin()
         return try {
             WorkerCall.Ok(withContext(io) { block(bound.binder.worker) }, bound.origin)
         } catch (e: CancellationException) {
@@ -200,10 +200,14 @@ internal class WorkerConnector(
                 if (inFlight > 0) return
                 idleJob?.cancel()
                 idleJob = null
-                bound.also { bound = null }
-            } ?: return
+                val b = bound ?: return
+                bound = null
+                // In the section that clears [bound]: a bind that finds no worker finds this unbind
+                // to wait for, never a gap between the two (audit CONC-003).
+                chainUnbind(b.callback, remove)
+                b
+            }
         b.binder.unlinkToDeath()
-        unbindLater(b.callback, remove)
         _state.update { if (it.status == WorkerStatus.UNAVAILABLE) it else it.copy(status = WorkerStatus.IDLE) }
     }
 
@@ -211,16 +215,33 @@ internal class WorkerConnector(
     private fun unbindLater(
         callback: WorkerCallback,
         remove: Boolean,
+    ) = synchronized(lock) { chainUnbind(callback, remove) }
+
+    /** [unbindLater] for a caller that holds [lock]. */
+    private fun chainUnbind(
+        callback: WorkerCallback,
+        remove: Boolean,
     ) {
-        synchronized(lock) {
-            val before = closing
-            closing =
-                scope.launch(io) {
-                    before?.join()
-                    api.unbindWorker(callback, remove)
-                }
-        }
+        val before = closing
+        closing =
+            scope.launch(io) {
+                before?.join()
+                api.unbindWorker(callback, remove)
+            }
     }
+
+    /**
+     * The bound worker with a lease on it, taken in the section that reads it, so the idle unbind
+     * cannot fall between finding the worker and using it (audit CONC-003). [end] gives it back.
+     */
+    private fun lease(): Bound? =
+        synchronized(lock) {
+            bound?.also {
+                inFlight += 1
+                idleJob?.cancel()
+                idleJob = null
+            }
+        }
 
     /**
      * [acquire] waited for at most [waitMs]: a caller with a deadline does not wait out a slow
@@ -230,17 +251,15 @@ internal class WorkerConnector(
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun acquireWithin(waitMs: Long): Bound? {
-        synchronized(lock) { bound }?.let { return it }
+        lease()?.let { return it }
         val pending =
             synchronized(lock) {
                 background?.takeIf { it.isActive } ?: scope
                     .async(io) {
                         try {
-                            acquire()?.also {
-                                // Its caller may have gone: the idle unbind is scheduled as after a call.
-                                begin()
-                                end()
-                            }
+                            // Its caller may have gone: the bind's own lease is given back, which
+                            // schedules the idle unbind as after a call.
+                            acquire()?.also { end() }
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
@@ -250,12 +269,14 @@ internal class WorkerConnector(
                         }
                     }.also { background = it }
             }
-        return withTimeoutOrNull(waitMs.coerceAtLeast(0)) { pending.await() }
+        // The caller's own lease; null when the worker has gone again since.
+        return withTimeoutOrNull(waitMs.coerceAtLeast(0)) { pending.await() }?.let { lease() }
     }
 
+    /** The worker, bound first if needed, with a lease for the caller (see [lease]). */
     private suspend fun acquire(): Bound? =
         bindMutex.withLock {
-            synchronized(lock) { bound }?.let { return it }
+            lease()?.let { return it }
             if (_state.value.status == WorkerStatus.UNAVAILABLE) return null
             if (clock() < synchronized(lock) { retryAt }) return null
             synchronized(lock) { closing }?.join()
@@ -369,8 +390,12 @@ internal class WorkerConnector(
         return Bound(binder, callback)
     }
 
+    /** Makes [b] the bound worker, with the binding caller's lease on it. */
     private fun attach(b: Bound) {
-        synchronized(lock) { bound = b }
+        synchronized(lock) {
+            bound = b
+            inFlight += 1
+        }
         if (!b.binder.linkToDeath { onWorkerGone(b.callback) }) onWorkerGone(b.callback)
     }
 
@@ -394,13 +419,6 @@ internal class WorkerConnector(
             }
         }
     }
-
-    private fun begin() =
-        synchronized(lock) {
-            inFlight += 1
-            idleJob?.cancel()
-            idleJob = null
-        }
 
     private fun end() {
         val stop =
