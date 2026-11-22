@@ -298,12 +298,12 @@
     <string name="wake_held">Tutuldu</string>
     <string name="wake_count">Sayı</string>
     <string name="wake_woke">Telefonu uyandırdı</string>
-    <string name="wake_none_in_window">Bu aralıkta görülmedi.</string>
+    <string name="wake_none_in_window">Bu aralığın kayıtları arasında yok. Coulomb her türün en uzun 30 kaydını, her biri 1 sn veya daha uzunsa saklar; daha kısa ya da daha seyrek biri çalışmış olabilir.</string>
     <string name="wake_not_collected">Bu aralıkta toplanmadı; çalışıp çalışmadığını Coulomb söyleyemez.</string>
     <string name="wake_partial">Bu aralığın bir bölümünde toplandı: rakamlar alt sınırdır.</string>
     <string name="wake_nights">Gece gece</string>
     <string name="wake_night_length">Ekran %1$s kapalıydı</string>
-    <string name="wake_night_none">Yok</string>
+    <string name="wake_night_none">Kayıt yok</string>
     <string name="wake_at_least">En az %1$s</string>
     <string name="wake_screen_off_share">%1$s ekran kapalıyken</string>
     <string name="wake_night_not_collected">Toplanmadı</string>

@@ -319,12 +319,12 @@
     <string name="wake_held">Held</string>
     <string name="wake_count">Count</string>
     <string name="wake_woke">Woke the phone</string>
-    <string name="wake_none_in_window">Not seen in this window.</string>
+    <string name="wake_none_in_window">Not among this window’s records. Coulomb keeps the 30 longest of each kind, each of 1 s or more, so a shorter or rarer one may have run.</string>
     <string name="wake_not_collected">Not collected in this window, so Coulomb can’t say whether it ran.</string>
     <string name="wake_partial">Collected for part of this window: the figures are lower bounds.</string>
     <string name="wake_nights">Night by night</string>
     <string name="wake_night_length">%1$s with the screen off</string>
-    <string name="wake_night_none">None</string>
+    <string name="wake_night_none">No record</string>
     <string name="wake_at_least">At least %1$s</string>
     <string name="wake_screen_off_share">%1$s with the screen off</string>
     <string name="wake_night_not_collected">Not collected</string>

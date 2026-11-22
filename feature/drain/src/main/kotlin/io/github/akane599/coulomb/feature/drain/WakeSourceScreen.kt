@@ -210,7 +210,11 @@ private val WakeKind.title: Int
             WakeKind.SUSPEND_ABORT -> R.string.wake_kind_abort
         }
 
-/** The record in Drain's window, or why there is none: a missing record is zero only when its source covered the window. */
+/**
+ * The record in Drain's window, or why there is none. A window keeps each kind's longest records
+ * only (`WindowBuilder.MAX_WAKES_PER_KIND`, `MIN_WAKE_MS`), so a missing record is never "none":
+ * under whole coverage it was not among the kept ones, otherwise it was not collected (audit DATA-013).
+ */
 @Composable
 private fun InWindow(
     entry: WakeEntry?,
@@ -270,7 +274,7 @@ private fun Nights(
     }
 }
 
-/** A night's figure: none, not collected, or its time or count, "at least" where the night was collected in part. */
+/** A night's figure: no record kept, not collected, or its time or count, "at least" where the night was collected in part. */
 @Composable
 private fun nightValue(
     night: WakeNight,
