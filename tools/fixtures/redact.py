@@ -353,7 +353,8 @@ def build_label(raw: Path) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", m.group(1)) if m else "unknown-build"
 
 
-def readme(raw: Path, device: str, build: str, counts: dict[str, int]) -> str:
+def readme(raw: Path, device: str, build: str, counts: dict[str, int], status: Path) -> str:
+    """The fixture's README. [status] is the redacted status table: its stderr reaches the README."""
     props = (raw / "probe/getprop.txt").read_text(errors="replace")
 
     def prop(name: str) -> str:
@@ -374,7 +375,7 @@ def readme(raw: Path, device: str, build: str, counts: dict[str, int]) -> str:
     except ValueError:
         uptime = "?"
     rows = []
-    for line in (raw / "status.tsv").read_text().splitlines()[1:]:
+    for line in status.read_text(errors="replace").splitlines()[1:]:
         f, cmd, rc, size, err = (line.split("\t") + [""] * 5)[:5]
         if f.startswith("probe/"):
             continue
@@ -433,7 +434,8 @@ def in_place(args) -> int:
     red = Redactor([], pseudo)
     for f in files:
         data = f.read_bytes()
-        new = red.proto(data) if f.suffix == ".bin" else (data if f.name == "status.tsv" else red.text(data))
+        # status.tsv holds commands' stderr, which can name a serial or a package (audit DATA-003).
+        new = red.proto(data) if f.suffix == ".bin" else red.text(data)
         if new != data:
             assert len(new) == len(data), f
             f.write_bytes(new)
@@ -496,8 +498,9 @@ def main() -> int:
         dst.parent.mkdir(parents=True, exist_ok=True)
         data = src.read_bytes()
         dst.write_bytes(red.proto(data) if src.suffix == ".bin" else red.text(data))
-    shutil.copy(raw / "status.tsv", out / "status.tsv")
-    text = readme(raw, args.device, build, red.counts)
+    # Commands' stderr can name a serial, an account or a package: masked like the dumps (audit DATA-003).
+    (out / "status.tsv").write_bytes(red.text((raw / "status.tsv").read_bytes()))
+    text = readme(raw, args.device, build, red.counts, out / "status.tsv")
     (out / "README.md").write_text(text.replace("`probe/` holds", pseudonym_note(pseudo) + "\n`probe/` holds", 1))
     pseudo.save()
     report(out, red, pseudo)
