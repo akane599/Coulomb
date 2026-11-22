@@ -43,9 +43,9 @@ class KernelReadsTest {
                 SUSPEND_STEPS.map { "failed_$it" to "0\n" }
         ).map { (name, body) -> file("${KernelPaths.SUSPEND_STATS}/$name", body) }
 
-    private fun wakeupReasons() =
+    private fun wakeupReasons(reason: String = "170 qcom,glink\n") =
         listOf(
-            file("${KernelPaths.WAKEUP_REASONS}/${KernelPaths.LAST_RESUME_REASON}", "170 qcom,glink\n"),
+            file("${KernelPaths.WAKEUP_REASONS}/${KernelPaths.LAST_RESUME_REASON}", reason),
             file("${KernelPaths.WAKEUP_REASONS}/${KernelPaths.LAST_SUSPEND_TIME}", "0.100000000 12.000000000\n"),
         )
 
@@ -70,6 +70,19 @@ class KernelReadsTest {
         assertThat(read.suspendStats?.success).isEqualTo(12)
         assertThat(read.wakeupSources?.map { it.instance }).containsExactly(0, 3)
         assertThat(read.origin).isEqualTo(root)
+    }
+
+    /** Audit BUG-005: IRQ lines kept beside a line that was not read are not the whole wakeup. */
+    @Test
+    fun aResumeReasonWithAnUnreadableLineIsPartialAndNotStored() {
+        val read =
+            files(
+                listOf(file(KernelPaths.BOOT_ID, "$bootId\n")) + suspendStats() +
+                    wakeupReasons("170 qcom,glink\nvendor: pmic wake\n") + source(0) + "#end\n",
+            )
+
+        assertThat(read.statuses).containsExactly("S25", SourceStatus.OK, "S26", SourceStatus.PARTIAL, "S9", SourceStatus.OK)
+        assertThat(read.lastWakeup).isNull()
     }
 
     @Test

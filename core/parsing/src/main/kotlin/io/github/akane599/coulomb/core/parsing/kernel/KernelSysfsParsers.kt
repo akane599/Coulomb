@@ -90,7 +90,9 @@ public object WakeupReasonParser {
         val times = lastSuspendTime?.let { times(it, ctx) }
         val bytes = lastResumeReason.length.toLong() + (lastSuspendTime?.length ?: 0)
         val value = cause?.let { LastWakeup(it, times?.first, times?.second) }
-        return Parsed(value, ctx.report(bytes, complete = value != null && times != null))
+        // A line that is not an IRQ line is a cause not read: the IRQs kept are not the whole wakeup
+        // (audit BUG-005).
+        return Parsed(value, ctx.report(bytes, complete = value != null && times != null && ctx.issueCountIsZero()))
     }
 
     private fun cause(

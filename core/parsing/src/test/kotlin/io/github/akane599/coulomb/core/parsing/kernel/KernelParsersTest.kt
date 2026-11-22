@@ -118,6 +118,15 @@ class KernelParsersTest {
         assertThat(report.complete).isTrue()
     }
 
+    /** Audit BUG-005: a line that is not an IRQ line is a cause that was not read. */
+    @Test
+    fun aResumeReasonWithAnUnreadableLineIsNotWhole() {
+        val (value, report) = WakeupReasonParser.parse("123 qcom,glink\nvendor garbage\n", "1.000000000 2.000000000\n")
+        assertThat(value?.reason).isEqualTo(WakeupCause.Irqs(listOf(WakeupIrq(123, "qcom,glink"))))
+        assertThat(report.complete).isFalse()
+        assertThat(report.issues.single().message).isEqualTo("not an IRQ line")
+    }
+
     @Test
     fun badWakeupTextGivesNoInventedCause() {
         assertThat(WakeupReasonParser.parse("garbage line\n", null).value).isNull()
