@@ -53,8 +53,9 @@ a span" from a stored window or a chain of consecutive windows.
      window (`WindowBuilder`'s floor), so its value is a lower bound by at most that.
    - Amended 2026-11-22 (audit DATA-017): a window keeps at most 30 named UIDs above the floor
      (`WindowUidEntity.MAX_NAMED_UIDS`), and a phone can have over a hundred, so an app can also be
-     folded away by rank with any amount. A window that names 30 UIDs or more without the app
-     makes its days partial: the table says "At least" before the figure, or "Not kept" when no
+     folded away by rank with any amount. A window without the app that names 30 UIDs or more
+     whose rows reach the floor (Coulomb's own row counts only then) and holds at least 0.1 mAh
+     in small apps makes its days partial: the table says "At least" before the figure, or "Not kept" when no
      window of the day kept the app, which the chart draws as a gap; a note counts those days. A
      window with fewer named UIDs left the app out only below the floor, so a day of those alone
      is still a modeled zero. Storing every UID's daily total would remove the doubt; it waits

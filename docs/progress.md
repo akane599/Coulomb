@@ -198,8 +198,36 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   half-set environment fails the build. `tools/release/build.sh` builds from a pushed commit,
   verifies the signature, refuses a debug key and an APK of 15 MB or more, and prints the tag and
   release commands without running them. Tried with a throwaway key: signed, verified, 7.2 MB.
-  `docs/releasing.md` has the steps, Obtainium included. **Waiting for the owner:** the key, the
-  first version number and the release itself (`docs/questions.md`).
+  `docs/releasing.md` has the steps, Obtainium included. On 2026-11-22 the owner gave the key
+  through an untracked `keystore.properties`, which `tools/release/build.sh` reads (ADR-0067 §7);
+  0.1.0 (version code 2) was built, signed with it and verified, and not published. **Owner
+  decision 2026-11-22:** the release waits for the R8 smoke test (audit TEST-002: the release
+  build binds the worker, streams one dump and parses it) on the emulator or the phone. The
+  emulator host was offline at every check that day.
+- **Repository audit verified (2026-11-22, owner request).** An automated audit at `257d766` listed
+  97 findings. Each was checked against the tree by independent read-only reviewers: 54 confirmed,
+  38 partly, 4 by design (CONC-016, BUG-050, BUG-018, CONC-006), 1 not a bug (BUG-056). Fixed with
+  tests, in the order of harm:
+  - Action Center: a rollback or a lost reset reply never deletes the only record (DATA-004,
+    CONC-007, DATA-019).
+  - Delete all data erases the collector's snapshot files and always restarts (DATA-001, CONC-002).
+  - The surfaces' digest memory is kept out of Auto Backup (BUG-014).
+  - Health says a top-up had too few readings rather than "didn't slow down" (BUG-044); Drain's
+    reconcile table never opens without a measured total (BUG-042); App detail's alarm split shows
+    only when the dump's rows add up (BUG-019, BUG-016, BUG-015); a missing wake record reads as not
+    kept (DATA-013).
+  - App detail's 14-day trend says "At least" or "Not kept" where a window may have folded the app
+    into small apps (DATA-017, ADR-0041 §4).
+  - Lite mode counts a stretch as watched only while the service watched it (BUG-007, ADR-0064 §5).
+  - Rates, lengths, charge curves and the Timeline follow each boot's elapsed clock, so a clock
+    correction changes none of them (BUG-003, BUG-004).
+  - A history read holds at most 250,000 records; a longer one becomes a gap instead of running out
+    of memory (PERF-006, ADR-0018).
+  - A helper hang after Shizuku allowed Coulomb says so on Now, Drain and Timeline (BUG-046); CI and
+    the pre-push hook compare every screenshot with its golden (TEST-001, ADR-0031).
+  - Independent reviews of the attribution and clock changes found five minor points, all fixed
+    (`c600bf4`, `0adc5d8`). TEST-002 waits for a device. The low findings stay in the audit's local
+    notes for later.
 - **Parity matrix and the unread sources (SPEC 2, 5, 18; ADR-0068).** The SPEC 18 audit found
   parity rows without a screen and sources never read; each now has one, on stored data:
   - App detail: CPU time (user and system), the modeled share of mobile radio time, syncs with
@@ -245,8 +273,8 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
 - **P6 status (2026-11-22).** Everything SPEC 18 asks that the build server can prove is done. What
   is left waits on a device or the owner (the table below): the queued emulator runs (a resizable
   window, the Automation API with a caller app, Settings' new rows and Lite mode on a device), which
-  wait because the emulator host was offline on 2026-11-22; the deferred phone runs; the Action
-  Center's first writes; and the release key and first release.
+  wait because the emulator host was offline on 2026-11-22; the R8 smoke test the release waits
+  for; the deferred phone runs; the Action Center's first writes; and the first release.
 
 ### SPEC 18 status (2026-11-22)
 
@@ -283,7 +311,7 @@ phone runs (ADR-0053); "owner" means an owner hard stop.
 | Performance targets 16.5 | Done | Macrobenchmark on the phone, 2026-11-11 |
 | 30-day stress test | Done | Schema 5 pass (P2) |
 | Every deviation has an ADR | Done | `docs/adr/` to ADR-0069 |
-| Signed release on GitHub Releases | Owner | ADR-0067; key and release are the owner's |
+| Signed release on GitHub Releases | Owner | ADR-0067; key given and 0.1.0 signed and verified (2026-11-22); publishing waits for the R8 smoke test |
 
 ## P4 Core screens (gate deferred: protocol C)
 

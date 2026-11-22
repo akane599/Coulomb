@@ -13,7 +13,10 @@ start of every phase. Answered questions move to the bottom with the answer and 
   after); the tag and the GitHub Release. Also the owner's: whether the phone moves to the signed
   build. It cannot be installed over the development build there, so that build would have to
   be removed, and its history would come back only as an imported history beside a new one.
-  Default in use: nothing is signed, tagged or published, and the phone keeps its build.
+  Update 2026-11-22: the owner gave the key (`keystore.properties`, untracked), and 0.1.0 is built,
+  signed and verified. The owner's decision: publish only after the R8 smoke test has run on the
+  emulator or the phone (audit TEST-002). Default in use: nothing is tagged or published, and the
+  phone keeps its build.
 - 2026-11-21. The wide layouts (SPEC 10.10) are checked through screenshot tests at fixed widths
   only. Not seen: a freeform or DeX window resized across the width classes, an external
   display, the mouse wheel and the keyboard on the charts. Default in use: an emulator run in a
