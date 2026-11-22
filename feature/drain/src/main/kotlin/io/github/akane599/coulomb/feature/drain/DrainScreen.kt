@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -370,8 +371,11 @@ private fun ReadyContent(
             }
         }
     }
-    val open = table
     val report = state.report
+    // The reconcile table divides by the measured total: a refresh, or a sheet restored onto
+    // another window, can take that total away while the sheet is open (audit BUG-042).
+    val open = table?.takeIf { it != DrainTable.RECONCILE || (report?.drains?.measuredMah ?: 0.0) > 0.0 }
+    if (report != null && table != null && open == null) LaunchedEffect(Unit) { table = null }
     if (open != null && report != null) DataTableSheet(tableOf(open, report, formats), onDismiss = { table = null })
 }
 
