@@ -158,6 +158,9 @@ public data class ChainStep(
     val modeledMah: Double? = null,
     @TypeConverters(KernelCodes::class)
     val kernelCoverage: KernelCoverage? = null,
+    /** The window's ends: two windows meet when one starts where the other ended. */
+    val fromSnapshotId: Long? = null,
+    val toSnapshotId: Long? = null,
 )
 
 /** One window of a chain by its two snapshots ([WindowDao.chainLinks]). */
@@ -339,7 +342,7 @@ public abstract class WindowDao {
     /** As [chainTotals], each window in time order ([ChainStep]). */
     @Query(
         "SELECT w.chargeSource, w.measuredMah, f.plugType, f.levelPct AS fromLevel, s.levelPct AS toLevel, " +
-            "w.detailPruned, w.modeledMah, w.kernelCoverage " +
+            "w.detailPruned, w.modeledMah, w.kernelCoverage, w.fromSnapshotId, w.toSnapshotId " +
             "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId JOIN snapshot f ON f.id = w.fromSnapshotId " +
             "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN ORDER BY s.bootSeq, s.elapsedNs",
     )

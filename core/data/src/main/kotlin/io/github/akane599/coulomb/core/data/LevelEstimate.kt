@@ -24,7 +24,9 @@ public data class LevelEstimate(
         /**
          * The range of a chain's discharge total ([ChainStep]s in time order): windows that started
          * on battery and have a measured value, as the total sums them. A window read by the counter,
-         * one on the charger, or one without a value ends a stretch. The step is the mAh per point of
+         * one on the charger, or one without a value ends a stretch, and so does a window that does
+         * not start where the one before it ended, as across one left out at a restart (audit
+         * BUG-028): the two sides are separate level changes. The step is the mAh per point of
          * the level-based windows, from their own capacity. Null without a level-based window, or
          * when none of them saw the level change.
          */
@@ -34,7 +36,10 @@ public data class LevelEstimate(
             var withCounter = false
             var levelMah = 0.0
             var points = 0
+            var lastTo: Long? = null
             for (step in steps) {
+                if (!step.meets(lastTo)) inStretch = false
+                lastTo = step.toSnapshotId
                 val summed = step.plugType == 0 && step.measuredMah != null
                 val byLevel = summed && step.chargeSource == ChargeSource.LEVEL_DELTA
                 if (byLevel) {
@@ -53,6 +58,9 @@ public data class LevelEstimate(
             if (stretches == 0 || points == 0) return null
             return LevelEstimate(stretches * levelMah / points, stretches, withCounter)
         }
+
+        /** Whether this window starts where the one before, which ended at [lastTo], did; true when either is unknown. */
+        private fun ChainStep.meets(lastTo: Long?): Boolean = lastTo == null || fromSnapshotId == null || fromSnapshotId == lastTo
 
         /** The range of one level-based window: one step. Null when its level did not change. */
         fun ofWindow(

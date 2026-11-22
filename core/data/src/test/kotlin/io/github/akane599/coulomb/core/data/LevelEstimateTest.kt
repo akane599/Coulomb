@@ -26,6 +26,29 @@ class LevelEstimateTest {
         assertThat(estimate).isEqualTo(LevelEstimate(50.0, stretches = 1, withCounter = false))
     }
 
+    /** Audit BUG-028: windows that do not meet, as across one left out at a restart, are two stretches. */
+    @Test
+    fun windowsThatDoNotMeetAreTwoStretches() {
+        fun linked(
+            from: Long,
+            to: Long,
+            fromLevel: Int,
+            toLevel: Int,
+        ) = ChainStep(
+            ChargeSource.LEVEL_DELTA,
+            -50.0 * (fromLevel - toLevel),
+            0,
+            fromLevel,
+            toLevel,
+            fromSnapshotId = from,
+            toSnapshotId = to,
+        )
+        val apart = LevelEstimate.ofChain(listOf(linked(1, 2, 80, 78), linked(3, 4, 77, 75)))
+        assertThat(apart?.stretches).isEqualTo(2)
+        val meeting = LevelEstimate.ofChain(listOf(linked(1, 2, 80, 78), linked(2, 3, 78, 75)))
+        assertThat(meeting?.stretches).isEqualTo(1)
+    }
+
     @Test
     fun aCounterWindowEndsAStretch() {
         val estimate = LevelEstimate.ofChain(listOf(level(-100.0, 80, 78), counter(-40.0), level(-50.0, 77, 76)))
