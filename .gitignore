@@ -26,3 +26,6 @@ __pycache__/
 .playwright-mcp/
 # Local critique snapshots: they record absolute paths. The tracked record is docs/design-gates/.
 .impeccable/critique/
+
+# Local release signing (ADR-0067); the key file itself lives outside the repository.
+keystore.properties
