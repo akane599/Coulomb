@@ -33,7 +33,8 @@ import java.util.TreeMap
  * the UID section had started, and every UID before the one being read. A cut exactly at a line
  * boundary is invisible here; the transport reports it (ADR-0009). Where [CheckinLines] loses the
  * end of a record, reading stops the same way, since a later line may be an app's name dressed as
- * a row.
+ * a row. So it does at a row that cannot stand where the writer puts it (`outOfOrder`): job, sync
+ * and process names are quoted without escaping, and such a row came out of one.
  */
 public object BatteryStatsCheckinParser {
     public const val SOURCE: String = "batterystats.checkin"
@@ -66,21 +67,28 @@ private class CheckinWalk(
     private var cut = false
     private var otherVersion = false
 
+    /** A row broke the writer's order, so rows already read may be forged too: no UID is kept. */
+    private var disordered = false
+
+    /** An `l` line was read; every `i` line comes before them. */
+    private var sawSinceCharged = false
+
+    /** The device sections the writer prints once, as read so far. */
+    private val deviceOnce = HashSet<String>()
+
+    /** The single-line sections read for [blockUid]. */
+    private val blockSections = HashSet<String>()
+
     @Suppress("TooGenericExceptionCaught") // The parser boundary: bad input must never throw (SPEC 5.1).
     fun run(): Boolean {
         try {
-            var line = lines.next()
-            while (line != null && line.terminated && !line.truncated) {
-                read(line)
-                line = lines.next()
-            }
-            if (line != null && line.truncated) {
-                desync(line)
-                // Drained, not read, so the writer is not left blocked and the byte count is whole.
-                while (lines.next() != null) continue
-            } else if (line != null) {
-                cut = true
-                ctx.issue(line.offset, BatteryStatsCheckinParser.SOURCE, "ended inside a line")
+            val stopped = readRows()
+            // After a row out of order the rest is drained, not read, so the writer is not left
+            // blocked and the byte count is whole.
+            if (cut) {
+                drain()
+            } else if (stopped != null) {
+                endedAt(stopped)
             }
         } catch (e: IOException) {
             cut = true
@@ -92,6 +100,32 @@ private class CheckinWalk(
         if (header == null) ctx.issue(lines.offset, BatteryStatsCheckinParser.SOURCE, "no vers line")
         if (!device.sawBattery) ctx.issue(lines.offset, BatteryStatsCheckinParser.SOURCE, "no bt line")
         return complete
+    }
+
+    /** Reads whole lines as rows until one breaks the order. The line it stopped at, or null at the end. */
+    private fun readRows(): Line? {
+        var line = lines.next()
+        while (line != null && line.terminated && !line.truncated) {
+            read(line)
+            if (cut) return line
+            line = lines.next()
+        }
+        return line
+    }
+
+    /** The input ended at [line], which is not a whole line. */
+    private fun endedAt(line: Line) {
+        if (line.truncated) {
+            desync(line)
+            drain()
+        } else {
+            cut = true
+            ctx.issue(line.offset, BatteryStatsCheckinParser.SOURCE, "ended inside a line")
+        }
+    }
+
+    private fun drain() {
+        while (lines.next() != null) continue
     }
 
     /** Read to the end, in the known format, with the version and device sections present. */
@@ -117,11 +151,62 @@ private class CheckinWalk(
         // History records are most of the lines; S7 reads them (ADR-0014).
         if (line.text.isEmpty() || isHistory(line.text)) return
         val row = row(line) ?: return
+        outOfOrder(row)?.let { return breakOff(row, it) }
         when (row.category) {
             "i" -> info(row)
             "l" -> sinceCharged(row)
             else -> ctx.unknown("category.${row.category}")
         }
+    }
+
+    /**
+     * Why [row] cannot stand where the writer puts it, or null. The writer prints the `i` lines,
+     * then the device section, then each UID's lines in ascending UID order (a `SparseArray`), with
+     * each single-line section at most once, and a `wua` name with its count after it
+     * (BatteryStats.java `dumpCheckin` and `dumpCheckinLocked`: android-17.0.0_r1 L7832-7905 and
+     * L4260-4970, android-16.0.0_r4 L7800-7873 and L4239-4949). Job, sync and process names are
+     * quoted without escaping and `wua` names keep their line breaks, so a name can end its own row
+     * and carry others; those break this order where the real lines resume (audit SEC-001). A
+     * section this parser does not know is not placed: it is counted and never read.
+     */
+    private fun outOfOrder(row: CheckinRow): String? {
+        if (row.category == "i") return "information line after the since-charged section".takeIf { sawSinceCharged }
+        if (row.category != "l") return null
+        sawSinceCharged = true
+        val type = row.type
+        val block = blockUid
+        return when {
+            type in UID_TYPES || type in UID_UNMAPPED -> uidOutOfOrder(row, block)
+            type !in DEVICE_TYPES && type !in DEVICE_UNMAPPED -> null
+            block != null -> "device line after the UID section"
+            else -> "second $type line".takeIf { type in DEVICE_ONCE && !deviceOnce.add(type) }
+        }
+    }
+
+    /** [outOfOrder] for a line of a UID's own, when the UID being read is [block]. */
+    private fun uidOutOfOrder(
+        row: CheckinRow,
+        block: Int?,
+    ): String? {
+        if (block != null && row.uid < block) return "UID lines out of order"
+        // Commas in the name are replaced, so its first line has no count (L4952-4953).
+        if (row.type == "wua" && row.size < WakeupAlarmCol.entries.size) return "wakeup alarm name across lines"
+        if (row.uid != block) blockSections.clear()
+        return "second ${row.type} line for one UID".takeIf { row.type in ONCE_PER_UID && !blockSections.add(row.type) }
+    }
+
+    /**
+     * Reading stops at [row] as at a cut. Rows before it may have come out of the same name, so no
+     * UID is kept; the device section is, once the UID section had begun, since a device line after
+     * that point stops the read before it is taken. The messages name sections, never dump text.
+     */
+    private fun breakOff(
+        row: CheckinRow,
+        why: String,
+    ) {
+        ctx.issue(row.offset, BatteryStatsCheckinParser.SOURCE, "$why; the rest of the dump is not read")
+        cut = true
+        disordered = true
     }
 
     /** [line] as a row, or null once the reason it is not one is recorded. */
@@ -198,7 +283,7 @@ private class CheckinWalk(
         val kept =
             if (!cut) {
                 uids.values
-            } else if (last == null) {
+            } else if (last == null || disordered) {
                 emptyList()
             } else {
                 uids.headMap(last).values
@@ -256,6 +341,38 @@ private class CheckinWalk(
                 "fla",
                 "vib",
             )
+
+        /**
+         * Per-UID sections printed at most once for a UID: one `dumpLine`, `dumpTimer` or
+         * `dumpControllerActivityLine` call outside any loop over names (L4569-4970).
+         */
+        val ONCE_PER_UID =
+            setOf(
+                "nt",
+                "mcd",
+                "wfl",
+                "wfcd",
+                "blem",
+                "ble",
+                "ua",
+                "awl",
+                "jbd",
+                "fla",
+                "cam",
+                "vid",
+                "aud",
+                "vib",
+                "fg",
+                "fgs",
+                "st",
+                "cpu",
+            )
+
+        /** Device sections [CheckinDevice] maps. */
+        val DEVICE_TYPES = setOf("bt", "dc", "m", "kwl", "wr", "br", "sgt", "sgc", "sst", "pws", "pwi")
+
+        /** Of those, the ones printed once (L4309-4524). */
+        val DEVICE_ONCE = setOf("bt", "dc", "m", "br", "sgt", "sgc", "sst", "pws")
 
         /** Known per-UID sections the model has no field for: controllers, user activity, multicast, deferred jobs, CPU by frequency. */
         val UID_UNMAPPED = setOf("mcd", "wfcd", "ble", "ua", "wmc", "jbd", "ctf")

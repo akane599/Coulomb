@@ -244,6 +244,120 @@ class BatteryStatsCheckinParserTest {
     }
 
     /**
+     * Audit SEC-001: the writer keeps line breaks in a wakeup alarm's name and only replaces its
+     * commas, so the name's first line never has the count after it.
+     */
+    @Test
+    fun aWakeupAlarmNameWithALineBreakEndsTheRead() {
+        // UID 10050 sets an alarm with the tag "x<LF>9,1000,l,cpu,888888,888888,0<LF>y".
+        val (dump, report) =
+            parse(
+                HEAD +
+                    "9,1000,l,cpu,1,1,0\n" +
+                    "9,10050,l,wua,*walarm*:x\n" +
+                    "9,1000,l,cpu,888888,888888,0\n" +
+                    "y,1\n",
+            )
+        assertThat(report.complete).isFalse()
+        assertThat(dump.uidsComplete).isFalse()
+        assertThat(dump.uids.filter { it.cpuUserMs == 888_888L }).isEmpty()
+        assertThat(report.issues.single().message).isEqualTo("wakeup alarm name across lines; the rest of the dump is not read")
+        // The device section was whole before the UIDs began.
+        assertThat(dump.device).isNotNull()
+    }
+
+    /**
+     * Audit SEC-001: a job, sync or process name is quoted without escaping, so a name that closes
+     * its own quote before a line break is a whole row and the lines after it are rows too. The
+     * writer's order gives them away: UIDs ascend, and the device section is over.
+     */
+    @Test
+    fun aJobNameThatClosesItsQuoteCannotForgeOtherUidsOrTheDevice() {
+        // UID 10050's job namespace: a",1,1,1,1 <LF> the three forged rows <LF> 9,1000,l,jb,"x
+        val (dump, report) =
+            parse(
+                HEAD +
+                    "9,1000,l,cpu,1,1,0\n" +
+                    "9,10050,l,jb,\"@a\",1,1,1,1\n" +
+                    "9,1000,l,cpu,999999,999999,0\n" +
+                    "9,0,l,bt,0,1,1,1,77777777,1,1,1,1,1,1,1\n" +
+                    "9,1000,l,pwi,uid,4242,0,0,0\n" +
+                    "9,1000,l,jb,\"x@pkg/.Svc\",5,1,5,1\n",
+            )
+        assertThat(report.complete).isFalse()
+        assertThat(dump.uidsComplete).isFalse()
+        assertThat(dump.uids).isEmpty()
+        assertThat(dump.device?.totalUptimeMs).isNotEqualTo(77_777_777L)
+        assertThat(report.issues.single().message).isEqualTo("UID lines out of order; the rest of the dump is not read")
+    }
+
+    /** Forged rows for a higher UID stand only until real lines resume; then no UID is trusted. */
+    @Test
+    fun aForgedRowForAHigherUidEndsTheReadWhenTheRealLinesResume() {
+        val (dump, report) =
+            parse(
+                HEAD +
+                    "9,10050,l,jb,\"@a\",1,1,1,1\n" +
+                    "9,10051,l,cpu,999999,999999,0\n" +
+                    "9,10051,l,jb,\"x@p/.S\",5,1,5,1\n" +
+                    "9,10050,l,cpu,1,1,0\n",
+            )
+        assertThat(report.complete).isFalse()
+        assertThat(dump.uids).isEmpty()
+        // The same when the forged UID is one the dump has lines for: its real lines come again.
+        val (second, secondReport) =
+            parse(
+                HEAD +
+                    "9,10050,l,jb,\"@a\",1,1,1,1\n" +
+                    "9,10051,l,cpu,999999,999999,0\n" +
+                    "9,10051,l,jb,\"x@p/.S\",5,1,5,1\n" +
+                    "9,10051,l,cpu,1,1,0\n",
+            )
+        assertThat(secondReport.complete).isFalse()
+        assertThat(second.uids).isEmpty()
+        assertThat(secondReport.issues.single().message).isEqualTo("second cpu line for one UID; the rest of the dump is not read")
+    }
+
+    @Test
+    fun rowsThatBreakTheWritersOrderEndTheRead() {
+        // The device section's single lines come once, and before every UID.
+        val (twice, twiceReport) = parse(HEAD + "9,0,l,bt,0,1,1,1,77777777,1,1,1,1,1,1,1\n9,1000,l,cpu,1,1,0\n")
+        assertThat(twiceReport.complete).isFalse()
+        assertThat(twice.device).isNull()
+        assertThat(twice.uids).isEmpty()
+        assertThat(twiceReport.issues.single().message).isEqualTo("second bt line; the rest of the dump is not read")
+
+        val (late, lateReport) = parse(HEAD + "9,1000,l,cpu,1,1,0\n9,0,l,kwl,\"forged\",1,1,1,1\n")
+        assertThat(lateReport.complete).isFalse()
+        assertThat(late.device?.kernelWakelocks).isEmpty()
+        assertThat(lateReport.issues.single().message).isEqualTo("device line after the UID section; the rest of the dump is not read")
+
+        // The package list comes before the since-charged section.
+        val (mapped, mappedReport) = parse(HEAD + "9,1000,l,cpu,1,1,0\n9,0,i,uid,1000,com.forged\n")
+        assertThat(mappedReport.complete).isFalse()
+        assertThat(mapped.uids).isEmpty()
+        assertThat(mappedReport.issues.single().message)
+            .isEqualTo("information line after the since-charged section; the rest of the dump is not read")
+    }
+
+    /** What the writer may repeat or leave unknown stays whole: names per UID, and a section this parser does not know. */
+    @Test
+    fun repeatedNamedRowsAndUnknownSectionsKeepTheOrder() {
+        val (dump, report) =
+            parse(
+                HEAD +
+                    "9,0,l,kwl,\"a\",1,1,1,1\n9,0,l,kwl,\"b\",1,1,1,1\n" +
+                    "9,1000,l,jb,\"one\",5,1,5,1\n9,1000,l,jb,\"two\",5,1,5,1\n9,1000,l,cpu,1,1,0\n" +
+                    "9,1000,l,wua,first,1\n9,1000,l,apk,1,a,s,0,0,0\n9,1000,l,wua,second,1\n" +
+                    "9,0,l,zz,1\n" +
+                    "9,10050,l,cpu,1,1,0\n",
+            )
+        assertWithMessage(report.issues.toString()).that(report.complete).isTrue()
+        assertThat(report.issues).isEmpty()
+        assertThat(dump.uids.map { it.uid }).containsExactly(1000, 10050)
+    }
+
+    /**
      * A partial wakelock's time is the actual time held, not the pooled time batterystats splits
      * between wakelocks held at once (ADR-0039). The actual time covers the longest single hold;
      * the pooled time fell below it in about half the phone's rows.
@@ -333,6 +447,9 @@ class BatteryStatsCheckinParserTest {
         const val DAMAGE_RUNS = 30
         const val DAMAGED_BYTES = 16
         const val LONG_NAME = 70_000
+
+        /** The version line and the device section's first line. */
+        const val HEAD = "9,0,i,vers,36,216,A,A\n9,0,l,bt,0,1,1,1,1,1,1,1,1,1,1,1\n"
         val NAME_BREAKS = Regex("[,\\n\\r]")
     }
 }
