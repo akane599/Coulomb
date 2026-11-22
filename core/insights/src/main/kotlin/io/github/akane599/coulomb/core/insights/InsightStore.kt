@@ -39,7 +39,7 @@ public class InsightStore(
         nowWallMs: Long,
     ): List<Insight> =
         candidates.mapNotNull { candidate ->
-            val latest = dao.latest(candidate.rule.code, candidate.subject?.key)
+            val latest = latest(candidate)
             val stored = latest?.let { StoredInsight(it.id, it.severity, it.state, it.stateChangedWall, it.snoozeUntilWall) }
             when (InsightLifecycle.decide(candidate.severity, stored, nowWallMs)) {
                 Decision.Keep -> {
@@ -118,8 +118,20 @@ public class InsightStore(
         snoozeUntilWall = null,
     )
 
+    /**
+     * The subject's latest row. A row an earlier build keyed by the tag alone is this subject's
+     * when it names the same app; it takes the new key at its next update (audit BUG-057).
+     */
+    private suspend fun latest(candidate: InsightCandidate): InsightEntity? {
+        val subject = candidate.subject
+        val latest = dao.latest(candidate.rule.code, subject?.key)
+        if (latest != null || subject?.legacyKey == null) return latest
+        return dao.latest(candidate.rule.code, subject.legacyKey)?.takeIf { it.subjectUid == subject.uid }
+    }
+
     private fun InsightEntity.takes(candidate: InsightCandidate): InsightEntity =
         copy(
+            subjectKey = candidate.subject?.key ?: subjectKey,
             windowId = candidate.windowId,
             severity = maxOf(severity, candidate.severity),
             subjectUid = candidate.subject?.uid ?: candidate.relatedUid,

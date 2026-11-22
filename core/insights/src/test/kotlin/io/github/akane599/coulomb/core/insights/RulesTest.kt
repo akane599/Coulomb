@@ -62,7 +62,8 @@ class RulesTest {
     fun r02LongWakelockTag() {
         fun holds(ms: Long) = RuleContext(now, tagHolds = listOf(TagHold("*sync*/mail", app, ms, lastDay, windowId = 9)))
         val found = fires(RuleId.LONG_WAKELOCK_TAG, holds(61 * minute))
-        assertThat(found.subject).isEqualTo(Subject("wakelock:*sync*/mail", app))
+        assertThat(found.subject).isEqualTo(Subject.wakelock("*sync*/mail", app))
+        assertThat(found.subject?.key).isEqualTo("wakelock:$app:*sync*/mail")
         assertThat(found.windowId).isEqualTo(9)
         assertThat(found.evidence.labels).containsExactly("tag", "*sync*/mail")
         quiet(RuleId.LONG_WAKELOCK_TAG, holds(20 * minute))

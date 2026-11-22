@@ -100,6 +100,31 @@ class InsightStoreTest {
             ).hasSize(1)
         }
 
+    /** Audit BUG-057: two apps holding one tag are two insights, each with its own dismissal. */
+    @Test
+    fun theSameTagHeldByTwoAppsIsTwoInsights() =
+        runTest {
+            val mine = store.record(listOf(found(RuleId.LONG_WAKELOCK_TAG, Subject.wakelock("*sync*", 10_123), 70.0)), now).single()
+            store.record(listOf(found(RuleId.LONG_WAKELOCK_TAG, Subject.wakelock("*sync*", 10_200), 80.0)), now)
+            assertThat(shown().map { it.uid }).containsExactly(10_123, 10_200)
+            store.dismiss(mine.id, now + hour)
+            assertThat(shown().map { it.uid }).containsExactly(10_200)
+        }
+
+    /** A row keyed by the tag alone, as builds before audit BUG-057 stored it, is its app's insight still. */
+    @Test
+    fun aRowKeyedByTheTagAloneIsTakenOverByItsApp() =
+        runTest {
+            val legacy = store.record(listOf(found(RuleId.LONG_WAKELOCK_TAG, Subject("wakelock:*sync*", 10_123), 70.0)), now).single()
+            assertThat(store.record(listOf(found(RuleId.LONG_WAKELOCK_TAG, Subject.wakelock("*sync*", 10_123), 75.0)), now + hour))
+                .isEmpty()
+            assertThat(shown().single().id).isEqualTo(legacy.id)
+            assertThat(shown().single().subjectKey).isEqualTo("wakelock:10123:*sync*")
+            // Another app with the same tag does not take it.
+            assertThat(store.record(listOf(found(RuleId.LONG_WAKELOCK_TAG, Subject.wakelock("*sync*", 10_200), 80.0)), now + hour))
+                .hasSize(1)
+        }
+
     @Test
     fun aSnoozeHoldsAndARiseOnAnOpenInsightAnnouncesItAgain() =
         runTest {

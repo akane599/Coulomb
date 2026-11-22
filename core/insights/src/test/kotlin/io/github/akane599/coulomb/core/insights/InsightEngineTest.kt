@@ -42,7 +42,10 @@ class InsightEngineTest {
                 TagHold("AudioMix", 1041, 2 * hour, earlier, windowId = 1),
             )
         val found = engine.evaluate(RuleContext(now, tagHolds = holds))
-        assertThat(found.map { it.subject?.key to it.windowId }).containsExactly("wakelock:*alarm*" to 2L, "wakelock:AudioMix" to 1L)
+        assertThat(found.map { it.subject?.key to it.windowId }).containsExactly(
+            "wakelock:10123:*alarm*" to 2L,
+            "wakelock:1041:AudioMix" to 1L,
+        )
     }
 
     @Test

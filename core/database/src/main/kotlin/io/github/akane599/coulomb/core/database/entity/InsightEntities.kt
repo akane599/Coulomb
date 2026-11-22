@@ -14,7 +14,7 @@ import io.github.akane599.coulomb.core.model.InsightState
 
 /**
  * SPEC 8 `Insight` (SPEC 9). [ruleId] is the rule's id such as `R07`. [subjectKey] names what the
- * insight is about, such as `uid:10123`, `wakelock:<tag>`, `charger:3` or `session:42`, so a rule
+ * insight is about, such as `uid:10123`, `wakelock:10123:<tag>`, `charger:3` or `session:42`, so a rule
  * keeps one open insight per subject; [subjectUid] repeats an app subject's UID for the UI.
  * [stateChangedWall] is when [state] last changed, which the SPEC 9.1 "24 h after dismissal" rule
  * needs. An insight outlives the window it came from: deleting the window clears [windowId].
