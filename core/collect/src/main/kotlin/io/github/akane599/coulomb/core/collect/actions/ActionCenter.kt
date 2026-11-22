@@ -153,13 +153,19 @@ public class ActionCenter internal constructor(
     }
 
     /**
-     * Puts back what row [id] replaced. Allowed while the Action Center is off: undoing is never
-     * refused. A value that is no longer the one Coulomb left is not overwritten (SPEC 13.1).
+     * Puts back what row [id] replaced. Allowed while the Action Center is off: the user's undo is
+     * never refused. A call through the Automation API ([origin] AUTOMATION) is, as its apply is
+     * (ADR-0065 §6, audit BUG-002). A value that is no longer the one Coulomb left is not
+     * overwritten (SPEC 13.1).
      */
-    public suspend fun revert(id: Long): ActionResult =
+    public suspend fun revert(
+        id: Long,
+        origin: ActionOrigin = ActionOrigin.USER,
+    ): ActionResult =
         lock.withLock {
             checkNotNull(
                 guarded {
+                    if (origin == ActionOrigin.AUTOMATION && !enabled()) return@guarded ActionResult.Blocked(ActionBlock.OFF)
                     val row = log.row(id)?.takeIf { record(it).active } ?: return@guarded ActionResult.Blocked(ActionBlock.NOT_ACTIVE)
                     revert(row)
                 },

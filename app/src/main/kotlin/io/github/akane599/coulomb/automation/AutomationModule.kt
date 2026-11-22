@@ -95,7 +95,7 @@ internal object AutomationModule {
         override suspend fun apply(profile: DozeProfile): ActionResult =
             center.run(ActionRequest.ApplyDozeProfile(profile), ActionOrigin.AUTOMATION)
 
-        override suspend fun revert(id: Long): ActionResult = center.revert(id)
+        override suspend fun revert(id: Long): ActionResult = center.revert(id, ActionOrigin.AUTOMATION)
 
         override suspend fun log(
             target: String,
