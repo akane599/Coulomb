@@ -14,6 +14,12 @@ import javax.inject.Singleton
 public data class NamedReference(
     val id: Long,
     val mark: DrainSpan.Mark,
+    /**
+     * When its snapshot was taken, by the boot and elapsed clock: it orders two references
+     * whatever the wall clock said (audit BUG-032).
+     */
+    val bootSeq: Int = 0,
+    val elapsedNs: Long = 0,
 )
 
 /**
@@ -30,8 +36,16 @@ public class References
         public val named: Flow<List<NamedReference>> =
             snapshots
                 .observeUserReferences()
-                .map { rows -> rows.map { NamedReference(it.id, DrainSpan.Mark(it.snapshotId, it.name.orEmpty(), it.wallMs)) } }
-                .distinctUntilChanged()
+                .map { rows ->
+                    rows.map {
+                        NamedReference(
+                            it.id,
+                            DrainSpan.Mark(it.snapshotId, it.name.orEmpty(), it.wallMs),
+                            it.bootSeq,
+                            it.elapsedNs,
+                        )
+                    }
+                }.distinctUntilChanged()
 
         /**
          * Names the latest heavy snapshot [name] and returns it. The caller asks the collector for
@@ -45,7 +59,7 @@ public class References
             val snapshot = snapshots.latestHeavy()?.takeIf { it.wallMs >= createdWall - MAX_AGE_MS } ?: return null
             val trimmed = name.trim().take(MAX_NAME)
             val id = snapshots.insertUserReference(trimmed, snapshot.id, createdWall)
-            return NamedReference(id, DrainSpan.Mark(snapshot.id, trimmed, snapshot.wallMs))
+            return NamedReference(id, DrainSpan.Mark(snapshot.id, trimmed, snapshot.wallMs), snapshot.bootSeq, snapshot.elapsedNs)
         }
 
         /** Deletes a named reference; the automatic ones cannot be deleted. */

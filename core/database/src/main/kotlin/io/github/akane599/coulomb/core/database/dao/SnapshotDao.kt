@@ -53,6 +53,8 @@ public data class UserReferenceRow(
     val name: String?,
     val snapshotId: Long,
     val wallMs: Long,
+    val bootSeq: Int,
+    val elapsedNs: Long,
 )
 
 /** One partial wakelock's longest single hold, in ms. */
@@ -341,10 +343,14 @@ public abstract class SnapshotDao {
     @Query("SELECT * FROM reference ORDER BY createdWall DESC, id DESC")
     public abstract fun observeReferences(): Flow<List<ReferenceEntity>>
 
-    /** The references the user named (SPEC 7.6), each with its snapshot's wall time, newest first. */
+    /**
+     * The references the user named (SPEC 7.6), each with its snapshot's wall time and place on
+     * the boot and elapsed clock, newest first by that clock.
+     */
     @Query(
-        "SELECT r.id AS id, r.name AS name, r.snapshotId AS snapshotId, s.wallMs AS wallMs " +
-            "FROM reference r JOIN snapshot s ON s.id = r.snapshotId WHERE r.origin = 'USER' ORDER BY s.wallMs DESC, r.id DESC",
+        "SELECT r.id AS id, r.name AS name, r.snapshotId AS snapshotId, s.wallMs AS wallMs, s.bootSeq AS bootSeq, " +
+            "s.elapsedNs AS elapsedNs FROM reference r JOIN snapshot s ON s.id = r.snapshotId WHERE r.origin = 'USER' " +
+            "ORDER BY s.bootSeq DESC, s.elapsedNs DESC, r.id DESC",
     )
     public abstract fun observeUserReferences(): Flow<List<UserReferenceRow>>
 

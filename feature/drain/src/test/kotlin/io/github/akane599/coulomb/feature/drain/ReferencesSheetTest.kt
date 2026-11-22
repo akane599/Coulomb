@@ -33,9 +33,21 @@ class ReferencesSheetTest {
     }
 
     @Test
-    fun twoMarksAtTheSameMomentAreSinceThem() {
+    fun twoNamesOnOneSnapshotAreSinceIt() {
         val a = named(1, 1_000)
-        val b = named(2, 1_000)
+        val b = NamedReference(2, a.mark.copy(name = "Again"))
         assertEquals(DrainSpan.Between(a.mark, null), spanOf(listOf(a, b)))
+    }
+
+    /** Audit BUG-032: the boot and elapsed clock orders two marks, whatever the wall clock said. */
+    @Test
+    fun aClockSetBackDoesNotSwapTwoMarks() {
+        val earlier = NamedReference(1, DrainSpan.Mark(10, "Before", 5_000), bootSeq = 3, elapsedNs = 100)
+        // Taken later, after the clock was set back a few seconds.
+        val later = NamedReference(2, DrainSpan.Mark(20, "After", 2_000), bootSeq = 3, elapsedNs = 900)
+        assertEquals(DrainSpan.Between(earlier.mark, later.mark), spanOf(listOf(later, earlier)))
+        // Two marks at the same wall time on different snapshots keep both ends.
+        val same = NamedReference(3, DrainSpan.Mark(30, "Same", 5_000), bootSeq = 3, elapsedNs = 400)
+        assertEquals(DrainSpan.Between(earlier.mark, same.mark), spanOf(listOf(same, earlier)))
     }
 }

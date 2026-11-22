@@ -202,10 +202,14 @@ internal fun toggled(
 
 /** Since the one chosen reference, or from the older of two to the newer. */
 internal fun spanOf(chosen: List<NamedReference>): DrainSpan? {
-    val marks = chosen.map { it.mark }.sortedBy { it.wallMs }
+    // By the boot and elapsed clock: a clock set back between two marks does not swap them (audit BUG-032).
+    val marks = chosen.sortedWith(compareBy({ it.bootSeq }, { it.elapsedNs }, { it.mark.wallMs })).map { it.mark }
     return when (marks.size) {
         1 -> DrainSpan.Between(marks[0], null)
-        2 -> if (marks[1].wallMs > marks[0].wallMs) DrainSpan.Between(marks[0], marks[1]) else DrainSpan.Between(marks[0], null)
+
+        // Two names on one snapshot are one moment: since it.
+        2 -> DrainSpan.Between(marks[0], marks[1].takeIf { it.snapshotId != marks[0].snapshotId })
+
         else -> null
     }
 }

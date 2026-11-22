@@ -36,14 +36,15 @@ public sealed interface DrainSpan {
 
     /**
      * From the named reference [from] to [to], or to the latest heavy snapshot without one (SPEC
-     * 7.6: "compare any two"). [from] is the older of the two.
+     * 7.6: "compare any two"). [from] is the older of the two by the boot and elapsed clock; its
+     * wall time can be the later one after the clock was set back (audit BUG-032).
      */
     public data class Between(
         val from: Mark,
         val to: Mark?,
     ) : DrainSpan {
         init {
-            require(to == null || to.wallMs > from.wallMs) { "a span runs from the older mark to the newer" }
+            require(to == null || to.snapshotId != from.snapshotId) { "a span runs between two snapshots" }
         }
 
         /** [from] is older than the consecutive windows kept (ADR-0021), so Drain cannot read it (ADR-0068 §1). */
