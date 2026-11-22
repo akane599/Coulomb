@@ -221,7 +221,14 @@ private fun Page(
             CoulombIconButton(CoulombIcons.ChevronRight, stringResource(R.string.timeline_later), { actions.shift(STEP) })
         }
         // SPEC 10.11 partial: access lost, in SPEC 4.5's words, where the history it stops would be.
-        state.issue?.let { PrivilegeIssueBlock(it, links.onOpenPrivileges, Modifier.padding(top = CoulombSpacing.Space16)) }
+        state.issue?.let {
+            PrivilegeIssueBlock(
+                it,
+                links.onOpenPrivileges,
+                Modifier.padding(top = CoulombSpacing.Space16),
+                state.issueAllowed,
+            )
+        }
         Gap(state, visible, actions.retry, links.onOpenPrivileges)
         Chart(state, timeline, visible, actions, zone, formats, onViewTable)
         caption(state, visible, formats)?.let { Note(it) }

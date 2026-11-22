@@ -22,15 +22,17 @@ import io.github.akane599.coulomb.core.ui.R
 
 /**
  * SPEC 10.11 partial: the missing capability, why it matters and the way to Privileges, in the SPEC
- * 4.5 copy. Screens that lose data to the issue show it where that data would be.
+ * 4.5 copy. Screens that lose data to the issue show it where that data would be. [allowed]: Shizuku
+ * has allowed Coulomb, so a hang is the helper's, not authorization's (ADR-0047; audit BUG-046).
  */
 @Composable
 public fun PrivilegeIssueBlock(
     issue: PrivilegeIssue,
     openPrivileges: () -> Unit,
     modifier: Modifier = Modifier,
+    allowed: Boolean = false,
 ) {
-    val copy = issue.copy()
+    val copy = issue.copy(allowed = allowed)
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
     Column(modifier.fillMaxWidth()) {

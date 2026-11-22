@@ -201,6 +201,10 @@ class DrainScreenshotTest {
     @Test
     fun privilegeIssue() = shoot("issue", ready().copy(issue = PrivilegeIssue.MANAGER_STOPPED))
 
+    /** Audit BUG-046: Shizuku allowed Coulomb and only the helper hung, so the block says that, not "can't authorize". */
+    @Test
+    fun helperHang() = shoot("issue-helper", ready().copy(issue = PrivilegeIssue.AUTHORIZATION_HANG, issueAllowed = true))
+
     @Test
     fun privilegeIssueWithoutData() = shoot("issue-empty", ready(report = null).copy(issue = PrivilegeIssue.MANAGER_STOPPED))
 

@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.data.Timeline
 import io.github.akane599.coulomb.core.data.TimelineRepository
 import io.github.akane599.coulomb.core.data.TimelineTrack
 import io.github.akane599.coulomb.core.model.AccessTier
+import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.PrivilegeIssue
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.delay
@@ -52,6 +53,8 @@ internal data class TimelineUiState(
     val locked: Boolean = false,
     /** SPEC 4.5's row, when access was lost rather than never set up. */
     val issue: PrivilegeIssue? = null,
+    /** Shizuku has allowed Coulomb: a hang in [issue] is the helper's (ADR-0047). */
+    val issueAllowed: Boolean = false,
 ) {
     /** The tracks shown, in the order of SPEC 10.6. */
     val shown: List<TimelineTrack> get() = TimelineTrack.entries.filter { it in tracks }
@@ -109,9 +112,22 @@ public class TimelineViewModel
                     read,
                     nights.nights.map { it.firstOrNull() }.catch { emit(null) },
                     timelines.labels.catch { emit(emptyMap()) },
-                    access.state.map { it.issue to (it.tier < AccessTier.T2_PRIVILEGED_WORKER) }.distinctUntilChanged(),
-                ) { state, night, labels, (issue, locked) ->
-                    state.copy(latestNight = night, labels = labels, issue = issue, locked = locked)
+                    access.state
+                        .map {
+                            Access(
+                                it.issue,
+                                it.tier < AccessTier.T2_PRIVILEGED_WORKER,
+                                it.permission == ManagerPermission.GRANTED,
+                            )
+                        }.distinctUntilChanged(),
+                ) { state, night, labels, access ->
+                    state.copy(
+                        latestNight = night,
+                        labels = labels,
+                        issue = access.issue,
+                        locked = access.locked,
+                        issueAllowed = access.allowed,
+                    )
                 }.collect { send(it) }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), view.value)
 
@@ -201,3 +217,10 @@ public class TimelineViewModel
             const val REACH_SHARE = 60
         }
     }
+
+/** What the Timeline needs from the privilege state. */
+private data class Access(
+    val issue: PrivilegeIssue?,
+    val locked: Boolean,
+    val allowed: Boolean,
+)

@@ -32,6 +32,8 @@ internal sealed interface NowUiState {
         val live: List<CurrentPoint>,
         /** A missing capability to explain inline (SPEC 10.11 partial), or null. */
         val issue: PrivilegeIssue?,
+        /** Shizuku has allowed Coulomb: a hang in [issue] is the helper's (ADR-0047). */
+        val issueAllowed: Boolean = false,
         /** The open insights Now shows: at most [MAX_INSIGHTS], highest severity first (SPEC 10.2). */
         val insights: List<ShownInsight> = emptyList(),
         /** Open insights behind the ones shown; "Show N more" brings them in. */

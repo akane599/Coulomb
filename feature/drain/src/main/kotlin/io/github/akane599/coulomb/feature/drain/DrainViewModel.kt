@@ -17,6 +17,7 @@ import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.NamedReference
 import io.github.akane599.coulomb.core.data.References
 import io.github.akane599.coulomb.core.datastore.SettingsStore
+import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.dumpsys.PowerDump
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
@@ -67,8 +68,8 @@ public class DrainViewModel
             attempt
                 .flatMapLatest {
                     val reports = window.span.flatMapLatest { span -> drains.report(span).map { span to it } }
-                    val issues = access.state.map { it.issue }.distinctUntilChanged()
-                    combine(window.span, reports, settings.settings, issues) { chosen, (span, report), prefs, issue ->
+                    val issues = access.state.map { it.issue to (it.permission == ManagerPermission.GRANTED) }.distinctUntilChanged()
+                    combine(window.span, reports, settings.settings, issues) { chosen, (span, report), prefs, (issue, allowed) ->
                         DrainUiState.Ready(
                             chosen = chosen,
                             report = report,
@@ -76,6 +77,7 @@ public class DrainViewModel
                             includeSystem = prefs.showSystemApps,
                             scaled = prefs.scaleToMeasured,
                             issue = issue,
+                            issueAllowed = allowed,
                         ) as DrainUiState
                     }.catch { emit(DrainUiState.Error) }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DrainUiState.Loading)

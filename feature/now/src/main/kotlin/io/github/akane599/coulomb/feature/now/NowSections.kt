@@ -565,7 +565,14 @@ internal fun TopDrains(
                 },
         )
         // The issue first, then the captions right above the rows they explain.
-        state.issue?.let { PrivilegeIssueBlock(it, actions.openPrivileges, Modifier.padding(top = CoulombSpacing.Space12)) }
+        state.issue?.let {
+            PrivilegeIssueBlock(
+                it,
+                actions.openPrivileges,
+                Modifier.padding(top = CoulombSpacing.Space12),
+                state.issueAllowed,
+            )
+        }
         val captions =
             buildList {
                 if (state.battery.plugged && drains != null) {

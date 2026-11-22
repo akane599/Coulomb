@@ -389,7 +389,7 @@ private fun Controls(
 ) = Column {
     WindowChoice(state.chosen, formats, onChoose = actions.choose, onMore = onMore)
     // Without snapshots the window stops where the last one was taken (SPEC 10.11 partial).
-    state.issue?.let { PrivilegeIssueBlock(it, actions.openPrivileges, Modifier.padding(top = CoulombSpacing.Space16)) }
+    state.issue?.let { PrivilegeIssueBlock(it, actions.openPrivileges, Modifier.padding(top = CoulombSpacing.Space16), state.issueAllowed) }
 }
 
 /** The window's note and total, or why there are none. */

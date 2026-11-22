@@ -30,5 +30,7 @@ internal sealed interface DrainUiState {
         val scaled: Boolean,
         /** What keeps snapshots from being taken, if anything (SPEC 4.5, 10.11 partial). */
         val issue: PrivilegeIssue? = null,
+        /** Shizuku has allowed Coulomb: a hang in [issue] is the helper's (ADR-0047). */
+        val issueAllowed: Boolean = false,
     ) : DrainUiState
 }

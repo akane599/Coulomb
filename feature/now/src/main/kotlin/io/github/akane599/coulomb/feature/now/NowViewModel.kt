@@ -17,6 +17,7 @@ import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
+import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -88,8 +89,11 @@ public class NowViewModel
                                 issue = null,
                             )
                         }
-                    }.combine(access.state.map { it.issue }.distinctUntilChanged()) { ready, issue ->
-                        ready?.copy(issue = issue)
+                    }.combine(access.state.map { it.issue to (it.permission == ManagerPermission.GRANTED) }.distinctUntilChanged()) {
+                        ready,
+                        (issue, allowed),
+                        ->
+                        ready?.copy(issue = issue, issueAllowed = allowed)
                     }.combine(shownInsights()) { ready, (shown, more) ->
                         ready?.copy(insights = shown, moreInsights = more) ?: NowUiState.Loading
                     }.catch { emit(NowUiState.Error) }
