@@ -173,11 +173,16 @@ internal class CollectorEngine(
         storeSample(reading, enterBoot(reading))
     }
 
-    /** The boot, entered once per process: a process never outlives a reboot. */
+    /**
+     * The boot, entered once per process: a process never outlives a reboot. The profile is loaded
+     * at each event until a load has worked, so a failure on the first one does not leave the
+     * process without a profile or calibration (audit BUG-027).
+     */
     private suspend fun enterBoot(reading: LightReading): BootEntity {
-        boot?.let { return it }
-        val entered = db.deviceDao().enterBoot(identity.bootCount(), identity.fingerprint, reading.wallMs, reading.elapsedNs)
-        boot = entered
+        val entered =
+            boot ?: db.deviceDao().enterBoot(identity.bootCount(), identity.fingerprint, reading.wallMs, reading.elapsedNs).also {
+                boot = it
+            }
         loadProfile()
         return entered
     }
@@ -188,8 +193,10 @@ internal class CollectorEngine(
         val stored =
             devices.profile(identity.fingerprint)
                 ?: newProfile(devices.designCapacityFrom(DesignCapacitySource.USER.code)).also { devices.upsertProfile(it) }
-        profile = withDesignCapacity(stored)
+        // The stored calibration first: the design capacity is read from the platform and may fail.
         calibration = calibrator.stored(stored)
+        profile = stored
+        profile = withDesignCapacity(stored)
     }
 
     /** A new build's profile; the owner's design capacity, [ownersMah], outlives an update (ADR-0044 §5). */
