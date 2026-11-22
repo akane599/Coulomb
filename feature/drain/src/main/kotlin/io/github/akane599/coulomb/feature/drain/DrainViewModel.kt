@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.drain
 
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
@@ -21,6 +22,7 @@ import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.dumpsys.PowerDump
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.IOException
 import javax.inject.Inject
 
 /**
@@ -110,13 +113,9 @@ public class DrainViewModel
             viewModelScope.launch { ids.forEach { namedReferences.delete(it) } }
         }
 
-        internal fun includeSystem(include: Boolean) {
-            viewModelScope.launch { settings.showSystemApps(include) }
-        }
+        internal fun includeSystem(include: Boolean) = viewModelScope.writeSetting { settings.showSystemApps(include) }
 
-        internal fun scale(scaled: Boolean) {
-            viewModelScope.launch { settings.scaleToMeasured(scaled) }
-        }
+        internal fun scale(scaled: Boolean) = viewModelScope.writeSetting { settings.scaleToMeasured(scaled) }
 
         /**
          * Pull to refresh: a heavy snapshot, which the collector debounces to one a minute (SPEC 7.2).
@@ -154,3 +153,17 @@ public class DrainViewModel
             const val REFRESH_WAIT_MS = 5_000L
         }
     }
+
+/**
+ * A switch's settings write. One that fails (a full disk) is logged, and the switch, which shows the
+ * stored value, stays as it was (audit BUG-049).
+ */
+internal fun CoroutineScope.writeSetting(block: suspend () -> Unit) {
+    launch {
+        try {
+            block()
+        } catch (e: IOException) {
+            Log.w("Drain", "settings write failed", e)
+        }
+    }
+}

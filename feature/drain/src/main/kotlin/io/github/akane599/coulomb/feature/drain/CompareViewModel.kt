@@ -93,9 +93,7 @@ public class CompareViewModel
 
         internal fun chooseSecond(days: DrainSpan.Days) = choose(SECOND, days, periods.second)
 
-        internal fun includeSystem(include: Boolean) {
-            viewModelScope.launch { settings.showSystemApps(include) }
-        }
+        internal fun includeSystem(include: Boolean) = viewModelScope.writeSetting { settings.showSystemApps(include) }
 
         /** After an error: reads both periods again. */
         internal fun retry() {

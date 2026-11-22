@@ -83,6 +83,8 @@ internal data class OnboardingUiState(
     /** `adb shell` lines for what is still missing (all of them before a bootstrap). */
     val adbCommands: List<String> = emptyList(),
     val result: ResultState = ResultState.Checking,
+    /** "Show my battery" could not store that onboarding is done (audit BUG-049). */
+    val saveFailed: Boolean = false,
 ) {
     /** Basic mode has three steps, counted as three (ADR-0047 §2). */
     val stepCount: Int get() = if (path == OnboardingPath.BASIC) BASIC_STEPS else SHIZUKU_STEPS

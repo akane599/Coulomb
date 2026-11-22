@@ -171,6 +171,10 @@ class OnboardingScreenshotTest {
     @Test
     fun resultFailed() = shoot("result-failed", labResult().copy(result = ResultState.Failed))
 
+    /** Audit BUG-049: the flag could not be stored; the result stays with a line to try again. */
+    @Test
+    fun resultNotSaved() = shoot("result-not-saved", labResult().copy(saveFailed = true))
+
     private fun shizuku(
         manager: ManagerStatus,
         permission: ManagerPermission = ManagerPermission.UNKNOWN,

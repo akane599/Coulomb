@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.IOException
 import javax.inject.Inject
 
 /**
@@ -41,6 +42,7 @@ public class OnboardingViewModel
         private val step = saved.getStateFlow(KEY_STEP, OnboardingStep.WELCOME.name)
         private val path = saved.getStateFlow(KEY_PATH, OnboardingPath.SHIZUKU.name)
         private val probe = MutableStateFlow<ProbeRun>(ProbeRun.Idle)
+        private val saveFailed = MutableStateFlow(false)
         private var probeJob: Job? = null
         private var ownBootstrap = false
 
@@ -55,8 +57,8 @@ public class OnboardingViewModel
                 privileged.state,
                 privileged.lastBootstrap,
                 stage,
-                combine(probe, capabilityStore.capabilities) { run, stored -> run to stored },
-            ) { (s, p), privilege, report, stage, (run, stored) ->
+                combine(probe, capabilityStore.capabilities, saveFailed, ::Triple),
+            ) { (s, p), privilege, report, stage, (run, stored, failed) ->
                 OnboardingUiState(
                     step = s,
                     path = p,
@@ -72,6 +74,7 @@ public class OnboardingViewModel
 
                             ProbeRun.Done -> ResultState.Ready(stored)
                         },
+                    saveFailed = failed,
                 )
             }.stateIn(
                 viewModelScope,
@@ -139,7 +142,18 @@ public class OnboardingViewModel
 
         /** "Show my battery": the shell replaces onboarding once the flag is stored (ADR-0047 §1). */
         internal fun finish() {
-            viewModelScope.launch { settings.onboarded() }
+            viewModelScope.launch {
+                // A write that fails (a full disk) keeps the result open with a line to try again
+                // (audit BUG-049); the shell moves on only once the flag is stored.
+                saveFailed.value =
+                    try {
+                        settings.onboarded()
+                        false
+                    } catch (e: IOException) {
+                        Log.w(TAG, "onboarded not stored", e)
+                        true
+                    }
+            }
         }
 
         private fun current() = OnboardingStep.valueOf(step.value)

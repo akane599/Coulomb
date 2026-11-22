@@ -70,4 +70,5 @@
     <string name="onboarding_marks_note">Bir değerin nereden geldiğini görmek için ona dokunup basılı tut.</string>
     <string name="onboarding_first_results">İlk sonuçlar, ekran kapalıyken 15 dakika sonra.</string>
     <string name="onboarding_show_battery">Pilimi göster</string>
+    <string name="onboarding_save_failed">Coulomb kurulumun bittiğini kaydedemedi. Yeniden deneyin.</string>
 </resources>

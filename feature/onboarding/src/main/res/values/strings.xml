@@ -75,4 +75,5 @@
     <string name="onboarding_marks_note">Touch and hold any figure to see where its number comes from.</string>
     <string name="onboarding_first_results">First results after 15 minutes with the screen off.</string>
     <string name="onboarding_show_battery">Show my battery</string>
+    <string name="onboarding_save_failed">Coulomb couldn’t save that setup is done. Try again.</string>
 </resources>

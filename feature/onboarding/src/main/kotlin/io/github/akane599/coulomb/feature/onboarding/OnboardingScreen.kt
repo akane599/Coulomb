@@ -43,6 +43,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -200,7 +203,9 @@ internal fun OnboardingContent(
             }
         }
         // Outside the crossfade: the footer stays while the step changes.
-        Footer(caption = footerCaption(state.step)) { FooterButtons(state.step, state, actions) }
+        Footer(caption = footerCaption(state), alert = state.step == OnboardingStep.RESULT && state.saveFailed) {
+            FooterButtons(state.step, state, actions)
+        }
     }
 }
 
@@ -208,15 +213,22 @@ internal fun OnboardingContent(
 private const val BACK_FADE = 0.4f
 private const val BACK_SCALE = 0.04f
 
-private fun footerCaption(step: OnboardingStep): Int? = if (step == OnboardingStep.RESULT) R.string.onboarding_first_results else null
+private fun footerCaption(state: OnboardingUiState): Int? =
+    when {
+        state.step != OnboardingStep.RESULT -> null
+        state.saveFailed -> R.string.onboarding_save_failed
+        else -> R.string.onboarding_first_results
+    }
 
 /**
  * The lab's `.onb-actions`: a caption above the buttons when there is one, the buttons at the end,
- * wrapping onto a second line rather than squeezing at large text.
+ * wrapping onto a second line rather than squeezing at large text. An [alert] caption is read out
+ * when it appears, in the primary text colour.
  */
 @Composable
 private fun Footer(
     caption: Int?,
+    alert: Boolean = false,
     buttons: @Composable FlowRowScope.() -> Unit,
 ) {
     val colors = CoulombTheme.colors
@@ -234,8 +246,11 @@ private fun Footer(
             caption?.let {
                 Text(
                     stringResource(it),
-                    Modifier.fillMaxWidth().padding(bottom = CoulombSpacing.Space8),
-                    color = colors.textSecondary,
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = CoulombSpacing.Space8)
+                        .then(if (alert) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier),
+                    color = if (alert) colors.textPrimary else colors.textSecondary,
                     style = CoulombTheme.typography.caption,
                 )
             }
