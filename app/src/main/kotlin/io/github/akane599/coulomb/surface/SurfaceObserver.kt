@@ -183,7 +183,8 @@ class SurfaceObserver
             val new = insights.observeShown(DIGEST_MAX).first().filter { it.insight.state == InsightState.NEW }
             val named = DigestRules.fresh(new, memory.getLong(KEY_DIGEST_ID, NONE).takeIf { it != NONE }) { it.insight.id }
             if (named.isEmpty()) return
-            notifier.digest(named.map { copy.text(it.insight, it.appLabel) })
+            // Blocked: the same insights wait for the next snapshot after posting is allowed again.
+            if (!notifier.digest(named.map { copy.text(it.insight, it.appLabel) })) return
             memory.edit {
                 putLong(KEY_DIGEST_DAY, day)
                 putLong(KEY_DIGEST_ID, named.maxOf { it.insight.id })
@@ -224,8 +225,8 @@ class PrivilegeNotifications
             }
             val post = PrivilegeNotices.toPost(issue, memory.getString(KEY_TOLD, null)) ?: return
             notifier.ensureChannels()
-            notifier.privileges(post)
-            memory.edit { putString(KEY_TOLD, post.name) }
+            // Told only once shown: a blocked notice is posted when the issue is next seen (audit BUG-013).
+            if (notifier.privileges(post)) memory.edit { putString(KEY_TOLD, post.name) }
         }
 
         private companion object {

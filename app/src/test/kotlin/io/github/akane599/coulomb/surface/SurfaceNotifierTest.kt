@@ -158,6 +158,25 @@ class SurfaceNotifierTest {
         assertThat(posted().single().channelId).isEqualTo("insights")
     }
 
+    /** Audit BUG-013: a notice Android would not show is not given, so the caller keeps it for later. */
+    @Test
+    fun aBlockedNoticeIsNotGiven() {
+        shadowOf(manager).setNotificationsEnabled(false)
+        assertThat(notifier.digest(listOf(InsightText("Only", "One.")))).isFalse()
+        assertThat(notifier.privileges(PrivilegeIssue.GRANTS_REVOKED)).isFalse()
+        assertThat(posted()).isEmpty()
+
+        shadowOf(manager).setNotificationsEnabled(true)
+        // A channel the user turned off is blocked too.
+        manager.getNotificationChannel("insights").let {
+            it.importance = NotificationManager.IMPORTANCE_NONE
+            manager.createNotificationChannel(it)
+        }
+        assertThat(notifier.digest(listOf(InsightText("Only", "One.")))).isFalse()
+        assertThat(notifier.privileges(PrivilegeIssue.GRANTS_REVOKED)).isTrue()
+        assertThat(posted().single().channelId).isEqualTo("privileges")
+    }
+
     @Test
     fun aLostAccessIsPostedAndWithdrawn() {
         // A stopped Shizuku takes no permission away, so it is not called a loss.

@@ -215,9 +215,20 @@ class SurfaceNotifier
             text: InsightText,
         ) = manager.notify(INSIGHT_BASE_ID + (id % INSIGHT_IDS).toInt(), text(ALERTS, text.title, text.body, OpenRequest.NOW).build())
 
-        /** The day's digest (SPEC 9.4): one notification for all new insights, their titles as its lines. */
-        fun digest(insights: List<InsightText>) {
-            val first = insights.firstOrNull() ?: return
+        /**
+         * Whether Android shows a notification on [channel] now: the app's notifications and the
+         * channel are both on. A post it would drop is not a notice given (audit BUG-013).
+         */
+        fun canPost(channel: String): Boolean =
+            manager.areNotificationsEnabled() && manager.getNotificationChannel(channel)?.importance != NotificationManager.IMPORTANCE_NONE
+
+        /**
+         * The day's digest (SPEC 9.4): one notification for all new insights, their titles as its
+         * lines. False, posting nothing, while Android would not show it.
+         */
+        fun digest(insights: List<InsightText>): Boolean {
+            val first = insights.firstOrNull() ?: return false
+            if (!canPost(INSIGHTS)) return false
             val builder =
                 if (insights.size == 1) {
                     text(INSIGHTS, first.title, first.body, OpenRequest.NOW)
@@ -233,10 +244,14 @@ class SurfaceNotifier
                     base(INSIGHTS, OpenRequest.NOW).setContentTitle(title).setContentText(first.title).setStyle(lines)
                 }
             manager.notify(DIGEST_ID, builder.setAutoCancel(true).build())
+            return true
         }
 
-        /** Coulomb lost its access (SPEC 12.1); the tap opens Privileges, where the fix is. Null withdraws it. */
-        fun privileges(issue: PrivilegeIssue?) {
+        /**
+         * Coulomb lost its access (SPEC 12.1); the tap opens Privileges, where the fix is. Null
+         * withdraws it. False when nothing was shown: withdrawn, or Android would not show it.
+         */
+        fun privileges(issue: PrivilegeIssue?): Boolean {
             val words =
                 when (issue) {
                     PrivilegeIssue.MANAGER_STOPPED -> R.string.surface_privileges_stopped
@@ -246,8 +261,9 @@ class SurfaceNotifier
                 }
             if (words == null) {
                 manager.cancel(PRIVILEGES_ID)
-                return
+                return false
             }
+            if (!canPost(PRIVILEGES)) return false
             val notification =
                 base(PRIVILEGES, OpenRequest.PRIVILEGES)
                     // A stopped Shizuku takes no permission away (PRODUCT principle 5): only the other two are a loss.
@@ -264,6 +280,7 @@ class SurfaceNotifier
                     .setAutoCancel(true)
                     .build()
             manager.notify(PRIVILEGES_ID, notification)
+            return true
         }
 
         private fun text(
