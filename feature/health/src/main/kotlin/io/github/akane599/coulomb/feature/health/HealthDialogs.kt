@@ -140,10 +140,10 @@ internal fun DesignDialog(
         }
         OutlinedTextField(
             value = text,
-            // Digits only: a paste of "5,000" or "5000 mAh" keeps its number.
+            // A paste of "5,000" or "5000 mAh" keeps its number; anything else stays as entered.
             onValueChange = { entry ->
-                val digits = entry.text.filter(Char::isDigit).take(MAX_DIGITS)
-                text = if (digits == entry.text) entry else TextFieldValue(digits, TextRange(digits.length))
+                val kept = capacityEntry(entry.text)
+                text = if (kept == entry.text) entry else TextFieldValue(kept, TextRange(kept.length))
             },
             modifier = Modifier.fillMaxWidth().focusRequester(focus),
             label = { Text(stringResource(R.string.health_design_label)) },
@@ -174,7 +174,23 @@ internal fun DesignDialog(
 }
 
 private const val MIN_DIGITS = 4
-private const val MAX_DIGITS = 5
+
+/**
+ * What the capacity field keeps of an entry: digits as they are, and a whole number written with
+ * grouping or a unit ("4,855", "4 855 mAh") as its digits. Anything else, such as "4855.5" or
+ * "4.855,5", stays as entered, so it reads as invalid rather than as another number; nothing is
+ * cut off (audit BUG-037).
+ */
+internal fun capacityEntry(text: String): String {
+    if (text.all(Char::isDigit)) return text
+    val number = text.trim().replace(UNIT, "")
+    return if (WHOLE.matches(number)) number.filter(Char::isDigit) else text
+}
+
+private val UNIT = Regex("""(?i)\s*mah$""")
+
+/** Digits, or groups of three after one to three digits, with a comma, point, space or apostrophe between. */
+private val WHOLE = Regex("""\d+|\d{1,3}([,. \u00A0\u202F']\d{3})+""")
 
 /** A dialog with one text field, which takes focus, and Cancel and Save. */
 @Composable
