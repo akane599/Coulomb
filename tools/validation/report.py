@@ -11,8 +11,10 @@ B (screen-off drain) and A (calibration) of SPEC 16.6. E and B read the screen-o
 stored, as ADR-0049 amends them: a session counts when it is on battery with the screen off from
 its screen-off snapshot to its screen-on snapshot, with no reboot. B's Coulomb rates come from
 `CaptureRatesTest`, which runs the app's own read path on the capture. T is epoch milliseconds or ISO
-8601 with an offset (2026-11-07T21:10+03:00). Without --video-from/--video-to, protocol A uses the
-longest stretch of unplugged, screen-on samples of at least 30 minutes.
+8601 with an offset (2026-11-07T21:10+03:00). Protocol A judges only a stated load window
+(--video-from/--video-to): its samples must be one unbroken run, unplugged with the screen on,
+of at least 30 minutes by the elapsed clock. Without one it shows the longest such run as a
+diagnostic, with no verdict, since nothing says the load in it was fixed (audit OPS-003).
 
 Only aggregate numbers about Coulomb and the device are printed, never another app's name, so the
 output can be committed under docs/validation/ (ADR-0004).
@@ -39,6 +41,7 @@ DAY_MS = 86_400_000
 NS_PER_MS = 1_000_000
 UA_NS_PER_MAH = 3.6e15  # 1 mAh = 1000 µA × 3600 s
 SAMPLE_GAP_MS = 120_000  # SPEC 7.3: the slowest sampler rate while the screen is on is 30 s
+NS_PER_MS = 1_000_000
 PROTOCOL_A_MIN_MS = 30 * 60_000
 
 # SPEC 16.6 pass marks, protocols B and E as amended by ADR-0049 (owner decision, 2026-11-10).
@@ -695,20 +698,51 @@ def protocol_b(db, sessions, rates, first_wall, out):
     )
 
 
+def steady(r):
+    """Unplugged with the screen on, the load protocol A measures."""
+    return r["plugType"] == 0 and bool(r["screenOn"])
+
+
+def joined(a, b):
+    """Whether b follows a in one boot within SAMPLE_GAP_MS, by the elapsed clock a clock change cannot bend."""
+    return b["bootSeq"] == a["bootSeq"] and 0 <= b["elapsedNs"] - a["elapsedNs"] <= SAMPLE_GAP_MS * NS_PER_MS
+
+
+def elapsed_ms(run):
+    return (run[-1]["elapsedNs"] - run[0]["elapsedNs"]) / NS_PER_MS
+
+
 def stretches(rows):
-    """Runs of unplugged, screen-on samples in one boot with no gap above SAMPLE_GAP_MS."""
+    """Runs of unplugged, screen-on samples in one boot with no gap above SAMPLE_GAP_MS. [rows] are in boot and elapsed order."""
     run = []
     for r in rows:
-        steady = r["plugType"] == 0 and r["screenOn"]
-        joined = run and r["bootSeq"] == run[-1]["bootSeq"] and r["wallMs"] - run[-1]["wallMs"] <= SAMPLE_GAP_MS
-        if steady and (not run or joined):
+        if steady(r) and (not run or joined(run[-1], r)):
             run.append(r)
             continue
         if run:
             yield run
-        run = [r] if steady else []
+        run = [r] if steady(r) else []
     if run:
         yield run
+
+
+def a_window(rows, video_from, video_to):
+    """
+    Protocol A's samples as (chosen, how, problem). A stated window picks its samples by wall time,
+    which is how the load was noted, and then must be one run: every sample unplugged with the
+    screen on, one boot, no gap above SAMPLE_GAP_MS. Without one, the longest run by the elapsed
+    clock, which is only a diagnostic. [problem] says why a stated window does not qualify.
+    """
+    if video_from is None:
+        runs = sorted(stretches(rows), key=elapsed_ms, reverse=True)
+        return (runs[0] if runs else []), "the longest unplugged, screen-on stretch (diagnostic: no load window was stated)", None
+    how = "the stated load window"
+    chosen = [r for r in rows if video_from <= r["wallMs"] <= video_to]
+    if not all(steady(r) for r in chosen):
+        return chosen, how, "some of its samples were plugged in or had the screen off"
+    if not all(joined(a, b) for a, b in zip(chosen, chosen[1:])):
+        return chosen, how, f"it crosses a reboot, a clock change or a gap of more than {SAMPLE_GAP_MS // 1000} s"
+    return chosen, how, None
 
 
 def protocol_a(db, video_from, video_to, out):
@@ -727,30 +761,24 @@ def protocol_a(db, video_from, video_to, out):
         "SELECT bootSeq, elapsedNs, wallMs, levelPct, chargeUah, currentRaw, plugType, screenOn "
         "FROM battery_sample ORDER BY bootSeq, elapsedNs",
     ).fetchall()
-    if video_from is not None:
-        chosen = [r for r in rows if video_from <= r["wallMs"] <= video_to]
-        how = "the stated load window"
-    else:
-        runs = sorted(stretches(rows), key=lambda run: run[-1]["wallMs"] - run[0]["wallMs"], reverse=True)
-        chosen = runs[0] if runs else []
-        how = "the longest unplugged, screen-on stretch (the load was not stated)"
+    chosen, how, problem = a_window(rows, video_from, video_to)
     if len(chosen) < 2:
         out.append(f"No samples in {how}.\n")
         return
-    length_ms = chosen[-1]["wallMs"] - chosen[0]["wallMs"]
+    if problem is not None:
+        out.append(f"{how.capitalize()} is not one unplugged, screen-on run: {problem}. Result: {verdict(False)}.\n")
+        return
+    length_ms = elapsed_ms(chosen)
     if any(r["currentRaw"] is None for r in chosen) or chosen[0]["chargeUah"] is None or chosen[-1]["chargeUah"] is None:
         out.append(f"{how.capitalize()} lacks current or counter readings.\n")
         return
     integrated = 0.0
     for a, b in zip(chosen, chosen[1:]):
-        if b["bootSeq"] != a["bootSeq"]:
-            out.append("The window crosses a reboot; protocol A needs one boot.\n")
-            return
         mean_ua = sign * scale * (a["currentRaw"] + b["currentRaw"]) / 2
         integrated += -mean_ua * (b["elapsedNs"] - a["elapsedNs"]) / UA_NS_PER_MAH
     counter = (chosen[0]["chargeUah"] - chosen[-1]["chargeUah"]) / 1000
     currents = [-sign * scale * r["currentRaw"] / 1000 for r in chosen]
-    gaps = [(b["wallMs"] - a["wallMs"]) / 1000 for a, b in zip(chosen, chosen[1:])]
+    gaps = [(b["elapsedNs"] - a["elapsedNs"]) / 1e9 for a, b in zip(chosen, chosen[1:])]
     agreement = abs(integrated - counter) / counter * 100 if counter > 0 else None
     long_enough = length_ms >= PROTOCOL_A_MIN_MS
     start = dt.datetime.fromtimestamp(chosen[0]["wallMs"] / 1000, dt.timezone.utc).strftime("%Y-%m-%d")  # no clock time (ADR-0004)
@@ -765,7 +793,8 @@ def protocol_a(db, video_from, video_to, out):
     out.append(f"| `CHARGE_COUNTER` change | {counter:.1f} mAh |")
     out.append(f"| Difference | {fmt(agreement, 2, '%')} |")
     out.append(f"| At least 30 minutes | {'yes' if long_enough else '**no**'} |")
-    ok = None if agreement is None else (agreement <= A_AGREEMENT_PCT and long_enough)
+    # Only a stated window attests a fixed load; the longest run found is a diagnostic.
+    ok = None if agreement is None or video_from is None else (agreement <= A_AGREEMENT_PCT and long_enough)
     out.append(f"| Result (≤ {A_AGREEMENT_PCT:g}%) | {verdict(ok)} |")
     out.append("")
 
@@ -774,6 +803,32 @@ def protocol_a(db, video_from, video_to, out):
 # 250 ms later with a UID and a tag.
 FROZEN_CHUNK = bytes.fromhex("01 D8 05 01 C8 01 A0 01 87 0D F4 03 96 9E 01 05")
 FROZEN_EVENTS = [(1, 1, 100, 5, 2, 0, None, None, 80), (2, 1, 350, 13, 0, 1, 10123, 5, None)]
+
+
+def a_window_failures():
+    """Protocol A's window on synthetic samples a minute apart: a run, a clock step, a plug-in and a gap."""
+    minute_ns = 60 * 1_000_000_000
+
+    def sample(i, wall_min, plug=0, screen=1, boot=1):
+        return {"bootSeq": boot, "elapsedNs": i * minute_ns, "wallMs": wall_min * 60_000, "plugType": plug, "screenOn": screen}
+
+    run = [sample(i, 1000 + i) for i in range(40)]
+    failures = []
+    chosen, _, problem = a_window(run, 1000 * 60_000, 1039 * 60_000)
+    if problem is not None or elapsed_ms(chosen) != 39 * 60_000:
+        failures.append(f"a 39-minute run gives {problem or elapsed_ms(chosen)}")
+    # The clock set 40 minutes ahead after 5 minutes: 5 minutes of load, though the wall says 44.
+    stepped = [sample(i, 1000 + i + (40 if i > 4 else 0)) for i in range(6)]
+    chosen, _, problem = a_window(stepped, None, None)
+    if elapsed_ms(chosen) != 5 * 60_000:
+        failures.append(f"a clock step makes a run of {elapsed_ms(chosen) / 60_000} min")
+    plugged = run[:10] + [sample(10, 1010, plug=2)] + run[11:]
+    if a_window(plugged, 1000 * 60_000, 1039 * 60_000)[2] is None:
+        failures.append("a stated window with a plug-in qualifies")
+    gapped = run[:10] + run[15:]
+    if a_window(gapped, 1000 * 60_000, 1039 * 60_000)[2] is None:
+        failures.append("a stated window with a five-minute gap qualifies")
+    return failures
 
 
 def self_test():
@@ -787,6 +842,7 @@ def self_test():
             failures.append(f"a chunk with {name} decodes")
         except ValueError:
             pass
+    failures += a_window_failures()
     if failures:
         sys.exit("report.py self-test failed: " + "; ".join(failures))
     print("report.py self-test: ok")
