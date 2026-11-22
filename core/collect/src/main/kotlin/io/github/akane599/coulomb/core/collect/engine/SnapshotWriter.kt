@@ -521,7 +521,9 @@ internal class SnapshotWriter(
     /**
      * Where in [path] each app gone from the end's counters last used power, by the consecutive
      * windows: its counter disappeared, so the change from the start to the end no longer holds
-     * its use, and the chain keeps that snapshot (audit BUG-062).
+     * its use, and the chain keeps that snapshot (audit BUG-062). One whose counters were pruned
+     * cannot be kept; the latest before it that has them keeps the use up to there. An app folded
+     * into "other" in its windows is not seen here.
      */
     private suspend fun lastSeen(
         path: List<SnapshotEntity>,
@@ -537,7 +539,9 @@ internal class SnapshotWriter(
             .usersBetween(start.bootSeq, start.elapsedNs, end.bootSeq, end.elapsedNs)
             .filter { it.uid !in present }
             .groupBy { it.uid }
-            .mapNotNullTo(HashSet()) { (_, seen) -> seen.mapNotNull { at[it.snapshotId] }.maxOrNull() }
+            .mapNotNullTo(HashSet()) { (_, seen) ->
+                seen.mapNotNull { at[it.snapshotId] }.maxOrNull()?.let { last -> (last downTo 1).firstOrNull { !path[it].countersPruned } }
+            }
     }
 
     private fun hasCounters(snapshot: SnapshotEntity) = snapshot.kind == SnapshotKind.HEAVY && !snapshot.countersPruned
