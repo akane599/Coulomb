@@ -15,10 +15,14 @@ import io.github.akane599.coulomb.core.database.CoulombDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -96,6 +100,38 @@ class DataViewModelTest {
 
             assertThat(host.events).containsExactly("stop", "restart").inOrder()
             assertThat(boots()).isEqualTo(0)
+        }
+
+    /**
+     * Audit CONC-010: the collector's drift check takes the Action Center's lock after a heavy
+     * snapshot, so the erase must hold the collector before it takes that lock, never inside it.
+     */
+    @Test
+    fun deleteAllNeverWaitsForTheCollectorInsideTheActionCenterLock() =
+        runTest {
+            host.driftInFlight = true
+            val model = model()
+
+            model.deleteAll()
+            // On a real clock: the erase works on the disk, which the test's own clock does not wait for.
+            withContext(Dispatchers.Default) { withTimeout(5_000) { host.restartedSignal.first { it } } }
+
+            assertThat(host.events).containsExactly("stop", "restart").inOrder()
+            assertThat(boots()).isEqualTo(0)
+        }
+
+    @Test
+    fun aChangeLoggedAfterTheConfirmationRestartsTheCollector() =
+        runTest {
+            // None when the confirmation is checked, one by the time the lock is held.
+            host.inForceUnderLock = 1
+            val model = model()
+
+            model.deleteAll()
+            assertThat(model.state.first { it.deleteAsk != null }.deleteAsk).isEqualTo(DeleteAsk.Blocked(1))
+
+            assertThat(host.events).containsExactly("stop", "start").inOrder()
+            assertThat(boots()).isEqualTo(1)
         }
 
     @Test
@@ -191,10 +227,26 @@ class DataViewModelTest {
 
         override suspend fun rawBundle(out: OutputStream): RawBundleResult = raw.also { out.close() }
 
-        override suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)?): Int = inForce.also { if (it == 0) eraseIfNone?.invoke() }
+        /** The Action Center's lock, which is not reentrant. */
+        val lock = Mutex()
+
+        /** The collector is inside a heavy snapshot whose drift check will take [lock]. */
+        var driftInFlight = false
+
+        /** What the check under the lock answers, when it differs from the one before it. */
+        var inForceUnderLock: Int? = null
+
+        override suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)?): Int =
+            if (eraseIfNone == null) {
+                inForce
+            } else {
+                lock.withLock { (inForceUnderLock ?: inForce).also { if (it == 0) eraseIfNone() } }
+            }
 
         override suspend fun collector(run: Boolean) {
             events += if (run) "start" else "stop"
+            // Holding the collector waits for the snapshot in flight, and so for its drift check.
+            if (!run && driftInFlight) lock.withLock { driftInFlight = false }
         }
 
         override fun restart() {

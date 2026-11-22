@@ -71,6 +71,9 @@ public class ActionCenter internal constructor(
      * are, without erasing, otherwise. The check and the erase hold the lock, so no action can log a
      * change between them, and none starts after: the process restarts once the data is gone. An
      * erase that throws opens the Action Center again (ADR-0062 §14; audit CONC-001).
+     *
+     * [erase] must not wait for the collector: its drift check ([checkDrift]) takes this lock after
+     * each heavy snapshot, so the caller holds the collector before calling (audit CONC-010).
      */
     public suspend fun eraseWhenNoneInForce(erase: suspend () -> Unit): Int =
         lock.withLock {

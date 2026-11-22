@@ -146,7 +146,9 @@ internal interface DataHost {
 
     /**
      * How many Action Center changes are in force. With [eraseIfNone], it runs when there are none,
-     * with no change able to start during or after it (audit CONC-001).
+     * with no change able to start during or after it (audit CONC-001). [eraseIfNone] runs inside
+     * the Action Center's lock and must not wait for the collector, whose drift check takes that
+     * lock after each heavy snapshot: hold the collector before calling (audit CONC-010).
      */
     suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)? = null): Int
 
@@ -343,24 +345,30 @@ public class DataViewModel internal constructor(
             // without the restart the process would keep the deleted boot and calibration in
             // memory (ADR-0062 §14; audit CONC-002). The screen also holds Back while deleting.
             withContext(NonCancellable) {
-                var stopped = false
+                // The answer may be minutes old: a stale confirmation is refused before anything stops.
+                val asked = host.actionsInForce()
+                if (asked > 0) {
+                    ui.update { it.copy(work = DataWork.Idle, deleteAsk = DeleteAsk.Blocked(asked)) }
+                    return@withContext
+                }
+                ui.update { it.copy(deleteAsk = null) }
+                // The collector first, then the Action Center's lock. The collector's drift check
+                // takes that lock after each heavy snapshot, so waiting for the collector while
+                // holding the lock would wait for ever (audit CONC-010).
+                host.collector(run = false)
                 val inForce =
                     try {
-                        // Checked again under the Action Center's lock: the answer may be minutes old,
-                        // and an automation call may log a change meanwhile (audit CONC-001).
-                        host.actionsInForce {
-                            ui.update { it.copy(deleteAsk = null) }
-                            host.collector(run = false)
-                            stopped = true
-                            transfer.deleteAll()
-                        }
+                        // Checked again under the lock: an automation call may have logged a change
+                        // since the check above (audit CONC-001).
+                        host.actionsInForce { transfer.deleteAll() }
                     } catch (e: SQLException) {
                         Log.w(TAG, "delete failed", e)
-                        if (stopped) host.collector(run = true)
+                        host.collector(run = true)
                         ui.update { it.copy(work = DataWork.Idle, message = DataMessage.DELETE_FAILED) }
                         return@withContext
                     }
                 if (inForce > 0) {
+                    host.collector(run = true)
                     ui.update { it.copy(work = DataWork.Idle, deleteAsk = DeleteAsk.Blocked(inForce)) }
                 } else {
                     host.restart()
