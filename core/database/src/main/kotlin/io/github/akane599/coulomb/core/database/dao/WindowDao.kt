@@ -272,6 +272,21 @@ public abstract class WindowDao {
     @Query("SELECT * FROM window_result WHERE sessionId = :sessionId ORDER BY id DESC LIMIT 1")
     public abstract suspend fun forSession(sessionId: Long): WindowResultEntity?
 
+    /** The newest [limit] windows of [kind], oldest first. */
+    @Query("SELECT * FROM (SELECT * FROM window_result WHERE kind = :kind ORDER BY id DESC LIMIT :limit) ORDER BY id")
+    public abstract suspend fun latestOfKind(
+        kind: WindowKind,
+        limit: Int,
+    ): List<WindowResultEntity>
+
+    /** Each of [sessionIds]' windows, oldest first; [forSession] is the last of a session's. */
+    @Query("SELECT * FROM window_result WHERE sessionId IN (:sessionIds) ORDER BY id")
+    public abstract suspend fun forSessions(sessionIds: List<Long>): List<WindowResultEntity>
+
+    /** The UID rows of [windowIds], without the wakes, stats and components [rows] reads too. */
+    @Query("$UID_ROWS WHERE u.windowId IN (:windowIds)")
+    public abstract suspend fun uidsOf(windowIds: List<Long>): List<WindowUid>
+
     /** The consecutive window whose span holds `(bootSeq, elapsedNs)`; null where none was stored there. */
     @Query(
         "SELECT w.* FROM window_result w JOIN snapshot f ON f.id = w.fromSnapshotId JOIN snapshot s ON s.id = w.toSnapshotId " +

@@ -20,6 +20,7 @@ import io.github.akane599.coulomb.core.model.stats.DeviceKeys
 import io.github.akane599.coulomb.core.model.stats.PowerComponent
 import io.github.akane599.coulomb.core.model.stats.UidKeys
 import kotlinx.coroutines.flow.first
+import java.util.concurrent.ConcurrentHashMap
 
 /** What the loader needs from outside the database. */
 public interface InsightPorts {
@@ -48,6 +49,12 @@ public class RuleContextLoader(
     private val samples: SampleDao,
     private val ports: InsightPorts,
 ) {
+    /** Each closed charge's temperature samples, by session; the runner keeps this loader for the process. */
+    private val temperatures = ConcurrentHashMap<Long, List<TempSample>>()
+
+    /** Each closed screen-off session's deep Doze answer, once known. */
+    private val deepIdle = ConcurrentHashMap<Long, Boolean>()
+
     /**
      * The context as of [nowWallMs]. Screen-off sessions shorter than [minScreenOffMs] are left
      * out: a phone has hundreds of them a week, and no rule judges one shorter than its own floor.
@@ -233,9 +240,17 @@ public class RuleContextLoader(
                 }
             }
         val judged = onBattery.takeLast(DEEP_IDLE_SESSIONS).mapTo(HashSet()) { it.id }
+        deepIdle.keys.retainAll(judged)
+        // One query for every session's window, not one each (audit PERF-001).
+        val sessionWindows =
+            onBattery
+                .map { it.id }
+                .chunked(MAX_IDS)
+                .flatMap { windows.forSessions(it) }
+                .associateBy { it.sessionId }
         return onBattery.map { s ->
             val ms = ((s.endElapsedNs ?: s.startElapsedNs) - s.startElapsedNs) / NS_PER_MS
-            val window = windows.forSession(s.id)
+            val window = sessionWindows[s.id]
             val drop = s.endLevel?.let { s.startLevel - it }
             val counted = window?.measuredMah?.takeIf { window.chargeSource == ChargeSource.CHARGE_COUNTER && capacity != null }
             val pct = counted?.let { it / capacity!! * PERCENT } ?: drop?.toDouble()
@@ -258,7 +273,11 @@ public class RuleContextLoader(
      * end to end over the whole session and each read the device's counters, since a stretch
      * without them may hold the entry (ADR-0054 §4; audit BUG-058).
      */
-    private suspend fun deepIdleReached(session: SessionEntity): Boolean? {
+    private suspend fun deepIdleReached(session: SessionEntity): Boolean? =
+        // A closed session's answer, once there is one, does not change (audit PERF-001).
+        deepIdle[session.id] ?: readDeepIdle(session)?.also { deepIdle[session.id] = it }
+
+    private suspend fun readDeepIdle(session: SessionEntity): Boolean? {
         val from = session.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
         val to = session.endSnapshotId?.let { snapshots.snapshot(it) } ?: return null
         if (!before(from, to)) return null
@@ -275,6 +294,8 @@ public class RuleContextLoader(
      */
     private suspend fun chargeSessions(nowWallMs: Long): List<ChargeSession> {
         val closed = sessions.closedSince(SessionKind.CHARGE, nowWallMs - DAY_MS)
+        // Only the day's charges stay kept.
+        temperatures.keys.retainAll(closed.mapTo(HashSet()) { it.id })
         if (closed.isEmpty()) return emptyList()
         val details = sessions.chargeDetails(closed.map { it.id }).associateBy { it.sessionId }
         val profiles = sessions.chargerProfiles()
@@ -282,13 +303,16 @@ public class RuleContextLoader(
             val detail = details[s.id]
             val own = profiles.firstOrNull { it.id == detail?.chargerProfileId }
             val usual = own?.let { usualCharger(it, s, profiles) }
+            // A closed charge's samples do not change: read once, not at every heavy snapshot (audit PERF-001).
             val readings =
-                samples.samples(s.bootSeq, s.startElapsedNs, s.endElapsedNs ?: s.startElapsedNs).map {
-                    TempSample(
-                        s.startWall + (it.elapsedNs - s.startElapsedNs) / NS_PER_MS,
-                        it.tempDeciC / DECI,
-                        charging = it.plugType != 0,
-                    )
+                temperatures.getOrPut(s.id) {
+                    samples.samples(s.bootSeq, s.startElapsedNs, s.endElapsedNs ?: s.startElapsedNs).map {
+                        TempSample(
+                            s.startWall + (it.elapsedNs - s.startElapsedNs) / NS_PER_MS,
+                            it.tempDeciC / DECI,
+                            charging = it.plugType != 0,
+                        )
+                    }
                 }
             ChargeSession(
                 id = s.id,
@@ -324,11 +348,13 @@ public class RuleContextLoader(
      * under the window's cut.
      */
     private suspend fun trends(nowWallMs: Long): List<AppTrend> {
-        val days = windows.ofKind(WindowKind.DAY).takeLast(TREND_DAYS)
+        // The newest days and their UID rows only, not every day window kept with all its records (audit PERF-001).
+        val days = windows.latestOfKind(WindowKind.DAY, TREND_DAYS)
+        val uids = if (days.isEmpty()) emptyMap() else windows.uidsOf(days.map { it.id }).groupBy { it.windowId }
         val perUid = HashMap<Int, MutableList<DailyMah>>()
         for (day in days) {
             val start = snapshots.snapshot(day.fromSnapshotId)?.wallMs ?: continue
-            for (row in windows.rows(day.id).uids) {
+            for (row in uids[day.id].orEmpty()) {
                 if (isApp(row.uid) && row.component == ALL_COMPONENTS) perUid.getOrPut(row.uid) { ArrayList() } += DailyMah(start, row.mAh)
             }
         }
@@ -348,6 +374,9 @@ public class RuleContextLoader(
 
         /** Deep idle is worked out for this many of the latest sessions; R17 looks at three. */
         const val DEEP_IDLE_SESSIONS = 12
+
+        /** Ids per IN list, under SQLite's variable limit. */
+        const val MAX_IDS = 500
 
         /** R18's 14 baseline days, the days after an update, and the day of the update. */
         const val TREND_DAYS = 18

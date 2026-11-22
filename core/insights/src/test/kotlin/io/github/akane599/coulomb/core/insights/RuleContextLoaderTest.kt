@@ -357,6 +357,49 @@ class RuleContextLoaderTest {
             ).isEqualTo(25.0)
         }
 
+    /** Audit PERF-001: a closed charge's samples are read once, not again at every heavy snapshot. */
+    @Test
+    fun aClosedChargesSamplesAreReadOnce() =
+        runTest {
+            val (a, b, c) = listOf(heavy(1.0, plugType = 1), heavy(2.0, plugType = 1), heavy(3.0))
+            session(SessionKind.CHARGE, a, b)
+
+            fun sample(minute: Int) =
+                BatterySampleEntity(
+                    1,
+                    a.elapsedNs + minute * MINUTE * NS_PER_MS,
+                    a.wallMs + minute * MINUTE,
+                    50,
+                    null,
+                    null,
+                    null,
+                    4_200,
+                    400 + minute,
+                    1,
+                    2,
+                    false,
+                    0,
+                    0,
+                )
+            db.sampleDao().insert(sample(0))
+            assertThat(
+                loader
+                    .load(c.wallMs, hour)
+                    .chargeSessions
+                    .single()
+                    .samples,
+            ).hasSize(1)
+            // Written after the first read, as no closed charge's sample can be: the second read does not see it.
+            db.sampleDao().insert(sample(1))
+            assertThat(
+                loader
+                    .load(c.wallMs, hour)
+                    .chargeSessions
+                    .single()
+                    .samples,
+            ).hasSize(1)
+        }
+
     @Test
     fun anEmptyDatabaseGivesAnEmptyContext() =
         runTest {
