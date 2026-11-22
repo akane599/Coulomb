@@ -125,7 +125,10 @@ public class NightRepository
         /** A closed session's history does not change once it is read, so what it says about Doze is kept. */
         private val doze = ConcurrentHashMap<Long, DozeReached>()
 
-        /** The latest [MAX_NIGHTS], read again whenever a session closes. */
+        /**
+         * The latest [MAX_NIGHTS], newest first by boot and elapsed time (SPEC 7.8), read again
+         * whenever a session closes. The first is the latest night, whatever the wall clock said.
+         */
         public val nights: Flow<List<NightSummary>> =
             sessions
                 .observeClosedLasting(SessionKind.SCREEN_OFF, Nights.MIN_MS * NS_PER_MS, MAX_NIGHTS)

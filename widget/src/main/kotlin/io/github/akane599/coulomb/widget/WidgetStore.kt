@@ -114,7 +114,9 @@ class WidgetStore
                 }
 
                 WidgetKind.NIGHT -> {
-                    val latest = nights.nights.first().maxByOrNull { it.endWallMs }
+                    // Newest first by the elapsed clock: a boot stamped in the future by a wrong clock
+                    // is not the latest night (audit BUG-034).
+                    val latest = nights.nights.first().firstOrNull()
                     data.update { it.copy(night = latest) }
                 }
 

@@ -74,7 +74,8 @@ class AutomationStore
 
         private suspend fun slow(): Map<String, List<AutomationRow>> =
             slow ?: mapOf(
-                AutomationContract.PATH_NIGHT to AutomationFacts.night(nights.nights.first().maxByOrNull { it.endWallMs }),
+                // Newest first by the elapsed clock, as the widget takes it (audit BUG-034).
+                AutomationContract.PATH_NIGHT to AutomationFacts.night(nights.nights.first().firstOrNull()),
                 AutomationContract.PATH_DRAINS to AutomationFacts.drains(drains.sinceUnplugged.first(), Process.myUid() / PER_USER_RANGE),
             ).also { slow = it }
 

@@ -88,6 +88,34 @@ internal class NightRepositoryTest : DrainDbTest() {
             assertThat(night.deepDozeAfterMs).isEqualTo(HOUR_S * 1_000)
         }
 
+    /** Audit BUG-034: the latest night is the newest by boot, even when a wrong clock dated an older one later. */
+    @Test
+    fun theLatestNightIsTheNewestBootsNotTheLatestDated() =
+        runTest {
+            val start = heavy(0)
+            val end = heavy(4 * HOUR_S)
+            // Boot 1 ran with a clock a week ahead; boot 2's is right, and its night is the latest.
+            val ahead = 7 * 24 * HOUR_S * 1_000
+            val older =
+                screenOff(start, end).copy(
+                    endLevel = 85,
+                    startWall = BASE_WALL + ahead,
+                    endWall =
+                        BASE_WALL + ahead + 4 * HOUR_S * 1_000,
+                )
+            sessions.insert(older)
+            val newer =
+                sessions.insert(
+                    older.copy(bootSeq = 2, startWall = BASE_WALL + 10 * HOUR_S * 1_000, endWall = BASE_WALL + 14 * HOUR_S * 1_000),
+                )
+            assertThat(
+                repository.nights
+                    .first()
+                    .first()
+                    .id,
+            ).isEqualTo(newer)
+        }
+
     private companion object {
         const val LIGHT = 1L
         const val DEEP = 2L
