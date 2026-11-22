@@ -61,6 +61,37 @@ class WorkerConnectorTest {
             assertThat(api.binds).isEqualTo(1)
         }
 
+    /** Audit CONC-012: a caller cancelled during a cold bind leaves no worker behind. */
+    @Test
+    fun aBindWhoseCallerLeavesIsUnboundAndALateWorkerStopped() =
+        runTest {
+            api.defersConnect = true
+            val c = connector()
+            val call = async { c.call { it.version } }
+            runCurrent()
+            assertThat(api.binds).isEqualTo(1)
+            call.cancel()
+            runCurrent()
+            assertThat(api.unbinds).containsExactly(true)
+            // The manager connects the worker anyway; no one holds it, so it is stopped.
+            api.connectLate()
+            runCurrent()
+            assertThat(worker.destroyed).isEqualTo(1)
+            assertThat(c.state.value.status).isNotEqualTo(WorkerStatus.BOUND)
+        }
+
+    /** Audit CONC-010: the idle unbind reaches Shizuku before the next bind, so it cannot stop the new worker. */
+    @Test
+    fun theNextBindWaitsForTheIdleUnbind() =
+        runTest {
+            val c = connector()
+            c.call { it.version }
+            advanceTimeBy(WorkerConnector.IDLE_UNBIND_MS + 1)
+            runCurrent()
+            c.call { it.version }
+            assertThat(api.calls).containsExactly("bind", "remove", "bind").inOrder()
+        }
+
     @Test
     fun simulatedHangNeverReachesShizukuAndTimesOut() =
         runTest {

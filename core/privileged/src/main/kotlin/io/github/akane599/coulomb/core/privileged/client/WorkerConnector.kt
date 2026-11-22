@@ -24,6 +24,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class WorkerConnectionState(
     val status: WorkerStatus = WorkerStatus.IDLE,
@@ -101,6 +102,13 @@ internal class WorkerConnector(
 
     /** A worker that outlived its manager while a call was running; stopped when the call ends. */
     private var orphan: Bound? = null
+
+    /**
+     * The last unbind sent to Shizuku. Shizuku removes a UserService by its tag, which every bind
+     * shares, so a bind waits for it: a removal still on its way would stop the new worker too
+     * (audit CONC-010).
+     */
+    private var closing: Job? = null
 
     /** Debug drill (protocol F): binds never reach Shizuku, so the real 5 s timeout path runs. */
     @Volatile var simulateBindHang: Boolean = false
@@ -186,8 +194,23 @@ internal class WorkerConnector(
                 bound.also { bound = null }
             } ?: return
         b.binder.unlinkToDeath()
-        scope.launch(io) { api.unbindWorker(b.callback, remove) }
+        unbindLater(b.callback, remove)
         _state.update { if (it.status == WorkerStatus.UNAVAILABLE) it else it.copy(status = WorkerStatus.IDLE) }
+    }
+
+    /** Sends the unbind after any earlier one; [acquire] waits for it before binding. */
+    private fun unbindLater(
+        callback: WorkerCallback,
+        remove: Boolean,
+    ) {
+        synchronized(lock) {
+            val before = closing
+            closing =
+                scope.launch(io) {
+                    before?.join()
+                    api.unbindWorker(callback, remove)
+                }
+        }
     }
 
     private suspend fun acquire(): Bound? =
@@ -195,6 +218,7 @@ internal class WorkerConnector(
             synchronized(lock) { bound }?.let { return it }
             if (_state.value.status == WorkerStatus.UNAVAILABLE) return null
             if (clock() < synchronized(lock) { retryAt }) return null
+            synchronized(lock) { closing }?.join()
             repeat(HANDSHAKE_ATTEMPTS) { attempt ->
                 val started = clock()
                 val connected =
@@ -203,7 +227,14 @@ internal class WorkerConnector(
                         return null
                     }
                 val worker = connected.binder.worker
-                val handshake = withContext(io) { runCatching { Triple(worker.version, worker.uid, worker.seLinuxContext) } }.getOrNull()
+                val handshake =
+                    try {
+                        withContext(io) { runCatching { Triple(worker.version, worker.uid, worker.seLinuxContext) } }.getOrNull()
+                    } catch (e: CancellationException) {
+                        // The caller left mid-handshake: the worker is no one's, so it goes (audit CONC-012).
+                        unbindLater(connected.callback, remove = true)
+                        throw e
+                    }
                 if (handshake != null && handshake.first == expectedVersion) {
                     connected.origin = WorkerOrigin(handshake.second, connection)
                     attach(connected)
@@ -250,13 +281,21 @@ internal class WorkerConnector(
         _state.update { it.copy(status = WorkerStatus.IDLE, failure = WorkerFailure.BIND_TIMEOUT) }
     }
 
+    /**
+     * One bind, given up after [bindTimeoutMs] or when the caller is cancelled. A given-up bind is
+     * unbound with remove; a worker that still connects to it later is stopped directly, since no
+     * one holds it and nothing would unbind it (audit CONC-012).
+     */
     private suspend fun bindOnce(): Bound? {
         _state.update { it.copy(status = WorkerStatus.BINDING) }
         val connected = CompletableDeferred<WorkerBinder>()
+        val abandoned = AtomicBoolean(false)
         val callback =
             object : WorkerCallback {
                 override fun onConnected(binder: WorkerBinder) {
-                    if (!connected.complete(binder)) return
+                    if (!connected.complete(binder) && abandoned.get()) {
+                        scope.launch(io) { runCatching { binder.worker.destroy() } }
+                    }
                 }
 
                 override fun onDisconnected() {
@@ -266,10 +305,20 @@ internal class WorkerConnector(
             }
         // bindUserService itself may block on Android 17 with official Shizuku; never on our caller.
         if (!simulateBindHang) scope.launch(io) { runCatching { api.bindWorker(callback) } }
-        val binder = withTimeoutOrNull(bindTimeoutMs) { connected.await() }
-        if (binder == null) {
+        val giveUp = {
+            abandoned.set(true)
             connected.cancel()
-            scope.launch(io) { api.unbindWorker(callback, remove = true) }
+            unbindLater(callback, remove = true)
+        }
+        val binder =
+            try {
+                withTimeoutOrNull(bindTimeoutMs) { connected.await() }
+            } catch (e: CancellationException) {
+                giveUp()
+                throw e
+            }
+        if (binder == null) {
+            giveUp()
             return null
         }
         return Bound(binder, callback)

@@ -288,6 +288,13 @@ internal class FakeShizukuApi(
 
     /** When false, bindWorker never calls back (the Android 17 hang). */
     var connects = true
+
+    /** When set, bindWorker keeps the callback for [connectLate] instead of answering. */
+    var defersConnect = false
+    private var deferred: WorkerCallback? = null
+
+    /** Binds and unbinds in the order they reached Shizuku. */
+    val calls = mutableListOf<String>()
     var binds = 0
     val unbinds = mutableListOf<Boolean>()
     var lastBinder: FakeWorkerBinder? = null
@@ -318,7 +325,9 @@ internal class FakeShizukuApi(
 
     override fun bindWorker(callback: WorkerCallback) {
         binds += 1
-        if (!connects) return
+        calls += "bind"
+        if (defersConnect) deferred = callback
+        if (!connects || defersConnect) return
         val w = worker ?: return
         connected = callback
         callback.onConnected(FakeWorkerBinder(w).also { lastBinder = it })
@@ -329,6 +338,14 @@ internal class FakeShizukuApi(
         remove: Boolean,
     ) {
         unbinds += remove
+        calls += if (remove) "remove" else "unbind"
+    }
+
+    /** The worker connects to the bind [defersConnect] kept, as a slow manager's would. */
+    fun connectLate(): FakeWorkerBinder {
+        val binder = FakeWorkerBinder(checkNotNull(worker))
+        checkNotNull(deferred).onConnected(binder)
+        return binder
     }
 
     fun startServer() {
