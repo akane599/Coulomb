@@ -126,10 +126,9 @@ internal class CollectorEngine(
         }
         // A screen asked, but no heavy snapshot ran: the screen gets windows to the latest one (ADR-0032 §3).
         if (trigger in REFERENCE_TRIGGERS && action != Action.HEAVY) referencesToLatest(reading)
-        if (action != Action.NONE) {
-            firstOfProcess = false
-            watchedSinceLast = watching
-        }
+        if (action != Action.NONE) firstOfProcess = false
+        // A sample is no look at the sessions: only a snapshot starts a watched stretch.
+        if (action == Action.LIGHT || action == Action.HEAVY) watchedSinceLast = watching
         return action
     }
 

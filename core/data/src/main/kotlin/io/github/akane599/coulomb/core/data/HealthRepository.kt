@@ -195,7 +195,15 @@ public class HealthRepository
             val offset = session.endOffsetMs() ?: return emptyList()
             val raw = samples.samples(session.bootSeq, session.startElapsedNs, end + 1)
             if (raw.isNotEmpty()) return HealthReader.curve(raw, offset)
-            return HealthReader.aggregateCurve(samples.aggregates(MINUTE_S, session.bootSeq, session.startElapsedNs, end + 1), offset)
+            // A minute starts on the boot's minute marks, so the one the charge began in starts before
+            // it; it counts when its first reading is the charge's, as a wall-time read took it.
+            val minuteNs = MINUTE_S * NS_PER_S
+            val minutes =
+                samples
+                    .aggregates(MINUTE_S, session.bootSeq, session.startElapsedNs - minuteNs + 1, end + 1)
+                    .filter { it.startElapsedNs >= session.startElapsedNs || it.startWallMs >= session.startWall }
+                    .map { if (it.startElapsedNs < session.startElapsedNs) it.copy(startElapsedNs = session.startElapsedNs) else it }
+            return HealthReader.aggregateCurve(minutes, offset)
         }
 
         private fun DeviceProfileEntity.design(): DesignCapacity? {
@@ -226,6 +234,7 @@ public class HealthRepository
             /** A longer gap between samples is time Coulomb did not watch (ADR-0044 §2). */
             internal const val MAX_GAP_MS: Long = 6 * 3_600_000L
             private const val MINUTE_S = 60
+            private const val NS_PER_S = 1_000_000_000L
             private const val MAX_NAME = 40
         }
     }

@@ -60,10 +60,14 @@ internal object DischargeSummaries {
             placed.filter {
                 if (it.closeReason == null) it.bootSeq == latest.bootSeq else it.endWall != null && it.endLevel != null
             }
-        val discharges = readable.filter { it.kind == SessionKind.DISCHARGE }.map { it.toDischarge(latest) }
+        // A screen session overlaps only its own boot's discharges: each boot has its own clock, and
+        // a clock set wrong can lay one boot over another.
+        val discharges =
+            readable.filter { it.kind == SessionKind.DISCHARGE }.groupBy({ it.bootSeq }, { it.toDischarge(latest) })
         val current = open.toDischarge(latest)
         val screens = readable.filter { it.kind != SessionKind.DISCHARGE }
-        val spans = screens.flatMap { ScreenRates.discharging(it.toSpan(latest, shifted[it.id]), discharges) }
+        val spans =
+            screens.flatMap { ScreenRates.discharging(it.toSpan(latest, shifted[it.id]), discharges[it.bootSeq].orEmpty()) }
         val inSession = spans.filter { it.startWallMs >= current.startWallMs }
         val on = ScreenRates.combine(inSession.filter { it.screenOn })
         val off = ScreenRates.combine(inSession.filter { !it.screenOn })
@@ -74,7 +78,7 @@ internal object DischargeSummaries {
             levelPct = latest.levelPct,
             screenOn = on?.let { StateRate(it.pctPerHour, it.hours, it.quality) },
             screenOff = off?.let { StateRate(it.pctPerHour, it.hours, it.quality) },
-            deepSleep = deepSleep(screens.filter { it.kind == SessionKind.SCREEN_OFF }, current, latest),
+            deepSleep = deepSleep(screens.filter { it.kind == SessionKind.SCREEN_OFF && it.bootSeq == open.bootSeq }, current, latest),
             timeLeft = TimeRemaining.estimate(latest.levelPct, if (latest.screenOn) on else off, history),
         )
     }

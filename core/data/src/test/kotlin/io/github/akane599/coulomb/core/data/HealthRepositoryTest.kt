@@ -131,6 +131,67 @@ internal class HealthRepositoryTest {
             assertThat(real { repository.session(id + 1).first() }).isNull()
         }
 
+    /**
+     * Compacted to minutes (SPEC 7.7): the charge began 30 s into the boot's first minute. That
+     * minute counts when its first reading is the charge's, and starts the curve at the charge's start.
+     */
+    @Test
+    fun aCompactedChargeKeepsTheMinuteItBeganIn() =
+        runTest {
+            val start = now - 2 * 3_600_000L
+            val id =
+                db.sessionDao().insert(
+                    SessionEntity(
+                        kind = SessionKind.CHARGE,
+                        bootSeq = 1,
+                        startElapsedNs = minuteNs / 2,
+                        endElapsedNs = 3 * minuteNs,
+                        startWall = start,
+                        endWall = start + 150_000L,
+                        startSnapshotId = null,
+                        endSnapshotId = null,
+                        startLevel = 50,
+                        endLevel = 53,
+                        startChargeUah = null,
+                        endChargeUah = null,
+                        chargeSource = null,
+                        avgCurrentMa = null,
+                        peakCurrentMa = null,
+                        minTempDeciC = 290,
+                        meanTempDeciC = 300,
+                        maxTempDeciC = 310,
+                        awakeRatio = null,
+                        deepIdleReached = null,
+                        deepIdleReachedMs = null,
+                        minutesAtOrAbove80 = 0,
+                        minutesAt100 = 0,
+                        stressIndex = 0.0,
+                        cycleEquivalents = 0.03,
+                        closeReason = SessionCloseReason.STATE_CHANGED,
+                        quality = 1.0,
+                    ),
+                )
+
+            fun minute(
+                index: Int,
+                firstWall: Long,
+            ) = "INSERT INTO sample_aggregate VALUES (60, 1, ${index * minuteNs}, $firstWall, 6, ${50 + index}, ${51 + index}, " +
+                "NULL, NULL, 1900000, 2000000, 2100000, 4000, 300, 300, 300, 0.0, 2)"
+            val sql = db.openHelper.writableDatabase
+            sql.execSQL(minute(0, start))
+            sql.execSQL(minute(1, start + 30_000L))
+            sql.execSQL(minute(2, start + 90_000L))
+
+            val curve = checkNotNull(real { repository.session(id).first() }).curve
+            assertThat(curve).hasSize(3)
+            assertThat(curve.first().wallMs).isEqualTo(start)
+            assertThat(curve.map { it.wallMs }).isInStrictOrder()
+
+            // A first reading from before the plug: that minute is the discharge's, not the charge's.
+            sql.execSQL("UPDATE sample_aggregate SET startWallMs = ${start - 20_000L} WHERE startElapsedNs = 0")
+            assertThat(checkNotNull(real { repository.session(id).first() }).curve).hasSize(2)
+        }
+
     @Test
     fun aRenameAndTheOwnersDesignCapacityAreStored() =
         runTest {
