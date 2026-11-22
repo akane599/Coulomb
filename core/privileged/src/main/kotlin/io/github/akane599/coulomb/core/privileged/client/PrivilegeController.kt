@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -266,14 +267,7 @@ internal class PrivilegeController(
             }
 
             is Event.PermissionHangCheck -> {
-                // A dialog on screen pauses Coulomb's activity: the user is deciding, nothing hangs.
-                val dialogShown = foreground.lastPausedAt()?.let { it >= permissionRequestedAt } == true
-                if (event.requestId == permissionRequestId &&
-                    core.value.permission == ManagerPermission.PENDING &&
-                    !dialogShown
-                ) {
-                    core.update { it.copy(permissionHanging = true) }
-                }
+                onPermissionHangCheck(event.requestId)
             }
         }
     }
@@ -399,6 +393,44 @@ internal class PrivilegeController(
         scope.launch {
             delay(PERMISSION_HANG_MS)
             events.send(Event.PermissionHangCheck(id))
+        }
+    }
+
+    /**
+     * A request still without an answer (SPEC 4.5). Nothing covered Coulomb: no dialog came, so the
+     * request hangs. Something covers it now, a dialog the user is reading or another app: the
+     * check waits for Coulomb to come back, without polling. Back for 5 s with no answer: what
+     * covered it is gone, so the request is open to ask again (audit BUG-022). A late answer still
+     * counts, whatever this said.
+     */
+    private fun onPermissionHangCheck(id: Int) {
+        if (id != permissionRequestId || core.value.permission != ManagerPermission.PENDING) return
+        val seen = foreground.state().value
+        val paused = seen.pausedAt?.takeIf { it >= permissionRequestedAt }
+        val resumed = seen.resumedAt?.takeIf { paused != null && it >= paused }
+        when {
+            paused == null -> {
+                core.update { it.copy(permissionHanging = true) }
+            }
+
+            resumed == null -> {
+                scope.launch {
+                    foreground.state().first { (it.resumedAt ?: Long.MIN_VALUE) >= paused }
+                    delay(PERMISSION_HANG_MS)
+                    events.send(Event.PermissionHangCheck(id))
+                }
+            }
+
+            clock() - resumed < PERMISSION_HANG_MS -> {
+                scope.launch {
+                    delay(PERMISSION_HANG_MS - (clock() - resumed))
+                    events.send(Event.PermissionHangCheck(id))
+                }
+            }
+
+            else -> {
+                core.update { it.copy(permission = ManagerPermission.NOT_REQUESTED, permissionHanging = false) }
+            }
         }
     }
 

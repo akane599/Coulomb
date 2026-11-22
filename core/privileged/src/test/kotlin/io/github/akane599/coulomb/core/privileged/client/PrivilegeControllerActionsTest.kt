@@ -12,6 +12,7 @@ import io.github.akane599.coulomb.core.privileged.PrivilegedAction
 import io.github.akane599.coulomb.core.privileged.PrivilegedResult
 import io.github.akane599.coulomb.core.privileged.WorkerStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.currentTime
@@ -30,7 +31,10 @@ class PrivilegeControllerActionsTest {
     private fun TestScope.controller(): PrivilegeController =
         PrivilegeController(
             config = PrivilegeConfig(PACKAGE, UID, FakeWorker.VERSION, debuggable = true, fingerprint = "test/build/1"),
-            platform = PrivilegePlatform(api, grants, FakeLedger(), FakeBinderGrants(), FakeInAppDumper(pipes), pipes) { null },
+            platform =
+                PrivilegePlatform(api, grants, FakeLedger(), FakeBinderGrants(), FakeInAppDumper(pipes), pipes) {
+                    MutableStateFlow(Foreground())
+                },
             scope = backgroundScope,
             io = StandardTestDispatcher(testScheduler),
             clock = { currentTime },

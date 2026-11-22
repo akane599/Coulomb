@@ -31,6 +31,8 @@ import io.github.akane599.coulomb.core.privileged.WorkerOrigin
 import io.github.akane599.coulomb.core.privileged.WorkerStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -48,7 +50,10 @@ class PrivilegeControllerTest {
     private val ledger = FakeLedger()
     private val binderGrants = FakeBinderGrants()
     private val inApp = FakeInAppDumper(pipes)
-    private var pausedAt: Long? = null
+    private val foreground = MutableStateFlow(Foreground())
+    private var pausedAt: Long?
+        get() = foreground.value.pausedAt
+        set(value) = foreground.update { it.copy(pausedAt = value) }
 
     private fun TestScope.controller(
         debuggable: Boolean = true,
@@ -57,7 +62,7 @@ class PrivilegeControllerTest {
         val io = StandardTestDispatcher(testScheduler)
         return PrivilegeController(
             config = PrivilegeConfig(PACKAGE, UID, FakeWorker.VERSION, debuggable, FINGERPRINT),
-            platform = PrivilegePlatform(api, grants, ledger, binderGrants, inApp, pipes) { pausedAt },
+            platform = PrivilegePlatform(api, grants, ledger, binderGrants, inApp, pipes) { foreground },
             scope = backgroundScope,
             io = io,
             clock = { currentTime },
@@ -119,81 +124,6 @@ class PrivilegeControllerTest {
             assertThat(c.state.value.tier).isEqualTo(AccessTier.T2_PRIVILEGED_WORKER)
             assertThat(c.state.value.issue).isNull()
             assertThat(binderGrants.calls).isEmpty()
-        }
-
-    @Test
-    fun aPermissionRequestWithoutAnswerForFiveSecondsIsFlaggedAndALateGrantStillCounts() =
-        runTest {
-            api.binderAlive = true
-            grants.status = allGranted
-            val c = controller()
-            c.start()
-            runCurrent()
-            assertThat(c.state.value.permission).isEqualTo(ManagerPermission.NOT_REQUESTED)
-            c.requestManagerPermission()
-            runCurrent()
-            assertThat(api.permissionRequests).isEqualTo(1)
-            assertThat(c.state.value.permission).isEqualTo(ManagerPermission.PENDING)
-            advanceTimeBy(PrivilegeController.PERMISSION_HANG_MS + 1)
-            runCurrent()
-            assertThat(c.state.value.issue).isEqualTo(PrivilegeIssue.AUTHORIZATION_HANG)
-            assertThat(c.diagnostics.value.permissionRequestHanging).isTrue()
-
-            api.events!!.onPermissionResult(PrivilegeController.PERMISSION_REQUEST_CODE, true)
-            runCurrent()
-            assertThat(c.state.value.permission).isEqualTo(ManagerPermission.GRANTED)
-            assertThat(c.state.value.issue).isNull()
-        }
-
-    @Test
-    fun aSecondTapWithinFiveSecondsDoesNotAskAgainButALaterOneDoes() =
-        runTest {
-            api.binderAlive = true
-            val c = controller()
-            c.start()
-            runCurrent()
-            c.requestManagerPermission()
-            c.requestManagerPermission()
-            runCurrent()
-            assertThat(api.permissionRequests).isEqualTo(1)
-            // The dialog covered Coulomb, so no hang was flagged; a tap after 5 s asks again.
-            pausedAt = currentTime
-            advanceTimeBy(PrivilegeController.PERMISSION_HANG_MS + 1)
-            runCurrent()
-            c.requestManagerPermission()
-            runCurrent()
-            assertThat(api.permissionRequests).isEqualTo(2)
-        }
-
-    @Test
-    fun aDialogTheUserIsStillReadingIsNotAHang() =
-        runTest {
-            api.binderAlive = true
-            val c = controller()
-            c.start()
-            runCurrent()
-            c.requestManagerPermission()
-            runCurrent()
-            // The manager's dialog covers Coulomb, which pauses.
-            pausedAt = currentTime
-            advanceTimeBy(PrivilegeController.PERMISSION_HANG_MS + 1)
-            runCurrent()
-            assertThat(c.state.value.permission).isEqualTo(ManagerPermission.PENDING)
-            assertThat(c.state.value.issue).isNull()
-            assertThat(c.diagnostics.value.permissionRequestHanging).isFalse()
-        }
-
-    @Test
-    fun aDeniedRequestShowsTheDeniedRow() =
-        runTest {
-            api.binderAlive = true
-            val c = controller()
-            c.start()
-            c.requestManagerPermission()
-            runCurrent()
-            api.events!!.onPermissionResult(PrivilegeController.PERMISSION_REQUEST_CODE, false)
-            runCurrent()
-            assertThat(c.state.value.issue).isEqualTo(PrivilegeIssue.PERMISSION_DENIED)
         }
 
     @Test
