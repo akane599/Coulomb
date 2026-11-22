@@ -202,8 +202,21 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   through an untracked `keystore.properties`, which `tools/release/build.sh` reads (ADR-0067 §7);
   0.1.0 (version code 2) was built, signed with it and verified, and not published. **Owner
   decision 2026-11-22:** the release waits for the R8 smoke test (audit TEST-002: the release
-  build binds the worker, streams one dump and parses it) on the emulator or the phone. The
-  emulator host was offline at every check that day.
+  build binds the worker, streams one dump and parses it) on the emulator or the phone.
+- **R8 smoke test passed (2026-11-22, TEST-002).** 0.1.0 was rebuilt from `b179bcd` (SHA-256
+  `b07babe34570f75096a2d9a3c3e33531b3b8f03dbc3d4670c009e59127597b16`, 7,549,236 bytes) and run
+  on `pixel-api37` in a read-only session, with the owner's agreement to replace the development
+  build there for that session only (`docs/releasing.md`, "The smoke test"). Onboarding through
+  the Shizuku fork (13.7.0, shell) passed. Shizuku started `CoulombPrivilegedService` as
+  `io.github.akane599.coulomb:priv` (uid 2000), the grants went through it, the sources read
+  through the worker were Available, and the worker exited on its own after 60 s idle.
+  `s5.batterystats_proto` was Available; S4 was Limited with `NO_DEVICE`, as this AVD build's
+  fixture is. The Timeline showed the screen-off snapshot. Logcat had no crash, no missing-code
+  error and no warning from Coulomb. After the session the AVD started with its development
+  build (0.0.1) as before. Publishing is the owner's step. Not covered: the phone, and Drain's
+  per-app list, which needs an unplug the emulator was not asked to simulate.
+- The emulator host was unreachable earlier that day because a proxy's TUN on the build server
+  captured the traffic to it; the owner stopped the proxy.
 - **Repository audit verified (2026-11-22, owner request).** An automated audit at `257d766` listed
   97 findings. Each was checked against the tree by independent read-only reviewers: 54 confirmed,
   38 partly, 4 by design (CONC-016, BUG-050, BUG-018, CONC-006), 1 not a bug (BUG-056). Fixed with

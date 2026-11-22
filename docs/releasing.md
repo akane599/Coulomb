@@ -47,8 +47,38 @@ and names the missing ones.
    not verify or is signed with a debug key, and an APK of 15 MB or more (SPEC 16.5). It writes
    `build/release/coulomb-<version>.apk` with its SHA-256 file and prints the signing
    certificate's digest.
-3. Publish: create the tag `v<version>`, push it, and create the GitHub Release with the two
+3. Run the smoke test below on that exact APK. A release whose smoke test failed, or was
+   skipped, is not published.
+4. Publish: create the tag `v<version>`, push it, and create the GitHub Release with the two
    files. The script prints both commands and runs neither.
+
+## The smoke test (SPEC 15.5)
+
+The release build is shrunk by R8 and no host test runs it. Before publishing, the APK that
+`tools/release/build.sh` wrote runs once on the API 37 emulator, through Shizuku (audit TEST-002):
+
+1. Start the AVD with `-read-only -no-snapshot-save` (and `-no-window -no-audio -no-boot-anim`).
+   Nothing written in this session is kept, so the development build installed there and its data
+   come back at the next start. Check that once with a marker file in `/data/local/tmp`: gone after
+   a restart.
+2. Start the Shizuku fork's server from `adb shell` (its `libshizuku.so`, as in
+   `tools/emulator/mode-switch.sh`). The original Shizuku cannot authorize apps on Android 17.
+3. In that session, uninstall the development build and install the release APK after checking it
+   against its `.sha256` file. `dumpsys package` must show the release's version and no
+   `DEBUGGABLE` flag.
+4. Open Coulomb, choose "Connect Shizuku", allow notifications and allow Coulomb in Shizuku.
+5. It passes when all of these hold:
+   - Privileges shows "Helper process: Ready", and `ps -A` shows `io.github.akane599.coulomb:priv`
+     running as `shell` (the worker bind);
+   - the sources under "With the helper process" read Available (dumps streamed through the
+     worker);
+   - "Battery statistics in detail" (`s5.batterystats_proto`) reads Available, and "Per-app drain"
+     (S4) reads Available or, on this AVD, Limited with `NO_DEVICE`, as its fixture does (Wire
+     parses);
+   - after a screen off and on, the Timeline shows the snapshot;
+   - logcat since the install has no `FATAL EXCEPTION`, no `ClassNotFoundException`,
+     `NoSuchMethodError` or other missing-code error, and no warning from Coulomb's own tags.
+6. Stop the emulator. Record the APK's digest, its commit and the result in `docs/progress.md`.
 
 The certificate digest the script prints is the same for every release. It is worth stating in the
 first release's notes, so that anyone can check a download with
