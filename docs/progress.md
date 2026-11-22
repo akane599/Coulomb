@@ -226,8 +226,41 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   - A helper hang after Shizuku allowed Coulomb says so on Now, Drain and Timeline (BUG-046); CI and
     the pre-push hook compare every screenshot with its golden (TEST-001, ADR-0031).
   - Independent reviews of the attribution and clock changes found five minor points, all fixed
-    (`c600bf4`, `0adc5d8`). TEST-002 waits for a device. The low findings stay in the audit's local
-    notes for later.
+    (`c600bf4`, `0adc5d8`). TEST-002 waits for a device.
+  - The low findings followed, each with a test that fails without its fix where one could be
+    written:
+    - Automation: a snapshot call reports a failed or timed-out snapshot, and its revert respects
+      the Action Center switch (BUG-001, BUG-002).
+    - Drain: a named reference is marked only on a recent heavy snapshot; two references are
+      ordered by the boot clock; Today shows only a reference of the current local day; a link
+      into Drain shows its list (BUG-001, BUG-032, BUG-006, BUG-060).
+    - Compare: a component one source does not name is "not reported" (BUG-052).
+    - Surfaces and screens: the last night is the newest by boot; a blocked digest or notice is not
+      counted as given; App detail picks the window's insight among all the app's open ones; a
+      pasted design capacity is kept as typed; the Doze allowlist action says it reaches every
+      profile; level windows that do not meet are separate stretches (BUG-034, BUG-013, BUG-033,
+      BUG-037, BUG-021, BUG-028). SPEC 5 names `-c`, never `--checkin` (DOC-001).
+    - Collector: the profile loads before the first snapshot needs it; a failed label lookup costs
+      the names only; the charge counter calibrates on every sample; a history read without
+      records advances only when whole; Delete all data holds the collector (BUG-027, DATA-018,
+      BUG-008, DATA-007, CONC-023).
+    - Health: a gap-closed session gives no capacity estimate; the curve's minutes and hours come
+      before its first raw sample; a charge time needs exact levels (BUG-041, DATA-006, BUG-030).
+    - Privileges: in-app dumps follow the grants; kernel rows are probed again when the
+      connection changes; the permission hang waits for the dialog; unbinds are ordered and a
+      cancelled bind leaves no worker (BUG-025, BUG-045, BUG-024, BUG-022, CONC-010, CONC-012).
+    - Attribution: an app whose counters vanish inside a window keeps the use its consecutive
+      windows saw, while retention still keeps the counters (2 h). The rest is in
+      `docs/questions.md` (BUG-062, one independent review: no double counting).
+    - Performance: a dump has one deadline for bind, stream and fallback, and the health and rail
+      reads get what the 4 s budget left (PERF-004); the action screens read a page of the log and
+      ask the phone only after an action (PERF-007); the rule context reads only what changed
+      (PERF-001; the rules still all run on it).
+    - Tests and tools: a 20 MB history dump parses in a 64 MB JVM heap (TEST-003; ART's heap on
+      the phone stays a deferred run); the manifest gate keeps every library's finding (OPS-002);
+      the validation capture copies the database and its log as one moment (OPS-001); protocol A
+      judges one unbroken run by the elapsed clock (OPS-003).
+    - Still open (P3): the Timeline's current line is drawn behind a boot whose clock was stale.
 - **Parity matrix and the unread sources (SPEC 2, 5, 18; ADR-0068).** The SPEC 18 audit found
   parity rows without a screen and sources never read; each now has one, on stored data:
   - App detail: CPU time (user and system), the modeled share of mobile radio time, syncs with
