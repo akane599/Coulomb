@@ -3,6 +3,8 @@
 
 package io.github.akane599.coulomb.core.privileged
 
+import io.github.akane599.coulomb.core.model.GrantStatus
+
 /*
  * The worker allowlist (SPEC 19.1) as typed ids. The AIDL carries only these integer ids, so the
  * app cannot ask the worker for anything outside this file. Changing an entry needs a spec change
@@ -225,3 +227,13 @@ internal object WorkerLimits {
     /** Upper bound for the transport test stream (P1 gate uses 20 MB). */
     const val MAX_TEST_PATTERN_BYTES = 256L * 1024 * 1024
 }
+
+/**
+ * Whether [grants] let Coulomb's own process dump this mode without the worker (ADR-0010): the
+ * route that survives the worker stopping, so the source's tier is T1 (audit BUG-025).
+ */
+public fun BatteryStatsMode.dumpableInApp(grants: GrantStatus): Boolean =
+    grants.canDumpBatteryStats && (!listsAllUsers || grants.interactAcrossUsers)
+
+/** As [BatteryStatsMode.dumpableInApp], for a service: one an app cannot look up never is. */
+public fun SystemService.dumpableInApp(grants: GrantStatus): Boolean = inApp && grants.dump

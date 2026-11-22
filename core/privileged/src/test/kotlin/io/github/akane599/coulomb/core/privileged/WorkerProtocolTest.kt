@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.core.privileged
 
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.model.GrantStatus
 import org.junit.Test
 
 /** The batterystats allowlist (SPEC 19.1): exact arguments per mode, and no `--checkin` ever. */
@@ -48,6 +49,21 @@ class WorkerProtocolTest {
     fun theCheckinBranchesNeedTheOtherUsersApps() {
         assertThat(BatteryStatsMode.entries.filter { it.listsAllUsers })
             .containsExactly(BatteryStatsMode.PROTO, BatteryStatsMode.CHECKIN, BatteryStatsMode.CHECKIN_HISTORY)
+    }
+
+    /** Audit BUG-025: a target is T1 only where the in-app route can take it under the grants. */
+    @Test
+    fun theInAppRouteTakesOnlyTheTargetsItCan() {
+        val durable = GrantStatus(batteryStats = true, dump = true, usageStats = true, usageStatsPermission = true)
+        assertThat(BatteryStatsMode.HELP.dumpableInApp(durable)).isTrue()
+        assertThat(BatteryStatsMode.USAGE_PROTO.dumpableInApp(durable)).isTrue()
+        // These list every user's apps, which needs INTERACT_ACROSS_USERS in Coulomb's process.
+        assertThat(BatteryStatsMode.PROTO.dumpableInApp(durable)).isFalse()
+        assertThat(BatteryStatsMode.CHECKIN_HISTORY.dumpableInApp(durable)).isFalse()
+        assertThat(BatteryStatsMode.PROTO.dumpableInApp(durable.copy(interactAcrossUsers = true))).isTrue()
+        // An app cannot look the battery service up at all.
+        assertThat(SystemService.ALARM.dumpableInApp(durable)).isTrue()
+        assertThat(SystemService.BATTERY.dumpableInApp(durable.copy(interactAcrossUsers = true))).isFalse()
     }
 
     private companion object {

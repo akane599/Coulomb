@@ -35,6 +35,7 @@ import io.github.akane599.coulomb.core.privileged.SettingsNamespace
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
 import io.github.akane599.coulomb.core.privileged.WorkerStatusCode
+import io.github.akane599.coulomb.core.privileged.dumpableInApp
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -534,10 +535,7 @@ internal class PrivilegeController(
         dump(
             viaWorker = { w, sink -> w.dumpBatteryStats(mode.id, historyStart, sink) },
             inApp =
-                InAppTarget(BATTERYSTATS, mode.args(historyStart)) {
-                    it.canDumpBatteryStats &&
-                        (!mode.listsAllUsers || it.interactAcrossUsers)
-                },
+                InAppTarget(BATTERYSTATS, mode.args(historyStart)) { mode.dumpableInApp(it) },
             timeoutMs = timeoutMs,
             isComplete = isComplete,
             route = route,
@@ -554,7 +552,7 @@ internal class PrivilegeController(
         dump(
             viaWorker = { w, sink -> w.dumpService(service.id, sink) },
             // A service apps cannot look up needs the worker; without it the result is NO_ACCESS.
-            inApp = InAppTarget(service.binderName, emptyArray()) { it.dump }.takeIf { service.inApp },
+            inApp = InAppTarget(service.binderName, emptyArray()) { service.dumpableInApp(it) }.takeIf { service.inApp },
             timeoutMs = timeoutMs,
             isComplete = isComplete,
             route = route,

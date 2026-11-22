@@ -43,6 +43,7 @@ import io.github.akane599.coulomb.core.privileged.RoutePreference
 import io.github.akane599.coulomb.core.privileged.SettingsNamespace
 import io.github.akane599.coulomb.core.privileged.SysfsRoot
 import io.github.akane599.coulomb.core.privileged.SystemService
+import io.github.akane599.coulomb.core.privileged.dumpableInApp
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.InputStream
@@ -257,16 +258,17 @@ public class CapabilityProber
         /** S5: the flags this build's `dumpsys batterystats -h` documents. */
         private suspend fun batteryStatsFlags(): Capability {
             val id = CapabilityId.BATTERYSTATS_FLAGS
+            val inApp = BatteryStatsMode.HELP.dumpableInApp(grants())
             val result = access.dumpBatteryStats(BatteryStatsMode.HELP) { drain(it) }
-            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier())
+            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier(inApp))
             val help = String(drained.head, Charsets.UTF_8)
             val flags = KNOWN_BATTERYSTATS_FLAGS.filter { flag -> flagPattern(flag).containsMatchIn(help) }
             val missing = REQUIRED_BATTERYSTATS_FLAGS - flags.toSet()
             val detail = mapOf("flags" to flags.joinToString(","), "route" to routeOf(result))
             return if (missing.isEmpty()) {
-                available(id, tierOf(result), detail)
+                available(id, tierOf(result, inApp), detail)
             } else {
-                cap(id, DEGRADED, tierOf(result), "missing ${missing.joinToString(",")}", null, detail)
+                cap(id, DEGRADED, tierOf(result, inApp), "missing ${missing.joinToString(",")}", null, detail)
             }
         }
 
@@ -274,16 +276,17 @@ public class CapabilityProber
             id: CapabilityId,
             mode: BatteryStatsMode,
         ): Capability {
+            val inApp = mode.dumpableInApp(grants())
             val result = access.dumpBatteryStats(mode) { drain(it) }
-            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier())
-            if (drained.bytes == 0L) return unavailable(id, tierOf(result), "empty output", FixAction.NONE)
+            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier(inApp))
+            if (drained.bytes == 0L) return unavailable(id, tierOf(result, inApp), "empty output", FixAction.NONE)
             val detail =
                 buildMap {
                     put("bytes", drained.bytes.toString())
                     put("route", routeOf(result))
                     if (mode == BatteryStatsMode.PROTO) put("looks_like_proto", looksLikeProto(drained.head).toString())
                 }
-            return streamed(id, result, drained, detail)
+            return streamed(id, result, drained, detail, inApp)
         }
 
         /**
@@ -293,13 +296,14 @@ public class CapabilityProber
          */
         private suspend fun usageDump(): Capability {
             val id = CapabilityId.BATTERYSTATS_USAGE
+            val inApp = BatteryStatsMode.USAGE_PROTO.dumpableInApp(grants())
             val result =
                 access.dumpBatteryStats(
                     BatteryStatsMode.USAGE_PROTO,
                     isComplete = { parsed: Parsed<UsageStatsDump?> -> parsed.report.complete },
                     route = RoutePreference.IN_APP_FIRST,
                 ) { usageParser.parse(it) }
-            val parsed = result.valueOrNull() ?: return failed(id, result, dumpTier())
+            val parsed = result.valueOrNull() ?: return failed(id, result, dumpTier(inApp))
             val dump = parsed.value
             val failures = dump?.failures.orEmpty().filterValues { it > 0 }
             val detail =
@@ -315,14 +319,14 @@ public class CapabilityProber
                 }
             return when {
                 dump == null -> {
-                    cap(id, DEGRADED, tierOf(result), "no usage dump parsed", null, detail)
+                    cap(id, DEGRADED, tierOf(result, inApp), "no usage dump parsed", null, detail)
                 }
 
                 failures.isNotEmpty() -> {
                     cap(
                         id,
                         DEGRADED,
-                        tierOf(result),
+                        tierOf(result, inApp),
                         "failed checks: ${failures.keys.joinToString(",")}",
                         null,
                         detail,
@@ -333,7 +337,7 @@ public class CapabilityProber
                     cap(
                         id,
                         DEGRADED,
-                        tierOf(result),
+                        tierOf(result, inApp),
                         (result as? DumpResult.Partial)?.reason?.name,
                         null,
                         detail,
@@ -341,7 +345,7 @@ public class CapabilityProber
                 }
 
                 else -> {
-                    available(id, tierOf(result), detail)
+                    available(id, tierOf(result, inApp), detail)
                 }
             }
         }
@@ -353,14 +357,15 @@ public class CapabilityProber
          */
         private suspend fun historyCursor(): Capability {
             val id = CapabilityId.BATTERYSTATS_HISTORY
+            val inApp = BatteryStatsMode.CHECKIN_HISTORY.dumpableInApp(grants())
             val result = access.dumpBatteryStats(BatteryStatsMode.CHECKIN_HISTORY, historyStart = Long.MAX_VALUE) { drain(it) }
-            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier())
+            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier(inApp))
             val hasNext = String(drained.head, Charsets.UTF_8).lineSequence().any { it.startsWith(NEXT_LINE) }
             val detail = mapOf("bytes" to drained.bytes.toString(), "route" to routeOf(result), "has_next" to hasNext.toString())
             return when {
-                drained.bytes == 0L -> unavailable(id, tierOf(result), "empty output", FixAction.NONE)
-                !hasNext -> cap(id, DEGRADED, tierOf(result), "no NEXT line", null, detail)
-                else -> streamed(id, result, drained, detail)
+                drained.bytes == 0L -> unavailable(id, tierOf(result, inApp), "empty output", FixAction.NONE)
+                !hasNext -> cap(id, DEGRADED, tierOf(result, inApp), "no NEXT line", null, detail)
+                else -> streamed(id, result, drained, detail, inApp)
             }
         }
 
@@ -368,9 +373,20 @@ public class CapabilityProber
             id: CapabilityId,
             service: SystemService,
         ): Capability {
+            val inApp = service.dumpableInApp(grants())
             val result = access.dumpService(service) { drain(it) }
-            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier())
-            return streamed(id, result, drained, mapOf("bytes" to drained.bytes.toString(), "route" to routeOf(result)))
+            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier(inApp))
+            return streamed(
+                id,
+                result,
+                drained,
+                inApp = inApp,
+                detail =
+                    mapOf(
+                        "bytes" to drained.bytes.toString(),
+                        "route" to routeOf(result),
+                    ),
+            )
         }
 
         /** S19: the thermal service dump (T1/T2) plus the public headroom API (T0) as detail. */
@@ -379,9 +395,22 @@ public class CapabilityProber
             val pm = context.getSystemService(PowerManager::class.java)
             val headroom = runCatching { pm?.getThermalHeadroom(THERMAL_FORECAST_S) }.getOrNull()
             val headroomDetail = "headroom_api" to (headroom != null && !headroom.isNaN()).toString()
+            val inApp = SystemService.THERMAL.dumpableInApp(grants())
             val result = access.dumpService(SystemService.THERMAL) { drain(it) }
-            val drained = result.valueOrNull() ?: return failed(id, result, dumpTier()).let { it.copy(detail = it.detail + headroomDetail) }
-            return streamed(id, result, drained, mapOf("bytes" to drained.bytes.toString(), "route" to routeOf(result), headroomDetail))
+            val drained =
+                result.valueOrNull() ?: return failed(id, result, dumpTier(inApp)).let { it.copy(detail = it.detail + headroomDetail) }
+            return streamed(
+                id,
+                result,
+                drained,
+                inApp = inApp,
+                detail =
+                    mapOf(
+                        "bytes" to drained.bytes.toString(),
+                        "route" to routeOf(result),
+                        headroomDetail,
+                    ),
+            )
         }
 
         /** S8: SystemSuspend's own dump when it exists, else only batterystats' kernel wakelock totals. */
@@ -389,10 +418,16 @@ public class CapabilityProber
             val id = CapabilityId.KERNEL_WAKELOCKS
             val result = access.dumpService(SystemService.SUSPEND_CONTROL_INTERNAL) { drain(it) }
             if (result is DumpResult.Complete && result.value.bytes > 0) {
-                return available(id, tierOf(result), mapOf("source" to "suspend_control_internal"))
+                return available(
+                    id,
+                    tierOf(result, SystemService.SUSPEND_CONTROL_INTERNAL.dumpableInApp(grants())),
+                    mapOf("source" to "suspend_control_internal"),
+                )
             }
             val reason = (result as? DumpResult.Unavailable)?.reason?.name ?: "partial"
-            return cap(id, DEGRADED, dumpTier(), "suspend_control_internal: $reason", null, mapOf("source" to "batterystats"))
+            // The fallback reads the kernel wakelocks from the checkin dump.
+            val fallback = dumpTier(BatteryStatsMode.CHECKIN.dumpableInApp(grants()))
+            return cap(id, DEGRADED, fallback, "suspend_control_internal: $reason", null, mapOf("source" to "batterystats"))
         }
 
         // --- root only (T3, ADR-0028) ------------------------------------------------------------------------
@@ -601,12 +636,13 @@ public class CapabilityProber
             result: DumpResult<Drained>,
             drained: Drained,
             detail: Map<String, String>,
+            inApp: Boolean,
         ): Capability {
             val partial = (result as? DumpResult.Partial)?.reason?.name
             return if (result is DumpResult.Complete && drained.bytes > 0) {
-                available(id, tierOf(result), detail)
+                available(id, tierOf(result, inApp), detail)
             } else {
-                cap(id, DEGRADED, tierOf(result), partial ?: "empty output", null, detail)
+                cap(id, DEGRADED, tierOf(result, inApp), partial ?: "empty output", null, detail)
             }
         }
 
@@ -633,17 +669,23 @@ public class CapabilityProber
                 is DumpResult.Unavailable -> "none"
             }
 
-        /** Dumps work at T1 whenever DUMP and the usage-stats op are granted, whichever route ran. */
-        private fun tierOf(result: DumpResult<*>): AccessTier {
+        /**
+         * A dump is T1 when it ran in Coulomb's own process, or when the grants let that route take
+         * this target, whichever route ran: it survives the worker stopping. A target the in-app
+         * route cannot take, such as the battery service or a dump that lists every user without
+         * INTERACT_ACROSS_USERS, is the worker's (audit BUG-025).
+         */
+        private fun tierOf(
+            result: DumpResult<*>,
+            inApp: Boolean,
+        ): AccessTier {
             val route = (result as? DumpResult.Complete)?.route ?: (result as? DumpResult.Partial)?.route
-            return if (route == Route.IN_APP || dumpGrants()) T1_DURABLE_GRANTS else workerTier()
+            return if (route == Route.IN_APP || inApp) T1_DURABLE_GRANTS else workerTier()
         }
 
-        private fun dumpTier(): AccessTier = if (dumpGrants()) T1_DURABLE_GRANTS else T2_PRIVILEGED_WORKER
+        private fun dumpTier(inApp: Boolean): AccessTier = if (inApp) T1_DURABLE_GRANTS else T2_PRIVILEGED_WORKER
 
-        private fun dumpGrants(): Boolean =
-            access.state.value.grants
-                .let { it.dump && it.usageStats }
+        private fun grants() = access.state.value.grants
 
         private fun workerTier(): AccessTier =
             if (access.state.value.server
