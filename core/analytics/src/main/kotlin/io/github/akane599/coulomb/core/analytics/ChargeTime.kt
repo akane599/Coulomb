@@ -66,7 +66,8 @@ public object ChargeTimes {
     /**
      * Time from the last of [current], this charge's level line, to [target]. [history] is newest
      * first; a past charge counts only if it started below the level the pace is read from (the
-     * current level without a pace), reached [target] and did not pause on the way.
+     * current level without a pace), recorded the current level and [target] themselves, and did
+     * not pause on the way.
      */
     public fun toLevel(
         current: List<ChargeLevel>,
@@ -80,7 +81,10 @@ public object ChargeTimes {
         // The last arrival at this level, which is the highest so far (checked above).
         val reachedLevelNs = current[current.indexOfLast { it.levelPct < level } + 1].elapsedNs
         val spentMin = (now.elapsedNs - reachedLevelNs) / NS_PER_MIN
-        val covering = history.filter { covers(it.points, pace?.fromLevel ?: level, target) && !paused(it.points, level, target) }
+        val covering =
+            history.filter {
+                covers(it.points, pace?.fromLevel ?: level, target) && times(it.points, level, target) && !paused(it.points, level, target)
+            }
         val same = covering.filter { it.sameCharger }
         val (pool, basis) =
             when {
@@ -128,6 +132,21 @@ public object ChargeTimes {
         from: Int,
         to: Int,
     ): Boolean = points.isNotEmpty() && points.first().levelPct < from && points.any { it.levelPct >= to }
+
+    /**
+     * Whether [points] time the way from [from] to [to]: both levels were recorded themselves, not
+     * jumped over, at different moments. Minute history keeps each minute's last level, so a
+     * skipped level would time the way from the next one, or as no time at all (audit BUG-030).
+     */
+    private fun times(
+        points: List<ChargeLevel>,
+        from: Int,
+        to: Int,
+    ): Boolean {
+        val start = points.firstOrNull { it.levelPct >= from } ?: return false
+        val end = points.firstOrNull { it.levelPct >= to } ?: return false
+        return start.levelPct == from && end.levelPct == to && end.elapsedNs > start.elapsedNs
+    }
 
     /** A step from [from] to [to] of at least [HOLD_STEP_MIN] and [HOLD_STEP_SHARE] times the median step. */
     private fun paused(

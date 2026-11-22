@@ -141,6 +141,17 @@ class ChargeTimeTest {
         assertThat(ChargeTimes.toLevel(current, listOf(PastCharge(true, held)) + steady.take(2), 100)).isNull()
     }
 
+    /** Audit BUG-030: a past charge that jumped over the current level or the target does not time the way. */
+    @Test
+    fun aPastChargeThatSkippedALevelDoesNotCount() {
+        // Minute history: 49% then 53%, so 50% and 52% were never recorded.
+        val skipped = line(20, minutesPerPoint = 1.0, tail = 30.0).filter { it.levelPct !in 50..52 }
+        val current = line(40, 50, minutesPerPoint = 1.0)
+        assertThat(ChargeTimes.toLevel(current, List(3) { PastCharge(true, skipped) }, 52)).isNull()
+        // The same charges time the way from 60% to 80%, which they recorded.
+        assertThat(ChargeTimes.toLevel(line(50, 60, minutesPerPoint = 1.0), List(3) { PastCharge(true, skipped) }, 80)).isNotNull()
+    }
+
     /** Points from [from] to [to] at [minutesPerPoint], then, with a [tail], 80% to 100% over it. */
     private fun line(
         from: Int,
