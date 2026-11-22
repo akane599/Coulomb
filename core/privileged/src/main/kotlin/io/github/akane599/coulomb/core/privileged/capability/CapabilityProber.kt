@@ -25,8 +25,6 @@ import io.github.akane599.coulomb.core.model.CapabilityState.AVAILABLE
 import io.github.akane599.coulomb.core.model.CapabilityState.DEGRADED
 import io.github.akane599.coulomb.core.model.CapabilityState.UNAVAILABLE
 import io.github.akane599.coulomb.core.model.FixAction
-import io.github.akane599.coulomb.core.model.ManagerPermission
-import io.github.akane599.coulomb.core.model.ManagerStatus
 import io.github.akane599.coulomb.core.model.PrivilegeState
 import io.github.akane599.coulomb.core.model.kernel.KernelPaths
 import io.github.akane599.coulomb.core.model.parse.Parsed
@@ -65,6 +63,18 @@ public class CapabilityProber
         private val config: PrivilegeConfig,
         private val usageParser: UsageParser,
     ) {
+        /**
+         * The kernel rows again when [stored] no longer fit the connection (ADR-0029 §5, audit
+         * BUG-024): after a switch between root and shell, or a lost or new connection. Null when
+         * they fit, or when the connection changed again while the files were read.
+         */
+        public suspend fun kernelAgain(stored: List<Capability>): List<Capability>? {
+            val state = access.state.value
+            if (!KernelRows.stale(stored, state)) return null
+            val found = kernelSources()
+            return found.takeIf { access.state.value.connection == state.connection }
+        }
+
         public suspend fun probeAll(): List<Capability> {
             access.refreshGrants()
             return buildList {
@@ -439,13 +449,8 @@ public class CapabilityProber
          * (ADR-0029 §6). As root, a path a vendor kernel or policy closes is reported per source.
          */
         private suspend fun kernelSources(): List<Capability> {
-            val ids = listOf(CapabilityId.WAKEUP_SOURCES, CapabilityId.SUSPEND_STATS, CapabilityId.WAKEUP_REASONS, CapabilityId.KERNEL_LOG)
-            val state = access.state.value
-            if (!state.workerUsable) return ids.map { unavailable(it, T3_ROOT, "no Shizuku connection", managerFix(state)) }
-            if (state.server?.isRoot !=
-                true
-            ) {
-                return ids.map { unavailable(it, T3_ROOT, "needs Shizuku started as root", FixAction.NEEDS_ROOT) }
+            KernelRows.withoutRoot(access.state.value)?.let { (reason, fix) ->
+                return KernelRows.IDS.map { unavailable(it, T3_ROOT, reason, fix) }
             }
             val files = access.readKernelFiles(KernelFrames.ALL_SOURCES) { it.readBytes() }
             val frames = files.valueOrNull()?.let(KernelFrames::walk)
@@ -718,15 +723,6 @@ public class CapabilityProber
             when (reason) {
                 FailureReason.NO_ACCESS -> managerFix(access.state.value)
                 FailureReason.ACCESS_DENIED -> FixAction.NEEDS_ROOT
-                else -> FixAction.NONE
-            }
-
-        private fun managerFix(state: PrivilegeState): FixAction =
-            when {
-                state.manager == ManagerStatus.NOT_INSTALLED -> FixAction.CONNECT_SHIZUKU
-                state.manager != ManagerStatus.RUNNING -> FixAction.START_SHIZUKU
-                state.permission != ManagerPermission.GRANTED -> FixAction.GRANT_SHIZUKU_PERMISSION
-                !state.grants.durableCore -> FixAction.RUN_BOOTSTRAP
                 else -> FixAction.NONE
             }
 

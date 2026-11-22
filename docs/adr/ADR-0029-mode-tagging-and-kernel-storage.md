@@ -317,3 +317,13 @@ step 1 comes first: lookup ids for `window_uid`, which is lossless.
 - Root sources have no phone fixtures, because the owner's phone has no root. Golden tests use the
   API 37 emulator's real files and kernel-format cases taken from the kernel sources (ADR-0028),
   marked hardware-limited per protocol G.
+
+## Amendment 2026-11-22 (audit BUG-024)
+
+The reprobe on a new connection had not been built: the kernel rows kept a root result after a
+switch to shell, even across a restart. Now every settled change of connection, worker use or root
+probes them again, but only when the stored rows no longer fit (`KernelRows.stale`). Without root
+the rows follow from the state and no file is touched. As root the files are read only when the
+stored rows were found without root; a root-to-root reconnect reads the same files, so it reads
+nothing. A result whose connection changed during the read is dropped, and a newer state cancels a
+probe still running.

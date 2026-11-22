@@ -91,6 +91,28 @@ public class CapabilityStore
             }
         }
 
+        /**
+         * Probes the kernel rows again when they no longer fit the connection (ADR-0029 §5): a
+         * switch between root and shell, or a lost or new connection, changes what they can read.
+         * Without root nothing is read. Never throws; a failed run leaves the rows as they were.
+         */
+        public suspend fun kernelAgain() {
+            try {
+                lock.withLock {
+                    withContext(Dispatchers.IO) {
+                        val stored = devices.observeCapabilities().first().mapNotNull { it.toModel() }
+                        prober.kernelAgain(stored)?.let { found -> devices.upsertCapabilities(found.map { it.toEntity() }) }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (
+                @Suppress("TooGenericExceptionCaught") e: Exception,
+            ) {
+                Log.w(TAG, "kernel probe failed", e)
+            }
+        }
+
         private companion object {
             const val TAG = "CapabilityStore"
         }

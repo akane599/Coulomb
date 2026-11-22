@@ -21,6 +21,7 @@ import io.github.akane599.coulomb.core.ui.format.DisplayUnits
 import io.github.akane599.coulomb.surface.PrivilegeNotifications
 import io.github.akane599.coulomb.surface.SurfaceObserver
 import io.github.akane599.coulomb.surface.WidgetPreviews
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -77,6 +78,14 @@ class CoulombApplication : Application() {
             if (!settings.settings.first().onboarded) return@launch
             privileged.state.first { it.settled() }
             capabilities.probeIfStale()
+            // The kernel rows follow the connection: a switch between root and shell, or a lost or
+            // new one, probes them again; a newer state cancels a probe still running (audit BUG-024).
+            privileged.state
+                .filter { it.settled() }
+                .distinctUntilChanged { a, b ->
+                    a.connection == b.connection && a.workerUsable == b.workerUsable &&
+                        a.server?.isRoot == b.server?.isRoot
+                }.collectLatest { capabilities.kernelAgain() }
         }
         scope.launch {
             // SPEC 12.1: a lost access is told once. The state changes with the manager's own events; nothing polls.
