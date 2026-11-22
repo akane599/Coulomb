@@ -85,7 +85,11 @@ class CapabilityProberTest {
     private val times = "${KernelPaths.WAKEUP_REASONS}/${KernelPaths.LAST_SUSPEND_TIME}"
     private val counters = file("${KernelPaths.SUSPEND_STATS}/success", "12\n") + file("${KernelPaths.SUSPEND_STATS}/fail", "1\n")
 
-    private fun List<Capability>.files() = filter { it.id != CapabilityId.KERNEL_LOG }
+    /** The rows read from the kernel-file stream: S9, S25 and S26. */
+    private fun List<Capability>.files() =
+        filter { it.id in KernelRows.IDS && it.id != CapabilityId.KERNEL_LOG }.also {
+            check(it.size == FILE_ROWS)
+        }
 
     @Test
     fun aWholeKernelReadReportsItsRows() =
@@ -127,9 +131,60 @@ class CapabilityProberTest {
             assertThat(unended.mapNotNull { it.reason }.filter { it.startsWith("closed") }).isEmpty()
         }
 
+    /**
+     * Audit BUG-008: a row is filed at the lowest tier it works at (ADR-0047 §7). What the worker
+     * does as shell is T2 under a root server too; only kernel data is root's.
+     */
+    @Test
+    fun workerRowsUnderARootServerAreFiledAtTheShellTier() =
+        runTest {
+            val prober = rootProber()
+            // Without INTERACT_ACROSS_USERS the batterystats dumps are the worker's, not Coulomb's own.
+            grants.status = grants.status.copy(interactAcrossUsers = false)
+
+            val rows = prober.probeAll().associateBy { it.id }
+
+            val shellLevel =
+                listOf(
+                    CapabilityId.BATTERY_DUMP,
+                    CapabilityId.BATTERYSTATS_PROTO,
+                    CapabilityId.STANDBY_BUCKETS,
+                    CapabilityId.PROTECTION_SETTINGS,
+                    CapabilityId.WORKER_BIND,
+                )
+            assertThat(shellLevel.associateWith { rows.getValue(it).tier }.filterValues { it != AccessTier.T2_PRIVILEGED_WORKER }).isEmpty()
+            assertThat(KernelRows.IDS.map { rows.getValue(it).tier }.distinct()).containsExactly(AccessTier.T3_ROOT)
+            // As root a read does not show that shell could make it (SPEC 5 S23: "T2 if readable, else T3").
+            assertThat(rows.getValue(CapabilityId.POWER_SUPPLY_SYSFS).tier).isEqualTo(AccessTier.T3_ROOT)
+        }
+
+    /** The one worker row whose tier follows the server's uid is probed again when that changes. */
+    @Test
+    fun aSwitchToShellProbesPowerSupplyAgain() =
+        runTest {
+            val prober = rootProber()
+            worker.sysfs = mapOf("battery/capacity" to "50\n".toByteArray())
+            val underRoot = prober.probeAll().filter { it.id in KernelRows.IDS || it.id == CapabilityId.POWER_SUPPLY_SYSFS }
+            assertThat(underRoot.single { it.id == CapabilityId.POWER_SUPPLY_SYSFS }.tier).isEqualTo(AccessTier.T3_ROOT)
+
+            api.stopServer()
+            runCurrent()
+            api.details = api.details.copy(uid = SHELL_UID)
+            worker.workerUid = SHELL_UID
+            api.startServer()
+            runCurrent()
+            val again = checkNotNull(prober.kernelAgain(underRoot)).associateBy { it.id }
+
+            assertThat(again.keys).containsExactlyElementsIn(KernelRows.IDS + CapabilityId.POWER_SUPPLY_SYSFS)
+            assertThat(again.getValue(CapabilityId.POWER_SUPPLY_SYSFS).tier).isEqualTo(AccessTier.T2_PRIVILEGED_WORKER)
+            assertThat(again.getValue(CapabilityId.WAKEUP_SOURCES).reason).isEqualTo(KernelRows.NEEDS_ROOT)
+        }
+
     private companion object {
         const val PACKAGE = "io.github.akane599.coulomb"
         const val UID = 10_123
+        const val SHELL_UID = 2000
+        const val FILE_ROWS = 3
         const val FINGERPRINT = "test/build/1"
     }
 }

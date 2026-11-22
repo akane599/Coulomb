@@ -65,13 +65,15 @@ public class CapabilityProber
     ) {
         /**
          * The kernel rows again when [stored] no longer fit the connection (ADR-0029 §5, audit
-         * BUG-024): after a switch between root and shell, or a lost or new connection. Null when
-         * they fit, or when the connection changed again while the files were read.
+         * BUG-024): after a switch between root and shell, or a lost or new connection. With them
+         * the power-supply row, while there is a worker to read it. Null when they fit, or when the
+         * connection changed again while the files were read.
          */
         public suspend fun kernelAgain(stored: List<Capability>): List<Capability>? {
             val state = access.state.value
             if (!KernelRows.stale(stored, state)) return null
-            val found = kernelSources()
+            // S23's tier follows the server's uid as the kernel rows do (audit BUG-008).
+            val found = kernelSources() + listOfNotNull(powerSupply().takeIf { state.workerUsable })
             return found.takeIf { access.state.value.connection == state.connection }
         }
 
@@ -556,10 +558,16 @@ public class CapabilityProber
         private suspend fun standbyBuckets(): Capability {
             val id = CapabilityId.STANDBY_BUCKETS
             val result = access.runQuery(PrivilegedQuery.STANDBY_BUCKETS) { drain(it) }
-            val drained = result.valueOrNull() ?: return failed(id, result, workerTier())
+            val drained = result.valueOrNull() ?: return failed(id, result, T2_PRIVILEGED_WORKER)
             val lines = String(drained.head, Charsets.UTF_8).lineSequence().count { it.contains(':') }
             val detail = mapOf("entries" to lines.toString())
-            return if (lines > 0) available(id, workerTier(), detail) else cap(id, DEGRADED, workerTier(), "no entries", null, detail)
+            return if (lines >
+                0
+            ) {
+                available(id, T2_PRIVILEGED_WORKER, detail)
+            } else {
+                cap(id, DEGRADED, T2_PRIVILEGED_WORKER, "no entries", null, detail)
+            }
         }
 
         /** S22: battery-related key names per namespace (values are never read here). */
@@ -574,8 +582,8 @@ public class CapabilityProber
                 }
             }
             failure?.takeIf { found.isEmpty() }?.let { return failedSmall(id, it) }
-            if (found.isEmpty()) return unavailable(id, workerTier(), "no battery-related keys", FixAction.NONE)
-            return available(id, workerTier(), mapOf("keys" to found.joinToString(",")))
+            if (found.isEmpty()) return unavailable(id, T2_PRIVILEGED_WORKER, "no battery-related keys", FixAction.NONE)
+            return available(id, T2_PRIVILEGED_WORKER, mapOf("keys" to found.joinToString(",")))
         }
 
         /** S23: which supplies exist and which standard battery attributes the worker can read. */
@@ -590,7 +598,7 @@ public class CapabilityProber
             val suppliesDetail = "supplies" to supplies.joinToString(",") { it.replace(PERIPHERAL_ID, "<id>") }
             val battery =
                 supplies.firstOrNull { it == "battery" }
-                    ?: return cap(id, DEGRADED, workerTier(), "no battery supply", null, mapOf(suppliesDetail))
+                    ?: return cap(id, DEGRADED, powerSupplyTier(), "no battery supply", null, mapOf(suppliesDetail))
             val readable = mutableListOf<String>()
             val denied = mutableListOf<String>()
             for (attr in STANDARD_BATTERY_ATTRIBUTES) {
@@ -603,9 +611,9 @@ public class CapabilityProber
             val needsRoot = "needs root: ${denied.joinToString(",")}"
             return when {
                 readable.isEmpty() && denied.isNotEmpty() -> cap(id, UNAVAILABLE, T3_ROOT, needsRoot, FixAction.NEEDS_ROOT, detail)
-                readable.isEmpty() -> cap(id, UNAVAILABLE, workerTier(), "no standard attributes", FixAction.NONE, detail)
-                denied.isEmpty() -> available(id, workerTier(), detail)
-                else -> cap(id, DEGRADED, workerTier(), needsRoot, null, detail)
+                readable.isEmpty() -> cap(id, UNAVAILABLE, powerSupplyTier(), "no standard attributes", FixAction.NONE, detail)
+                denied.isEmpty() -> available(id, powerSupplyTier(), detail)
+                else -> cap(id, DEGRADED, powerSupplyTier(), needsRoot, null, detail)
             }
         }
 
@@ -620,7 +628,7 @@ public class CapabilityProber
                         diag.workerUid?.let { put("uid", it.toString()) }
                         diag.workerSeLinuxContext?.let { put("selinux", it) }
                     }
-                return available(id, workerTier(), detail)
+                return available(id, T2_PRIVILEGED_WORKER, detail)
             }
             return unavailable(id, T2_PRIVILEGED_WORKER, state.workerFailure?.name ?: "not bound", managerFix(state))
         }
@@ -695,14 +703,21 @@ public class CapabilityProber
             inApp: Boolean,
         ): AccessTier {
             val route = (result as? DumpResult.Complete)?.route ?: (result as? DumpResult.Partial)?.route
-            return if (route == Route.IN_APP || inApp) T1_DURABLE_GRANTS else workerTier()
+            // A worker dump needs shell only, whatever uid the server runs as (audit BUG-008).
+            return if (route == Route.IN_APP || inApp) T1_DURABLE_GRANTS else T2_PRIVILEGED_WORKER
         }
 
         private fun dumpTier(inApp: Boolean): AccessTier = if (inApp) T1_DURABLE_GRANTS else T2_PRIVILEGED_WORKER
 
         private fun grants() = access.state.value.grants
 
-        private fun workerTier(): AccessTier =
+        /**
+         * S23 is "T2 if readable, else T3" (SPEC 5). Under a root server a read does not show that
+         * shell could make it, so the row is root's there, and [kernelAgain] probes it again after a
+         * switch. Every other worker row is filed at T2: the matrix shows the lowest tier a row
+         * works at (ADR-0047 §7, SPEC 4.1; audit BUG-008).
+         */
+        private fun powerSupplyTier(): AccessTier =
             if (access.state.value.server
                     ?.isRoot == true
             ) {
