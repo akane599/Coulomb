@@ -101,23 +101,7 @@ internal object AutomationModule {
             target: String,
             before: String?,
             after: String,
-        ): Long =
-            dao.insertAction(
-                ActionLogEntity(
-                    actionType = ActionType.AUTOMATION_CALL.id,
-                    target = target,
-                    beforeValue = before,
-                    afterValue = after,
-                    // Nothing of a call's own runs through the worker; a Doze profile's row is the Action Center's.
-                    tier = AccessTier.T0_UNPRIVILEGED,
-                    executedWall = System.currentTimeMillis(),
-                    revertedWall = null,
-                    origin = ActionOrigin.AUTOMATION,
-                    insightId = null,
-                    externalDriftWall = null,
-                    externalDriftValue = null,
-                ),
-            )
+        ): Long? = center.logCall(target, before, after)
 
         override suspend fun forget(id: Long) {
             dao.action(id)?.takeIf { it.actionType == ActionType.AUTOMATION_CALL.id }?.let { dao.deleteAction(it) }

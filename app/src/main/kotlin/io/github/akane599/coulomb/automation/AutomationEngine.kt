@@ -81,12 +81,12 @@ internal interface AutomationActions {
 
     suspend fun revert(id: Long): ActionResult
 
-    /** Writes an [ActionType.AUTOMATION_CALL] row and returns its id. */
+    /** Writes an [ActionType.AUTOMATION_CALL] row and returns its id; null while all data is erased (audit DATA-006). */
     suspend fun log(
         target: String,
         before: String?,
         after: String,
-    ): Long
+    ): Long?
 
     /** Removes the row of a call that was not carried out after all. */
     suspend fun forget(id: Long)
@@ -185,8 +185,7 @@ internal class AutomationEngine(
 
             else -> {
                 // The row first: the limit counts rows. [handle] takes the snapshot once the lock is free.
-                actions.log(target(call), null, AutomationCalls.ACCEPTED)
-                AutomationAnswer(Result.ACCEPTED)
+                if (actions.log(target(call), null, AutomationCalls.ACCEPTED) == null) CLOSED else AutomationAnswer(Result.ACCEPTED)
             }
         }
     }
@@ -208,7 +207,8 @@ internal class AutomationEngine(
             }
 
             else -> {
-                recorded(actions.log(target(call), before.toString(), pct.toString()), { true }) {
+                val row = actions.log(target(call), before.toString(), pct.toString()) ?: return CLOSED
+                recorded(row, { true }) {
                     ports.setChargeTarget(pct)
                     AutomationAnswer(Result.DONE)
                 }
@@ -302,7 +302,7 @@ internal class AutomationEngine(
         run: suspend () -> ActionResult,
     ): AutomationAnswer {
         if (log.full) return log.limited
-        val row = actions.log(target(call), before, after)
+        val row = actions.log(target(call), before, after) ?: return CLOSED
         val answer = recorded(row, { it.code in CHANGED }) { answer(run()) }
         return if (answer.code in CHANGED || answer.code == Result.UNCHANGED) answer else refuse(call, log, after, answer)
     }
@@ -382,6 +382,12 @@ internal class AutomationEngine(
     }
 
     companion object {
+        /**
+         * The log is closed while all data is erased: nothing that needs a row is done, and v1
+         * answers "failed" when the log cannot be written (audit BUG-059, DATA-006).
+         */
+        private val CLOSED = AutomationAnswer(Result.FAILED, Reason.FAILED)
+
         /** Four snapshots in two hours: 48 a day at most, each also behind the collector's own debounce. */
         const val SNAPSHOTS = 4
         const val SNAPSHOT_WINDOW_MS = 2 * 3_600_000L

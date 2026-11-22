@@ -106,6 +106,8 @@ finished code for ways around the permission and the limits; what it found is un
    (SPEC 0.2). A call reads the automation rows of the last day and the Doze profile rows it
    needs, never the whole log; the Action Center's own reads of rows in force leave the call rows
    out, and its screen draws the log fifty rows at a time.
+   Amended 2026-11-23 (audit DATA-006): while "Delete all data" erases, the log is closed to a
+   call's row too; the call does nothing and answers `failed` (ADR-0062 §14).
 9. **Version 1 is pinned.** The names and numbers live in `AutomationContract` (`:core:common`),
    every one prefixed with the application id; `docs/automation-api-v1.json` holds them, and a unit
    test fails when the two differ. A version only gains names; a change of meaning is a `/v2/`

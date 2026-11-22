@@ -46,6 +46,12 @@ public class ActionCenter internal constructor(
     /** All data is being erased: no change starts until the process restarts (audit CONC-001). */
     private var erasing = false
 
+    /**
+     * Held by the erase and by [logCall], always after [lock] and never the other way round: an
+     * automation call's row is written before the erase or not at all (audit DATA-006).
+     */
+    private val eraseGate = Mutex()
+
     /** The row whose command was sent in the current [guarded] call, if one was. */
     private var sent: Long? = null
 
@@ -79,15 +85,47 @@ public class ActionCenter internal constructor(
         lock.withLock {
             val inForce = activeRows().size
             if (inForce > 0) return@withLock inForce
-            erasing = true
-            var erased = false
-            try {
-                erase()
-                erased = true
-            } finally {
-                erasing = erased
+            eraseGate.withLock {
+                erasing = true
+                var erased = false
+                try {
+                    erase()
+                    erased = true
+                } finally {
+                    erasing = erased
+                }
             }
             0
+        }
+
+    /**
+     * Writes an Automation API call's own row (ADR-0065 §8) and returns its id; null, writing
+     * nothing, while all data is being erased and once it was (audit DATA-006). It waits for the
+     * erase only, never for an action: a call answers inside its broadcast's few seconds.
+     */
+    public suspend fun logCall(
+        target: String,
+        before: String?,
+        after: String,
+    ): Long? =
+        eraseGate.withLock {
+            if (erasing) return@withLock null
+            log.insert(
+                ActionLogEntity(
+                    actionType = ActionType.AUTOMATION_CALL.id,
+                    target = target,
+                    beforeValue = before,
+                    afterValue = after,
+                    // Nothing of a call's own runs through the worker; a Doze profile's row is the Action Center's.
+                    tier = AccessTier.T0_UNPRIVILEGED,
+                    executedWall = nowWallMs(),
+                    revertedWall = null,
+                    origin = ActionOrigin.AUTOMATION,
+                    insightId = null,
+                    externalDriftWall = null,
+                    externalDriftValue = null,
+                ),
+            )
         }
 
     /** [request] against the phone as it is now. Reads; writes nothing. */

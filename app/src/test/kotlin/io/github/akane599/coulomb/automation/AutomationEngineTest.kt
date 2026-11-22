@@ -55,6 +55,19 @@ class AutomationEngineTest {
         assertThat(center.rows).isEmpty()
     }
 
+    /** Audit DATA-006: while all data is erased a call gets no row, so nothing that needs one is done. */
+    @Test
+    fun nothingIsDoneWhileTheLogIsClosed() {
+        center.closed = true
+
+        assertThat(snapshot()).isEqualTo(AutomationAnswer(Result.FAILED, Reason.FAILED))
+        assertThat(call(AutomationCalls.SET_CHARGE_TARGET, target = 70)).isEqualTo(AutomationAnswer(Result.FAILED, Reason.FAILED))
+
+        assertThat(phone.snapshots).isEqualTo(0)
+        assertThat(phone.target).isEqualTo(80)
+        assertThat(center.rows).isEmpty()
+    }
+
     /** Audit BUG-001: "accepted" promises new figures, so a failed snapshot or a wait that ran out says so. */
     @Test
     fun aSnapshotThatFailsOrIsNotDoneInTimeIsNotAccepted() {
@@ -431,11 +444,15 @@ class AutomationEngineTest {
             return ActionResult.Done(id, "")
         }
 
+        /** The log is closed, as while all data is erased. */
+        var closed = false
+
         override suspend fun log(
             target: String,
             before: String?,
             after: String,
-        ): Long {
+        ): Long? {
+            if (closed) return null
             val id = nextId++
             rows.add(0, record(id, ActionType.AUTOMATION_CALL, target, before, after, ActionOrigin.AUTOMATION, false, phone.wall))
             return id

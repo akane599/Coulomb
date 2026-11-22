@@ -136,6 +136,9 @@ main recommendations are taken.
     erase confirmed during one waited for the collector while the collector waited for the lock,
     for ever. A confirmation that is stale is refused before anything stops; if the check under
     the lock refuses, the collector is started again, as after a failed erase.
+    Amended 2026-11-23 (audit DATA-006): an Automation API call's own row goes through the Action
+    Center too, behind a gate the erase holds. The row is written before the tables are cleared or
+    not at all, and a call that finds the log closed does nothing and answers "failed".
     Amended 2026-11-22 (audit DATA-008): a restored install's first start stays pending until the
     reset of §15 is stored, so a start cut short runs it again.
 
