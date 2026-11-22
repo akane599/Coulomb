@@ -238,7 +238,7 @@ class RuleContextLoaderTest {
             val later = session(SessionKind.SCREEN_OFF, d, e, startLevel = 86, endLevel = 84)
             val nightWindow = window(a, b, kind = WindowKind.SESSION, sessionId = night.id, measuredMah = 150.0)
             window(a, b, stats = listOf(stat(-1, DeviceKeys.DEEP_DOZE_COUNT, 2)))
-            window(d, e)
+            window(d, e, modeledMah = 10.0)
 
             val found = loader.load(e.wallMs, hour).screenOffSessions
             assertThat(found.map { it.id }).containsExactly(night.id, later.id).inOrder()
@@ -253,6 +253,35 @@ class RuleContextLoaderTest {
             // No counter reading: the level change stands in. A chain with no deep Doze entry says so.
             assertThat(found.last().ratePctPerHour).isWithin(1e-9).of(2 / 2.4)
             assertThat(found.last().deepIdleReached).isFalse()
+        }
+
+    /** Audit BUG-058: windows with a stretch missing, or without the device's counters, cannot say "no deep Doze". */
+    @Test
+    fun aSessionTheWindowsDoNotWhollyCoverIsNotJudgedNo() =
+        runTest {
+            val (a, b) = listOf(heavy(0.0), heavy(1.0))
+            val (c, d) = listOf(heavy(2.0), heavy(4.0))
+            session(SessionKind.DISCHARGE, a, d, endLevel = 70)
+            session(SessionKind.SCREEN_OFF, a, d, startLevel = 90, endLevel = 86)
+            window(a, b, modeledMah = 10.0)
+            window(c, d, modeledMah = 10.0)
+            assertThat(
+                loader
+                    .load(d.wallMs, hour)
+                    .screenOffSessions
+                    .single()
+                    .deepIdleReached,
+            ).isNull()
+
+            // The stretch is there now, but S5's device section was not read at its ends.
+            window(b, c)
+            assertThat(
+                loader
+                    .load(d.wallMs, hour)
+                    .screenOffSessions
+                    .single()
+                    .deepIdleReached,
+            ).isNull()
         }
 
     @Test

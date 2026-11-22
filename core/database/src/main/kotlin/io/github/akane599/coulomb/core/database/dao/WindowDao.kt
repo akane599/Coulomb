@@ -160,6 +160,14 @@ public data class ChainStep(
     val kernelCoverage: KernelCoverage? = null,
 )
 
+/** One window of a chain by its two snapshots ([WindowDao.chainLinks]). */
+public data class ChainLink(
+    val fromSnapshotId: Long,
+    val toSnapshotId: Long,
+    /** S5's device section was read at both ends, so the window holds the device's counters. */
+    val device: Boolean,
+)
+
 /** The per-UID records of one window. The uid and component rows' `windowId` is ignored on insert. */
 public data class WindowRows(
     val uids: List<WindowUid> = emptyList(),
@@ -315,6 +323,22 @@ public abstract class WindowDao {
         toBootSeq: Int,
         toElapsedNs: Long,
     ): List<ChainStep>
+
+    /**
+     * As [chainTotals], each window's two snapshots in time order: a chain covers a span only when
+     * its windows join end to end from the span's first snapshot to its last (audit BUG-058).
+     */
+    @Query(
+        "SELECT w.fromSnapshotId, w.toSnapshotId, w.modeledMah IS NOT NULL AS device " +
+            "FROM window_result w JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} AND $TO_IN_CHAIN ORDER BY s.bootSeq, s.elapsedNs",
+    )
+    public abstract suspend fun chainLinks(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<ChainLink>
 
     /**
      * Where the chain's first window starts. A chain whose first window starts after the span's

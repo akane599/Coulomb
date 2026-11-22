@@ -233,7 +233,9 @@ public class RuleContextLoader(
 
     /**
      * Whether deep Doze began inside [session], from the device's `deep_doze_count` over the
-     * session's chain of windows. Null without both end snapshots or without a window between them.
+     * session's chain of windows. Null without both end snapshots; "no" only when the windows join
+     * end to end over the whole session and each read the device's counters, since a stretch
+     * without them may hold the entry (ADR-0054 §4; audit BUG-058).
      */
     private suspend fun deepIdleReached(session: SessionEntity): Boolean? {
         val from = session.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
@@ -241,7 +243,13 @@ public class RuleContextLoader(
         if (!before(from, to)) return null
         val chain = Chain(from, to)
         if (device(DeviceKeys.DEEP_DOZE_COUNT, chain) > 0) return true
-        return if (windows.chainTotals(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs).windows > 0) false else null
+        val links = windows.chainLinks(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
+        val whole =
+            links.firstOrNull()?.fromSnapshotId == from.id &&
+                links.last().toSnapshotId == to.id &&
+                links.zipWithNext().all { (a, b) -> a.toSnapshotId == b.fromSnapshotId } &&
+                links.all { it.device }
+        return if (whole) false else null
     }
 
     /**
