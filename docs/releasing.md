@@ -29,6 +29,11 @@ The build reads the key from the environment and from nowhere else:
 | `COULOMB_KEY_ALIAS` | The key's alias (`coulomb` above) |
 | `COULOMB_KEY_PASSWORD` | The key's password (the same one, for PKCS12) |
 
+`tools/release/build.sh` can take them from a `keystore.properties` file at the repository's root
+instead (ignored by git; lines `storeFile=`, `storePassword=`, `keyAlias=`, `keyPassword=`, with the
+keystore itself kept outside the repository). A variable set in the environment wins over the file.
+The build itself reads only the environment.
+
 With none of them set, `:app:assembleRelease` leaves the APK unsigned
 (`app-release-unsigned.apk`), which is what CI builds. With only some of them set the build fails
 and names the missing ones.

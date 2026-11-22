@@ -40,6 +40,14 @@ either is the path the key takes into the build and the steps around it.
    Scheme v2). Key rotation, which needs v3, can be turned on with a later release if it is ever
    wanted.
 
+7. **Amended 2026-11-22: the release script also reads a local `keystore.properties`.** The owner
+   keeps the key's path and passwords in that file at the repository's root, ignored by git, with
+   the keystore itself outside the repository. `tools/release/build.sh` fills any of the four
+   variables the environment leaves unset from its `storeFile`, `storePassword`, `keyAlias` and
+   `keyPassword` lines; the build still reads only the environment, so CI and the pre-push hook
+   are unchanged. Reason: the owner's chosen place for the key, at no cost to §1's guarantee that
+   nothing of the key reaches the build any other way.
+
 ## Consequences
 
 - A release cannot be installed over a development build, or the other way round; the data moves

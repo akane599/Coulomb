@@ -6,11 +6,28 @@
 #
 # usage: tools/release/build.sh
 #   with COULOMB_KEYSTORE, COULOMB_KEYSTORE_PASSWORD, COULOMB_KEY_ALIAS and COULOMB_KEY_PASSWORD
-#   in the environment (docs/releasing.md).
+#   in the environment, or a local keystore.properties (docs/releasing.md).
 set -eu
 cd "$(dirname "$0")/../.."
 
 fail() { echo "release: $*" >&2; exit 2; }
+
+# A local keystore.properties (ignored by git; keys storeFile, storePassword, keyAlias, keyPassword)
+# can name the key instead. The environment wins, and the build itself still reads only the
+# environment (ADR-0067 §1, §7). The file is read as plain key=value lines.
+props=keystore.properties
+if [ -f "$props" ]; then
+  prop() { sed -n "s/^[[:space:]]*$1[[:space:]]*[=:][[:space:]]*//p" "$props" | tr -d '\r' | tail -n 1; }
+  [ -n "${COULOMB_KEYSTORE:-}" ] || COULOMB_KEYSTORE=$(prop storeFile)
+  [ -n "${COULOMB_KEYSTORE_PASSWORD:-}" ] || COULOMB_KEYSTORE_PASSWORD=$(prop storePassword)
+  [ -n "${COULOMB_KEY_ALIAS:-}" ] || COULOMB_KEY_ALIAS=$(prop keyAlias)
+  [ -n "${COULOMB_KEY_PASSWORD:-}" ] || COULOMB_KEY_PASSWORD=$(prop keyPassword)
+  case "$COULOMB_KEYSTORE" in
+    "" | /*) ;;
+    *) COULOMB_KEYSTORE="$PWD/$COULOMB_KEYSTORE" ;;
+  esac
+  export COULOMB_KEYSTORE COULOMB_KEYSTORE_PASSWORD COULOMB_KEY_ALIAS COULOMB_KEY_PASSWORD
+fi
 
 for name in COULOMB_KEYSTORE COULOMB_KEYSTORE_PASSWORD COULOMB_KEY_ALIAS COULOMB_KEY_PASSWORD; do
   eval "value=\${$name:-}"
