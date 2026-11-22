@@ -23,7 +23,11 @@ internal data class LedgerRecord(
 internal interface PrivilegeLedger {
     fun read(): LedgerRecord
 
-    fun write(record: LedgerRecord)
+    /**
+     * Reads, transforms and stores in one step, so that two updaters never write each other's
+     * stale record back (audit CONC-008). Writes only on a change. The record now stored.
+     */
+    fun update(transform: (LedgerRecord) -> LedgerRecord): LedgerRecord
 }
 
 internal class FilePrivilegeLedger(
@@ -45,7 +49,13 @@ internal class FilePrivilegeLedger(
             }.getOrDefault(LedgerRecord())
         }
 
-    override fun write(record: LedgerRecord) {
+    override fun update(transform: (LedgerRecord) -> LedgerRecord): LedgerRecord =
+        synchronized(lock) {
+            val old = read()
+            transform(old).also { if (it != old) store(it) }
+        }
+
+    private fun store(record: LedgerRecord) {
         val p = Properties()
         p.setProperty(KEY_VERIFIED, record.coreGrantsVerified.toString())
         record.verifiedFingerprint?.let { p.setProperty(KEY_FINGERPRINT, it) }

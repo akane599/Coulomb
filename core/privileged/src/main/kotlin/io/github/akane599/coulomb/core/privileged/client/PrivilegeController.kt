@@ -358,7 +358,7 @@ internal class PrivilegeController(
         val identity = managerIdentity() ?: return
         if (identity == boundManager) return
         boundManager = identity
-        scope.launch(io) { runCatching { ledger.write(ledger.read().copy(boundManager = identity)) } }
+        scope.launch(io) { runCatching { ledger.update { it.copy(boundManager = identity) } } }
     }
 
     private suspend fun onNoBinderCheck() {
@@ -474,9 +474,11 @@ internal class PrivilegeController(
     ) {
         val record = known ?: withContext(io) { ledger.read() }
         if (grants.durableCore && (!record.coreGrantsVerified || record.verifiedFingerprint != config.fingerprint)) {
-            withContext(
-                io,
-            ) { runCatching { ledger.write(record.copy(coreGrantsVerified = true, verifiedFingerprint = config.fingerprint)) } }
+            // On the record as it is now, not on the one read above: the manager may have been
+            // remembered in between (audit CONC-008).
+            withContext(io) {
+                runCatching { ledger.update { it.copy(coreGrantsVerified = true, verifiedFingerprint = config.fingerprint) } }
+            }
         }
         core.update {
             it.copy(
@@ -837,7 +839,7 @@ internal class PrivilegeController(
 
     override suspend fun simulateFingerprintChange() {
         if (!config.debuggable) return
-        withContext(io) { ledger.write(ledger.read().copy(verifiedFingerprint = SIMULATED_OLD_FINGERPRINT)) }
+        withContext(io) { ledger.update { it.copy(verifiedFingerprint = SIMULATED_OLD_FINGERPRINT) } }
         verifyGrantsAtStart()
     }
 

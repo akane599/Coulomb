@@ -385,10 +385,22 @@ internal class FakeGrants(
 internal class FakeLedger(
     var record: LedgerRecord = LedgerRecord(),
 ) : PrivilegeLedger {
-    override fun read(): LedgerRecord = record
+    /** Runs once, after the next read has taken its record: a write by someone else landing in between. */
+    var afterRead: (() -> Unit)? = null
 
-    override fun write(record: LedgerRecord) {
-        this.record = record
+    private fun landOtherWrite() {
+        val land = afterRead ?: return
+        afterRead = null
+        land()
+    }
+
+    override fun read(): LedgerRecord = record.also { landOtherWrite() }
+
+    @Synchronized
+    override fun update(transform: (LedgerRecord) -> LedgerRecord): LedgerRecord {
+        // One step: another write lands before it or after it, never inside.
+        landOtherWrite()
+        return transform(record).also { record = it }
     }
 }
 

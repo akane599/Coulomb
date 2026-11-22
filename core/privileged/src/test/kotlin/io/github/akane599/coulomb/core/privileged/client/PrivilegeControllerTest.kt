@@ -126,6 +126,46 @@ class PrivilegeControllerTest {
             assertThat(binderGrants.calls).isEmpty()
         }
 
+    /** Audit CONC-008: a verification written from a record read earlier dropped what was stored since. */
+    @Test
+    fun aGrantVerificationKeepsAManagerRememberedMeanwhile() =
+        runTest {
+            val c = controller()
+            c.start()
+            runCurrent()
+            grants.status = allGranted
+            ledger.afterRead = { ledger.record = ledger.record.copy(boundManager = MANAGER) }
+
+            c.refreshGrants()
+            runCurrent()
+
+            assertThat(
+                ledger.record,
+            ).isEqualTo(LedgerRecord(coreGrantsVerified = true, verifiedFingerprint = FINGERPRINT, boundManager = MANAGER))
+        }
+
+    @Test
+    fun aRememberedManagerKeepsAVerificationWrittenMeanwhile() =
+        runTest {
+            api.binderAlive = true
+            api.permissionGranted = true
+            grants.status = allGranted
+            ledger.record = LedgerRecord(coreGrantsVerified = true, verifiedFingerprint = FINGERPRINT)
+            val c = controller()
+            c.start()
+            runCurrent()
+            assertThat(ledger.record.boundManager).isNull()
+            ledger.afterRead = { ledger.record = ledger.record.copy(verifiedFingerprint = "test/build/2") }
+
+            // The first call binds the worker, which remembers the manager.
+            c.dumpText()
+            runCurrent()
+
+            assertThat(
+                ledger.record,
+            ).isEqualTo(LedgerRecord(coreGrantsVerified = true, verifiedFingerprint = "test/build/2", boundManager = MANAGER))
+        }
+
     @Test
     fun theManagerDyingDropsToT1AndANewBinderResumes() =
         runTest {
@@ -533,6 +573,7 @@ class PrivilegeControllerTest {
         const val PACKAGE = "io.github.akane599.coulomb"
         const val UID = 10_123
         const val FINGERPRINT = "test/build/1"
+        const val MANAGER = "moe.shizuku.privileged.api@13.6.0"
     }
 
     @Test
