@@ -443,3 +443,11 @@ Open, for the 72 h run to settle:
 - Adding a deferred source needs its parser, its capability probe and a row here.
 - One `Snapshot` column is added before the freeze. The identity hash in `SchemaTest` changes once.
 - `SnapshotTrigger` gains `SERVICE_STARTED`. Triggers are stored as text, so the schema is unchanged.
+- Amended 2026-11-22 (audit PERF-006): a history read holds at most 250,000 records
+  (`HeavyReader.MAX_HISTORY_RECORDS`, about 35 MB with the ingest's copies). The S25 keeps up to
+  8 MB of binary history, about 38 MB of text when full, and a first read held every record at
+  once; an out-of-memory error is not caught, so it would have repeated at every start. A longer
+  read keeps none: it is framed as unplaceable, its span becomes a `READ_DESYNC` gap and the next
+  read starts at its `NEXT:`. A first install on a phone with a full buffer loses the history from
+  before the install, never the collector. Placing batches as they arrive would keep it; that
+  waits for a phone that shows the bound in use.

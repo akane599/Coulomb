@@ -144,7 +144,7 @@ internal class HeavyReader(
         cursorMs: Long,
         timeoutMs: Long,
     ): HistoryRead {
-        val records = ArrayList<HistoryRecord>()
+        val records = BoundedRecords(MAX_HISTORY_RECORDS)
         val result =
             access.dumpBatteryStats<Parsed<BatteryHistory>>(
                 BatteryStatsMode.CHECKIN_HISTORY,
@@ -152,7 +152,7 @@ internal class HeavyReader(
                 timeoutMs = timeoutMs,
                 isComplete = { it.report.complete },
                 route = RoutePreference.IN_APP_FIRST,
-            ) { input -> BatteryHistoryParser.parse(input, cursorMs) { batch -> records += batch } }
+            ) { input -> BatteryHistoryParser.parse(input, cursorMs) { batch -> records.add(batch) } }
         val parsed = result.parsed()
         val status =
             when {
@@ -161,7 +161,7 @@ internal class HeavyReader(
                 else -> SourceStatus.PARTIAL
             }
         // A read cut short has no NEXT: and cannot be placed; the ingest keeps the cursor for it.
-        return HistoryRead(records, parsed?.value, status)
+        return HistoryRead(records.records, records.frame(parsed?.value), status)
     }
 
     private fun <R> DumpResult<R>.parsed(): R? =
@@ -216,3 +216,40 @@ internal class HeavyReader(
         const val MAX_RAW_BYTES: Int = 8 * 1024 * 1024
     }
 }
+
+/**
+ * A history read's records, up to [max]. Past it none are kept and the read is framed as one whose
+ * times cannot be placed, so the ingest stores its span as a gap and goes on from its `NEXT:`
+ * (audit PERF-006). The platform keeps up to 8 MB of binary history on the S25 (its dump header),
+ * about 38 MB of text when full: a first read of that would otherwise hold every record at once.
+ */
+internal class BoundedRecords(
+    private val max: Int,
+) {
+    private var kept = ArrayList<HistoryRecord>()
+
+    var tooLong: Boolean = false
+        private set
+
+    val records: List<HistoryRecord> get() = kept
+
+    fun add(batch: List<HistoryRecord>) {
+        if (tooLong) return
+        if (kept.size + batch.size > max) {
+            tooLong = true
+            kept = ArrayList(0)
+        } else {
+            kept += batch
+        }
+    }
+
+    /** [history] as the ingest should take it: without its first record's time when too long to keep. */
+    fun frame(history: BatteryHistory?): BatteryHistory? = if (tooLong) history?.copy(firstRecordMs = null) else history
+}
+
+/**
+ * About 70 bytes a record held and as much again for its event and segment entries: 250,000
+ * records stay near 35 MB, inside SPEC 16.5's 64 MB, and hold about 13% of a full 8 MB buffer, some
+ * days of history; incremental reads hold minutes of it.
+ */
+internal const val MAX_HISTORY_RECORDS: Int = 250_000

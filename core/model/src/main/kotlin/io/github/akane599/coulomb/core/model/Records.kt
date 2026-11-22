@@ -165,7 +165,10 @@ public enum class HistoryGapReason {
     /** A read started after the cursor, so records in between were never read. */
     CURSOR_SKIPPED,
 
-    /** A record's end was lost in a read; nothing after it was used. */
+    /**
+     * A record's end was lost in a read; nothing after it was used. Also a read longer than the
+     * collector holds at once: none of it was used (audit PERF-006).
+     */
     READ_DESYNC,
 
     /** A read's restated state differed from the stored one: a change was merged away. */
