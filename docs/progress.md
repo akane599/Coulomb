@@ -213,8 +213,13 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   `s5.batterystats_proto` was Available; S4 was Limited with `NO_DEVICE`, as this AVD build's
   fixture is. The Timeline showed the screen-off snapshot. Logcat had no crash, no missing-code
   error and no warning from Coulomb. After the session the AVD started with its development
-  build (0.0.1) as before. Publishing is the owner's step. Not covered: the phone, and Drain's
-  per-app list, which needs an unplug the emulator was not asked to simulate.
+  build (0.0.1) as before. Not covered: the phone, and Drain's per-app list, which needs an
+  unplug the emulator was not asked to simulate.
+- **0.1.0 published (2026-11-22, owner request).** Tag `v0.1.0` on `b179bcd`; the GitHub Release
+  carries the tested APK and its SHA-256 file, downloaded again and compared byte for byte. The
+  notes give the signing certificate's digest and the known limits: no accuracy run on a phone
+  yet, the Action Center's changes never run on a device, Sui and the original Shizuku on 17
+  untested.
 - The emulator host was unreachable earlier that day because a proxy's TUN on the build server
   captured the traffic to it; the owner stopped the proxy.
 - **Repository audit verified (2026-11-22, owner request).** An automated audit at `257d766` listed
@@ -318,9 +323,9 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   ADR-0069 §12). Run 8's minors were fixed after it (ADR-0069 §13).
 - **P6 status (2026-11-22).** Everything SPEC 18 asks that the build server can prove is done. What
   is left waits on a device or the owner (the table below): the queued emulator runs (a resizable
-  window, the Automation API with a caller app, Settings' new rows and Lite mode on a device), which
-  wait because the emulator host was offline on 2026-11-22; the R8 smoke test the release waits
-  for; the deferred phone runs; the Action Center's first writes; and the first release.
+  window, the Automation API with a caller app, Settings' new rows and Lite mode on a device); the
+  deferred phone runs; and the Action Center's first writes. The R8 smoke test passed and 0.1.0
+  was published on 2026-11-22.
 
 ### SPEC 18 status (2026-11-22)
 
@@ -357,7 +362,7 @@ phone runs (ADR-0053); "owner" means an owner hard stop.
 | Performance targets 16.5 | Done | Macrobenchmark on the phone, 2026-11-11 |
 | 30-day stress test | Done | Schema 5 pass (P2) |
 | Every deviation has an ADR | Done | `docs/adr/` to ADR-0069 |
-| Signed release on GitHub Releases | Owner | ADR-0067; key given and 0.1.0 signed and verified (2026-11-22); publishing waits for the R8 smoke test |
+| Signed release on GitHub Releases | Done | 0.1.0 published on 2026-11-22 (tag `v0.1.0` at `b179bcd`), after the R8 smoke test; ADR-0067 |
 
 ## P4 Core screens (gate deferred: protocol C)
 
