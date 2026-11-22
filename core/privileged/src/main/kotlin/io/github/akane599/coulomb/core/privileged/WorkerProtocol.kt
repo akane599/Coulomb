@@ -3,7 +3,9 @@
 
 package io.github.akane599.coulomb.core.privileged
 
+import io.github.akane599.coulomb.core.model.AccessTier
 import io.github.akane599.coulomb.core.model.GrantStatus
+import io.github.akane599.coulomb.core.model.PrivilegeState
 
 /*
  * The worker allowlist (SPEC 19.1) as typed ids. The AIDL carries only these integer ids, so the
@@ -237,3 +239,12 @@ public fun BatteryStatsMode.dumpableInApp(grants: GrantStatus): Boolean =
 
 /** As [BatteryStatsMode.dumpableInApp], for a service: one an app cannot look up never is. */
 public fun SystemService.dumpableInApp(grants: GrantStatus): Boolean = inApp && grants.dump
+
+/**
+ * Whether a heavy snapshot can read batterystats now: through the worker, or in Coulomb's own
+ * process with the grants its S5/S6 and history dumps need there. BATTERY_STATS is not one of
+ * them (ADR-0010), so its loss alone, which costs the T1 tier, does not stop heavy snapshots
+ * (audit BUG-045).
+ */
+public val PrivilegeState.statsReadable: Boolean
+    get() = tier != AccessTier.T0_UNPRIVILEGED || BatteryStatsMode.PROTO.dumpableInApp(grants)

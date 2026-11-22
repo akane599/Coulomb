@@ -20,6 +20,7 @@ import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
 import io.github.akane599.coulomb.core.privileged.DumpResult
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import io.github.akane599.coulomb.core.privileged.RoutePreference
+import io.github.akane599.coulomb.core.privileged.statsReadable
 import java.io.ByteArrayOutputStream
 import java.io.FilterInputStream
 import java.io.InputStream
@@ -65,7 +66,7 @@ internal class HeavyReader(
 ) : HeavySource {
     private val kernel = KernelReader(access)
 
-    override fun available(): Boolean = access.state.value.tier != AccessTier.T0_UNPRIVILEGED
+    override fun available(): Boolean = access.state.value.statsReadable
 
     override fun liveMode(): PrivilegeMode? {
         val state = access.state.value

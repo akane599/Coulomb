@@ -4,7 +4,10 @@
 package io.github.akane599.coulomb.core.privileged
 
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.model.AccessTier
 import io.github.akane599.coulomb.core.model.GrantStatus
+import io.github.akane599.coulomb.core.model.ManagerStatus
+import io.github.akane599.coulomb.core.model.PrivilegeState
 import org.junit.Test
 
 /** The batterystats allowlist (SPEC 19.1): exact arguments per mode, and no `--checkin` ever. */
@@ -64,6 +67,17 @@ class WorkerProtocolTest {
         // An app cannot look the battery service up at all.
         assertThat(SystemService.ALARM.dumpableInApp(durable)).isTrue()
         assertThat(SystemService.BATTERY.dumpableInApp(durable.copy(interactAcrossUsers = true))).isFalse()
+    }
+
+    /** Audit BUG-045: without the worker, a missing BATTERY_STATS alone does not stop heavy snapshots. */
+    @Test
+    fun heavySnapshotsNeedTheDumpGrantsNotBatteryStats() {
+        val dumps = GrantStatus(dump = true, usageStats = true, usageStatsPermission = true, interactAcrossUsers = true)
+        val stopped = PrivilegeState(manager = ManagerStatus.NOT_RUNNING, grants = dumps)
+        assertThat(stopped.tier).isEqualTo(AccessTier.T0_UNPRIVILEGED)
+        assertThat(stopped.statsReadable).isTrue()
+        assertThat(stopped.copy(grants = dumps.copy(interactAcrossUsers = false)).statsReadable).isFalse()
+        assertThat(PrivilegeState(manager = ManagerStatus.NOT_RUNNING).statsReadable).isFalse()
     }
 
     private companion object {
