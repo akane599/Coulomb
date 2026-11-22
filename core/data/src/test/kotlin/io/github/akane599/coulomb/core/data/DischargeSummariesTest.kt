@@ -18,6 +18,9 @@ class DischargeSummariesTest {
 
     private fun hour(h: Double) = day + (h * 3_600_000).toLong()
 
+    /** The boot's elapsed clock: it started at [day], and the wall clock agrees with it unless moved. */
+    private fun elapsed(h: Double) = (h * 3_600_000).toLong() * 1_000_000
+
     private fun session(
         kind: SessionKind,
         from: Double,
@@ -28,8 +31,8 @@ class DischargeSummariesTest {
     ) = SessionEntity(
         kind = kind,
         bootSeq = 1,
-        startElapsedNs = 0,
-        endElapsedNs = null,
+        startElapsedNs = elapsed(from),
+        endElapsedNs = to?.let(::elapsed),
         startWall = hour(from),
         endWall = to?.let(::hour),
         startSnapshotId = null,
@@ -61,10 +64,11 @@ class DischargeSummariesTest {
         level: Int,
         plugged: Boolean = false,
         screenOn: Boolean = true,
+        clockMovedHours: Double = 0.0,
     ) = BatterySampleEntity(
         bootSeq = 1,
-        elapsedNs = 0,
-        wallMs = hour(at),
+        elapsedNs = elapsed(at),
+        wallMs = hour(at + clockMovedHours),
         levelPct = level,
         chargeUah = null,
         currentUa = -410_000,
@@ -236,6 +240,40 @@ class DischargeSummariesTest {
 
         assertThat(summary.screenOff!!.quality).isWithin(1e-9).of(0.5 * (1 - 1.0 / 10))
         assertThat(summary.screenOn).isNull()
+    }
+
+    /**
+     * Audit BUG-003: the wall clock moved two hours forward, then one back, during the discharge.
+     * Lengths and rates come from the elapsed clock; the start moves with the clock now.
+     */
+    @Test
+    fun aClockCorrectionDuringTheDischargeChangesNoRate() {
+        val sessions =
+            listOf(
+                session(SessionKind.SCREEN_ON, 7.0, 9.0, 70 to 88),
+                session(SessionKind.DISCHARGE, 8.0, null, 90 to null),
+                session(SessionKind.SCREEN_OFF, 9.0, 12.0, 88 to 85, awake = 0.2),
+                session(SessionKind.SCREEN_ON, 12.0, null, 85 to null),
+            )
+        val steady = DischargeSummaries.build(sample(13.0, 80), sessions, zone)!!
+
+        for (moved in listOf(2.0, -1.0)) {
+            val summary = DischargeSummaries.build(sample(13.0, 80, clockMovedHours = moved), sessions, zone)!!
+            val on = summary.screenOn!!
+            val steadyOn = steady.screenOn!!
+            assertThat(on.pctPerHour).isWithin(1e-9).of(steadyOn.pctPerHour)
+            assertThat(on.hours).isWithin(1e-9).of(steadyOn.hours)
+            assertThat(summary.screenOff!!.pctPerHour).isWithin(1e-9).of(steady.screenOff!!.pctPerHour)
+            assertThat(summary.deepSleep!!.share).isWithin(1e-9).of(steady.deepSleep!!.share)
+            assertThat(summary.startWallMs).isEqualTo(hour(8.0 + moved))
+        }
+    }
+
+    /** A sample of the next boot, before the reboot closed the session, says nothing about it. */
+    @Test
+    fun aSampleOfAnotherBootIsNotRead() {
+        val open = listOf(session(SessionKind.DISCHARGE, 8.0, null, 90 to null))
+        assertThat(DischargeSummaries.build(sample(9.0, 85).copy(bootSeq = 2), open, zone)).isNull()
     }
 
     @Test

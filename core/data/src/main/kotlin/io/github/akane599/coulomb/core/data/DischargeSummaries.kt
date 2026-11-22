@@ -24,6 +24,10 @@ import java.time.ZoneId
  * quality: an open session stores 0 until it closes, and a closed one's stored quality already
  * holds its own level resolution, which [ScreenRates.combine] applies once over the combined drop.
  * A closed screen-off session with the platform's level [drops] is timed by them (ADR-0049).
+ *
+ * Times are on each boot's elapsed clock, placed on the wall clock by one offset per boot
+ * ([BootWalls]): a clock correction during a session changes neither its length nor its overlaps
+ * (SPEC 7.8; audit BUG-003).
  */
 internal object DischargeSummaries {
     /** Sessions the summary reads: since this long before the latest sample, for the history. */
@@ -38,16 +42,28 @@ internal object DischargeSummaries {
         drops: Map<Long, LevelDrops> = emptyMap(),
     ): DischargeSummary? {
         if (latest.plugType != 0) return null
-        val open = sessions.lastOrNull { it.kind == SessionKind.DISCHARGE && it.closeReason == null } ?: return null
-        val now = latest.wallMs
+        val openIndex = sessions.indexOfLast { it.kind == SessionKind.DISCHARGE && it.closeReason == null }
+        if (openIndex < 0) return null
+        val stored = sessions[openIndex]
         // A sample from before the session opened (the first after a screen-off stretch is still
-        // on its way) says nothing about it.
-        if (now < open.startWall) return null
-        val readable = sessions.filter { it.closeReason == null || (it.endWall != null && it.endLevel != null) }
+        // on its way), or from the boot after it before the reboot closed it, says nothing about it.
+        if (stored.bootSeq != latest.bootSeq || latest.elapsedNs < stored.startElapsedNs) return null
+        val walls = BootWalls.of(latest, sessions)
+        val placed = sessions.map(walls::place)
+        val open = placed[openIndex]
+        val now = latest.wallMs
+        // The level drops were placed through each session's stored start: move them with it.
+        val moved = sessions.zip(placed).associate { (was, now) -> was.id to now.startWall - was.startWall }
+        val shifted = drops.mapValues { (id, d) -> d.shiftedBy(moved[id] ?: 0) }
+        // An open session of an earlier boot has no end on this boot's clock; the reboot closes it.
+        val readable =
+            placed.filter {
+                if (it.closeReason == null) it.bootSeq == latest.bootSeq else it.endWall != null && it.endLevel != null
+            }
         val discharges = readable.filter { it.kind == SessionKind.DISCHARGE }.map { it.toDischarge(latest) }
         val current = open.toDischarge(latest)
         val screens = readable.filter { it.kind != SessionKind.DISCHARGE }
-        val spans = screens.flatMap { ScreenRates.discharging(it.toSpan(latest, drops[it.id]), discharges) }
+        val spans = screens.flatMap { ScreenRates.discharging(it.toSpan(latest, shifted[it.id]), discharges) }
         val inSession = spans.filter { it.startWallMs >= current.startWallMs }
         val on = ScreenRates.combine(inSession.filter { it.screenOn })
         val off = ScreenRates.combine(inSession.filter { !it.screenOn })
@@ -106,6 +122,8 @@ internal object DischargeSummaries {
     /** Screen-off time after which the share's window no longer lowers its quality. */
     private const val FULL_SLEEP_HOURS = 1.0
 
+    private fun LevelDrops.shiftedBy(ms: Long) = copy(firstWallMs = firstWallMs + ms, lastWallMs = lastWallMs + ms)
+
     private fun SessionEntity.toDischarge(latest: BatterySampleEntity) =
         Discharge(startWall, endWall ?: latest.wallMs, startLevel, endLevel ?: latest.levelPct, levelQuality())
 
@@ -121,4 +139,53 @@ internal object DischargeSummaries {
         levelQuality(),
         drops,
     )
+}
+
+/**
+ * One offset (wall minus elapsed) per boot: the latest sample's for its boot, otherwise the boot's
+ * latest stored session end, or a session's start where none ended. It places a boot's elapsed times
+ * on one wall clock, so lengths and overlaps come from the elapsed clock and a clock correction
+ * moves a boot's sessions together (SPEC 7.8; audit BUG-003).
+ */
+internal class BootWalls private constructor(
+    private val offsets: Map<Int, Long>,
+) {
+    fun wallAt(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): Long? = offsets[bootSeq]?.let { it + Math.floorDiv(elapsedNs, NS_PER_MS) }
+
+    /** [session] with its ends on its boot's clock; an end stored without its elapsed time stays as stored. */
+    fun place(session: SessionEntity): SessionEntity {
+        val start = wallAt(session.bootSeq, session.startElapsedNs) ?: return session
+        val end = session.endElapsedNs?.let { wallAt(session.bootSeq, it) } ?: session.endWall
+        return session.copy(startWall = start, endWall = end)
+    }
+
+    companion object {
+        private const val NS_PER_MS = 1_000_000L
+
+        fun of(
+            latest: BatterySampleEntity,
+            sessions: List<SessionEntity>,
+        ): BootWalls {
+            val offsets = HashMap<Int, Long>()
+            // Each boot's latest stored end, as (boot, elapsed, wall).
+            sessions
+                .mapNotNull { s -> s.endElapsedNs?.let { ns -> s.endWall?.let { wall -> Triple(s.bootSeq, ns, wall) } } }
+                .groupBy { it.first }
+                .forEach { (boot, ends) ->
+                    val (_, ns, wall) = ends.maxBy { it.second }
+                    offsets[boot] = wall - Math.floorDiv(ns, NS_PER_MS)
+                }
+            for (session in sessions) {
+                offsets.putIfAbsent(
+                    session.bootSeq,
+                    session.startWall - Math.floorDiv(session.startElapsedNs, NS_PER_MS),
+                )
+            }
+            offsets[latest.bootSeq] = latest.wallMs - Math.floorDiv(latest.elapsedNs, NS_PER_MS)
+            return BootWalls(offsets)
+        }
+    }
 }

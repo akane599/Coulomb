@@ -15,11 +15,12 @@ internal object LevelTrail {
         points: List<LevelPoint>,
         samples: List<BatterySampleEntity>,
         lastBoot: Int?,
+        at: (BatterySampleEntity) -> Long = { it.wallMs },
     ): Pair<List<LevelPoint>, Int?> {
         val out = points.toMutableList()
         var boot = lastBoot
         for (sample in samples) {
-            val point = LevelPoint(sample.wallMs, sample.levelPct, startsSegment = boot != null && sample.bootSeq != boot)
+            val point = LevelPoint(at(sample), sample.levelPct, startsSegment = boot != null && sample.bootSeq != boot)
             boot = sample.bootSeq
             if (extendsFlatRun(out, point)) out[out.lastIndex] = point else out += point
         }
@@ -40,36 +41,58 @@ internal object LevelTrail {
 
 /**
  * Reads only the samples since the last call, so each new sample costs one short query instead of
- * the whole discharge. Not thread-safe: one flow drives it, one value at a time.
+ * the whole discharge. A discharge lies in one boot (a reboot closes it): the cache reads and keeps
+ * it on the boot's elapsed clock and places it on the wall clock through the latest offset, so a
+ * clock correction moves the line rather than stalling or reordering it (audit BUG-003). Not
+ * thread-safe: one flow drives it, one value at a time.
  */
 internal class LevelTrailCache {
-    private var startWallMs: Long? = null
-    private var readToWallMs = 0L
-    private var lastBoot: Int? = null
-    private var points: List<LevelPoint> = emptyList()
+    private var start: Pair<Int, Long>? = null
+    private var readToNs = 0L
 
+    /** The points with elapsed milliseconds in [LevelPoint.wallMs]. */
+    private var points: List<LevelPoint> = emptyList()
+    private var placedWith: Long? = null
+    private var placed: List<LevelPoint> = emptyList()
+
+    /** The trail of boot [bootSeq] from [startElapsedNs] to [nowElapsedNs], at wall = elapsed + [offsetMs]. */
     suspend fun read(
-        startWallMs: Long,
-        nowWallMs: Long,
-        fetch: suspend (fromWall: Long, toWall: Long) -> List<BatterySampleEntity>,
+        bootSeq: Int,
+        startElapsedNs: Long,
+        nowElapsedNs: Long,
+        offsetMs: Long,
+        fetch: suspend (bootSeq: Int, fromElapsedNs: Long, toElapsedNs: Long) -> List<BatterySampleEntity>,
     ): List<LevelPoint> {
-        if (this.startWallMs != startWallMs) {
-            this.startWallMs = startWallMs
-            readToWallMs = startWallMs
-            lastBoot = null
+        if (start != bootSeq to startElapsedNs) {
+            start = bootSeq to startElapsedNs
+            readToNs = startElapsedNs
             points = emptyList()
+            placedWith = null
         }
-        val toWall = nowWallMs + 1
-        if (toWall <= readToWallMs) return points
-        val (next, boot) = LevelTrail.extend(points, fetch(readToWallMs, toWall), lastBoot)
-        points = next
-        lastBoot = boot
-        readToWallMs = toWall
-        return points
+        val toNs = nowElapsedNs + 1
+        if (toNs > readToNs) {
+            val fresh = fetch(bootSeq, readToNs, toNs)
+            readToNs = toNs
+            if (fresh.isNotEmpty()) {
+                points = LevelTrail.extend(points, fresh, bootSeq) { Math.floorDiv(it.elapsedNs, NS_PER_MS) }.first
+                placedWith = null
+            }
+        }
+        if (placedWith != offsetMs) {
+            placed = points.map { it.copy(wallMs = it.wallMs + offsetMs) }
+            placedWith = offsetMs
+        }
+        return placed
     }
 
     fun clear() {
-        startWallMs = null
+        start = null
         points = emptyList()
+        placedWith = null
+        placed = emptyList()
+    }
+
+    private companion object {
+        const val NS_PER_MS = 1_000_000L
     }
 }

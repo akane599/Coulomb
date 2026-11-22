@@ -73,18 +73,20 @@ public class BatteryRepository
             val overlapping = sessions.overlapping(DischargeSummaries.KINDS, sample.wallMs - DischargeSummaries.LOOKBACK_MS)
             val drops = dropCache.read(timedCandidates(sample, overlapping)) { s -> levelChanges(s) }
             val discharge = DischargeSummaries.build(sample, overlapping, zone.zone(), drops)
-            val start = discharge?.startWallMs
+            // Placed on the wall clock as the summary is: this boot's elapsed time plus today's offset (audit BUG-003).
+            val offsetMs = sample.wallMs - Math.floorDiv(sample.elapsedNs, NS_PER_MS)
+            val open = overlapping.lastOrNull { it.kind == SessionKind.DISCHARGE && it.closeReason == null }
             val levels =
-                if (start == null) {
+                if (discharge == null || open == null) {
                     trail.clear()
                     emptyList()
                 } else {
-                    trail.read(start, sample.wallMs, samples::samplesBetween)
+                    trail.read(open.bootSeq, open.startElapsedNs, sample.elapsedNs, offsetMs, samples::samples)
                 }
             val live =
                 samples
-                    .samplesBetween(sample.wallMs - LIVE_WINDOW_MS, sample.wallMs + 1)
-                    .mapNotNull { s -> s.currentUa?.let { CurrentPoint(s.wallMs, it / UA_PER_MA) } }
+                    .samples(sample.bootSeq, sample.elapsedNs - LIVE_WINDOW_MS * NS_PER_MS, sample.elapsedNs + 1)
+                    .mapNotNull { s -> s.currentUa?.let { CurrentPoint(offsetMs + Math.floorDiv(s.elapsedNs, NS_PER_MS), it / UA_PER_MA) } }
             return BatteryReading(sample.toBatteryNow(), discharge, levels, live)
         }
 
@@ -98,7 +100,9 @@ public class BatteryRepository
         ): List<SessionEntity> {
             if (sample.plugType != 0) return emptyList()
             val open = sessions.lastOrNull { it.kind == SessionKind.DISCHARGE && it.closeReason == null } ?: return emptyList()
-            return sessions.filter { LevelDropsCache.timed(it) && (it.endWall ?: 0) > open.startWall }
+            return sessions.filter {
+                LevelDropsCache.timed(it) && it.bootSeq == open.bootSeq && (it.endElapsedNs ?: 0) > open.startElapsedNs
+            }
         }
 
         /**
@@ -133,6 +137,7 @@ public class BatteryRepository
             /** SPEC 10.2: the live chart shows 10 minutes. */
             public const val LIVE_WINDOW_MS: Long = 10 * 60_000L
             private const val UA_PER_MA = 1_000.0
+            private const val NS_PER_MS = 1_000_000L
             private const val TAG = "Coulomb:battery"
         }
     }
