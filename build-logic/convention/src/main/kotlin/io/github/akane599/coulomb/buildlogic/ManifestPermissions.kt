@@ -82,7 +82,9 @@ public object ManifestPermissions {
     /**
      * Libraries whose own manifest requests a forbidden permission. This catches a library that
      * wants INTERNET even when an app manifest strips it with `tools:node="remove"` (SPEC 15.3).
-     * The key is the manifest's parent directory, which names the transformed library.
+     * The key is the manifest's parent directory, which names the transformed library. Each file
+     * is judged on its own; two that share a directory name, as in-repo modules' outputs do, have
+     * their findings joined, so a clean one never hides another's (audit OPS-002).
      */
     public fun forbiddenLibraryRequests(
         manifests: Iterable<File>,
@@ -90,8 +92,10 @@ public object ManifestPermissions {
     ): Map<String, Set<String>> =
         manifests
             .filter { it.isFile }
-            .associate { it.parentFile.name to usesPermissions(it).intersect(forbidden) }
-            .filterValues { it.isNotEmpty() }
+            .map { it.parentFile.name to usesPermissions(it).intersect(forbidden) }
+            .filter { (_, found) -> found.isNotEmpty() }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, found) -> found.flatten().toSortedSet() }
             .toSortedMap()
 
     public fun evaluate(

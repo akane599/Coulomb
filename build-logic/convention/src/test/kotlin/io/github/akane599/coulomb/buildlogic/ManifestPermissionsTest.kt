@@ -89,4 +89,24 @@ class ManifestPermissionsTest {
 
         assertThat(requests).containsExactly("some-network-sdk-1.0", setOf("android.permission.INTERNET"))
     }
+
+    @Test
+    fun `a clean manifest in a folder of the same name does not hide a forbidding one`() {
+        fun output(
+            module: String,
+            body: String,
+        ) = java.io.File(tmp.newFolder(module, "processReleaseManifest"), "AndroidManifest.xml").apply { writeText(body) }
+        val forbidding =
+            output(
+                "a",
+                """<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="a">
+                <uses-permission android:name="android.permission.INTERNET"/></manifest>""",
+            )
+        val clean = output("b", "<manifest package=\"b\"/>")
+
+        for (order in listOf(listOf(forbidding, clean), listOf(clean, forbidding))) {
+            assertThat(ManifestPermissions.forbiddenLibraryRequests(order))
+                .containsExactly("processReleaseManifest", setOf("android.permission.INTERNET"))
+        }
+    }
 }
