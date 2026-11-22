@@ -42,7 +42,8 @@ class CaptureRatesTest {
             assumeTrue("pass -Pcoulomb.capture and -Pcoulomb.captureOut", capture != null && out != null)
             val context = ApplicationProvider.getApplicationContext<Context>()
             val target = context.noBackupFilesDir.resolve(CoulombDatabase.FILE_NAME)
-            for (suffix in listOf("", "-wal", "-shm")) {
+            // Not the -shm index: SQLite rebuilds it from the log (audit OPS-001).
+            for (suffix in listOf("", "-wal")) {
                 val file = File(checkNotNull(capture), CoulombDatabase.FILE_NAME + suffix)
                 if (file.isFile) file.copyTo(File(target.path + suffix), overwrite = true)
             }

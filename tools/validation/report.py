@@ -80,7 +80,9 @@ def open_db(capture):
         sys.exit(f"{capture}/coulomb.db is missing")
     tmp = Path(tempfile.mkdtemp(prefix="coulomb-report-"))
     atexit.register(shutil.rmtree, tmp, ignore_errors=True)
-    for name in ("coulomb.db", "coulomb.db-wal", "coulomb.db-shm"):
+    # Not the -shm index: SQLite rebuilds it from the log, and an older capture's copy of it was
+    # taken at another moment (audit OPS-001).
+    for name in ("coulomb.db", "coulomb.db-wal"):
         if (capture / name).is_file():
             shutil.copy(capture / name, tmp / name)
     db = sqlite3.connect(tmp / "coulomb.db")

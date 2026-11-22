@@ -14,7 +14,8 @@
 # lines. Then run tools/validation/report.py on <raw-out-dir>. Keep <raw-out-dir> outside the
 # repository: the database and dumps hold other apps' names (ADR-0004).
 #
-# Every command here only reads. Deliberately absent:
+# Every command here only reads, apart from a passing copy of the database in Coulomb's own cache,
+# removed when the capture ends. Deliberately absent:
 #   dumpsys batterystats --checkin  deletes batterystats-checkin.bin (ADR-0005); `-c` is used.
 #   --reset, --write, settings put, appops set, pm grant, am force-stop: never.
 set -euo pipefail
@@ -34,19 +35,49 @@ sh_ date +%s > "$out/device_wall_s.txt"
 sh_ cat /proc/uptime > "$out/uptime.txt"
 sh_ getconf CLK_TCK > "$out/clk_tck.txt"
 
-# The database with its write-ahead log, so the copy holds every committed transaction. The
-# database grows past what 120 s carries over a slow link (28 MB after 4 days), so the copies get
-# 15 minutes. A missing -wal or -shm is noted; a failed database copy ends the capture.
-for f in coulomb.db coulomb.db-wal coulomb.db-shm; do
-  if timeout 900 adb -s "$serial" shell -T run-as "$pkg" cat "no_backup/$f" > "$out/$f" 2> "$out/$f.err"; then
-    [ -s "$out/$f.err" ] || rm -f "$out/$f.err"
+# The database with its write-ahead log, as one moment (audit OPS-001). Both are first copied on
+# the device into Coulomb's cache: the log, the database, then the log again. Only a checkpoint
+# changes the database, and it copies frames the log already holds; a write between the two log
+# copies changes the log, so two equal copies mean the database copy and the log agree. Otherwise
+# it tries again. The -shm index is left out: SQLite rebuilds it from the log, and a copy taken at
+# another moment could describe other frames. The copies then cross the link, which can take
+# minutes (28 MB after 4 days), so they get 15 minutes each.
+db=no_backup/coulomb.db
+tmp=cache/validation-capture
+clean() { app rm -f "$tmp.db" "$tmp.wal1" "$tmp.wal2" > /dev/null 2>&1 || true; }
+trap clean EXIT
+copied=
+for attempt in 1 2 3 4 5; do
+  clean
+  w1=0; w2=0
+  app cp "$db-wal" "$tmp.wal1" 2> /dev/null && w1=1
+  app cp "$db" "$tmp.db" || { echo "capture failed: copying the database on the device" >&2; exit 1; }
+  app cp "$db-wal" "$tmp.wal2" 2> /dev/null && w2=1
+  if [ "$w1$w2" = 00 ]; then copied=1; break; fi
+  if [ "$w1$w2" = 11 ]; then
+    # Two digests, or the comparison itself failed: a missing tool must not read as a change.
+    sums=$(app sha256sum "$tmp.wal1" "$tmp.wal2" | tr -d '\r' | awk '{ print $1 }') || sums=
+    [ "$(printf '%s\n' "$sums" | grep -c -E '^[0-9a-f]{64}$')" = 2 ] ||
+      { echo "capture failed: could not compare the log copies" >&2; exit 1; }
+    if [ "$(printf '%s\n' "$sums" | sort -u | wc -l)" = 1 ]; then copied=1; break; fi
+  fi
+  echo "the database was written while it was copied; again ($attempt)" >&2
+done
+[ -n "$copied" ] || { echo "capture failed: the database kept changing while it was copied" >&2; exit 1; }
+echo "$attempt" > "$out/db_attempts.txt"
+fetch() {
+  if timeout 900 adb -s "$serial" shell -T run-as "$pkg" cat "$1" > "$out/$2" 2> "$out/$2.err"; then
+    [ -s "$out/$2.err" ] || rm -f "$out/$2.err"
   else
     st=$?
-    rm -f "$out/$f"
-    echo "exit $st" >> "$out/$f.err"
-    if [ "$f" = coulomb.db ]; then echo "capture failed: copying $f exited $st" >&2; exit 1; fi
+    rm -f "$out/$2"
+    echo "capture failed: fetching $2 exited $st" >&2
+    exit 1
   fi
-done
+}
+fetch "$tmp.db" coulomb.db
+[ "$w1" = 0 ] || fetch "$tmp.wal1" coulomb.db-wal
+clean
 app ls -l files/snapshots > "$out/blobs.txt" 2>&1 || true
 
 # Coulomb's process: CPU time since it started (fields 14-15) and its start (field 22), in ticks.
