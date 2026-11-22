@@ -90,6 +90,7 @@ public fun DrainScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val references by viewModel.references.collectAsStateWithLifecycle()
+    val markFailed by viewModel.marks.failed.collectAsStateWithLifecycle()
     val actions =
         remember(viewModel, onOpenApp, onOpenPrivileges, onOpenCompare, selectedApp, onOpenWake) {
             DrainActions(
@@ -105,12 +106,20 @@ public fun DrainScreen(
                 peekIcon = viewModel::peekIcon,
                 selectedApp = selectedApp,
                 openWake = onOpenWake,
-                markReference = viewModel::markReference,
+                markReference = viewModel.marks::mark,
+                markSeen = viewModel.marks::seen,
                 readPower = viewModel::readPower,
                 deleteReferences = viewModel::deleteReferences,
             )
         }
-    DrainContent(state = state, actions = actions, modifier = modifier, refreshing = refreshing, references = references)
+    DrainContent(
+        state = state,
+        actions = actions,
+        modifier = modifier,
+        refreshing = refreshing,
+        references = references,
+        markFailed = markFailed,
+    )
 }
 
 /** What Drain's controls do; the screen itself holds no logic. */
@@ -135,6 +144,8 @@ internal class DrainActions(
     val openHeld: () -> Unit = {},
     /** Marks this moment as a named reference (SPEC 7.6). */
     val markReference: (String) -> Unit = {},
+    /** The references sheet closed, so a failed mark is no longer said. */
+    val markSeen: () -> Unit = {},
     val deleteReferences: (List<Long>) -> Unit = {},
 )
 
@@ -156,6 +167,7 @@ private fun DrainActions.withHeld(open: () -> Unit): DrainActions =
         readPower = readPower,
         openHeld = open,
         markReference = markReference,
+        markSeen = markSeen,
         deleteReferences = deleteReferences,
     )
 
@@ -222,6 +234,8 @@ internal fun DrainContent(
     initialLens: Lens = Lens.APPS,
     refreshing: Boolean = false,
     references: List<NamedReference> = emptyList(),
+    /** The last mark found no snapshot of the moment. */
+    markFailed: Boolean = false,
 ) {
     val gutter = currentGutter()
     var sheet by rememberSaveable { mutableStateOf(false) }
@@ -293,7 +307,11 @@ internal fun DrainContent(
             onMark = actions.markReference,
             onDelete = actions.deleteReferences,
             onChoose = actions.choose,
-            onDismiss = { referencesOpen = false },
+            onDismiss = {
+                referencesOpen = false
+                actions.markSeen()
+            },
+            markFailed = markFailed,
         )
     }
 }

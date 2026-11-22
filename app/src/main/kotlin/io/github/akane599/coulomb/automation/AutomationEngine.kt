@@ -4,6 +4,7 @@
 package io.github.akane599.coulomb.automation
 
 import io.github.akane599.coulomb.core.analytics.DozeProfile
+import io.github.akane599.coulomb.core.collect.SnapshotOutcome
 import io.github.akane599.coulomb.core.collect.actions.ActionBlock
 import io.github.akane599.coulomb.core.collect.actions.ActionPreview
 import io.github.akane599.coulomb.core.collect.actions.ActionRecord
@@ -53,8 +54,9 @@ internal interface AutomationPorts {
      * Takes a snapshot with the automation trigger, behind the collector's own debounce, and waits
      * for it a few seconds at most. The caller's broadcast stays open meanwhile, so the process is
      * not frozen under the snapshot, and the provider's figures are new when the answer arrives.
+     * Null when the wait ran out first.
      */
-    suspend fun snapshot()
+    suspend fun snapshot(): SnapshotOutcome?
 
     suspend fun chargeTarget(): Int
 
@@ -113,9 +115,15 @@ internal class AutomationEngine(
 
     suspend fun handle(call: AutomationCall): AutomationAnswer {
         val answer = lock.withLock { decide(call) }
-        // Outside the lock: the wait for the snapshot does not hold up the next call.
-        if (call.name == AutomationCalls.SNAPSHOT_NOW && answer.code == Result.ACCEPTED) ports.snapshot()
-        return answer
+        if (call.name != AutomationCalls.SNAPSHOT_NOW || answer.code != Result.ACCEPTED) return answer
+        // Outside the lock: the wait for the snapshot does not hold up the next call. "Accepted"
+        // promises new figures, so a failed snapshot or a wait that ran out says so (audit BUG-001).
+        // The row stays "accepted": it is the call's place in the limit, not its outcome.
+        return when (ports.snapshot()) {
+            null -> AutomationAnswer(Result.UNVERIFIED, Reason.TIMEOUT)
+            SnapshotOutcome.FAILED -> AutomationAnswer(Result.FAILED, Reason.FAILED)
+            else -> answer
+        }
     }
 
     private suspend fun decide(call: AutomationCall): AutomationAnswer {

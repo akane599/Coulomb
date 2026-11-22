@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.automation
 
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.analytics.DozeProfile
+import io.github.akane599.coulomb.core.collect.SnapshotOutcome
 import io.github.akane599.coulomb.core.collect.actions.ActionBlock
 import io.github.akane599.coulomb.core.collect.actions.ActionPreview
 import io.github.akane599.coulomb.core.collect.actions.ActionRecord
@@ -52,6 +53,18 @@ class AutomationEngineTest {
         assertThat(phone.snapshots).isEqualTo(0)
         assertThat(phone.target).isEqualTo(80)
         assertThat(center.rows).isEmpty()
+    }
+
+    /** Audit BUG-001: "accepted" promises new figures, so a failed snapshot or a wait that ran out says so. */
+    @Test
+    fun aSnapshotThatFailsOrIsNotDoneInTimeIsNotAccepted() {
+        phone.outcome = SnapshotOutcome.FAILED
+        assertThat(snapshot()).isEqualTo(AutomationAnswer(Result.FAILED, Reason.FAILED))
+        phone.outcome = null
+        assertThat(snapshot()).isEqualTo(AutomationAnswer(Result.UNVERIFIED, Reason.TIMEOUT))
+        // One the debounce covered is still accepted: a snapshot of the last minute stands.
+        phone.outcome = SnapshotOutcome.NONE
+        assertThat(snapshot()).isEqualTo(AutomationAnswer(Result.ACCEPTED))
     }
 
     @Test
@@ -336,8 +349,12 @@ class AutomationEngineTest {
 
         override fun awakeOrPlugged(): Boolean = awake
 
-        override suspend fun snapshot() {
+        /** What the collector answers; null: the wait runs out. */
+        var outcome: SnapshotOutcome? = SnapshotOutcome.HEAVY
+
+        override suspend fun snapshot(): SnapshotOutcome? {
             snapshots++
+            return outcome
         }
 
         override suspend fun chargeTarget(): Int = target

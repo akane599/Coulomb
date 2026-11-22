@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.collect.engine
 
 import android.util.Log
 import io.github.akane599.coulomb.core.collect.SnapshotObserver
+import io.github.akane599.coulomb.core.collect.SnapshotOutcome
 import io.github.akane599.coulomb.core.collect.snapshot.LightReading
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import kotlinx.coroutines.CancellationException
@@ -16,10 +17,10 @@ import kotlinx.coroutines.launch
 
 /** What the collector is asked to do. */
 internal sealed interface CollectorEvent {
-    /** [done] completes when the trigger has been handled, whether or not it stored a snapshot. */
+    /** [done] completes with what the trigger did once it has been handled. */
     data class Trigger(
         val trigger: SnapshotTrigger,
-        val done: CompletableDeferred<Unit>? = null,
+        val done: CompletableDeferred<SnapshotOutcome>? = null,
     ) : CollectorEvent
 
     data class Sample(
@@ -50,6 +51,7 @@ internal class CollectorActor(
     private val consumer: Job =
         scope.launch {
             for (event in events) {
+                var outcome = SnapshotOutcome.FAILED
                 try {
                     val action =
                         when (event) {
@@ -57,6 +59,12 @@ internal class CollectorActor(
                             is CollectorEvent.Sample -> engine.sample(event.reading).let { null }
                             CollectorEvent.PrivilegesChanged -> engine.privilegesChanged()
                             is CollectorEvent.Watching -> engine.watching(event.on).let { null }
+                        }
+                    outcome =
+                        when (action) {
+                            Action.HEAVY -> SnapshotOutcome.HEAVY
+                            Action.LIGHT -> SnapshotOutcome.LIGHT
+                            else -> SnapshotOutcome.NONE
                         }
                     if (action == Action.LIGHT || action == Action.HEAVY) notify(heavy = action == Action.HEAVY)
                 } catch (e: CancellationException) {
@@ -67,7 +75,7 @@ internal class CollectorActor(
                     // Room, a parser or the platform failed for this event only.
                     Log.w(TAG, "collector event $event failed", e)
                 } finally {
-                    (event as? CollectorEvent.Trigger)?.done?.complete(Unit)
+                    (event as? CollectorEvent.Trigger)?.done?.complete(outcome)
                 }
             }
         }

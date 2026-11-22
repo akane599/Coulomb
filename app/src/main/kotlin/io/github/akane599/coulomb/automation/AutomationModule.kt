@@ -19,6 +19,7 @@ import dagger.multibindings.IntoSet
 import io.github.akane599.coulomb.core.analytics.DozeProfile
 import io.github.akane599.coulomb.core.collect.Collector
 import io.github.akane599.coulomb.core.collect.SnapshotObserver
+import io.github.akane599.coulomb.core.collect.SnapshotOutcome
 import io.github.akane599.coulomb.core.collect.actions.ActionCenter
 import io.github.akane599.coulomb.core.collect.actions.ActionPreview
 import io.github.akane599.coulomb.core.collect.actions.ActionRecord
@@ -67,10 +68,9 @@ internal object AutomationModule {
             return (battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
         }
 
-        override suspend fun snapshot() {
-            // Giving up the wait does not give up the snapshot: the collector finishes what it took.
+        // Giving up the wait does not give up the snapshot: the collector finishes what it took.
+        override suspend fun snapshot(): SnapshotOutcome? =
             withTimeoutOrNull(SNAPSHOT_WAIT_MS) { collector.snapshot(SnapshotTrigger.AUTOMATION) }
-        }
 
         override suspend fun chargeTarget(): Int = settings.settings.first().chargeTargetPct
 

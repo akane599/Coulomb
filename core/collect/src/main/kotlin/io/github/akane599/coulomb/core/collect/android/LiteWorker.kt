@@ -14,6 +14,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import io.github.akane599.coulomb.core.collect.Collector
+import io.github.akane599.coulomb.core.collect.SnapshotOutcome
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import java.util.concurrent.TimeUnit
 
@@ -39,13 +40,14 @@ internal class LiteWorker(
 ) : CoroutineWorker(context, parameters) {
     override suspend fun doWork(): Result {
         val collector = applicationContext.collector()
-        if (collector.lite()) {
-            collector.snapshot(SnapshotTrigger.LITE_PERIODIC)
-        } else {
+        if (!collector.lite()) {
             // Left over from a mode change this process did not see, as after "Delete all data".
             cancel(applicationContext)
+            return Result.success()
         }
-        return Result.success()
+        // A failed snapshot is told to WorkManager, without a retry: the next period tries again,
+        // and a retry would wake the phone for what is most likely the same failure (audit BUG-001).
+        return if (collector.snapshot(SnapshotTrigger.LITE_PERIODIC) == SnapshotOutcome.FAILED) Result.failure() else Result.success()
     }
 
     companion object {

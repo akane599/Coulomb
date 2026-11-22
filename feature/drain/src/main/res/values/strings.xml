@@ -31,6 +31,7 @@
     <string name="drain_references_when">%1$s, %2$s</string>
     <string name="drain_references_mark">Mark this moment</string>
     <string name="drain_references_none">No references yet.</string>
+    <string name="drain_references_mark_failed">No snapshot of this moment could be stored, so nothing was marked. Try again in a minute.</string>
     <string name="drain_references_unnamed">Unnamed</string>
     <string name="drain_references_since">Since this one</string>
     <string name="drain_references_between">Between these two</string>

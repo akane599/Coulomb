@@ -29,6 +29,7 @@
     <string name="drain_references_when">%1$s %2$s</string>
     <string name="drain_references_mark">Bu anı işaretle</string>
     <string name="drain_references_none">Henüz referans yok.</string>
+    <string name="drain_references_mark_failed">Bu anın anlık görüntüsü kaydedilemedi, bu yüzden hiçbir şey işaretlenmedi. Bir dakika sonra yeniden dene.</string>
     <string name="drain_references_unnamed">Adsız</string>
     <string name="drain_references_since">Bundan beri</string>
     <string name="drain_references_between">Bu ikisi arası</string>

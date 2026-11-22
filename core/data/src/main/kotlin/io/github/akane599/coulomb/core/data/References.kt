@@ -34,14 +34,15 @@ public class References
                 .distinctUntilChanged()
 
         /**
-         * Names the latest heavy snapshot [name] and returns it; null before any heavy snapshot. The
-         * caller asks the collector for one first, so it is at most its debounce old (SPEC 7.2).
+         * Names the latest heavy snapshot [name] and returns it. The caller asks the collector for
+         * one first, so it is at most its debounce old (SPEC 7.2); null when there is none that
+         * recent, as when the snapshot failed or only a light one could be taken (audit BUG-001).
          */
         public suspend fun mark(
             name: String,
             createdWall: Long,
         ): NamedReference? {
-            val snapshot = snapshots.latestHeavy() ?: return null
+            val snapshot = snapshots.latestHeavy()?.takeIf { it.wallMs >= createdWall - MAX_AGE_MS } ?: return null
             val trimmed = name.trim().take(MAX_NAME)
             val id = snapshots.insertUserReference(trimmed, snapshot.id, createdWall)
             return NamedReference(id, DrainSpan.Mark(snapshot.id, trimmed, snapshot.wallMs))
@@ -55,5 +56,8 @@ public class References
         public companion object {
             /** The longest name kept, as a charger's (ADR-0044 §6). */
             public const val MAX_NAME: Int = 40
+
+            /** The oldest heavy snapshot a mark takes: the collector's one-minute debounce, and a minute's slack. */
+            public const val MAX_AGE_MS: Long = 120_000
         }
     }

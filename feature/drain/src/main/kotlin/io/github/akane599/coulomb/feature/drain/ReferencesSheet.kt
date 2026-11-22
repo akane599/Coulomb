@@ -40,8 +40,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -78,6 +80,8 @@ internal fun ReferencesSheet(
     onDelete: (List<Long>) -> Unit,
     onChoose: (DrainSpan) -> Unit,
     onDismiss: () -> Unit,
+    /** The last mark found no snapshot of the moment, so nothing was marked (audit BUG-001). */
+    markFailed: Boolean = false,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -119,6 +123,14 @@ internal fun ReferencesSheet(
                 { naming = true },
                 Modifier.padding(top = CoulombSpacing.Space16, bottom = CoulombSpacing.Space8),
             )
+            if (markFailed) {
+                Text(
+                    stringResource(R.string.drain_references_mark_failed),
+                    Modifier.padding(bottom = CoulombSpacing.Space8).semantics { liveRegion = LiveRegionMode.Polite },
+                    color = colors.textPrimary,
+                    style = type.caption,
+                )
+            }
             if (references.isEmpty()) {
                 Text(
                     stringResource(R.string.drain_references_none),

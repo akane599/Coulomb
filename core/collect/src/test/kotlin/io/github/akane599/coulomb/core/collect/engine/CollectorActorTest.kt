@@ -9,8 +9,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.collect.SnapshotObserver
+import io.github.akane599.coulomb.core.collect.SnapshotOutcome
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -62,6 +64,29 @@ class CollectorActorTest {
             assertThat(withTimeout(TIMEOUT_MS) { heard.receive() }).isTrue()
             assertThat(heard.tryReceive().isSuccess).isFalse()
             assertThat(db.snapshotDao().latestHeavy()).isNotNull()
+            actor.close()
+        }
+
+    /** Audit BUG-001: a trigger's caller learns whether it stored a snapshot, or failed. */
+    @Test
+    fun aTriggersCallerLearnsWhatItDid() =
+        runBlocking {
+            val engine = CollectorEngine(db, device, FakeStats(clock), FakeIdentity(), clock, MemoryBlobs(), FakeLabels(mutableMapOf()))
+            val actor = CollectorActor(engine, scope)
+            device.set(hours = 9.0, level = 80, chargeMah = 4_000.0, screenOn = true)
+
+            suspend fun handled(trigger: SnapshotTrigger): SnapshotOutcome {
+                val done = CompletableDeferred<SnapshotOutcome>()
+                actor.post(CollectorEvent.Trigger(trigger, done))
+                return withTimeout(TIMEOUT_MS) { done.await() }
+            }
+            assertThat(handled(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(SnapshotOutcome.HEAVY)
+            // A refresh within the minute is debounced.
+            assertThat(handled(SnapshotTrigger.PULL_TO_REFRESH)).isEqualTo(SnapshotOutcome.NONE)
+            // Storage gone: the snapshot fails, and its caller is told.
+            db.close()
+            device.set(hours = 10.0, level = 78, chargeMah = 3_900.0, screenOn = false)
+            assertThat(handled(SnapshotTrigger.SCREEN_OFF)).isEqualTo(SnapshotOutcome.FAILED)
             actor.close()
         }
 

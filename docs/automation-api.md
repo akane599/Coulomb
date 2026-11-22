@@ -37,7 +37,7 @@ broadcast's result; an unordered broadcast is carried out and gets no answer.
 | Result code | Meaning |
 | --- | --- |
 | 1 | Done, and for a change to the phone, read back. |
-| 2 | Accepted: the snapshot was taken, unless one was taken in the last minute. The answer waits for it, up to six seconds, so the figures you read next are new. |
+| 2 | Accepted: the snapshot was taken, unless one was taken in the last minute. The answer waits for it, up to six seconds, so the figures you read next are new. A snapshot that fails answers 13 (`failed`); one not done within the six seconds answers 14 (`timeout`), and is still finished. |
 | 3 | Unchanged: it was already so. |
 | 10 | Invalid: an extra is missing or outside its range. Nothing was changed. |
 | 11 | Rate limited. The result extra `io.github.akane599.coulomb.extra.RETRY_AFTER_S` (long) says how many seconds to wait. |

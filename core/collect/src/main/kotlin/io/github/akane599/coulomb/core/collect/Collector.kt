@@ -97,11 +97,14 @@ public class Collector
             actor.post(CollectorEvent.Trigger(trigger))
         }
 
-        /** [post], returning when the trigger has been handled and what follows a snapshot has run. */
-        public suspend fun snapshot(trigger: SnapshotTrigger) {
-            val done = CompletableDeferred<Unit>()
+        /**
+         * [post], returning what the trigger did once it has been handled and what follows a
+         * snapshot has run (audit BUG-001).
+         */
+        public suspend fun snapshot(trigger: SnapshotTrigger): SnapshotOutcome {
+            val done = CompletableDeferred<SnapshotOutcome>()
             actor.post(CollectorEvent.Trigger(trigger, done))
-            done.await()
+            return done.await()
         }
 
         /**
@@ -254,3 +257,18 @@ public class Collector
             }
         }
     }
+
+/** What a trigger handed to [Collector.snapshot] did. */
+public enum class SnapshotOutcome {
+    /** A heavy snapshot was stored. */
+    HEAVY,
+
+    /** A light snapshot was stored: the privileged reads were not available. */
+    LIGHT,
+
+    /** None was stored: one was taken within the debounce (SPEC 7.2), or a sample was enough. */
+    NONE,
+
+    /** Taking or storing it failed: Room, a parser or the platform. */
+    FAILED,
+}

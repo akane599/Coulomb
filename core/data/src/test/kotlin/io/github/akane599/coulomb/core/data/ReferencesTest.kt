@@ -34,6 +34,15 @@ internal class ReferencesTest : DrainDbTest() {
             assertThat(references.mark("Too soon", createdWall = 5L)).isNull()
         }
 
+    /** Audit BUG-001: an older heavy snapshot is not this moment, so it is not marked. */
+    @Test
+    fun aHeavySnapshotOlderThanTheDebounceIsNoMark() =
+        runTest {
+            val latest = heavy(1_000)
+            assertThat(references.mark("Late", createdWall = wall(latest) + References.MAX_AGE_MS + 1)).isNull()
+            assertThat(references.mark("Now", createdWall = wall(latest) + References.MAX_AGE_MS)).isNotNull()
+        }
+
     @Test
     fun theAutomaticReferencesAreNotNamedOnesAndCannotBeDeleted() =
         runTest {
