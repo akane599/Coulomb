@@ -7,8 +7,17 @@ import android.os.DeadObjectException
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.privileged.PartialReason
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.currentTime
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -199,5 +208,51 @@ class StreamTransferTest {
             assertThat(r.partial).isEqualTo(PartialReason.TIMEOUT)
             // 300 ms, then at most the 250 ms grace, with room for a slow machine; the full grace is 5 s.
             assertThat(waited).isLessThan(2_000L)
+        }
+
+    private class CountingPipe : PipePair<Unit> {
+        var sinkClosed = 0
+        override val input: InputStream = ByteArrayInputStream(ByteArray(0))
+        override val sink: Unit = Unit
+
+        override fun closeSink() {
+            sinkClosed += 1
+        }
+
+        override fun closeInput() = Unit
+    }
+
+    /** Audit CONC-005: a producer cancelled before its thread took it never ran the code that closed the sink. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun aTransferCancelledBeforeItsProducerStartsClosesTheSink() =
+        runTest {
+            // The transfer's own dispatcher, held: what is launched on it waits.
+            val held = TestCoroutineScheduler()
+            val pipe = CountingPipe()
+            var produced = 0
+            val caller =
+                launch {
+                    StreamTransfer(StandardTestDispatcher(held), { currentTime }).run(pipe, 1_000, {
+                        produced += 1
+                        0
+                    }, okStatus = 0) { it.readBytes() }
+                }
+            runCurrent()
+            caller.cancel()
+            advanceUntilIdle()
+            held.advanceUntilIdle()
+
+            assertThat(produced).isEqualTo(0)
+            assertThat(pipe.sinkClosed).isEqualTo(1)
+        }
+
+    @Test
+    fun theSinkIsClosedOnceWhenTheProducerRan() =
+        runBlocking {
+            val pipe = CountingPipe()
+            val r = transfer.run(pipe, 5_000, { 0 }, okStatus = 0) { it.readBytes() }
+            assertThat(r.partial).isNull()
+            assertThat(pipe.sinkClosed).isEqualTo(1)
         }
 }

@@ -119,17 +119,22 @@ internal class StreamTransfer(
         pipe: PipePair<S>,
         produce: (S) -> Int,
     ): Deferred<ProducerOutcome> =
-        detached.async {
-            try {
-                ProducerOutcome.Status(produce(pipe.sink))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                ProducerOutcome.Threw(e)
-            } finally {
-                pipe.closeSink()
+        detached
+            .async {
+                try {
+                    ProducerOutcome.Status(produce(pipe.sink))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    ProducerOutcome.Threw(e)
+                }
+            }.also { producer ->
+                // On completion, not in a finally: a producer cancelled before it is dispatched never
+                // runs its body, and the write end stayed open (audit CONC-005). For one that runs,
+                // completion is when produce returns, as before. Not started atomically instead: a
+                // dump for a caller that has gone would walk batterystats for nothing.
+                producer.invokeOnCompletion { pipe.closeSink() }
             }
-        }
 
     @Suppress("TooGenericExceptionCaught")
     private fun <R> startConsumer(
