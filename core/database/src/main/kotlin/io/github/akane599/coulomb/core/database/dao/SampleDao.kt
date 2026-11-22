@@ -127,8 +127,9 @@ public abstract class SampleDao {
 
     /**
      * Where the level changed in `[fromElapsedNs, toElapsedNs)` of [bootSeq], from raw samples and,
-     * once those are compacted, minute aggregates (each at its minute's start with the level it
-     * ended on). For a past charge's level line (ADR-0046 §3): a few hundred rows, not thousands.
+     * once those are compacted, minute or hour aggregates (each at its bucket's start with the
+     * level it ended on; hours replace minutes, so the two never cover the same time). For a past
+     * charge's level line (ADR-0046 §3): a few hundred rows, not thousands.
      */
     @Query(
         "SELECT elapsedNs, level AS levelPct FROM (" +
@@ -136,7 +137,7 @@ public abstract class SampleDao {
             "SELECT elapsedNs, levelPct AS level FROM battery_sample WHERE bootSeq = :bootSeq " +
             "AND elapsedNs >= :fromElapsedNs AND elapsedNs < :toElapsedNs " +
             "UNION ALL SELECT startElapsedNs AS elapsedNs, levelLastPct AS level FROM sample_aggregate " +
-            "WHERE resolutionS = $MINUTE_S AND bootSeq = :bootSeq " +
+            "WHERE resolutionS IN ($MINUTE_S, $HOUR_S) AND bootSeq = :bootSeq " +
             "AND startElapsedNs >= :fromElapsedNs AND startElapsedNs < :toElapsedNs)) " +
             "WHERE prev IS NULL OR level != prev ORDER BY elapsedNs",
     )
@@ -281,6 +282,9 @@ public abstract class SampleDao {
 
         /** The aggregates that replace raw samples after 14 days (SPEC 7.7). */
         const val MINUTE_S = 60
+
+        /** The aggregates that replace minutes after 180 days (SPEC 7.7). */
+        const val HOUR_S = 3_600
     }
 }
 

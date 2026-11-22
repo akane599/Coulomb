@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.database.entity.CapacityEstimateEntity
 import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
 import io.github.akane599.coulomb.core.database.entity.DeviceProfileEntity
 import io.github.akane599.coulomb.core.database.entity.HealthSummaryEntity
+import io.github.akane599.coulomb.core.database.entity.SampleAggregateEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.model.DesignCapacity
 import io.github.akane599.coulomb.core.model.DesignCapacitySource
@@ -194,16 +195,30 @@ public class HealthRepository
             val end = session.endElapsedNs ?: return emptyList()
             val offset = session.endOffsetMs() ?: return emptyList()
             val raw = samples.samples(session.bootSeq, session.startElapsedNs, end + 1)
-            if (raw.isNotEmpty()) return HealthReader.curve(raw, offset)
-            // A minute starts on the boot's minute marks, so the one the charge began in starts before
-            // it; it counts when its first reading is the charge's, as a wall-time read took it.
-            val minuteNs = MINUTE_S * NS_PER_S
-            val minutes =
-                samples
-                    .aggregates(MINUTE_S, session.bootSeq, session.startElapsedNs - minuteNs + 1, end + 1)
-                    .filter { it.startElapsedNs >= session.startElapsedNs || it.startWallMs >= session.startWall }
-                    .map { if (it.startElapsedNs < session.startElapsedNs) it.copy(startElapsedNs = session.startElapsedNs) else it }
-            return HealthReader.aggregateCurve(minutes, offset)
+            // Retention compacts by time, so a charge can begin in hours, go on in minutes and end
+            // in raw samples: each part is read up to where the finer one starts (audit DATA-006).
+            val minutes = aggregatesBefore(MINUTE_S, session, raw.firstOrNull()?.elapsedNs ?: (end + 1))
+            val hours =
+                aggregatesBefore(HOUR_S, session, minutes.firstOrNull()?.startElapsedNs ?: raw.firstOrNull()?.elapsedNs ?: (end + 1))
+            return HealthReader.aggregateCurve(hours + minutes, offset) + HealthReader.curve(raw, offset)
+        }
+
+        /**
+         * [session]'s aggregates of [resolutionS] that start before [untilNs]. A bucket starts on the
+         * boot's marks, so the one the charge began in starts before it; it counts when its first
+         * reading is the charge's, as a wall-time read took it.
+         */
+        private suspend fun aggregatesBefore(
+            resolutionS: Int,
+            session: SessionEntity,
+            untilNs: Long,
+        ): List<SampleAggregateEntity> {
+            if (untilNs <= session.startElapsedNs) return emptyList()
+            val bucketNs = resolutionS * NS_PER_S
+            return samples
+                .aggregates(resolutionS, session.bootSeq, session.startElapsedNs - bucketNs + 1, untilNs)
+                .filter { it.startElapsedNs >= session.startElapsedNs || it.startWallMs >= session.startWall }
+                .map { if (it.startElapsedNs < session.startElapsedNs) it.copy(startElapsedNs = session.startElapsedNs) else it }
         }
 
         private fun DeviceProfileEntity.design(): DesignCapacity? {
@@ -234,6 +249,9 @@ public class HealthRepository
             /** A longer gap between samples is time Coulomb did not watch (ADR-0044 §2). */
             internal const val MAX_GAP_MS: Long = 6 * 3_600_000L
             private const val MINUTE_S = 60
+
+            /** The aggregates that replace minutes after 180 days (SPEC 7.7). */
+            private const val HOUR_S = 3_600
             private const val NS_PER_S = 1_000_000_000L
             private const val MAX_NAME = 40
         }

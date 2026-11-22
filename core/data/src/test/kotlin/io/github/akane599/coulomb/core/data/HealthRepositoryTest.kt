@@ -192,6 +192,67 @@ internal class HealthRepositoryTest {
             assertThat(checkNotNull(real { repository.session(id).first() }).curve).hasSize(2)
         }
 
+    /** Audit DATA-006: a charge retention split across hours, minutes and raw samples reads as one curve. */
+    @Test
+    fun aChargeSplitByRetentionReadsAcrossEveryResolution() =
+        runTest {
+            val hourNs = 60 * minuteNs
+            val start = now - 3 * 3_600_000L
+            val id =
+                db.sessionDao().insert(
+                    SessionEntity(
+                        kind = SessionKind.CHARGE,
+                        bootSeq = 1,
+                        startElapsedNs = 0,
+                        endElapsedNs = 2 * hourNs + 3 * minuteNs,
+                        startWall = start,
+                        endWall = start + 2 * 3_600_000L + 180_000L,
+                        startSnapshotId = null,
+                        endSnapshotId = null,
+                        startLevel = 20,
+                        endLevel = 90,
+                        startChargeUah = null,
+                        endChargeUah = null,
+                        chargeSource = null,
+                        avgCurrentMa = null,
+                        peakCurrentMa = null,
+                        minTempDeciC = 290,
+                        meanTempDeciC = 300,
+                        maxTempDeciC = 310,
+                        awakeRatio = null,
+                        deepIdleReached = null,
+                        deepIdleReachedMs = null,
+                        minutesAtOrAbove80 = 0,
+                        minutesAt100 = 0,
+                        stressIndex = 0.0,
+                        cycleEquivalents = 0.7,
+                        closeReason = SessionCloseReason.STATE_CHANGED,
+                        quality = 1.0,
+                    ),
+                )
+
+            fun aggregate(
+                resolutionS: Int,
+                elapsedNs: Long,
+                level: Int,
+            ) = "INSERT INTO sample_aggregate VALUES ($resolutionS, 1, $elapsedNs, ${start + elapsedNs / 1_000_000}, 6, " +
+                "$level, ${level + 1}, NULL, NULL, 1900000, 2000000, 2100000, 4000, 300, 300, 300, 0.0, 2)"
+            val sql = db.openHelper.writableDatabase
+            // The first hour is in hours, the next in minutes, the end still raw.
+            sql.execSQL(aggregate(3_600, 0, 20))
+            sql.execSQL(aggregate(60, hourNs, 50))
+            sql.execSQL(aggregate(60, hourNs + minuteNs, 51))
+            for (i in 0..2) {
+                val elapsed = 2 * hourNs + i * minuteNs
+                val wall = start + elapsed / 1_000_000
+                db.sampleDao().insert(BatterySampleEntity(1, elapsed, wall, 88 + i, null, 2_000_000, 2_000, 4_000, 320, 2, 2, false, 0, 0))
+            }
+
+            val curve = checkNotNull(real { repository.session(id).first() }).curve
+            assertThat(curve.map { it.levelPct }).containsExactly(21, 51, 52, 88, 89, 90).inOrder()
+            assertThat(curve.map { it.wallMs }).isInStrictOrder()
+        }
+
     @Test
     fun aRenameAndTheOwnersDesignCapacityAreStored() =
         runTest {
