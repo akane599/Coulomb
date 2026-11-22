@@ -397,7 +397,7 @@ private fun NightTimeline(
             R.string.night_timeline_summary,
             formats.percent(night.startLevel),
             formats.percent(night.endLevel),
-            formats.integer(awake.size.toLong()),
+            formats.integer(timeline.wakeups.toLong()),
             formats.held(awake.sumOf { it.durationMs }),
         )
     Column(Modifier.fillMaxWidth()) {
@@ -426,13 +426,18 @@ private fun NightTimeline(
     }
 }
 
-/** The tracks as a table: how long each was on and in how many stretches. */
+/**
+ * The tracks as a table: how long each was on and in how many stretches. Where the history did not
+ * cover the whole span, each figure is "at least" (audit DATA-016): a gap is not off.
+ */
 @Composable
 internal fun tracksTable(
     timeline: Timeline,
     tracks: List<TimelineTrack>,
     formats: Formats,
 ): DataTable {
+    val lowerBound = stringResource(R.string.timeline_at_least, "%s")
+    val atLeast = { figure: String -> if (timeline.partlyKnown) lowerBound.format(figure) else figure }
     val rows =
         tracks.filter { it != TimelineTrack.SIGNAL && it != TimelineTrack.TEMPERATURE }.flatMap { track ->
             val spans = timeline.tracks[track].orEmpty()
@@ -455,7 +460,11 @@ internal fun tracksTable(
             ),
         rows =
             rows.map { (name, spans) ->
-                listOf(name, formats.held(spans.sumOf { it.durationMs }), formats.integer(spans.size.toLong()))
+                listOf(
+                    name,
+                    atLeast(formats.held(spans.sumOf { it.durationMs })),
+                    atLeast(formats.integer(spans.size.toLong())),
+                )
             },
         provenance = Provenance.MEASURED,
     )

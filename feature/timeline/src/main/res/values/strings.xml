@@ -122,4 +122,5 @@
     </plurals>
     <string name="timeline_event_name">Name</string>
     <string name="timeline_event_open_app">Open %1$s</string>
+    <string name="timeline_at_least">At least %1$s</string>
 </resources>

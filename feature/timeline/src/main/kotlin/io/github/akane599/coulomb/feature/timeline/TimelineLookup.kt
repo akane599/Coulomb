@@ -170,10 +170,23 @@ internal fun Timeline.cut(window: TimeWindow): Timeline {
 internal val Timeline.knownMs: Long
     get() = (toWallMs - fromWallMs - unknown.sumOf { it.durationMs }).coerceAtLeast(0)
 
+/**
+ * The awake stretches that began inside this timeline: not one cut by its start, nor one the history
+ * restated as already awake after a gap, whose start is not known (audit DATA-015, as `WakeSource`).
+ */
+internal val Timeline.wakeups: Int
+    get() {
+        val gapEnds = unknown.mapTo(HashSet()) { it.toWallMs }
+        return tracks[TimelineTrack.AWAKE].orEmpty().count { it.fromWallMs > fromWallMs && it.fromWallMs !in gapEnds }
+    }
+
+/** The history did not cover all of this timeline: what it shows is a lower bound. */
+internal val Timeline.partlyKnown: Boolean get() = unknown.any { it.durationMs > 0 }
+
 /** How often the phone woke, per hour of known history; null when there is too little to say. */
 internal fun Timeline.wakeupsPerHour(): Double? {
     val hours = knownMs / MS_PER_HOUR
-    val wakeups = tracks[TimelineTrack.AWAKE].orEmpty().size
+    val wakeups = wakeups
     return if (hours < MIN_RATE_HOURS || wakeups == 0) null else wakeups / hours
 }
 

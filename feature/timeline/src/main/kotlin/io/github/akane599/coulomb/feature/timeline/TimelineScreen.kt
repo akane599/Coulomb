@@ -497,7 +497,7 @@ internal fun wakeSentence(
     formats: Formats,
 ): String? {
     val rate = visible.wakeupsPerHour() ?: return null
-    val wakeups = visible.tracks[TimelineTrack.AWAKE].orEmpty().size
+    val wakeups = visible.wakeups
     return if (visible.knownMs < MS_PER_HOUR) {
         pluralStringResource(R.plurals.timeline_caption_woke, wakeups, formats.integer(wakeups.toLong()))
     } else {

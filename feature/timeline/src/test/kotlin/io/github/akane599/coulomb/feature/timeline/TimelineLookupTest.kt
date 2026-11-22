@@ -128,4 +128,28 @@ class TimelineLookupTest {
         assertThat(timeline.wakeupsPerHour()).isWithin(0.01).of(5 / 1.75)
         assertThat(timeline.cut(TimeWindow(at(0), at(10))).wakeupsPerHour()).isNull()
     }
+
+    /**
+     * Audit DATA-015: a stretch cut by the view's start, or one the history restated as awake right
+     * after a gap, did not begin in view and is no wakeup.
+     */
+    @Test
+    fun onlyAStretchThatBeganInViewIsAWakeup() {
+        assertThat(timeline.wakeups).isEqualTo(5)
+        // From 0:30 the screen's stretch from 0:20 is cut by the edge.
+        assertThat(timeline.cut(TimeWindow(at(30), at(120))).wakeups).isEqualTo(4)
+        val afterGap =
+            timeline.copy(
+                tracks =
+                    timeline.tracks + (TimelineTrack.AWAKE to timeline.tracks.getValue(TimelineTrack.AWAKE) + TrackSpan(at(15), at(16))),
+            )
+        assertThat(afterGap.wakeups).isEqualTo(5)
+    }
+
+    /** Audit DATA-016: a gap is not off, so a timeline the history did not cover reads as a lower bound. */
+    @Test
+    fun aTimelineWithAGapIsPartlyKnown() {
+        assertThat(timeline.partlyKnown).isTrue()
+        assertThat(timeline.cut(TimeWindow(at(20), at(120))).partlyKnown).isFalse()
+    }
 }

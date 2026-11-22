@@ -121,4 +121,5 @@
     </plurals>
     <string name="timeline_event_name">Ad</string>
     <string name="timeline_event_open_app">%1$s uygulamasını aç</string>
+    <string name="timeline_at_least">En az %1$s</string>
 </resources>
