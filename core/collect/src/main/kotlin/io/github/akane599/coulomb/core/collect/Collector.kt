@@ -92,6 +92,12 @@ public class Collector
                 screen.value = value
             }
 
+        /** See [CollectorActor.hold]: collection stops, and what was under way has finished. */
+        public suspend fun hold(): Unit = actor.hold()
+
+        /** Collection goes on after a [hold], as after an erase that failed. */
+        public fun release(): Unit = actor.release()
+
         /** Queues a snapshot for [trigger]; the policy decides its kind (SPEC 7.2). */
         public fun post(trigger: SnapshotTrigger) {
             actor.post(CollectorEvent.Trigger(trigger))

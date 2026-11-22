@@ -90,6 +90,28 @@ class CollectorActorTest {
             actor.close()
         }
 
+    /** Audit CONC-023: held for an erase, the collector writes nothing until it is released. */
+    @Test
+    fun aHeldCollectorStoresNothingUntilReleased() =
+        runBlocking {
+            val engine = CollectorEngine(db, device, FakeStats(clock), FakeIdentity(), clock, MemoryBlobs(), FakeLabels(mutableMapOf()))
+            val actor = CollectorActor(engine, scope)
+            device.set(hours = 9.0, level = 80, chargeMah = 4_000.0, screenOn = true)
+
+            suspend fun handled(trigger: SnapshotTrigger): SnapshotOutcome {
+                val done = CompletableDeferred<SnapshotOutcome>()
+                actor.post(CollectorEvent.Trigger(trigger, done))
+                return withTimeout(TIMEOUT_MS) { done.await() }
+            }
+            withTimeout(TIMEOUT_MS) { actor.hold() }
+            actor.post(CollectorEvent.Sample(device.read()))
+            assertThat(handled(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(SnapshotOutcome.FAILED)
+            assertThat(db.snapshotDao().latestHeavy()).isNull()
+            actor.release()
+            assertThat(handled(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(SnapshotOutcome.HEAVY)
+            actor.close()
+        }
+
     private companion object {
         const val TIMEOUT_MS = 20_000L
     }

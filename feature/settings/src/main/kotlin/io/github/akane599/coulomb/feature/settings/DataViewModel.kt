@@ -150,8 +150,11 @@ internal interface DataHost {
      */
     suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)? = null): Int
 
-    /** Stops the collector before a deletion; starts it again after one that failed, so it goes on as before. */
-    fun collector(run: Boolean)
+    /**
+     * Stops the collector before a deletion, returning once nothing can be written; starts it
+     * again after one that failed, so it goes on as before.
+     */
+    suspend fun collector(run: Boolean)
 
     /** Starts Coulomb again in a new process: the collector holds the deleted data's state in memory. */
     fun restart()
@@ -452,12 +455,15 @@ private class AndroidDataHost(
     override suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)?): Int =
         if (eraseIfNone == null) actions.records.first().count { it.active } else actions.eraseWhenNoneInForce(eraseIfNone)
 
-    override fun collector(run: Boolean) {
+    override suspend fun collector(run: Boolean) {
         if (run) {
+            collector.release()
             // In the user's mode: Lite has no service to start again.
             collector.start(SnapshotTrigger.SERVICE_STARTED)
         } else {
             context.stopService(Intent(context, CollectorService::class.java))
+            // The service's producers stop, but Lite, a screen or a queued event could still write.
+            collector.hold()
         }
     }
 

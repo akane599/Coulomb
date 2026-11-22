@@ -193,7 +193,7 @@ class DataViewModelTest {
 
         override suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)?): Int = inForce.also { if (it == 0) eraseIfNone?.invoke() }
 
-        override fun collector(run: Boolean) {
+        override suspend fun collector(run: Boolean) {
             events += if (run) "start" else "stop"
         }
 

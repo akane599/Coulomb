@@ -23,6 +23,11 @@ internal sealed interface CollectorEvent {
         val done: CompletableDeferred<SnapshotOutcome>? = null,
     ) : CollectorEvent
 
+    /** Completes [done] once every event before it has been handled; see [CollectorActor.hold]. */
+    data class Flush(
+        val done: CompletableDeferred<Unit>,
+    ) : CollectorEvent
+
     data class Sample(
         val reading: LightReading,
     ) : CollectorEvent
@@ -51,34 +56,46 @@ internal class CollectorActor(
     private val consumer: Job =
         scope.launch {
             for (event in events) {
-                var outcome = SnapshotOutcome.FAILED
-                try {
-                    val action =
-                        when (event) {
-                            is CollectorEvent.Trigger -> engine.handle(event.trigger)
-                            is CollectorEvent.Sample -> engine.sample(event.reading).let { null }
-                            CollectorEvent.PrivilegesChanged -> engine.privilegesChanged()
-                            is CollectorEvent.Watching -> engine.watching(event.on).let { null }
-                        }
-                    outcome =
-                        when (action) {
-                            Action.HEAVY -> SnapshotOutcome.HEAVY
-                            Action.LIGHT -> SnapshotOutcome.LIGHT
-                            else -> SnapshotOutcome.NONE
-                        }
-                    if (action == Action.LIGHT || action == Action.HEAVY) notify(heavy = action == Action.HEAVY)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (
-                    @Suppress("TooGenericExceptionCaught") e: Exception,
-                ) {
-                    // Room, a parser or the platform failed for this event only.
-                    Log.w(TAG, "collector event $event failed", e)
-                } finally {
-                    (event as? CollectorEvent.Trigger)?.done?.complete(outcome)
+                when {
+                    event is CollectorEvent.Flush -> event.done.complete(Unit)
+
+                    // Held for an erase: nothing is stored until the process restarts (audit CONC-023).
+                    held -> (event as? CollectorEvent.Trigger)?.done?.complete(SnapshotOutcome.FAILED)
+
+                    else -> handle(event)
                 }
             }
         }
+
+    private suspend fun handle(event: CollectorEvent) {
+        var outcome = SnapshotOutcome.FAILED
+        try {
+            val action =
+                when (event) {
+                    is CollectorEvent.Trigger -> engine.handle(event.trigger)
+                    is CollectorEvent.Sample -> engine.sample(event.reading).let { null }
+                    CollectorEvent.PrivilegesChanged -> engine.privilegesChanged()
+                    is CollectorEvent.Watching -> engine.watching(event.on).let { null }
+                    is CollectorEvent.Flush -> null
+                }
+            outcome =
+                when (action) {
+                    Action.HEAVY -> SnapshotOutcome.HEAVY
+                    Action.LIGHT -> SnapshotOutcome.LIGHT
+                    else -> SnapshotOutcome.NONE
+                }
+            if (action == Action.LIGHT || action == Action.HEAVY) notify(heavy = action == Action.HEAVY)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (
+            @Suppress("TooGenericExceptionCaught") e: Exception,
+        ) {
+            // Room, a parser or the platform failed for this event only.
+            Log.w(TAG, "collector event $event failed", e)
+        } finally {
+            (event as? CollectorEvent.Trigger)?.done?.complete(outcome)
+        }
+    }
 
     /** SPEC 7.5: what follows a stored snapshot. One observer's failure is not the others' or the collector's. */
     private suspend fun notify(heavy: Boolean) {
@@ -93,6 +110,26 @@ internal class CollectorActor(
                 Log.w(TAG, "snapshot observer failed", e)
             }
         }
+    }
+
+    @Volatile private var held = false
+
+    /**
+     * Holds collection, as before "Delete all data" erases the tables: once this returns, the event
+     * being handled has finished, and every event after it, from the service, Lite, a screen or
+     * automation, is dropped until [release]. Nothing from the old process can be written after
+     * the erase (audit CONC-023).
+     */
+    suspend fun hold() {
+        held = true
+        val flushed = CompletableDeferred<Unit>()
+        events.send(CollectorEvent.Flush(flushed))
+        flushed.await()
+    }
+
+    /** Collection goes on, as after an erase that failed. */
+    fun release() {
+        held = false
     }
 
     fun post(event: CollectorEvent) {
