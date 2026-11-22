@@ -162,6 +162,7 @@
     <string name="health_full_speed_note">yavaşlamadan önce</string>
     <string name="health_slowed_from">Yavaşlama noktası</string>
     <string name="health_slowed_never">yavaşlamadı</string>
+    <string name="health_slowed_unknown">%1$s altında anlamaya yetecek ölçüm yok</string>
     <string name="health_heat">Isı ve yüksek seviye</string>
     <string name="health_temperature">Sıcaklık</string>
     <string name="health_temperature_note">ortalama; en yüksek %1$s</string>

@@ -182,6 +182,7 @@
     <string name="health_full_speed_note">before slowing down</string>
     <string name="health_slowed_from">Slowed from</string>
     <string name="health_slowed_never">didn’t slow down</string>
+    <string name="health_slowed_unknown">too few readings below %1$s to tell</string>
     <string name="health_heat">Heat and high charge</string>
     <string name="health_temperature">Temperature</string>
     <string name="health_temperature_note">average; highest %1$s</string>

@@ -235,6 +235,13 @@ class HealthScreenshotTest {
     fun sessionArabic() =
         shoot("session-ar", rtl = true) { ChargeSessionContent(Read.Ready(labSession()), {}, zone = ZONE, nowMs = NOW_MS) }
 
+    /** A top-up from high up: a peak, but too few readings below 50% to tell a slowdown (audit BUG-044). */
+    @Test
+    fun sessionTopUp() =
+        shoot("session-top-up") {
+            ChargeSessionContent(Read.Ready(labSession().copy(fullSpeedW = null, ccToCvLevel = null)), {}, zone = ZONE, nowMs = NOW_MS)
+        }
+
     /** Before calibration: no power, so the level alone and why. */
     @Test
     fun sessionUncalibrated() =

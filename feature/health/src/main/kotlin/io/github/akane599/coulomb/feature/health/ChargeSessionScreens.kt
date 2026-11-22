@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.akane599.coulomb.core.analytics.Charging
 import io.github.akane599.coulomb.core.data.ChargeSessionDetail
 import io.github.akane599.coulomb.core.data.ChargeSessionRow
 import io.github.akane599.coulomb.core.data.DischargeSessionRow
@@ -344,7 +345,7 @@ private fun SessionHead(
             }
             CoulombFigure(
                 stringResource(R.string.health_slowed_from),
-                stringResource(R.string.health_slowed_never).takeIf { detail.ccToCvLevel == null },
+                slowedCaption(detail.ccToCvLevel, detail.fullSpeedW, formats),
             ) {
                 detail.ccToCvLevel?.let { level ->
                     FigureText(formats.percentParts(level), numberStyle = type.title, unitStyle = type.label)
@@ -354,6 +355,22 @@ private fun SessionHead(
         }
     }
 }
+
+/**
+ * Why "Slowed from" has no level: the charge did not slow, or, without full speed, too few readings
+ * below [Charging.TAPER_SEARCH_FROM] to tell; a top-up that starts high is the second (audit BUG-044).
+ */
+@Composable
+private fun slowedCaption(
+    taperLevel: Int?,
+    fullSpeedW: Double?,
+    formats: Formats,
+): String? =
+    when {
+        taperLevel != null -> null
+        fullSpeedW == null -> stringResource(R.string.health_slowed_unknown, formats.percent(Charging.TAPER_SEARCH_FROM))
+        else -> stringResource(R.string.health_slowed_never)
+    }
 
 private val MarkGap = 2.dp
 
