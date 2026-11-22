@@ -23,6 +23,8 @@ import io.github.akane599.coulomb.core.database.transfer.CsvExport
 import io.github.akane599.coulomb.core.database.transfer.DatabaseCopy
 import io.github.akane599.coulomb.core.database.transfer.ImportedBundle
 import io.github.akane599.coulomb.core.model.SessionKind
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -198,6 +200,8 @@ public class DataTransfer
                     try {
                         staging.mkdirs()
                         val bundle = BundleImporter(context).load(input, staging.resolve(DATABASE), progress)
+                        // The checks after the last row report no progress: a cancel during them stops here.
+                        ensureActive()
                         val id = bundle.manifest.bundleId
                         when {
                             // The id becomes a folder's name, and it came from the file.
@@ -223,7 +227,11 @@ public class DataTransfer
                 }
             }
 
-        /** Moves the loaded bundle from [staging] to its own folder, whole or not at all. */
+        /**
+         * Moves the loaded bundle from [staging] to its own folder, whole or not at all. The rename is
+         * the commit: a cancel before it keeps nothing, one after it keeps the archive, which the list
+         * shows (audit CONC-009).
+         */
         private suspend fun place(
             staging: File,
             bundle: ImportedBundle,
@@ -231,6 +239,7 @@ public class DataTransfer
             val home = archiveRoot.resolve(bundle.manifest.bundleId)
             staging.resolve(MANIFEST).writeText(bundle.manifest.toJson())
             staging.resolve(SUMMARY).writeText(summary(bundle.database).toString())
+            currentCoroutineContext().ensureActive()
             if (!staging.renameTo(home)) return ImportResult.Refused(ImportProblem.FAILED)
             list()
             return archive(home)?.let { ImportResult.Imported(it, bundle.settings) } ?: ImportResult.Refused(ImportProblem.FAILED)

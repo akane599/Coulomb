@@ -10,6 +10,10 @@ import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.common.AppDispatchers
 import io.github.akane599.coulomb.core.database.CoulombDatabase
 import io.github.akane599.coulomb.core.database.transfer.CodedColumns
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.job
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -88,6 +92,31 @@ class DataTransferTest {
 
             transfer.deleteArchive(imported.archive.id)
             assertThat(transfer.archives.value).isEmpty()
+        }
+
+    /** Audit CONC-009: a cancel after the last row's progress, during the checks, keeps no archive. */
+    @Test
+    fun anImportCancelledAfterItsLastRowKeepsNothing() =
+        runTest {
+            val transfer = DataTransfer(context, db, AppDispatchers.production())
+            val out = ByteArrayOutputStream()
+            transfer.exportBundle(out, nowWallMs = 1_800_000_000_000, settings = "{}")
+
+            val import =
+                async(Dispatchers.Default) {
+                    val running = coroutineContext.job
+                    // The cancel lands without throwing where progress is reported, as after the last row.
+                    transfer.import(ByteArrayInputStream(out.toByteArray())) { running.cancel() }
+                }
+            assertThat(runCatching { import.await() }.exceptionOrNull()).isInstanceOf(CancellationException::class.java)
+            // Never listed: nothing was placed. The staging folder is gone too.
+            assertThat(transfer.archives.value.orEmpty()).isEmpty()
+            assertThat(
+                context.noBackupFilesDir
+                    .resolve("archives")
+                    .list()
+                    .orEmpty(),
+            ).isEmpty()
         }
 
     @Test

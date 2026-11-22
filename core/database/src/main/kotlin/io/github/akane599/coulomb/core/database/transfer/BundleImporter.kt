@@ -159,6 +159,8 @@ public class BundleImporter internal constructor(
                 db.execSQL("UPDATE boot SET imported = 1")
                 db.setTransactionSuccessful()
                 db.endTransaction()
+                // Every row is in: the caller sees the total, and may cancel before the checks (audit CONC-009).
+                progress(rows)
                 Checks.run(db, manifest)
             } finally {
                 if (db.inTransaction()) db.endTransaction()
