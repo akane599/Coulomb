@@ -18,7 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Audit BUG-027: a first event that fails while loading the profile does not leave the process uncalibrated. */
+/** A first event whose profile load or label lookup fails (audit BUG-027, DATA-018). */
 @RunWith(AndroidJUnit4::class)
 class ProfileLoadTest {
     private lateinit var db: CoulombDatabase
@@ -55,5 +55,20 @@ class ProfileLoadTest {
             device.set(hours = 9.5, level = 79, chargeMah = 3_950.0, screenOn = false)
             assertThat(engine.handle(SnapshotTrigger.SCREEN_OFF)).isEqualTo(Action.HEAVY)
             assertThat(engine.calibration).isNotNull()
+        }
+
+    /** Audit DATA-018: a label lookup that fails after the commit costs the names only. */
+    @Test
+    fun aFailedLabelLookupKeepsTheSnapshotAndItsSample() =
+        runTest {
+            val labels =
+                object : AppLabels {
+                    override fun label(uid: Int): AppLabel? = error("the package manager failed")
+                }
+            val engine = CollectorEngine(db, device, FakeStats(clock), identity, clock, MemoryBlobs(), labels)
+            device.set(hours = 9.0, level = 80, chargeMah = 4_000.0, screenOn = true)
+            assertThat(engine.handle(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(Action.HEAVY)
+            val heavy = checkNotNull(db.snapshotDao().latestHeavy())
+            assertThat(db.sampleDao().latest()?.elapsedNs).isEqualTo(heavy.elapsedNs)
         }
 }

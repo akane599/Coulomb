@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.core.collect.engine
 
+import android.util.Log
 import androidx.room.withTransaction
 import io.github.akane599.coulomb.core.analytics.CurrentCalibration
 import io.github.akane599.coulomb.core.analytics.DeviceState
@@ -44,6 +45,7 @@ import io.github.akane599.coulomb.core.model.SnapshotKind
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.history.HistoryKind
 import io.github.akane599.coulomb.core.model.stats.BatteryStatsDump
+import kotlinx.coroutines.CancellationException
 import java.time.Instant
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -349,19 +351,39 @@ internal class CollectorEngine(
             )
         val context =
             writeContext(reading, previousHeavy, unseen).copy(references = trigger in REFERENCE_TRIGGERS, designMah = storedDesignMah())
-        db
-            .withTransaction {
+        val changed =
+            db.withTransaction {
                 // A read that set no cursor stored nothing: the events before this snapshot are not all in.
                 val eventId = ingest?.takeIf { it.nextCursorMs != null }?.let { db.historyDao().insertRead(it.events, it.gaps) }
                 val id = db.snapshotDao().insert(entity.copy(historyEventId = eventId), rows, kernel.rows)
                 ingest?.newOffsetMs?.let { db.deviceDao().setHistoryOffset(boot.bootSeq, it) }
                 writer.afterSnapshot(entity.copy(id = id, historyEventId = eventId), rows, context)
+                // The snapshot's own reading is a sample too: in Lite mode no sampler runs, and the
+                // screens read the battery from the latest sample (ADR-0069). Stored with it, so
+                // neither is kept without the other (audit DATA-018).
+                storeSample(reading, boot)
                 if (dump != null) recordPackages(dump, reading) else emptyMap()
-            }.let { changed -> recordLabels(changed, reading) }
+            }
+        // What the commit made true first: the cursor and offset in memory follow the stored ones.
         afterCommit(history, ingest, boot, reading)
-        // The snapshot's own reading is a sample too: in Lite mode no sampler runs, and the
-        // screens read the battery from the latest sample (ADR-0069).
-        storeSample(reading, boot)
+        recordLabelsOrLog(changed, reading)
+    }
+
+    /** [recordLabels], whose failure costs the names only: the snapshot and its state stand (audit DATA-018). */
+    private suspend fun recordLabelsOrLog(
+        changed: Map<Int, List<String>>,
+        reading: LightReading,
+    ) {
+        try {
+            recordLabels(changed, reading)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (
+            @Suppress("TooGenericExceptionCaught") e: Exception,
+        ) {
+            // The package manager or Room; the UIDs keep the names they had until the next change.
+            Log.w(TAG, "labels not recorded", e)
+        }
     }
 
     /**
@@ -774,6 +796,8 @@ internal class CollectorEngine(
     ) = last == null || reading.elapsedNs - last >= everyNs
 
     companion object {
+        private const val TAG = "CollectorEngine"
+
         /** SPEC 7.5: 2 s per source. */
         const val SOURCE_TIMEOUT_MS: Long = 2_000
 
