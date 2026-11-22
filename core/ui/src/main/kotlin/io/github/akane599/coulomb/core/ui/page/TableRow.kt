@@ -12,11 +12,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -27,8 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
@@ -51,6 +57,7 @@ import io.github.akane599.coulomb.core.ui.R
 import io.github.akane599.coulomb.core.ui.breakable
 import io.github.akane599.coulomb.core.ui.format.rememberFormats
 import io.github.akane599.coulomb.core.ui.label
+import kotlinx.coroutines.launch
 
 /** One row of an [InlineTable]: a name, its figures, and an optional note and definition. */
 @Immutable
@@ -76,6 +83,7 @@ public data class TableRow(
  * table longer than [shown] rows ends with "Show all". [stack] takes that layout at any width, for
  * a table whose values are words that a figure's column would break.
  */
+@OptIn(ExperimentalMaterial3Api::class) // FigureCell's tooltip
 @Composable
 public fun InlineTable(
     columns: List<String>,
@@ -132,6 +140,7 @@ public fun InlineTable(
  * A figure at the end of its column. The box, not the text, takes the end, so a figure whose
  * digits read left to right still sits at the end of an RTL row.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FigureCell(
     text: String,
@@ -139,15 +148,17 @@ private fun FigureCell(
     color: Color,
     style: TextStyle,
     mark: Provenance? = null,
+    tooltip: TooltipState? = null,
 ) {
     Box(Modifier.padding(start = CoulombSpacing.Space12).width(width), contentAlignment = Alignment.TopEnd) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text, color = color, style = style)
-            mark?.let { ProvenanceMark(it) }
+            mark?.let { if (tooltip != null) ProvenanceMark(it, tooltip) else ProvenanceMark(it) }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TableLine(
     row: TableRow,
@@ -180,7 +191,19 @@ private fun TableLine(
         }
     }
     // TalkBack reads the row as one item, a term's definition included, so it needs no second stop.
-    val semantics = Modifier.clearAndSetSemantics { contentDescription = spoken }
+    // The mark's "Explain provenance" moves to the row, which clears the mark's own (audit PLAT-001).
+    val tooltip = rememberTooltipState()
+    val scope = rememberCoroutineScope()
+    val explain = stringResource(R.string.provenance_explain_action)
+    val semantics =
+        Modifier.clearAndSetSemantics {
+            contentDescription = spoken
+            if (row.mark !=
+                null
+            ) {
+                customActions = listOf(CustomAccessibilityAction(explain) { scope.launch { tooltip.show() }.let { true } })
+            }
+        }
     if (stacked) {
         Column(rowModifier.then(semantics)) {
             name(Modifier.fillMaxWidth())
@@ -190,7 +213,7 @@ private fun TableLine(
                 horizontalArrangement = Arrangement.spacedBy(CoulombSpacing.Space16),
             ) {
                 labels.zip(row.values).forEachIndexed { index, (column, value) ->
-                    MarkedFigure(row.mark.takeIf { index == labels.lastIndex }) {
+                    MarkedFigure(row.mark.takeIf { index == labels.lastIndex }, tooltip) {
                         Text(
                             buildAnnotatedString {
                                 withStyle(SpanStyle(color = colors.textSecondary)) { append(column) }
@@ -208,21 +231,23 @@ private fun TableLine(
         Row(rowModifier.then(semantics)) {
             name(Modifier.weight(1f))
             row.values.forEachIndexed { index, value ->
-                FigureCell(value, valueWidth, colors.textPrimary, type.data, row.mark.takeIf { index == row.values.lastIndex })
+                FigureCell(value, valueWidth, colors.textPrimary, type.data, row.mark.takeIf { index == row.values.lastIndex }, tooltip)
             }
         }
     }
 }
 
 /** [content], then [mark] after it where there is one. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MarkedFigure(
     mark: Provenance?,
+    tooltip: TooltipState,
     content: @Composable () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         content()
-        mark?.let { ProvenanceMark(it) }
+        mark?.let { ProvenanceMark(it, tooltip) }
     }
 }
 

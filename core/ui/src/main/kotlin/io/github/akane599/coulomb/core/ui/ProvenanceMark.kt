@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.TooltipState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -84,7 +85,17 @@ public fun ProvenanceMark(
     provenance: Provenance,
     modifier: Modifier = Modifier,
 ) {
-    val tooltip = rememberTooltipState()
+    ProvenanceMark(provenance, rememberTooltipState(), modifier)
+}
+
+/** [ProvenanceMark] whose explanation [tooltip] a row that clears its children's semantics can show. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ProvenanceMark(
+    provenance: Provenance,
+    tooltip: TooltipState,
+    modifier: Modifier = Modifier,
+) {
     val scope = rememberCoroutineScope()
     val name = stringResource(provenance.label)
     val explain = stringResource(R.string.provenance_explain_action)
