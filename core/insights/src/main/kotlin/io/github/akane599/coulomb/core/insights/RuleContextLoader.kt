@@ -66,10 +66,7 @@ public class RuleContextLoader(
             screenOffSessions = screenOffSessions(nowWallMs, minScreenOffMs, discharges, capacity),
             dischargeWindows = recentDischarges.mapNotNull { dischargeWindow(it) },
             chargeSessions = chargeSessions(nowWallMs),
-            temperatures =
-                listOfNotNull(
-                    samples.hottest(nowWallMs - DAY_MS, nowWallMs + 1)?.let { TempSample(it.wallMs, it.tempDeciC / DECI) },
-                ),
+            temperatures = listOfNotNull(hottest(nowWallMs)),
             health =
                 sessions.observeHealthSummaries().first().mapNotNull { day ->
                     day.healthPct?.let { HealthPoint(day.epochDay * DAY_MS, it) }
@@ -77,6 +74,28 @@ public class RuleContextLoader(
             trends = trends(nowWallMs),
             standby = ports.standby(),
         )
+    }
+
+    /** The day's hottest reading, with the app that used the most charge in the window around it (SPEC R12; audit BUG-061). */
+    private suspend fun hottest(nowWallMs: Long): TempSample? {
+        val sample = samples.hottest(nowWallMs - DAY_MS, nowWallMs + 1) ?: return null
+        return TempSample(sample.wallMs, sample.tempDeciC / DECI, topUid = topAround(sample.bootSeq, sample.elapsedNs))
+    }
+
+    /** The app with the most modeled charge in the consecutive window that holds the moment; null without one. */
+    private suspend fun topAround(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): Int? {
+        val window = windows.consecutiveAround(bootSeq, elapsedNs) ?: return null
+        val from = snapshots.snapshot(window.fromSnapshotId)
+        val to = snapshots.snapshot(window.toSnapshotId)
+        if (from == null || to == null) return null
+        return windows
+            .chainUids(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
+            .filter { isApp(it.uid) && it.component == ALL_COMPONENTS && it.mAh > 0 }
+            .maxByOrNull { it.mAh }
+            ?.uid
     }
 
     /** A chain of consecutive windows: those ending after [from] and no later than [to]. */

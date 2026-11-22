@@ -263,6 +263,19 @@ public abstract class WindowDao {
     @Query("SELECT * FROM window_result WHERE sessionId = :sessionId ORDER BY id DESC LIMIT 1")
     public abstract suspend fun forSession(sessionId: Long): WindowResultEntity?
 
+    /** The consecutive window whose span holds `(bootSeq, elapsedNs)`; null where none was stored there. */
+    @Query(
+        "SELECT w.* FROM window_result w JOIN snapshot f ON f.id = w.fromSnapshotId JOIN snapshot s ON s.id = w.toSnapshotId " +
+            "WHERE w.kind = ${RecordCodes.WINDOW_CONSECUTIVE} " +
+            "AND (f.bootSeq < :bootSeq OR (f.bootSeq = :bootSeq AND f.elapsedNs <= :elapsedNs)) " +
+            "AND (s.bootSeq > :bootSeq OR (s.bootSeq = :bootSeq AND s.elapsedNs >= :elapsedNs)) " +
+            "ORDER BY s.bootSeq, s.elapsedNs LIMIT 1",
+    )
+    public abstract suspend fun consecutiveAround(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): WindowResultEntity?
+
     /**
      * Windows of [kind] that end after `(fromBootSeq, fromElapsedNs)` and no later than
      * `(toBootSeq, toElapsedNs)`, in time order. Consecutive windows chain, so they add up to any

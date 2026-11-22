@@ -255,6 +255,35 @@ class RuleContextLoaderTest {
             assertThat(found.last().deepIdleReached).isFalse()
         }
 
+    /** Audit BUG-061: the hot reading names the app that used the most charge in the window around it. */
+    @Test
+    fun theHottestReadingNamesTheTopAppOfItsWindow() =
+        runTest {
+            val (a, b) = listOf(heavy(1.0), heavy(3.0))
+            window(a, b, modeledMah = 60.0, uids = listOf(mah(app, "all", 40.0), mah(own, "all", 1.0), mah(-1, "SCREEN", 50.0)))
+            db.sampleDao().insert(
+                BatterySampleEntity(
+                    1,
+                    a.elapsedNs + hour * NS_PER_MS,
+                    a.wallMs + hour,
+                    50,
+                    null,
+                    null,
+                    null,
+                    4_200,
+                    460,
+                    0,
+                    3,
+                    false,
+                    0,
+                    0,
+                ),
+            )
+            val hot = loader.load(b.wallMs, hour).temperatures.single()
+            assertThat(hot.tempC).isEqualTo(46.0)
+            assertThat(hot.topUid).isEqualTo(app)
+        }
+
     /** Audit BUG-058: windows with a stretch missing, or without the device's counters, cannot say "no deep Doze". */
     @Test
     fun aSessionTheWindowsDoNotWhollyCoverIsNotJudgedNo() =
@@ -315,6 +344,8 @@ class RuleContextLoaderTest {
             assertThat(loaded.samples.map { it.tempC }).containsExactly(40.0, 40.1, 40.2).inOrder()
             assertThat(loaded.samples.all { it.charging }).isTrue()
             assertThat(context.temperatures.single().tempC).isEqualTo(40.2)
+            // No window holds the reading: no app is named.
+            assertThat(context.temperatures.single().topUid).isNull()
             // A charge that matched a profile it did not create is compared with that profile.
             sessions.upsertChargeDetail(ChargeDetailEntity(charge.id, 1, usual, 26.0, 24.0, null, 0, 0, null, null))
             assertThat(
