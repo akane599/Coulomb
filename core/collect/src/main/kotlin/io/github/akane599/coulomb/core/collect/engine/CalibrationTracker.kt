@@ -39,11 +39,20 @@ internal class CalibrationTracker(
         nowWallMs: Long,
     ): DeviceProfileEntity {
         if ((profile.calibrationQuality ?: 0.0) >= GOOD_QUALITY && profile.chargeCounterReliable != null) return profile
+        val window = samples.samples(bootSeq, nowElapsedNs - WINDOW_NS, nowElapsedNs + 1)
         val readings =
-            samples.samples(bootSeq, nowElapsedNs - WINDOW_NS, nowElapsedNs + 1).mapNotNull { s ->
+            window.mapNotNull { s ->
                 s.currentRaw?.let { raw -> RawReading(s.elapsedNs, raw, s.chargeUah, s.voltageMv, s.levelPct, s.plugType != 0, s.screenOn) }
             }
-        val verdict = Calibration.chargeCounter(readings)
+        // The counter is judged on every sample: its check reads no current, so a phone that does
+        // not report CURRENT_NOW still gets its counter used (audit BUG-008). The current's 0 here
+        // is never read; sign and scale take only the samples that have one.
+        val verdict =
+            Calibration.chargeCounter(
+                window.map { s ->
+                    RawReading(s.elapsedNs, s.currentRaw ?: 0L, s.chargeUah, s.voltageMv, s.levelPct, s.plugType != 0, s.screenOn)
+                },
+            )
         val reliable =
             if (verdict ==
                 ChargeCounterVerdict.UNKNOWN

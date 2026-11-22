@@ -130,7 +130,8 @@ public object Calibration {
      * look like coarse steps. A counter that never moves while the level stays put, over at least
      * [QUIET_NS] of unplugged screen-on use, is derived from the level and counts as coarse too,
      * whatever its divisor. `Long.MIN_VALUE` and values of 0 or less are the platform's "not
-     * supported" (S2) and count as no counter.
+     * supported" (S2) and count as no counter. The current is not read, so readings without one
+     * can be judged too.
      */
     public fun chargeCounter(readings: List<RawReading>): ChargeCounterVerdict {
         val counted = readings.mapNotNull { r -> validCharge(r)?.let { r to it } }
