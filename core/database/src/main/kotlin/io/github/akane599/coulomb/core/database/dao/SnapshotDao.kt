@@ -232,14 +232,10 @@ public abstract class SnapshotDao {
     public abstract suspend fun firstHeavyFrom(wallMs: Long): SnapshotEntity?
 
     /**
-     * The latest snapshot at or before [wallMs] that stored a history read. A span of history is
-     * read from it: the read after it starts by restating the whole state (ADR-0014), so the state
-     * at the span's start is known. [Long.MAX_VALUE] gives where the stored history ends.
+     * The latest snapshot at or before (boot, elapsed) that stored a history read. A span of history
+     * is read from it: the read after it starts by restating the whole state (ADR-0014), so the state
+     * at the span's start is known. The largest values give where the stored history ends.
      */
-    @Query("SELECT * FROM snapshot WHERE historyEventId IS NOT NULL AND wallMs <= :wallMs ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1")
-    public abstract suspend fun lastWithHistoryAtOrBefore(wallMs: Long): SnapshotEntity?
-
-    /** [lastWithHistoryAtOrBefore] by boot and elapsed time, for a span that lies in a boot: a session's. */
     @Query(
         "SELECT * FROM snapshot WHERE historyEventId IS NOT NULL " +
             "AND (bootSeq < :bootSeq OR (bootSeq = :bootSeq AND elapsedNs <= :elapsedNs)) " +
@@ -250,9 +246,15 @@ public abstract class SnapshotDao {
         elapsedNs: Long,
     ): SnapshotEntity?
 
-    /** The first snapshot at or after [wallMs], in time order: where a span of history that ends at a wall time ends. */
-    @Query("SELECT * FROM snapshot WHERE wallMs >= :wallMs ORDER BY bootSeq, elapsedNs LIMIT 1")
-    public abstract suspend fun firstAtOrAfter(wallMs: Long): SnapshotEntity?
+    /** The first snapshot at or after (boot, elapsed), in time order: where a span of history ends. */
+    @Query(
+        "SELECT * FROM snapshot WHERE bootSeq > :bootSeq OR (bootSeq = :bootSeq AND elapsedNs >= :elapsedNs) " +
+            "ORDER BY bootSeq, elapsedNs LIMIT 1",
+    )
+    public abstract suspend fun firstAtOrAfter(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): SnapshotEntity?
 
     /**
      * Each boot's latest snapshot from [fromBootSeq] to [toBootSeq]: its two clocks place the boot's

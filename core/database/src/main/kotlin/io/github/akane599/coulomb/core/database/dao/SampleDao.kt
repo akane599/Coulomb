@@ -63,6 +63,20 @@ public abstract class SampleDao {
         toWall: Long,
     ): List<BatterySampleEntity>
 
+    /** Samples from (boot, elapsed) [fromBootSeq], [fromElapsedNs] up to [toBootSeq], [toElapsedNs], in time order. */
+    @Query(
+        "SELECT * FROM battery_sample " +
+            "WHERE (bootSeq > :fromBootSeq OR (bootSeq = :fromBootSeq AND elapsedNs >= :fromElapsedNs)) " +
+            "AND (bootSeq < :toBootSeq OR (bootSeq = :toBootSeq AND elapsedNs < :toElapsedNs)) " +
+            "ORDER BY bootSeq, elapsedNs",
+    )
+    public abstract suspend fun samplesFrom(
+        fromBootSeq: Int,
+        fromElapsedNs: Long,
+        toBootSeq: Int,
+        toElapsedNs: Long,
+    ): List<BatterySampleEntity>
+
     @Query(
         "SELECT * FROM sample_aggregate WHERE resolutionS = :resolutionS " +
             "AND startWallMs >= :fromWall AND startWallMs < :toWall ORDER BY bootSeq, startElapsedNs",

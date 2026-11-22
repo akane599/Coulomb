@@ -41,8 +41,9 @@ internal class TimelineRepositoryTest : DrainDbTest() {
     private suspend fun read(
         elapsedS: Long,
         events: List<NewHistoryEvent>,
+        wallMs: Long = at(elapsedS),
     ) {
-        val id = heavy(elapsedS)
+        val id = heavy(elapsedS, wallMs = wallMs)
         val mark = db.historyDao().insertRead(events, emptyList())
         db.openHelper.writableDatabase.execSQL("UPDATE snapshot SET historyEventId = $mark WHERE id = $id")
     }
@@ -102,6 +103,31 @@ internal class TimelineRepositoryTest : DrainDbTest() {
             )
             assertThat(timeline.current).containsExactly(CurrentPoint(at(450), -250.0))
             assertThat(timeline.unknown).isEmpty()
+        }
+
+    /**
+     * Audit BUG-004: the clock ran two days ahead until it was corrected before the read at 1,000 s.
+     * The span is chosen on the clock that places it, so the screen and the current stay in it.
+     */
+    @Test
+    fun aClockCorrectedDuringTheBootKeepsTheSpansEvents() =
+        runTest {
+            val ahead = 2 * 86_400_000L
+            read(100, listOf(event(90, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, 80, baseline = true)), wallMs = at(100) + ahead)
+            read(
+                1_000,
+                listOf(
+                    event(101, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, 80, baseline = true),
+                    event(101, HistoryKind.SCREEN, HistoryChange.START, baseline = true),
+                    event(400, HistoryKind.SCREEN, HistoryChange.STOP),
+                ),
+            )
+            db.sampleDao().insert(sample(450, -250_000).copy(wallMs = at(450) + ahead))
+
+            val timeline = repository.read(at(300), at(900))
+
+            assertThat(timeline.tracks.getValue(TimelineTrack.SCREEN)).containsExactly(TrackSpan(at(300), at(400)))
+            assertThat(timeline.current).containsExactly(CurrentPoint(at(450), -250.0))
         }
 
     @Test
