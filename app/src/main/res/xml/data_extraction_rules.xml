@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-FileCopyrightText: The Coulomb contributors -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- SPEC 14.5: Auto Backup excludes the database and snapshot blobs; settings may back up. -->
+<!-- SPEC 14.5: Auto Backup excludes the database and snapshot blobs; settings may back up. The
+     surfaces' memory (SurfaceObserver.MEMORY) holds insight ids from this database, so it stays
+     with it (audit BUG-014). -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="database" path="." />
         <exclude domain="file" path="snapshots/" />
+        <exclude domain="sharedpref" path="surfaces.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="database" path="." />
         <exclude domain="file" path="snapshots/" />
+        <exclude domain="sharedpref" path="surfaces.xml" />
     </device-transfer>
 </data-extraction-rules>

@@ -5,6 +5,7 @@ package io.github.akane599.coulomb
 
 import android.app.Application
 import android.util.Log
+import androidx.core.content.edit
 import dagger.hilt.android.HiltAndroidApp
 import io.github.akane599.coulomb.automation.AutomationSwitch
 import io.github.akane599.coulomb.core.collect.CapabilityStore
@@ -18,6 +19,7 @@ import io.github.akane599.coulomb.core.model.PrivilegeState
 import io.github.akane599.coulomb.core.privileged.PrivilegedAccess
 import io.github.akane599.coulomb.core.ui.format.DisplayUnits
 import io.github.akane599.coulomb.surface.PrivilegeNotifications
+import io.github.akane599.coulomb.surface.SurfaceObserver
 import io.github.akane599.coulomb.surface.WidgetPreviews
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -59,6 +61,10 @@ class CoulombApplication : Application() {
                     Log.w(TAG, "restored settings not reset", e)
                 }
             }
+            // A backup made before the surfaces' memory was excluded may still bring it: its digest
+            // marker names insight ids of the old database and would silence the digest (audit BUG-014).
+            // Cleared through the shared instance, which the surfaces may already hold.
+            getSharedPreferences(SurfaceObserver.MEMORY, MODE_PRIVATE).edit(commit = true) { clear() }
         }
         // SPEC 4.1: T1 grants are re-verified at every start; Shizuku listeners attach here.
         privileged.start()
