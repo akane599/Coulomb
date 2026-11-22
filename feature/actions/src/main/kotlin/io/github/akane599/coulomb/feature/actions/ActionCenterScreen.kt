@@ -95,6 +95,7 @@ public fun ActionCenterScreen(
                 revertAll = { viewModel.flow.revertAll() },
                 openPrivileges = onOpenPrivileges,
                 openDrain = onOpenDrain,
+                older = viewModel::showOlder,
             )
         }
     ActionCenterContent(state, flow, actions, modifier, saveFailed = saveFailed)
@@ -111,6 +112,8 @@ internal class CenterActions(
     val revertAll: () -> Unit = {},
     val openPrivileges: () -> Unit = {},
     val openDrain: () -> Unit = {},
+    /** The log's next page. */
+    val older: () -> Unit = {},
 )
 
 @Composable
@@ -189,12 +192,13 @@ private fun Ready(
         }
         // The log stays while the Action Center is off, and a change in force can still be reverted.
         if (state.enabled || state.log.isNotEmpty()) {
-            LogSection(state, flow, formats, clock, actions.revert, onRevertAll = { asking = Asking.REVERT_ALL }) { opened = it }
+            LogSection(state, flow, formats, clock, actions, onRevertAll = { asking = Asking.REVERT_ALL }) { opened = it }
         }
         // Last: what is not offered is the least of what the screen is for (ADR-0060 §7, §8).
         if (state.enabled && board != null) NotOffered()
     }
-    state.log.firstOrNull { it.record.id == opened }?.let { row ->
+    // A change in force can be older than the log's page.
+    (state.log + state.active).firstOrNull { it.record.id == opened }?.let { row ->
         CoulombSheet({ opened = null }) {
             LogDetails(row, formats, clock, flow.busy, onRevert = { actions.revert(row.record) }, onDismiss = { opened = null })
         }
@@ -397,16 +401,17 @@ private fun takenOn(
 
 /** The log under its title, with "Revert all" while a change is in force and a revert's result where its button is. */
 @Composable
-@Suppress("LongParameterList") // The log, its clock and its three controls.
+@Suppress("LongParameterList") // The log, its clock and its controls.
 private fun LogSection(
     state: ActionCenterState.Ready,
     flow: FlowState,
     formats: Formats,
     clock: LogClock,
-    onRevert: (ActionRecord) -> Unit,
+    actions: CenterActions,
     onRevertAll: () -> Unit,
     onOpen: (Long) -> Unit,
 ) {
+    val onRevert = actions.revert
     Column(Modifier.fillMaxWidth()) {
         SectionTitle(
             stringResource(R.string.actions_log),
@@ -426,7 +431,14 @@ private fun LogSection(
                 },
         )
         flow.note?.takeIf { it.revert }?.let { ActionNoteLine(it, Modifier.padding(bottom = CoulombSpacing.Space8)) }
-        ActionLog(state.log, formats, clock, flow.busy, onRevert) { onOpen(it.record.id) }
+        ActionLog(
+            state.log,
+            formats,
+            clock,
+            flow.busy,
+            onRevert,
+            onOlder = actions.older.takeIf { state.olderInLog },
+        ) { onOpen(it.record.id) }
     }
 }
 

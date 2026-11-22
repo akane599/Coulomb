@@ -90,10 +90,12 @@ public class AppActionsViewModel
                 if (insightId != null) insights.acted(insightId, System.currentTimeMillis())
             }
 
+        // The changes in force only, read again when an action runs or ends: not the whole log,
+        // and not for an automation call's own row (audit PERF-007).
         internal val state: StateFlow<AppActionsState> =
             combine(
                 store.settings.map { it.actionCenter }.distinctUntilChanged(),
-                center.records,
+                combine(center.changes, center.active) { _, active -> active },
                 access.state.map { it.worker }.distinctUntilChanged(),
                 chosen,
                 tick,

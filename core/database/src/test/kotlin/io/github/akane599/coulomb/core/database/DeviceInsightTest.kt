@@ -101,8 +101,15 @@ class DeviceInsightTest : DatabaseTest() {
             val third = insights.insertAction(action(executedWall = 300))
             insights.updateAction(action(executedWall = 300).copy(id = third, revertedWall = 400))
             assertThat(insights.unreverted().map { it.id }).containsExactly(second, first).inOrder()
-            insights.observeActions().test {
+            insights.observeActions(Int.MAX_VALUE).test {
                 assertThat(awaitItem().map { it.id }).containsExactly(third, second, first).inOrder()
+            }
+            // A page: the newest rows only (audit PERF-007).
+            insights.observeActions(2).test {
+                assertThat(awaitItem().map { it.id }).containsExactly(third, second).inOrder()
+            }
+            insights.observeUnreverted().test {
+                assertThat(awaitItem().map { it.id }).containsExactly(second, first).inOrder()
             }
         }
 

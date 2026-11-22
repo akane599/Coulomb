@@ -15,6 +15,8 @@ import io.github.akane599.coulomb.core.privileged.PrivilegedAction
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -47,8 +49,22 @@ public class ActionCenter internal constructor(
     /** The row whose command was sent in the current [guarded] call, if one was. */
     private var sent: Long? = null
 
-    /** The log, newest first. */
-    public val records: Flow<List<ActionRecord>> = log.observe().map { rows -> rows.map(::record) }
+    /** The whole log, newest first. A screen reads [records] with a limit instead. */
+    public val records: Flow<List<ActionRecord>> get() = records(Int.MAX_VALUE)
+
+    /** The newest [limit] rows of the log, newest first (audit PERF-007). */
+    public fun records(limit: Int): Flow<List<ActionRecord>> = log.observe(limit).map { rows -> rows.map(::record) }
+
+    /** The changes in force, newest first: few, however long the log. */
+    public val active: Flow<List<ActionRecord>> = log.observeUnreverted().map { rows -> rows.map(::record).filter { it.active } }
+
+    /**
+     * What a screen's reading of the phone depends on: the changes in force and the newest action
+     * with its result. An automation call's own row, a hundred a day at most (ADR-0065 §8), moves
+     * neither (audit PERF-007).
+     */
+    public val changes: Flow<Any> =
+        combine(active, log.observeLatestAction()) { active, latest -> active to latest }.distinctUntilChanged()
 
     /**
      * Runs [erase], the deletion of all data, only while no change is in force, and returns how many

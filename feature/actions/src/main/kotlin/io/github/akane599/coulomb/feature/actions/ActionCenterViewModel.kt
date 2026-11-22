@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -67,14 +68,18 @@ internal data class DeviceBoard(
 internal sealed interface ActionCenterState {
     data object Loading : ActionCenterState
 
-    /** [board] is null while the Action Center is off: the phone is not asked anything then. */
+    /**
+     * [board] is null while the Action Center is off: the phone is not asked anything then. [log]
+     * is the newest page; [olderInLog] says rows come after it. [active] holds every change in
+     * force, older than the page too.
+     */
     data class Ready(
         val enabled: Boolean,
         val board: DeviceBoard?,
         val log: List<LogRow>,
-    ) : ActionCenterState {
-        val active: List<LogRow> get() = log.filter { it.record.active }
-    }
+        val active: List<LogRow> = log.filter { it.record.active },
+        val olderInLog: Boolean = false,
+    ) : ActionCenterState
 }
 
 /**
@@ -94,19 +99,43 @@ public class ActionCenterViewModel
         private val tick = MutableStateFlow(0)
         internal val flow = ActionFlow(center, viewModelScope)
 
-        internal val state: StateFlow<ActionCenterState> =
-            combine(
-                store.settings.map { it.actionCenter }.distinctUntilChanged(),
-                center.records,
-                access.state.map { it.worker }.distinctUntilChanged(),
-                tick,
-            ) { on, records, _, _ -> on to records }
-                .mapLatest { (on, records) ->
+        /** How many log rows the screen shows; "Older" adds a page. */
+        private val logLimit = MutableStateFlow(LOG_PAGE)
+
+        private val enabled = store.settings.map { it.actionCenter }.distinctUntilChanged()
+
+        /**
+         * The phone read again when the Action Center is turned on, the worker changes, the screen
+         * returns, or an action runs or ends: not for an automation call's own row, nor for a page
+         * of older rows (audit PERF-007).
+         */
+        private val board =
+            combine(enabled, center.changes, access.state.map { it.worker }.distinctUntilChanged(), tick) { on, _, _, _ -> on }
+                .mapLatest { on ->
                     // A row is written before its command and may go again a moment later (ADR-0060 §21).
                     delay(SETTLE_MS)
-                    ActionCenterState.Ready(on, if (on) board() else null, records.map { LogRow(it, appLabel(it)) })
-                }.flowOn(Dispatchers.Default)
+                    if (on) board() else null
+                }
+
+        /** One row past the page, to know whether there are older ones. */
+        private val log =
+            logLimit
+                .flatMapLatest { limit ->
+                    center.records(limit + 1)
+                }.map { rows -> rows.map { LogRow(it, appLabel(it)) } }
+
+        private val active = center.active.map { rows -> rows.map { LogRow(it, appLabel(it)) } }
+
+        internal val state: StateFlow<ActionCenterState> =
+            combine(enabled, board, log, active, logLimit) { on, board, log, active, limit ->
+                ActionCenterState.Ready(on, board, log.take(limit), active, olderInLog = log.size > limit)
+            }.flowOn(Dispatchers.Default)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ActionCenterState.Loading)
+
+        /** The next page of the log. */
+        internal fun showOlder() {
+            logLimit.value += LOG_PAGE
+        }
 
         private val failed = MutableStateFlow(false)
 
@@ -192,6 +221,9 @@ public class ActionCenterViewModel
         private companion object {
             const val STOP_TIMEOUT_MS = 5_000L
             const val SETTLE_MS = 120L
+
+            /** Automation can add a hundred rows a day (ADR-0065 §8), and every row drawn is laid out. */
+            const val LOG_PAGE = 50
             const val TAG = "ActionCenter"
 
             /** Where the board's requests put "battery saver on"; "off" follows it. */

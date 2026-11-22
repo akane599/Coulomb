@@ -104,5 +104,12 @@ internal interface ActionLog {
     /** Not reverted, newest first. */
     suspend fun unreverted(): List<ActionLogEntity>
 
-    fun observe(): Flow<List<ActionLogEntity>>
+    /** The newest [limit] rows, newest first. */
+    fun observe(limit: Int): Flow<List<ActionLogEntity>>
+
+    /** [unreverted], observed. */
+    fun observeUnreverted(): Flow<List<ActionLogEntity>>
+
+    /** The newest row that is not an automation call's own. */
+    fun observeLatestAction(): Flow<ActionLogEntity?>
 }

@@ -154,5 +154,9 @@ internal class DaoActionLog(
 
     override suspend fun unreverted(): List<ActionLogEntity> = dao.unreverted()
 
-    override fun observe(): Flow<List<ActionLogEntity>> = dao.observeActions()
+    override fun observe(limit: Int): Flow<List<ActionLogEntity>> = dao.observeActions(limit)
+
+    override fun observeUnreverted(): Flow<List<ActionLogEntity>> = dao.observeUnreverted()
+
+    override fun observeLatestAction(): Flow<ActionLogEntity?> = dao.observeLatestAction()
 }

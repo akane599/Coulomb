@@ -453,7 +453,7 @@ private class AndroidDataHost(
     }
 
     override suspend fun actionsInForce(eraseIfNone: (suspend () -> Unit)?): Int =
-        if (eraseIfNone == null) actions.records.first().count { it.active } else actions.eraseWhenNoneInForce(eraseIfNone)
+        if (eraseIfNone == null) actions.active.first().size else actions.eraseWhenNoneInForce(eraseIfNone)
 
     override suspend fun collector(run: Boolean) {
         if (run) {

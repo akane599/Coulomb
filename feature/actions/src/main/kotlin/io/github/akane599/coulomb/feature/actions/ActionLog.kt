@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -43,15 +39,15 @@ internal fun ColumnScope.ActionLog(
     clock: LogClock,
     busy: Boolean,
     onRevert: (ActionRecord) -> Unit,
+    /** The next page, when there are older rows; the view model reads a page at a time (audit PERF-007). */
+    onOlder: (() -> Unit)?,
     onOpen: (LogRow) -> Unit,
 ) {
     if (rows.isEmpty()) {
         StandIn(stringResource(R.string.actions_log_empty), top = CoulombSpacing.Space4)
         return
     }
-    // A page at a time: automation can add a hundred rows a day (ADR-0065 §8), and every row drawn is laid out.
-    var shown by rememberSaveable { mutableIntStateOf(LOG_PAGE) }
-    rows.take(shown).forEachIndexed { index, row ->
+    rows.forEachIndexed { index, row ->
         val record = row.record
         DataRow(
             name = stringResource(ActionWords.logTitle(record.type)),
@@ -77,12 +73,10 @@ internal fun ColumnScope.ActionLog(
                 },
         )
     }
-    if (rows.size > shown) {
-        CoulombTextButton(stringResource(R.string.actions_log_older), { shown += LOG_PAGE }, edge = ButtonEdge.Start)
+    if (onOlder != null) {
+        CoulombTextButton(stringResource(R.string.actions_log_older), onOlder, edge = ButtonEdge.Start)
     }
 }
-
-private const val LOG_PAGE = 50
 
 // SPEC 14.4's range for the charge target.
 private const val TARGET_MIN = 50

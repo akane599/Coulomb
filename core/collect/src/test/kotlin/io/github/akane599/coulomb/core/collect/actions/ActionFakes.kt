@@ -13,6 +13,7 @@ import io.github.akane599.coulomb.core.privileged.ActionCommands
 import io.github.akane599.coulomb.core.privileged.PrivilegedAction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 
 /** A phone in memory: commands change its state the way the AOSP sources say the real ones do. */
 internal class FakePhone : ActionIo {
@@ -195,5 +196,9 @@ internal class FakeLog : ActionLog {
 
     override suspend fun unreverted(): List<ActionLogEntity> = rows.value.filter { it.revertedWall == null }
 
-    override fun observe(): Flow<List<ActionLogEntity>> = rows
+    override fun observe(limit: Int): Flow<List<ActionLogEntity>> = rows.map { it.take(limit) }
+
+    override fun observeUnreverted(): Flow<List<ActionLogEntity>> = rows.map { all -> all.filter { it.revertedWall == null } }
+
+    override fun observeLatestAction(): Flow<ActionLogEntity?> = rows.map { all -> all.firstOrNull { it.actionType != "automation_call" } }
 }

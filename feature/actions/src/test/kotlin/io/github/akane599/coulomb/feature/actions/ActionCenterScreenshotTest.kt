@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
@@ -95,6 +99,7 @@ class ActionCenterScreenshotTest {
                         aggressive = AGGRESSIVE.copy(block = ActionBlock.MANAGED_EXTERNALLY, dozeChanges = emptyList()),
                     ),
                 log = emptyList(),
+                active = emptyList(),
             ),
         )
 
@@ -110,6 +115,7 @@ class ActionCenterScreenshotTest {
                         aggressive = AGGRESSIVE.copy(block = ActionBlock.PROFILE_ACTIVE, dozeChanges = emptyList()),
                     ),
                 log = listOf(PROFILE_ROW) + LOG,
+                active = (listOf(PROFILE_ROW) + LOG).filter { it.record.active },
             ),
             note = ActionNote(ActionResult.Done(9, "x"), ActionType.DOZE_PROFILE, revert = false, asked = "x"),
         )
@@ -127,6 +133,12 @@ class ActionCenterScreenshotTest {
                         saver = SAVER.copy(block = ActionBlock.CHARGING),
                     ),
                 log = listOf(LogRow(record(8, ActionType.DOZE_TAKEOVER, "2026-11-20", STOCK, STOCK), null)),
+                active =
+                    (
+                        listOf(
+                            LogRow(record(8, ActionType.DOZE_TAKEOVER, "2026-11-20", STOCK, STOCK), null),
+                        )
+                    ).filter { it.record.active },
             ),
         )
 
@@ -236,11 +248,13 @@ class ActionCenterScreenshotTest {
     fun aLongLogShowsAPageAndTheRestOnRequest() {
         val long = (1L..60L).map { LogRow(automation(100 + it, "snapshot_now", null, "accepted", minutesAgo = it), null) }
         compose.setContent {
+            // The view model reads the log a page at a time; "Older" asks it for the next.
+            var limit by remember { mutableIntStateOf(50) }
             CoulombTheme {
                 ActionCenterContent(
-                    ActionCenterState.Ready(enabled = false, board = null, log = long),
+                    ActionCenterState.Ready(enabled = false, board = null, log = long.take(limit), olderInLog = long.size > limit),
                     FlowState(),
-                    CenterActions(),
+                    CenterActions(older = { limit += 50 }),
                     clock = CLOCK,
                 )
             }

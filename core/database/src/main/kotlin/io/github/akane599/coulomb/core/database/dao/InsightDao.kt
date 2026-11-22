@@ -59,9 +59,20 @@ public interface InsightDao {
     @Query("SELECT * FROM action_log WHERE id = :id")
     public suspend fun action(id: Long): ActionLogEntity?
 
-    /** Every action, newest first: the order they ran in, whatever the clock said. */
-    @Query("SELECT * FROM action_log ORDER BY id DESC")
-    public fun observeActions(): Flow<List<ActionLogEntity>>
+    /**
+     * The newest [limit] actions, newest first: the order they ran in, whatever the clock said.
+     * A screen reads a page, not the whole log, which is kept for good (audit PERF-007).
+     */
+    @Query("SELECT * FROM action_log ORDER BY id DESC LIMIT :limit")
+    public fun observeActions(limit: Int): Flow<List<ActionLogEntity>>
+
+    /** As [unreverted], observed. */
+    @Query("SELECT * FROM action_log WHERE revertedWall IS NULL AND actionType != 'automation_call' ORDER BY id DESC")
+    public fun observeUnreverted(): Flow<List<ActionLogEntity>>
+
+    /** The newest action that is not an automation call's own row: it moves when a command runs or ends. */
+    @Query("SELECT * FROM action_log WHERE actionType != 'automation_call' ORDER BY id DESC LIMIT 1")
+    public fun observeLatestAction(): Flow<ActionLogEntity?>
 
     /**
      * Actions not reverted, newest first: the order "revert all" undoes them in (SPEC 13). An
