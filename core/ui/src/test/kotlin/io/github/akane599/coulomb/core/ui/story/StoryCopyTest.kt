@@ -272,4 +272,21 @@ class StoryCopyTest {
         assertThat(lastReading("tr", -1)).isEqualTo("Şarjdan çıkıştan son okumaya kadar 5 sa 12 dk geçti ve seviye %1 arttı.")
         assertThat(lastReading("tr", null)).isEqualTo("Şarjdan çıkıştan son okumaya kadar 5 sa 12 dk geçti.")
     }
+
+    /**
+     * Audit BUG-021: a share within half a point of all or nothing is shown as ">%99" or "<%1". The
+     * suffix belongs to the number on screen, so those take the wording without one, not 100's or 0's.
+     */
+    @Test
+    @Config(qualifiers = "tr")
+    fun turkishDeepSleepAtAShownBoundTakesNoSuffix() {
+        val copy = copy("tr")
+        for (share in listOf(0.996, 0.004)) {
+            val sentence = copy.plain(example.copy(deepSleepShare = share)).last()
+            assertThat(sentence).contains("kadarında")
+            assertThat(sentence).doesNotContain("’")
+        }
+        // A whole percentage keeps its suffix.
+        assertThat(copy.plain(example.copy(deepSleepShare = 0.99)).last()).isEqualTo("Cihaz zamanın %99’unda derin uykudaydı.")
+    }
 }

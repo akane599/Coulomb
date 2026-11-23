@@ -222,7 +222,10 @@ public class StoryCopy(
 
     private fun deepSleep(share: Double): StorySentence {
         val percent = formats.share(share)
-        val suffix = if (turkish) TurkishSuffix.percentIn((share * PERCENT).roundToInt()) else null
+        val points = (share * PERCENT).roundToInt()
+        // The suffix follows the number on screen: ">%99" and "<%1" are not 100 and 0, so they take
+        // the wording without one (audit BUG-021).
+        val suffix = if (turkish && percent == formats.percent(points)) TurkishSuffix.percentIn(points) else null
         val part = if (suffix == null) text(R.string.story_percent_in, percent) else "$percent’$suffix"
         return StorySentence(text(R.string.story_deep_sleep, part))
     }
