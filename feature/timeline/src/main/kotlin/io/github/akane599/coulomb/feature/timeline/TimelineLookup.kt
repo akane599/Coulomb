@@ -28,6 +28,12 @@ internal data class Moment(
 internal data class Picked(
     val track: TimelineTrack,
     val spans: List<TrackSpan>,
+    /** The first stretch began at [fromMs]; false where the read's start or a stretch without history cut it there. */
+    val startKnown: Boolean = true,
+    /** The last stretch ended at [toMs]; false where the read, the history or a stretch without it stops there. */
+    val endKnown: Boolean = true,
+    /** Every stretch has both ends seen, so [totalMs] is their time and not a lower bound. */
+    val whole: Boolean = true,
 ) {
     val fromMs: Long get() = spans.first().fromWallMs
     val toMs: Long get() = spans.maxOf { it.toWallMs }
@@ -103,8 +109,26 @@ internal fun Timeline.pick(
     // Under the finger wins over beside it: a long stretch is itself, not it and its neighbours.
     val under = near.filter { atMs >= it.fromWallMs && atMs < it.toWallMs && it.durationMs > 2 * reachMs }
     val spans = under.ifEmpty { near }
-    return if (spans.isEmpty()) null else Picked(track, spans)
+    if (spans.isEmpty()) return null
+    return Picked(
+        track,
+        spans,
+        startKnown = startKnown(spans.first()),
+        endKnown = endKnown(spans.maxBy { it.toWallMs }),
+        whole = spans.all { startKnown(it) && endKnown(it) },
+    )
 }
+
+/**
+ * Whether [span] began where it starts here: not cut by the start of what was read, and not
+ * restated after a stretch without history, whose start nobody saw (audit DATA-003; the wakeup
+ * count goes by the same rule).
+ */
+internal fun Timeline.startKnown(span: TrackSpan): Boolean = span.fromWallMs > fromWallMs && unknown.none { it.toWallMs == span.fromWallMs }
+
+/** Whether [span] ended where it stops here: not at the end of what was read, where the history stops, or at a stretch without it. */
+internal fun Timeline.endKnown(span: TrackSpan): Boolean =
+    span.toWallMs < toWallMs && span.toWallMs != knownUntilWallMs && unknown.none { it.fromWallMs == span.toWallMs }
 
 /** Whether a stretch of one of [tracks] begins between two cursor positions: one haptic tick (SPEC 10.6). */
 internal fun Timeline.crosses(

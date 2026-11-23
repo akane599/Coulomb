@@ -120,6 +120,9 @@
         <item quantity="one">%1$s stretch from %2$s to %3$s · %4$s in all</item>
         <item quantity="other">%1$s stretches from %2$s to %3$s · %4$s in all</item>
     </plurals>
+    <string name="timeline_event_before">before %1$s</string>
+    <string name="timeline_event_or_later">%1$s or later</string>
+    <string name="timeline_event_at_least">at least %1$s</string>
     <string name="timeline_event_name">Name</string>
     <string name="timeline_event_open_app">Open %1$s</string>
     <string name="timeline_at_least">At least %1$s</string>

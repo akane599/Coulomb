@@ -3,6 +3,7 @@
 
 package io.github.akane599.coulomb.feature.timeline
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -106,9 +107,9 @@ internal fun EventDetails(
             Text(
                 stringResource(
                     R.string.timeline_event_one,
-                    formats.clockWithSeconds(one.fromWallMs, zone),
-                    formats.clockWithSeconds(one.toWallMs, zone),
-                    formats.held(one.durationMs),
+                    edge(formats.clockWithSeconds(one.fromWallMs, zone), picked.startKnown, R.string.timeline_event_before),
+                    edge(formats.clockWithSeconds(one.toWallMs, zone), picked.endKnown, R.string.timeline_event_or_later),
+                    length(formats.held(one.durationMs), picked.whole),
                 ),
                 Modifier.padding(top = CoulombSpacing.Space4),
                 color = colors.textSecondary,
@@ -140,9 +141,9 @@ internal fun EventDetails(
                     R.plurals.timeline_event_many,
                     picked.spans.size,
                     formats.integer(picked.spans.size.toLong()),
-                    formats.clock(picked.fromMs, zone),
-                    formats.clock(picked.toMs, zone),
-                    formats.held(picked.totalMs),
+                    edge(formats.clock(picked.fromMs, zone), picked.startKnown, R.string.timeline_event_before),
+                    edge(formats.clock(picked.toMs, zone), picked.endKnown, R.string.timeline_event_or_later),
+                    length(formats.held(picked.totalMs), picked.whole),
                 ),
                 Modifier.padding(top = CoulombSpacing.Space4),
                 color = colors.textSecondary,
@@ -187,3 +188,18 @@ private fun nameLabel(track: TimelineTrack): String =
             else -> R.string.timeline_event_name
         },
     )
+
+/** A stretch's end as a clock time, or as a bound where the read or a stretch without history cut it (audit DATA-003). */
+@Composable
+private fun edge(
+    clock: String,
+    known: Boolean,
+    @StringRes bound: Int,
+): String = if (known) clock else stringResource(bound, clock)
+
+/** A stretch's length, "at least" where one of its ends is only a cut. */
+@Composable
+private fun length(
+    held: String,
+    whole: Boolean,
+): String = if (whole) held else stringResource(R.string.timeline_event_at_least, held)

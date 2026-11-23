@@ -187,4 +187,50 @@ class TimelineLookupTest {
         // Where nothing is known at the window's start, nothing is carried.
         assertThat(warm.cut(TimeWindow(at(5), at(14))).temperature).isEmpty()
     }
+
+    /**
+     * Audit DATA-003: an edge that is only where the read starts or stops, or where a stretch without
+     * history begins or ends, was not seen. The stretch began before it or went on after it.
+     */
+    @Test
+    fun aStretchCutByTheReadOrAGapHasNoKnownEdge() {
+        val seen = checkNotNull(timeline.pick(TimelineTrack.SCREEN, at(30), MINUTE))
+        assertThat(Triple(seen.startKnown, seen.endKnown, seen.whole)).isEqualTo(Triple(true, true, true))
+
+        // Deep Doze runs to the end of what was read.
+        val toTheEnd = checkNotNull(timeline.pick(TimelineTrack.DOZE, at(100), MINUTE))
+        assertThat(Triple(toTheEnd.startKnown, toTheEnd.endKnown, toTheEnd.whole)).isEqualTo(Triple(true, false, false))
+
+        // Charging is restated where the stretch without history ends.
+        val charging = timeline.copy(tracks = timeline.tracks + (TimelineTrack.CHARGING to listOf(TrackSpan(at(15), at(40)))))
+        val afterGap = checkNotNull(charging.pick(TimelineTrack.CHARGING, at(20), MINUTE))
+        assertThat(Triple(afterGap.startKnown, afterGap.endKnown, afterGap.whole)).isEqualTo(Triple(false, true, false))
+    }
+
+    /** A charge of two hours read from its 45th to its 90th minute: neither edge of what is shown is the charge's. */
+    @Test
+    fun aStretchClippedAtBothEndsOfTheReadHasNeitherEdge() {
+        val read =
+            Timeline(
+                fromWallMs = at(45),
+                toWallMs = at(90),
+                level = emptyList(),
+                current = emptyList(),
+                temperature = emptyList(),
+                tracks = mapOf(TimelineTrack.CHARGING to listOf(TrackSpan(at(45), at(90)))),
+                unknown = emptyList(),
+                knownUntilWallMs = at(90),
+            )
+        val picked = checkNotNull(read.pick(TimelineTrack.CHARGING, at(60), MINUTE))
+
+        assertThat(Triple(picked.startKnown, picked.endKnown, picked.whole)).isEqualTo(Triple(false, false, false))
+    }
+
+    /** Where the history stops before the read does, a stretch that reaches that point went on unseen. */
+    @Test
+    fun aStretchThatReachesWhereTheHistoryStopsHasNoKnownEnd() {
+        val stale = timeline.copy(knownUntilWallMs = at(40))
+
+        assertThat(checkNotNull(stale.pick(TimelineTrack.SCREEN, at(30), MINUTE)).endKnown).isFalse()
+    }
 }

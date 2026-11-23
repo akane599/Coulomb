@@ -79,6 +79,13 @@ data pulled from the phone on 2026-11-21 showed four more things the spec does n
     finger, else every stretch in reach, which is what a density span stands for. Their details
     open in a bottom sheet, or in a side panel from 840 dp (SPEC 10.10), with a link to the app
     when the stretch belongs to one.
+    Amended 2026-11-23 (audit DATA-003): the details gave a stretch's two clock times and its
+    length as seen, also where an end was only the start or end of what was read, the point
+    where the stored history stops, or the edge of a stretch without history. Such an end reads
+    "before 10:02" or "10:40 or later" and the length "at least". Which ends were seen is worked
+    out at the tap, from the timeline the tap picked from, not stored on `TrackSpan`, which the
+    chart and the Night screen share. One case is hedged more than it must be: a state that
+    ended at a shutdown stops where a stretch without history starts, and reads "or later".
 13. **Tracks.** All eleven are shown at first; the toolbar's tracks sheet turns each off. The
     choice lasts as long as the screen's model and is not stored: SPEC 10.6 asks only that a
     track can be toggled.

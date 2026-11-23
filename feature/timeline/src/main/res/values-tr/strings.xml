@@ -119,6 +119,9 @@
         <item quantity="one">%2$s ile %3$s arasında %1$s aralık · toplam %4$s</item>
         <item quantity="other">%2$s ile %3$s arasında %1$s aralık · toplam %4$s</item>
     </plurals>
+    <string name="timeline_event_before">%1$s öncesi</string>
+    <string name="timeline_event_or_later">%1$s veya sonrası</string>
+    <string name="timeline_event_at_least">en az %1$s</string>
     <string name="timeline_event_name">Ad</string>
     <string name="timeline_event_open_app">%1$s uygulamasını aç</string>
     <string name="timeline_at_least">En az %1$s</string>
