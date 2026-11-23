@@ -176,4 +176,15 @@ class TimelineLookupTest {
         assertThat(timeline.partlyKnown).isTrue()
         assertThat(timeline.cut(TimeWindow(at(20), at(120))).partlyKnown).isFalse()
     }
+
+    /** Audit BUG-015: what is on screen carries the temperature in as it carries the level. */
+    @Test
+    fun aCutCarriesTheTemperatureIn() {
+        val warm =
+            timeline.copy(temperature = listOf(TemperaturePoint(at(0), 240), TemperaturePoint(at(20), 250), TemperaturePoint(at(100), 262)))
+
+        assertThat(warm.cut(TimeWindow(at(30), at(65))).temperature).containsExactly(TemperaturePoint(at(30), 250))
+        // Where nothing is known at the window's start, nothing is carried.
+        assertThat(warm.cut(TimeWindow(at(5), at(14))).temperature).isEmpty()
+    }
 }

@@ -218,4 +218,41 @@ class TimelineBuilderTest {
         assertThat(timeline.unknown).containsExactly(TrackSpan(100_000, 200_000))
         assertThat(timeline.knownUntilWallMs).isNull()
     }
+
+    /**
+     * Audit BUG-015: the history restates the temperature after a gap. An unchanged value is still a
+     * reading, and the chart's line starts again from it.
+     */
+    @Test
+    fun aTemperatureRestatedAfterAGapStartsItsLineAgain() {
+        val restated = { second: Long ->
+            listOf(
+                at(second, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, 80, baseline = true),
+                at(second, HistoryKind.BATTERY_TEMPERATURE, HistoryChange.SET, 250, baseline = true),
+            )
+        }
+        val timeline =
+            TimelineBuilder(
+                0,
+                3_600_000,
+            ).build(restated(0) + restated(1_200), listOf(600_000L..1_200_000L), 3_600_000, emptyList())
+
+        assertThat(timeline.temperature).containsExactly(TemperaturePoint(0, 250), TemperaturePoint(1_200_000, 250)).inOrder()
+    }
+
+    /** A steady temperature read before the span is the span's temperature, as its level is. */
+    @Test
+    fun aSteadyTemperatureFromBeforeTheSpanIsCarriedIn() {
+        val events =
+            listOf(
+                at(0, HistoryKind.BATTERY_LEVEL, HistoryChange.SET, 80, baseline = true),
+                at(0, HistoryKind.BATTERY_TEMPERATURE, HistoryChange.SET, 250, baseline = true),
+            )
+        val timeline = TimelineBuilder(300_000, 3_600_000).build(events, emptyList(), 3_600_000, emptyList())
+
+        assertThat(timeline.temperature).containsExactly(TemperaturePoint(300_000, 250))
+        // Not across a break: there the temperature at the span's start is not known.
+        val broken = TimelineBuilder(300_000, 3_600_000).build(events, listOf(100_000L..200_000L), 3_600_000, emptyList())
+        assertThat(broken.temperature).isEmpty()
+    }
 }

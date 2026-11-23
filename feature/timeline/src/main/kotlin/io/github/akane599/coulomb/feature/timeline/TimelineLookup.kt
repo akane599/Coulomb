@@ -148,13 +148,17 @@ internal fun Timeline.cut(window: TimeWindow): Timeline {
             if (start < end) span.copy(fromWallMs = start, toWallMs = end) else null
         }
     val before = level.lastOrNull { it.wallMs < from }
-    val carried = if (before != null && moment(from).known) listOf(before.copy(wallMs = from, startsSegment = false)) else emptyList()
+    val known = moment(from).known
+    val carried = if (before != null && known) listOf(before.copy(wallMs = from, startsSegment = false)) else emptyList()
+    // The temperature too, so the caption's range matches the line (audit BUG-015).
+    val warm = temperature.lastOrNull { it.wallMs < from }
+    val carriedTemperature = if (warm != null && known) listOf(warm.copy(wallMs = from)) else emptyList()
     return Timeline(
         fromWallMs = window.fromMs,
         toWallMs = window.toMs,
         level = carried + level.filter { it.wallMs in from..to },
         current = current.filter { it.wallMs in from..to },
-        temperature = temperature.filter { it.wallMs in from..to },
+        temperature = carriedTemperature + temperature.filter { it.wallMs in from..to },
         tracks = tracks.mapValues { (_, spans) -> spans.inside() },
         unknown =
             unknown.inside() +

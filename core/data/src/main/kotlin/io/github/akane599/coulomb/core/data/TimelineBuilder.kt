@@ -43,6 +43,9 @@ internal class TimelineBuilder(
     private var knownSince: Long? = null
     private var boot: Int? = null
     private var newSegment = true
+
+    /** The next temperature reading is a point even when unchanged: a break came before it (audit BUG-015). */
+    private var newTemperatureSegment = true
     private var last = Long.MIN_VALUE
 
     /**
@@ -114,7 +117,7 @@ internal class TimelineBuilder(
             toWallMs = toWallMs,
             level = clipLevel(),
             current = current,
-            temperature = temperature.filter { it.wallMs in fromWallMs..toWallMs },
+            temperature = clipTemperature(),
             tracks = spans.mapValues { (_, list) -> list.mapNotNull(::clip) },
             unknown = complement(shown),
             knownUntilWallMs = shown.lastOrNull()?.last,
@@ -226,7 +229,8 @@ internal class TimelineBuilder(
         deciC: Int,
         t: Long,
     ) {
-        if (temperature.lastOrNull()?.deciC != deciC) temperature += TemperaturePoint(t, deciC)
+        if (newTemperatureSegment || temperature.lastOrNull()?.deciC != deciC) temperature += TemperaturePoint(t, deciC)
+        newTemperatureSegment = false
     }
 
     private fun set(
@@ -271,6 +275,7 @@ internal class TimelineBuilder(
         knownSince?.let { if (t > it) known += it..t }
         knownSince = null
         newSegment = true
+        newTemperatureSegment = true
     }
 
     private fun clip(
@@ -285,6 +290,18 @@ internal class TimelineBuilder(
         // Carried only within one stretch of known history: across a break the level at the start is not known.
         if (known.none { before.wallMs in it && fromWallMs in it }) return inside
         return listOf(LevelPoint(fromWallMs, before.levelPct, startsSegment = false)) + inside
+    }
+
+    /** The readings inside the span, with the last one before it carried to the span's start, as [clipLevel] does. */
+    private fun clipTemperature(): List<TemperaturePoint> {
+        val inside = temperature.filter { it.wallMs in fromWallMs..toWallMs }
+        // Carried only within one stretch of known history, and not beside a reading at the start itself.
+        val before =
+            temperature
+                .lastOrNull { it.wallMs < fromWallMs }
+                ?.takeIf { inside.firstOrNull()?.wallMs != fromWallMs }
+                ?.takeIf { reading -> known.any { reading.wallMs in it && fromWallMs in it } }
+        return listOfNotNull(before?.let { TemperaturePoint(fromWallMs, it.deciC) }) + inside
     }
 
     private fun complement(shown: List<LongRange>): List<TrackSpan> {
