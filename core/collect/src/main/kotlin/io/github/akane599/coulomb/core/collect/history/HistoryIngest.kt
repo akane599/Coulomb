@@ -65,6 +65,12 @@ internal data class ReadResult(
     val end: ReadEnd?,
     /** Kinds that turned on or off in the read (not restated): unseen plug and screen changes. */
     val transitions: Set<HistoryKind>,
+    /**
+     * The stored cursor lies after the platform's `NEXT:`, so the read asked for records from a
+     * time the history has not reached and could show nothing of what happened (ADR-0014 keeps
+     * such a cursor). True only for a read without records.
+     */
+    val cursorAhead: Boolean = false,
 )
 
 /**
@@ -114,22 +120,34 @@ internal object HistoryIngest {
         val first = history.firstRecordMs
         // A cursor above NEXT is kept (ADR-0014).
         return when {
-            next == null -> unchanged(input)
+            next == null -> {
+                unchanged(input)
+            }
 
             // Nothing new: the cursor moves to NEXT and nothing is lost.
-            history.recordCount == 0L && input.complete -> unchanged(input).copy(nextCursorMs = maxOf(input.cursorMs, next))
+            history.recordCount == 0L && input.complete -> {
+                unchanged(input).copy(nextCursorMs = maxOf(input.cursorMs, next), cursorAhead = next < input.cursorMs)
+            }
 
             // A record failed before any printed, and NEXT went past it: a gap, as for any
             // unplaced read (audit DATA-007). One that did not move NEXT on is read again.
-            history.recordCount == 0L && next <= input.cursorMs -> unchanged(input)
+            history.recordCount == 0L && next <= input.cursorMs -> {
+                unchanged(input)
+            }
 
             // An unplaced read's NEXT cannot lie after now on the boot's own clock (elapsed + offset,
             // ADR-0018); one that does came out of app text, not from the platform (audit SEC-004).
-            first == null && pastNow(input, next) -> unchanged(input)
+            first == null && pastNow(input, next) -> {
+                unchanged(input)
+            }
 
-            first == null -> unplaced(input, next, maxOf(input.cursorMs, next))
+            first == null -> {
+                unplaced(input, next, maxOf(input.cursorMs, next))
+            }
 
-            else -> placed(input, first, next)
+            else -> {
+                placed(input, first, next)
+            }
         }
     }
 

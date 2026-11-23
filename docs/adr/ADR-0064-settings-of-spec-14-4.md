@@ -59,10 +59,20 @@ Screen-on sampling, Theme, Language, Units, Data retention and the Developer con
    since no change is known. The plug is not treated that way: closing the discharge session at
    every Lite look would restart Now's discharge summary and its rates at each app open. Its
    witnesses are the level (a rise while unplugged) and, new here, the plug type: on a charger
-   at both looks but another one means an unplug in between. What stays unseen without a
-   history read is a short top-up of a point or less, and an unplug and replug on the same
-   charger. A fragment between two looks still states the screen's state for that stretch; its
-   data-gap end is what marks it as less than a watched session.
+   at both looks but another one means an unplug in between. A fragment between two looks
+   still states the screen's state for that stretch; its data-gap end is what marks it as less
+   than a watched session.
+   What stays unseen without a history read (independent review, 2026-11-23): a charge after
+   which the level is back at or below where the last look left it, however large; an unplug and
+   replug on the same charger; and a fall of the level between two looks on a charger. A plug
+   type that changes without an unplug (a cable added on a wireless pad) ends the charge session
+   all the same, and that charge then gives no capacity estimate. A read whose cursor lies after
+   the platform's own end of history is whole and empty every time and counts as no read. One
+   cost in Full mode: when a process starts before its privileges are known, its first snapshot
+   is light and has no history read, so the screen session ends there, although the heavy
+   snapshot that follows could have shown that nothing changed. That is rare (an update, a
+   crash, a force stop; with durable grants the grants are read within milliseconds) and errs
+   toward saying less.
 6. **"Longer raw retention" is one switch: 60 days instead of 14.** Raw samples only; every other
    line of SPEC 7.7 stays. A setting can lengthen the time, never shorten it. By
    `SizeBudgetTest`'s rates (5,000 samples a day at 77 bytes) the 46 further days add about 18 MB

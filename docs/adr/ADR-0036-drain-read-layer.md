@@ -43,6 +43,9 @@ stored. Each has one line of reason (ADR-0027).
      stamp. A snapshot or a session's end stamped while the clock ran ahead is therefore not taken
      for a later one. A later boot's start ends the boot before it. The same holds for the
      self-cost day and the rules' day.
+     One case is as before: a boot whose clock was wrong throughout, with no snapshot stamped
+     after a correction (the phone rebooted first), is placed on that wrong clock, since nothing
+     in the boot shows it. A day that reaches into such a boot can still start too early.
 3. **The measured total is the stored window's own when every window in its chain started on
    battery.** Otherwise it is the sum of the chain's discharge windows: those whose first snapshot
    reports `plugType = 0`.

@@ -55,14 +55,15 @@ internal class UnwatchedStretch(
      * Whether the history read followed the whole stretch. A read that ended, was placed and left
      * no gap starts at the stored cursor, which the last snapshot or an earlier one set, so its
      * flips are every change there was. No read at all (a light snapshot, no privileges), one
-     * skipped for the time budget, a failed or unplaced one, or one with a gap followed nothing.
+     * skipped for the time budget, a failed or unplaced one, one with a gap, or one whose cursor
+     * lies after the platform's own end of history followed nothing.
      * An unplaced read's records are not used either: after lost record boundaries they may be an
      * app's text (ADR-0014). The screen has no other witness; the plug has [chargedUnseen].
      */
     private fun followed(
         status: SourceStatus?,
         result: ReadResult?,
-    ): Boolean = status == SourceStatus.OK && result != null && result.nextCursorMs != null && result.gaps.isEmpty()
+    ): Boolean = status == SourceStatus.OK && result != null && result.nextCursorMs != null && result.gaps.isEmpty() && !result.cursorAhead
 
     /**
      * What the stored readings show of the plug, in the same boot. A level well above the last

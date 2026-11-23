@@ -222,4 +222,31 @@ class CollectorWatchTest {
             engine.handle(SnapshotTrigger.LITE_PERIODIC)
             assertThat(db.sessionDao().observeRecent(SessionKind.CHARGE, 10).first()).hasSize(2)
         }
+
+    /**
+     * A stored cursor that lies after the platform's own end of history asks for records from a
+     * time the history has not reached: such a read is whole and empty every time, and shows
+     * nothing of the stretch (review of BUG-001).
+     */
+    @Test
+    fun anEmptyReadFromACursorAheadOfTheHistoryFollowsNothing() =
+        runTest {
+            stats.history = { quietRead() }
+            val engine = unwatched()
+            device.set(hours = 1.0, level = 80, chargeMah = 4_000.0, screenOn = false)
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+            // The platform's NEXT is now below the cursor the first read stored.
+            stats.history = {
+                HistoryRead(
+                    emptyList(),
+                    BatteryHistory(null, nextCursorMs = 500, firstRecordMs = null, recordCount = 0, gapBeforeFirstRecord = false),
+                    SourceStatus.OK,
+                )
+            }
+            device.set(hours = 7.0, level = 70, chargeMah = 3_500.0, screenOn = false)
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+
+            val screenOff = db.sessionDao().observeRecent(SessionKind.SCREEN_OFF, 10).first()
+            assertThat(screenOff.map { it.closeReason }).containsExactly(null, SessionCloseReason.DATA_GAP)
+        }
 }
