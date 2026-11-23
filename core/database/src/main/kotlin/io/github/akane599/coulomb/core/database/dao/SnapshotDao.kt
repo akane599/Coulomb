@@ -225,6 +225,16 @@ public abstract class SnapshotDao {
         toElapsedNs: Long,
     ): List<SnapshotEntity>
 
+    /** The latest heavy snapshot strictly before (boot, elapsed): the one stored just before it. */
+    @Query(
+        "SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
+            "AND (bootSeq < :bootSeq OR (bootSeq = :bootSeq AND elapsedNs < :elapsedNs)) ORDER BY bootSeq DESC, elapsedNs DESC LIMIT 1",
+    )
+    public abstract suspend fun lastHeavyBefore(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): SnapshotEntity?
+
     /** The first heavy snapshot at or after (boot, elapsed), in time order. */
     @Query(
         "SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +

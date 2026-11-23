@@ -87,4 +87,39 @@ class TodayReferenceTest {
             assertThat(db.snapshotDao().autoReference(AutoReference.TODAY)?.snapshotId).isEqualTo(latest.id)
             assertThat(db.windowDao().ofKind(WindowKind.DAY)).isEmpty()
         }
+
+    /**
+     * Audit BUG-002: the clock runs a few minutes fast over midnight and is then set right. TODAY
+     * moves back to the day that just closed, and the midnight that follows must not store that day
+     * a second time, as a window of minutes.
+     */
+    @Test
+    fun aClockSetBackAcrossMidnightAndForwardAgainStoresNoSecondDay() =
+        runTest {
+            val engine = engine()
+            device.set(hours = 10.0, level = 90, chargeMah = 4_500.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SERVICE_STARTED)
+            // Four minutes fast: 00:02 on the next day.
+            device.set(hours = 24.0 + 2.0 / 60, level = 80, chargeMah = 4_000.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+            val firstDay = db.windowDao().ofKind(WindowKind.DAY).single()
+            // Set right: 23:59 on the day before.
+            clock.wallOffsetMs -= 4 * 60_000L
+            device.set(hours = 24.0 + 3.0 / 60, level = 80, chargeMah = 3_990.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SCREEN_ON)
+            // 00:01 on the next day again.
+            device.set(hours = 24.0 + 5.0 / 60, level = 80, chargeMah = 3_980.0, screenOn = false)
+            engine.handle(SnapshotTrigger.SCREEN_OFF)
+            val midnight = checkNotNull(db.snapshotDao().latestHeavy())
+
+            assertThat(db.windowDao().ofKind(WindowKind.DAY)).containsExactly(firstDay)
+            assertThat(db.snapshotDao().autoReference(AutoReference.TODAY)?.snapshotId).isEqualTo(midnight.id)
+
+            // The day that starts there is stored when it ends.
+            device.set(hours = 48.1, level = 60, chargeMah = 3_000.0, screenOn = true)
+            engine.handle(SnapshotTrigger.SCREEN_ON)
+            val days = db.windowDao().ofKind(WindowKind.DAY)
+            assertThat(days).hasSize(2)
+            assertThat(days.map { it.fromSnapshotId }).contains(midnight.id)
+        }
 }

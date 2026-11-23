@@ -431,7 +431,8 @@ internal class SnapshotWriter(
      * At the first heavy snapshot of another local day, TODAY moves here. On a later day, a DAY
      * window from the previous day's first heavy snapshot comes first; on an earlier one, after
      * the clock or the zone was set back, there is none, since its two ends would be days apart
-     * by different clocks (audit BUG-006).
+     * by different clocks (audit BUG-006). Nor is there one from a TODAY that such a move back
+     * left ([startsDay]).
      */
     private suspend fun day(
         stored: SnapshotEntity,
@@ -443,9 +444,27 @@ internal class SnapshotWriter(
             val day = localDate(stored.wallMs, context.zone)
             val startDay = localDate(start.wallMs, context.zone)
             if (day == startDay) return
-            if (day > startDay) chain(start, stored, rows)?.let { insertWindow(WindowKind.DAY, null, it, context, true) }
+            if (day > startDay && startsDay(start, startDay, context.zone)) {
+                chain(start, stored, rows)?.let { insertWindow(WindowKind.DAY, null, it, context, true) }
+            }
         }
         snapshots.moveAutoReference(AutoReference.TODAY, stored.id, stored.wallMs)
+    }
+
+    /**
+     * Whether TODAY came to [start] by a move forward, as the first heavy snapshot of a later date.
+     * After a move back (the clock was set back, audit BUG-006) the heavy snapshot before it is on a
+     * later date: that date's own day was stored when the clock first passed it, and a window from
+     * [start] would be a second one, minutes long (audit BUG-002). The same date counts as forward,
+     * so a zone change drops no day.
+     */
+    private suspend fun startsDay(
+        start: SnapshotEntity,
+        startDay: LocalDate,
+        zone: ZoneId,
+    ): Boolean {
+        val before = snapshots.lastHeavyBefore(start.bootSeq, start.elapsedNs) ?: return true
+        return localDate(before.wallMs, zone) <= startDay
     }
 
     /**
