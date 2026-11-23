@@ -65,13 +65,12 @@ class ShizukuApiImplTest {
         cache().clear()
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun cache(): MutableMap<String, Any> =
+    private fun cache(): MutableMap<*, *> =
         Class
             .forName("rikka.shizuku.ShizukuServiceConnections")
             .getDeclaredField("CACHE")
             .apply { isAccessible = true }
-            .get(null) as MutableMap<String, Any>
+            .get(null) as MutableMap<*, *>
 
     /** What the client's main-thread runnable does when the server reports the tag's worker connected. */
     private fun serverConnects(binder: IBinder) {

@@ -5,6 +5,7 @@ package io.github.akane599.coulomb.core.insights
 
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.InsightDao
+import io.github.akane599.coulomb.core.database.dao.InsightEvidence
 import io.github.akane599.coulomb.core.database.entity.InsightEntity
 import io.github.akane599.coulomb.core.model.InsightSeverity
 import io.github.akane599.coulomb.core.model.InsightState
@@ -72,20 +73,26 @@ public class InsightStore(
             }
 
             is Decision.Refresh -> {
-                with(checkNotNull(latest).takes(candidate)) { dao.refresh(id, subjectKey, windowId, severity, subjectUid, evidenceJson) }
+                dao.refresh(checkNotNull(latest).takes(candidate).evidence())
                 null
             }
         }
     }
 
-    /** Whether [raised] was stored: false when the user closed the insight since it was read. */
+    /**
+     * Whether [raised] was stored: false when the user closed the insight since it was read. The
+     * state goes first, in one guarded statement; the evidence follows only where that took.
+     */
     private suspend fun raise(
         raised: InsightEntity,
         nowWallMs: Long,
-    ): Boolean =
-        with(raised) {
-            dao.raise(id, subjectKey, windowId, severity, subjectUid, evidenceJson, InsightState.NEW, nowWallMs, OPEN) > 0
-        }
+    ): Boolean {
+        if (dao.raise(raised.id, InsightState.NEW, nowWallMs, OPEN) == 0) return false
+        dao.refresh(raised.evidence())
+        return true
+    }
+
+    private fun InsightEntity.evidence() = InsightEvidence(id, subjectKey, windowId, severity, subjectUid, evidenceJson)
 
     /** Insights not yet dismissed, snoozed or acted on: highest severity first, then newest. */
     public fun observeOpen(): Flow<List<Insight>> =

@@ -15,6 +15,16 @@ import io.github.akane599.coulomb.core.model.InsightState
 import kotlinx.coroutines.flow.Flow
 
 /** Insights (SPEC 9) and the action log (SPEC 13). Order that decides behaviour follows ids. */
+/** The columns of an insight that the rules own: what [InsightDao.refresh] writes, and nothing else. */
+public data class InsightEvidence(
+    val id: Long,
+    val subjectKey: String?,
+    val windowId: Long?,
+    val severity: InsightSeverity,
+    val subjectUid: Int?,
+    val evidenceJson: String,
+)
+
 @Dao
 public interface InsightDao {
     @Insert
@@ -32,39 +42,19 @@ public interface InsightDao {
     )
 
     /**
-     * The rules' newer evidence for insight [id]. Its state, its snooze and its dates stay as the
+     * The rules' newer evidence for one insight. Its state, its snooze and its dates stay as the
      * user left them: this write was decided on a row read before (audit CONC-004).
      */
-    @Query(
-        "UPDATE insight SET subjectKey = :subjectKey, windowId = :windowId, severity = :severity, " +
-            "subjectUid = :subjectUid, evidenceJson = :evidenceJson WHERE id = :id",
-    )
-    @Suppress("LongParameterList") // The columns the rules own.
-    public suspend fun refresh(
-        id: Long,
-        subjectKey: String?,
-        windowId: Long?,
-        severity: InsightSeverity,
-        subjectUid: Int?,
-        evidenceJson: String,
-    )
+    @Update(entity = InsightEntity::class)
+    public suspend fun refresh(evidence: InsightEvidence)
 
     /**
-     * [refresh] and state [new] again, only while the insight is one of [open]. The rows changed:
-     * 0 when the user dismissed, snoozed or acted on it since it was read.
+     * State [new] again, only while the insight is one of [open]. The rows changed: 0 when the user
+     * dismissed, snoozed or acted on it since it was read.
      */
-    @Query(
-        "UPDATE insight SET subjectKey = :subjectKey, windowId = :windowId, severity = :severity, subjectUid = :subjectUid, " +
-            "evidenceJson = :evidenceJson, state = :new, stateChangedWall = :wall WHERE id = :id AND state IN (:open)",
-    )
-    @Suppress("LongParameterList") // The columns the rules own, and the state they may set.
+    @Query("UPDATE insight SET state = :new, stateChangedWall = :wall WHERE id = :id AND state IN (:open)")
     public suspend fun raise(
         id: Long,
-        subjectKey: String?,
-        windowId: Long?,
-        severity: InsightSeverity,
-        subjectUid: Int?,
-        evidenceJson: String,
         new: InsightState,
         wall: Long,
         open: List<InsightState>,
