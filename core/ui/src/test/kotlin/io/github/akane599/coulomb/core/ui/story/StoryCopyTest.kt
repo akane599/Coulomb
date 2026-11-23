@@ -216,4 +216,60 @@ class StoryCopyTest {
             .inOrder()
         assertThat(TurkishSuffix.percentIn(101)).isNull()
     }
+
+    private val sinceUnplugged =
+        Story(StorySubject.SinceUnplugged, StorySpan(now - 312 * minute, now, 312 * minute, 0, null), null, null, emptyList(), null, null)
+
+    private fun Story.dropping(points: Int?) = copy(span = span.copy(levelDropPct = points, ratePctPerHour = null))
+
+    private fun lastReading(
+        language: String,
+        points: Int?,
+    ): String {
+        val resources = ApplicationProvider.getApplicationContext<Context>().resources
+        val formats = Formats(resources, Locale.forLanguageTag(language), "HH:mm", "HH:mm:ss")
+        return lastReadingLine(resources, formats, sinceUnplugged.dropping(points).span).replace('\u00A0', ' ').replace("\u2060", "")
+    }
+
+    /**
+     * Audit BUG-018: the gauge can correct upwards on battery. A rise is what was measured, and it
+     * matches the figure beside the sentence; "did not change" is for no change only, and a level
+     * not known at both ends says nothing of the level.
+     */
+    @Test
+    @Config(qualifiers = "en")
+    fun aRiseOrAnUnknownLevelIsNeverNoChange() {
+        val copy = copy("en")
+        val quiet = example.copy(causes = emptyList(), deepSleepShare = null)
+
+        assertThat(copy.plain(sinceUnplugged.dropping(-1))).containsExactly("Since unplugged 5 h 12 min ago, the level rose 1%.")
+        assertThat(copy.plain(sinceUnplugged.dropping(null))).containsExactly("Unplugged 5 h 12 min ago.")
+        assertThat(copy.plain(sinceUnplugged.dropping(0))).containsExactly("Unplugged 5 h 12 min ago; the level hasn’t changed yet.")
+        assertThat(copy.plainLine(sinceUnplugged.dropping(-1))).isEqualTo("Since unplugged 5 h 12 min ago, the level rose 1%.")
+
+        assertThat(copy.plain(quiet.dropping(-2))).containsExactly("Your screen was off for 7 h 12 min overnight; the level rose 2%.")
+        assertThat(copy.plain(quiet.dropping(null))).containsExactly("Your screen was off for 7 h 12 min overnight.")
+        assertThat(copy.plain(quiet.dropping(0))).containsExactly("Your screen was off for 7 h 12 min overnight; the level did not change.")
+        val nap = quiet.copy(subject = StorySubject.ScreenOff(overnight = false))
+        assertThat(copy.plain(nap.dropping(-2))).containsExactly("Your screen was off for 7 h 12 min; the level rose 2%.")
+        assertThat(copy.plain(nap.dropping(null))).containsExactly("Your screen was off for 7 h 12 min.")
+
+        assertThat(lastReading("en", -1)).isEqualTo("From the unplug to the last reading, 5 h 12 min, the level rose 1%.")
+        assertThat(lastReading("en", null)).isEqualTo("From the unplug to the last reading, 5 h 12 min.")
+        assertThat(lastReading("en", 0)).isEqualTo("From the unplug to the last reading, 5 h 12 min, the level did not change.")
+        assertThat(lastReading("en", 3)).isEqualTo("From the unplug to the last reading, 5 h 12 min, the battery fell 3%.")
+    }
+
+    @Test
+    @Config(qualifiers = "tr")
+    fun turkishARiseIsARise() {
+        val copy = copy("tr")
+
+        assertThat(copy.plain(sinceUnplugged.dropping(-1))).containsExactly("Şarjdan çıkalı 5 sa 12 dk oldu ve seviye %1 arttı.")
+        assertThat(copy.plain(sinceUnplugged.dropping(null))).containsExactly("Şarjdan çıkalı 5 sa 12 dk oldu.")
+        assertThat(copy.plain(example.copy(causes = emptyList(), deepSleepShare = null).dropping(-2)))
+            .containsExactly("Gece ekran 7 sa 12 dk kapalıydı; seviye %2 arttı.")
+        assertThat(lastReading("tr", -1)).isEqualTo("Şarjdan çıkıştan son okumaya kadar 5 sa 12 dk geçti ve seviye %1 arttı.")
+        assertThat(lastReading("tr", null)).isEqualTo("Şarjdan çıkıştan son okumaya kadar 5 sa 12 dk geçti.")
+    }
 }

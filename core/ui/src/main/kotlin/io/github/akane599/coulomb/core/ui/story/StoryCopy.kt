@@ -89,22 +89,21 @@ public class StoryCopy(
     public fun verdict(story: Story): StorySentence {
         val span = story.span
         val duration = formats.hours(span.durationMs / MS_PER_HOUR)
-        val drop = span.levelDropPct?.takeIf { it > 0 }?.let { formats.percent(it) }
+        val level = level(span.levelDropPct)
         return when (val subject = story.subject) {
             StorySubject.SinceUnplugged -> {
                 StorySentence(
-                    if (drop ==
-                        null
-                    ) {
-                        text(R.string.story_unplugged_flat, duration)
-                    } else {
-                        text(R.string.story_unplugged, duration, drop)
+                    when (level) {
+                        is Level.Fell -> text(R.string.story_unplugged, duration, level.points)
+                        is Level.Rose -> text(R.string.story_unplugged_rose, duration, level.points)
+                        Level.Flat -> text(R.string.story_unplugged_flat, duration)
+                        Level.Unknown -> text(R.string.story_unplugged_unknown, duration)
                     },
                 )
             }
 
             is StorySubject.ScreenOff -> {
-                StorySentence(screenOff(subject, duration, drop, span.ratePctPerHour))
+                StorySentence(screenOff(subject, duration, level, span.ratePctPerHour))
             }
 
             is StorySubject.App -> {
@@ -122,17 +121,58 @@ public class StoryCopy(
         }
     }
 
+    /**
+     * What the level did over a stretch. A rise is not "no change", and neither is a level that is
+     * not known at both ends (audit BUG-018).
+     */
+    private sealed interface Level {
+        data class Fell(
+            val points: String,
+        ) : Level
+
+        data class Rose(
+            val points: String,
+        ) : Level
+
+        data object Flat : Level
+
+        data object Unknown : Level
+    }
+
+    private fun level(dropPct: Int?): Level =
+        when {
+            dropPct == null -> Level.Unknown
+            dropPct > 0 -> Level.Fell(formats.percent(dropPct))
+            dropPct < 0 -> Level.Rose(formats.percent(-dropPct))
+            else -> Level.Flat
+        }
+
     private fun screenOff(
         subject: StorySubject.ScreenOff,
         duration: String,
-        drop: String?,
+        level: Level,
+        ratePctPerHour: Double?,
+    ): String {
+        val night = subject.overnight
+        return when (level) {
+            Level.Flat -> text(if (night) R.string.story_night_flat else R.string.story_screen_off_flat, duration)
+            Level.Unknown -> text(if (night) R.string.story_night_unknown else R.string.story_screen_off_unknown, duration)
+            is Level.Rose -> text(if (night) R.string.story_night_rose else R.string.story_screen_off_rose, duration, level.points)
+            is Level.Fell -> fell(night, duration, level.points, ratePctPerHour)
+        }
+    }
+
+    private fun fell(
+        night: Boolean,
+        duration: String,
+        points: String,
         ratePctPerHour: Double?,
     ): String {
         val rate = ratePctPerHour?.let { text(R.string.story_rate, formats.rate(it), formats.rateUnit.replace("/", "/⁠")) }
-        return when {
-            drop == null -> text(if (subject.overnight) R.string.story_night_flat else R.string.story_screen_off_flat, duration)
-            rate == null -> text(if (subject.overnight) R.string.story_night_no_rate else R.string.story_screen_off_no_rate, duration, drop)
-            else -> text(if (subject.overnight) R.string.story_night else R.string.story_screen_off, duration, drop, rate)
+        return if (rate == null) {
+            text(if (night) R.string.story_night_no_rate else R.string.story_screen_off_no_rate, duration, points)
+        } else {
+            text(if (night) R.string.story_night else R.string.story_screen_off, duration, points, rate)
         }
     }
 

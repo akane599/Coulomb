@@ -21,10 +21,12 @@ public fun lastReadingLine(
     span: StorySpan,
 ): String {
     val duration = formats.duration((span.durationMs / MS_PER_MINUTE).coerceAtLeast(0))
-    val fell = span.levelDropPct ?: 0
-    return if (fell <= 0) {
-        resources.getString(R.string.story_to_last_reading_flat, duration)
-    } else {
-        resources.getString(R.string.story_to_last_reading, duration, formats.percent(fell))
+    // A rise is a rise, and a level not known at both ends says nothing of the level (audit BUG-018).
+    val drop = span.levelDropPct
+    return when {
+        drop == null -> resources.getString(R.string.story_to_last_reading_unknown, duration)
+        drop > 0 -> resources.getString(R.string.story_to_last_reading, duration, formats.percent(drop))
+        drop < 0 -> resources.getString(R.string.story_to_last_reading_rose, duration, formats.percent(-drop))
+        else -> resources.getString(R.string.story_to_last_reading_flat, duration)
     }
 }
