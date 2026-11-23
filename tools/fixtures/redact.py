@@ -347,6 +347,18 @@ def read_package_list(path: Path) -> set[str]:
     return {line.split(":", 1)[1].strip() for line in path.read_text().splitlines() if line.startswith("package:")}
 
 
+# One plain path segment: no separator, no dot segment, nothing hidden.
+LABEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+
+
+def label(value: str, what: str) -> str:
+    """A device or build label as fixtures/<device>/<build> takes it, or the run ends: a label is
+    a name the owner reads, so one that does not fit is refused, not rewritten (audit BUG-025)."""
+    if not LABEL.fullmatch(value):
+        sys.exit(f"refusing: the {what} label {value!r} is not one plain path segment")
+    return value
+
+
 def build_label(raw: Path) -> str:
     props = (raw / "probe/getprop.txt").read_text(errors="replace")
     m = re.search(r"\[ro\.build\.version\.incremental\]: \[([^\]]+)\]", props)
@@ -439,15 +451,17 @@ def in_place(args) -> int:
         if new != data:
             assert len(new) == len(data), f
             f.write_bytes(new)
+    counts = dict(red.counts)  # the README repeats status.tsv's stderr: not counted twice
     readme_path = out / "README.md"
-    text = readme_path.read_text()
+    # The README quotes status.tsv's stderr column, so it gets the same pass (audit DATA-007).
+    text = red.text(readme_path.read_bytes()).decode()
     if pseudo.count:  # a re-run over converted fixtures keeps the first run's note
         text = re.sub(r"\nThird-party package names replaced.*\n", "\n", text)
         marker = "`probe/` holds"
         text = text.replace(marker, pseudonym_note(pseudo) + "\n" + marker, 1)
-    if red.counts:
+    if counts:
         text = text.replace("Replacements made: ", "Replacements made: " + ", ".join(
-            f"{k}: {v}" for k, v in sorted(red.counts.items())) + " (in-place pass), ", 1)
+            f"{k}: {v}" for k, v in sorted(counts.items())) + " (in-place pass), ", 1)
     readme_path.write_text(text)
     pseudo.save()
     report(out, red, pseudo)
@@ -456,12 +470,74 @@ def in_place(args) -> int:
 
 def report(out: Path, red: Redactor, pseudo: Pseudonymiser) -> None:
     hits = [h for p in sorted(out.rglob("*")) if p.is_file() for h in scan(p)]
+    # A third-party name this run replaced must be gone from every file (audit DATA-007).
+    hits += [f"{p.name}: third-party package {t.decode()}" for p in sorted(out.rglob("*")) if p.is_file()
+             for t in pseudo.targets if t in p.read_bytes()]
     print(f"fixtures written: {out}")
     print(f"replacements: {red.counts or 'none'}")
     print(f"pseudonymised packages: {len(pseudo.targets)}, occurrences: {pseudo.count}")
     print(f"post-scan hits: {len(hits)}")
     for h in hits[:50]:
         print("  " + h)
+
+
+def self_test() -> int:
+    """What check.sh runs: a label never reaches outside fixtures/ (audit BUG-025), and the in-place
+    pass leaves no third-party name in the README (audit DATA-007). Everything happens in a
+    temporary folder, with its own pseudonym map."""
+    import subprocess
+    import tempfile
+
+    failures = []
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+
+        def run(*arguments: object) -> subprocess.CompletedProcess:
+            command = [sys.executable, "-I", __file__, *map(str, arguments), "--map", str(root / "map.json")]
+            return subprocess.run(command, capture_output=True, check=False)
+
+        # A capture whose build label is "..", into a repository with another device's fixtures.
+        raw, repo = root / "raw", root / "repo"
+        (raw / "probe").mkdir(parents=True)
+        (raw / "probe/getprop.txt").write_text("[ro.build.version.incremental]: [..]\n")
+        (raw / ".packages-system").write_text("package:android\n")
+        (raw / "status.tsv").write_text("file\tcommand\texit\tbytes\tstderr\n")
+        (raw / "captured_at.txt").write_text("now\n")
+        keep = repo / "fixtures/keep/b1/x.txt"
+        keep.parent.mkdir(parents=True)
+        keep.write_text("x")
+        (repo / "fixtures/dev").mkdir()
+        for device in ("dev", "../x", ".", "a/b"):
+            done = run(raw, device, "--repo", repo)
+            if done.returncode == 0 or not keep.exists():
+                failures.append(f"device label {device!r} with build label '..' was not refused")
+            keep.parent.mkdir(parents=True, exist_ok=True)
+            keep.write_text("x")
+        # A plain label still writes its fixtures.
+        (raw / "probe/getprop.txt").write_text("[ro.build.version.incremental]: [B1.2-3]\n")
+        done = run(raw, "dev", "--repo", repo)
+        if done.returncode != 0 or not (repo / "fixtures/dev/B1.2-3/README.md").exists() or not keep.exists():
+            failures.append("a plain device and build label did not write its fixtures: " + done.stderr.decode()[-200:])
+
+        # A fixture whose status.tsv and README both quote a command's stderr naming a third-party app.
+        fixture = root / "fx"
+        fixture.mkdir()
+        stderr = "Error: com.example.secretapp not found"
+        (fixture / "status.tsv").write_text(f"file\tcommand\texit\tbytes\tstderr\nx.txt\tcmd\t1\t0\t{stderr}\n")
+        (fixture / "README.md").write_text(f"# Fixtures\n\nReplacements made: none\n\n`probe/` holds the probes.\n\n| x.txt | 1 | {stderr} |\n")
+        (root / "system.txt").write_text("package:android\n")
+        (root / "third.txt").write_text("package:com.example.secretapp\n")
+        done = run("--in-place", fixture, "--system-packages", root / "system.txt", "--third-party-packages", root / "third.txt")
+        if done.returncode != 0:
+            failures.append("the in-place pass failed: " + done.stderr.decode()[-200:])
+        for name in ("status.tsv", "README.md"):
+            if "com.example.secretapp" in (fixture / name).read_text():
+                failures.append(f"the in-place pass left the third-party name in {name}")
+    if failures:
+        print("redact.py self-test failed:\n  " + "\n  ".join(failures), file=sys.stderr)
+        return 1
+    print("redact.py self-test: ok")
+    return 0
 
 
 def main() -> int:
@@ -474,7 +550,10 @@ def main() -> int:
     ap.add_argument("--third-party-packages", type=Path, help="pm list packages -3 output (default: <raw>/.packages-third-party)")
     ap.add_argument("--map", type=Path, default=DEFAULT_MAP, help="pseudonym mapping, kept outside the repository")
     ap.add_argument("--keep-prefix", action="append", help="package prefix that keeps its name (repeatable)")
+    ap.add_argument("--self-test", action="store_true", help="check the tool against made-up input in a temporary folder")
     args = ap.parse_args()
+    if args.self_test:
+        return self_test()
     if args.in_place:
         return in_place(args)
     if args.raw is None or args.device is None:
@@ -487,8 +566,14 @@ def main() -> int:
     pseudo = make_pseudonymiser(args, args.system_packages or raw / ".packages-system", third_file)
     sources = [p for p in sorted(raw.rglob("*")) if p.is_file() and p.name not in TEXT_FILES_SKIP]
     pseudo.discover(sources, read_package_list(third_file) if third_file.exists() else set())
-    build = build_label(raw)
-    out = args.repo / "fixtures" / args.device / build
+    device = label(args.device, "device")
+    build = label(build_label(raw), "build")
+    fixtures = (args.repo / "fixtures").resolve()
+    out = fixtures / device / build
+    # Only what fixtures/<device>/<build> names is removed, never a folder a link leads to
+    # (audit BUG-025).
+    if out.resolve().parent.parent != fixtures:
+        sys.exit(f"refusing: {out} does not resolve to a folder two levels inside {fixtures}")
     if out.exists():
         shutil.rmtree(out)
     red = Redactor(secrets, pseudo)
@@ -500,7 +585,7 @@ def main() -> int:
         dst.write_bytes(red.proto(data) if src.suffix == ".bin" else red.text(data))
     # Commands' stderr can name a serial, an account or a package: masked like the dumps (audit DATA-003).
     (out / "status.tsv").write_bytes(red.text((raw / "status.tsv").read_bytes()))
-    text = readme(raw, args.device, build, red.counts, out / "status.tsv")
+    text = readme(raw, device, build, red.counts, out / "status.tsv")
     (out / "README.md").write_text(text.replace("`probe/` holds", pseudonym_note(pseudo) + "\n`probe/` holds", 1))
     pseudo.save()
     report(out, red, pseudo)
