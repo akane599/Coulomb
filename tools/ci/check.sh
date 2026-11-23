@@ -15,6 +15,7 @@ step() {
     static)   python3 -I tools/design/icons.py --check
               python3 -I tools/validation/report.py --self-test
               python3 -I tools/ci/translations.py
+              tools/ci/secrets-ignored.sh
               run spotlessCheck detekt checkModuleBoundaries ;;
     # The screenshot tests compare against the committed goldens (SPEC 16.4; ADR-0031, audit TEST-001).
     unit)     run test :build-logic:convention:test -Proborazzi.test.verify=true ;;

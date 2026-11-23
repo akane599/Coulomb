@@ -29,3 +29,8 @@ __pycache__/
 
 # Local release signing (ADR-0067); the key file itself lives outside the repository.
 keystore.properties
+# Key containers too: docs/releasing.md creates a PKCS12 file (audit OPS-001).
+*.p12
+*.pfx
+*.pem
+*.key

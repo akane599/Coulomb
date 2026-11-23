@@ -34,9 +34,16 @@ for name in COULOMB_KEYSTORE COULOMB_KEYSTORE_PASSWORD COULOMB_KEY_ALIAS COULOMB
   [ -n "$value" ] || fail "$name is not set"
 done
 [ -f "$COULOMB_KEYSTORE" ] || fail "COULOMB_KEYSTORE is not a file"
+# The key never sits in the checkout, where one commit would publish it (audit OPS-001).
+keystore_dir=$(cd "$(dirname "$COULOMB_KEYSTORE")" && pwd -P)
+case "$keystore_dir/" in
+  "$(pwd -P)/"*) fail "the keystore is inside the repository; keep it outside (docs/releasing.md)" ;;
+esac
 
 # A release is a commit that passed the pre-push checks, and nothing else.
-[ -z "$(git status --porcelain)" ] || fail "the working tree has changes; commit or stash them"
+changes=$(git status --porcelain)
+[ -z "$changes" ] || fail "the working tree has changes:
+$changes"
 git merge-base --is-ancestor HEAD origin/main || fail "HEAD is not on origin/main; push it first, so its checks have run"
 
 version=$(sed -n 's/^coulomb\.versionName=//p' gradle.properties)

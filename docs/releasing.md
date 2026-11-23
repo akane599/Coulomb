@@ -20,6 +20,10 @@ keytool -genkeypair -keystore <path>/coulomb-release.p12 -storetype PKCS12 \
 
 A PKCS12 keystore has one password: the key's password is the keystore's.
 
+`<path>` is outside the repository. Git ignores the usual key file names here (`*.p12`, `*.pfx`,
+`*.jks`, `*.keystore`, `*.pem`, `*.key`) and `tools/release/build.sh` refuses a keystore that lies
+inside the checkout, but neither is a place to keep a key.
+
 The build reads the key from the environment and from nowhere else:
 
 | Variable | Content |
