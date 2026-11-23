@@ -12,6 +12,7 @@ import io.github.akane599.coulomb.core.collect.LiveReads
 import io.github.akane599.coulomb.core.collect.engine.VisibleScreen
 import io.github.akane599.coulomb.core.data.ChargingNow
 import io.github.akane599.coulomb.core.data.ChargingRepository
+import io.github.akane599.coulomb.core.data.launchWrite
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.InsightSeverity
@@ -133,11 +134,11 @@ public class ChargingViewModel
             id: Long,
             forMs: Long,
         ) {
-            viewModelScope.launch { insights.snooze(id, System.currentTimeMillis(), forMs) }
+            viewModelScope.launchWrite(TAG) { insights.snooze(id, System.currentTimeMillis(), forMs) }
         }
 
         internal fun dismissInsight(id: Long) {
-            viewModelScope.launch { insights.dismiss(id, System.currentTimeMillis()) }
+            viewModelScope.launchWrite(TAG) { insights.dismiss(id, System.currentTimeMillis()) }
         }
 
         /** After [ChargingUiState.Error]: reads everything again. */
@@ -147,7 +148,7 @@ public class ChargingViewModel
 
         /** The 80/85/90/100% group (ADR-0026: it sets the target tick). */
         internal fun setTarget(pct: Int) {
-            viewModelScope.launch { charging.setTarget(pct) }
+            viewModelScope.launchWrite(TAG) { charging.setTarget(pct) }
         }
 
         /**
@@ -164,3 +165,6 @@ public class ChargingViewModel
             const val REFRESH_WAIT_MS = 5_000L
         }
     }
+
+/** A write that fails for storage is logged under this tag; the screen keeps the stored value (audit BUG-024). */
+private const val TAG = "Charging"

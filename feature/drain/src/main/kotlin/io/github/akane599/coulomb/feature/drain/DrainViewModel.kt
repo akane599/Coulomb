@@ -18,6 +18,7 @@ import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
 import io.github.akane599.coulomb.core.data.NamedReference
 import io.github.akane599.coulomb.core.data.References
+import io.github.akane599.coulomb.core.data.launchWrite
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.model.ManagerPermission
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
@@ -102,7 +103,8 @@ public class DrainViewModel
             val open = window.span.value as? DrainSpan.Between
             val gone = references.value.filter { it.id in ids }.map { it.mark }
             if (open != null && (open.from in gone || open.to in gone)) window.choose(DrainSpan.SinceUnplugged)
-            viewModelScope.launch { ids.forEach { namedReferences.delete(it) } }
+            // A delete that fails leaves the list as stored (audit BUG-024).
+            viewModelScope.launchWrite(TAG) { ids.forEach { namedReferences.delete(it) } }
         }
 
         internal fun includeSystem(include: Boolean) = viewModelScope.writeSetting { settings.showSystemApps(include) }
@@ -143,14 +145,10 @@ public class DrainViewModel
  * stored value, stays as it was (audit BUG-049).
  */
 internal fun CoroutineScope.writeSetting(block: suspend () -> Unit) {
-    launch {
-        try {
-            block()
-        } catch (e: IOException) {
-            Log.w("Drain", "settings write failed", e)
-        }
-    }
+    launchWrite(TAG, block = block)
 }
+
+private const val TAG = "Drain"
 
 /**
  * "Mark this moment": a heavy snapshot first, which the collector debounces to one a minute
@@ -169,7 +167,8 @@ internal class ReferenceMarks(
 
     fun mark(name: String) {
         unmarked.value = false
-        scope.launch {
+        // A reference that could not be stored is "nothing was marked" too (audit BUG-024).
+        scope.launchWrite(TAG, failed = { unmarked.value = true }) {
             val stored = collector.snapshot(SnapshotTrigger.PULL_TO_REFRESH) != SnapshotOutcome.FAILED
             unmarked.value = !stored || references.mark(name, System.currentTimeMillis()) == null
         }

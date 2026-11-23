@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.akane599.coulomb.core.collect.HealthFacts
 import io.github.akane599.coulomb.core.data.HealthReport
 import io.github.akane599.coulomb.core.data.HealthRepository
+import io.github.akane599.coulomb.core.data.launchWrite
 import io.github.akane599.coulomb.core.model.BatteryDates
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -89,12 +90,12 @@ public class HealthViewModel
             chargerId: Long,
             name: String,
         ) {
-            viewModelScope.launch { health.renameCharger(chargerId, name) }
+            viewModelScope.launchWrite(TAG) { health.renameCharger(chargerId, name) }
         }
 
         /** The owner's design capacity (ADR-0044 §5); the report follows from the database. */
         internal fun setDesignCapacity(mah: Int) {
-            viewModelScope.launch { health.setDesignCapacity(mah) }
+            viewModelScope.launchWrite(TAG) { health.setDesignCapacity(mah) }
         }
 
         /**
@@ -102,7 +103,7 @@ public class HealthViewModel
          * none until the next reading where the read fails (ADR-0044 §5).
          */
         internal fun useReportedDesignCapacity() {
-            viewModelScope.launch {
+            viewModelScope.launchWrite(TAG) {
                 val reported =
                     try {
                         facts.designCapacity()
@@ -121,3 +122,6 @@ public class HealthViewModel
             const val STOP_TIMEOUT_MS = 5_000L
         }
     }
+
+/** A write that fails for storage is logged under this tag; the screen keeps the stored value (audit BUG-024). */
+private const val TAG = "Health"

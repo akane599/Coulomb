@@ -14,6 +14,7 @@ import io.github.akane599.coulomb.core.data.BatteryRepository
 import io.github.akane599.coulomb.core.data.ChosenWindow
 import io.github.akane599.coulomb.core.data.DrainRepository
 import io.github.akane599.coulomb.core.data.DrainSpan
+import io.github.akane599.coulomb.core.data.launchWrite
 import io.github.akane599.coulomb.core.datastore.SettingsStore
 import io.github.akane599.coulomb.core.insights.InsightStore
 import io.github.akane599.coulomb.core.insights.ShownInsight
@@ -128,11 +129,11 @@ public class NowViewModel
             id: Long,
             forMs: Long,
         ) {
-            viewModelScope.launch { insights.snooze(id, System.currentTimeMillis(), forMs) }
+            viewModelScope.launchWrite(TAG) { insights.snooze(id, System.currentTimeMillis(), forMs) }
         }
 
         internal fun dismissInsight(id: Long) {
-            viewModelScope.launch { insights.dismiss(id, System.currentTimeMillis()) }
+            viewModelScope.launchWrite(TAG) { insights.dismiss(id, System.currentTimeMillis()) }
         }
 
         /** "See all": Drain opens on the window Now shows. */
@@ -149,3 +150,6 @@ public class NowViewModel
             const val REFRESH_WAIT_MS = 5_000L
         }
     }
+
+/** A write that fails for storage is logged under this tag; the screen keeps the stored value (audit BUG-024). */
+private const val TAG = "Now"
