@@ -106,7 +106,7 @@ internal class CollectorEngine(
     var calibration: CurrentCalibration? = null
         private set
 
-    /** Handles one trigger and returns what it did. */
+    /** Handles one trigger and returns what it did: a heavy snapshot that was stored light is [Action.LIGHT]. */
     suspend fun handle(trigger: SnapshotTrigger): Action {
         val reading = light.read()
         val uptimeAtReadMs = clock.uptimeMs()
@@ -121,11 +121,7 @@ internal class CollectorEngine(
         if (action == Action.SAMPLE && sessionsWouldChange(reading, boot)) {
             action = if (heavy.available()) Action.HEAVY else Action.LIGHT
         }
-        when (action) {
-            Action.NONE -> Unit
-            Action.SAMPLE -> storeSample(reading, boot)
-            Action.LIGHT, Action.HEAVY -> snapshot(trigger, Read(reading, uptimeAtReadMs), boot, action == Action.HEAVY)
-        }
+        action = carryOut(action, trigger, Read(reading, uptimeAtReadMs), boot)
         // A screen asked, but no heavy snapshot ran: the screen gets windows to the latest one (ADR-0032 §3).
         if (trigger in REFERENCE_TRIGGERS && action != Action.HEAVY) referencesToLatest(reading)
         if (action != Action.NONE) firstOfProcess = false
@@ -133,6 +129,37 @@ internal class CollectorEngine(
         if (action == Action.LIGHT || action == Action.HEAVY) watchedSinceLast = watching
         return action
     }
+
+    /**
+     * Does [action] and returns what was done. A heavy snapshot whose counters were partial, failed
+     * or slept is stored light and is [Action.LIGHT]: what follows a heavy snapshot does not run on
+     * a light row, and a screen that asked gets its windows to the latest heavy one (audit BUG-013).
+     */
+    private suspend fun carryOut(
+        action: Action,
+        trigger: SnapshotTrigger,
+        read: Read,
+        boot: BootEntity,
+    ): Action =
+        when (action) {
+            Action.NONE -> {
+                action
+            }
+
+            Action.SAMPLE -> {
+                action.also { storeSample(read.reading, boot) }
+            }
+
+            Action.LIGHT, Action.HEAVY -> {
+                if (snapshot(trigger, read, boot, action == Action.HEAVY) ==
+                    SnapshotKind.LIGHT
+                ) {
+                    Action.LIGHT
+                } else {
+                    action
+                }
+            }
+        }
 
     /** The service attached ([on]) or detached its receivers; events arrive in order with the triggers. */
     fun watching(on: Boolean) {
@@ -329,7 +356,7 @@ internal class CollectorEngine(
         read: Read,
         boot: BootEntity,
         wantHeavy: Boolean,
-    ) {
+    ): SnapshotKind {
         val reading = read.reading
         val startNs = clock.elapsedNs()
         val stats = if (wantHeavy) sleepChecked(heavy.stats(SOURCE_TIMEOUT_MS), read) else null
@@ -379,6 +406,7 @@ internal class CollectorEngine(
         // What the commit made true first: the cursor and offset in memory follow the stored ones.
         afterCommit(history, ingest, boot, reading)
         recordLabelsOrLog(changed, reading)
+        return kind
     }
 
     /** [recordLabels], whose failure costs the names only: the snapshot and its state stand (audit DATA-018). */

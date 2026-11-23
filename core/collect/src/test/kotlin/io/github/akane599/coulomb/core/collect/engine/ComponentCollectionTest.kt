@@ -51,13 +51,16 @@ class ComponentCollectionTest {
     private fun engine() =
         CollectorEngine(db, device, stats, FakeIdentity(), clock, MemoryBlobs(), FakeLabels(), CollectorSettings { breakdownOn })
 
-    /** Two heavy snapshots half an hour apart on battery; returns the engine for more. */
-    private suspend fun halfHourOnBattery(): CollectorEngine {
+    /**
+     * Two heavy snapshots half an hour apart on battery; returns the engine for more. [stored] is
+     * what each is stored and reported as: light when the counters did not come whole (audit BUG-013).
+     */
+    private suspend fun halfHourOnBattery(stored: Action = Action.HEAVY): CollectorEngine {
         val engine = engine()
         device.set(hours = 1.0, level = 90, chargeMah = 4_500.0, screenOn = true)
-        assertThat(engine.handle(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(Action.HEAVY)
+        assertThat(engine.handle(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(stored)
         device.set(hours = 1.5, level = 88, chargeMah = 4_400.0, screenOn = false)
-        assertThat(engine.handle(SnapshotTrigger.SCREEN_OFF)).isEqualTo(Action.HEAVY)
+        assertThat(engine.handle(SnapshotTrigger.SCREEN_OFF)).isEqualTo(stored)
         return engine
     }
 
@@ -196,7 +199,7 @@ class ComponentCollectionTest {
     fun withoutS5S4IsNotRead() =
         runTest {
             stats.statuses = mapOf("S5" to SourceStatus.PARTIAL)
-            halfHourOnBattery()
+            halfHourOnBattery(stored = Action.LIGHT)
 
             assertThat(stats.usageReads).isEqualTo(0)
             assertThat(s4(latest())).isEqualTo(SourceStatus.SKIPPED)
