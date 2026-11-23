@@ -443,16 +443,58 @@ internal class DrainReaderTest : DrainDbTest() {
             assertThat(reader.read(DrainSpan.Night(9_999), empty())).isNull()
         }
 
+    /** Audit BUG-011: a snapshot stamped by a clock that ran ahead is not within the last day of a later one. */
+    @Test
+    fun last24HoursAfterAClockSetBackCoversOneDay() =
+        runTest {
+            val day = 24 * HOUR_S
+            val ahead = heavy(0, wallMs = BASE_WALL + 3 * day * 1_000)
+            val from = heavy(2 * day, wallMs = BASE_WALL + 2 * day * 1_000)
+            val to = heavy(3 * day, wallMs = BASE_WALL + 3 * day * 1_000 + 1)
+            store(window(ahead, from).copy(screenOnMs = 0, screenOffMs = 2 * day * 1_000))
+            store(window(from, to).copy(screenOnMs = 0, screenOffMs = day * 1_000))
+
+            val report = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+
+            assertThat(report.drains.fromWallMs).isEqualTo(wall(from))
+            assertThat(report.durationMs).isEqualTo(day * 1_000)
+        }
+
+    /** The same for the night: a session that closed while the clock ran ahead did not end within the last day. */
+    @Test
+    fun lastNightAfterAClockSetBackIsTheLatestNight() =
+        runTest {
+            val hMs = HOUR_S * 1_000
+            val a = heavy(0, wallMs = BASE_WALL + 72 * hMs)
+            val b = heavy(3 * HOUR_S, wallMs = BASE_WALL + 75 * hMs)
+            val c = heavy(48 * HOUR_S, wallMs = BASE_WALL + 48 * hMs)
+            val d = heavy(50 * HOUR_S, wallMs = BASE_WALL + 50 * hMs)
+            heavy(72 * HOUR_S, wallMs = BASE_WALL + 72 * hMs)
+            sessions.insert(screenOff(a, b))
+            sessions.insert(screenOff(c, d))
+            store(window(a, b))
+            store(window(c, d))
+
+            val report = checkNotNull(reader.read(DrainSpan.LastNight, empty()))
+
+            assertThat(report.drains.fromWallMs).isEqualTo(wall(c))
+            assertThat(report.drains.toWallMs).isEqualTo(wall(d))
+        }
+
     @Test
     fun aRangeOfDaysRunsFromItsFirstMidnightToTheNext() =
         runTest {
             val day = LocalDate.of(2026, 11, 1)
             val midnight = day.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-            val before = heavy(1_000, wallMs = midnight - 60_000)
-            val a = heavy(2_000, wallMs = midnight + 3_600_000)
-            val b = heavy(3_000, wallMs = midnight + 12 * 3_600_000)
-            val c = heavy(4_000, wallMs = midnight + 25 * 3_600_000)
-            heavy(5_000, wallMs = midnight + 30 * 3_600_000)
+            // The boot started two hours before midnight, and its two clocks run together: a wall
+            // time is placed by the boot's latest clock (ADR-0036 §2).
+            val bootWall = midnight - 2 * 3_600_000
+            val wallAt = { elapsedS: Long -> bootWall + elapsedS * 1_000 }
+            val before = heavy(2 * HOUR_S - 60, wallAt(2 * HOUR_S - 60))
+            val a = heavy(3 * HOUR_S, wallAt(3 * HOUR_S))
+            val b = heavy(14 * HOUR_S, wallAt(14 * HOUR_S))
+            val c = heavy(27 * HOUR_S, wallAt(27 * HOUR_S))
+            heavy(32 * HOUR_S, wallAt(32 * HOUR_S))
             store(window(before, a).copy(measuredMah = 999.0))
             store(window(a, b).copy(measuredMah = 40.0))
             store(window(b, c).copy(measuredMah = 60.0))

@@ -36,6 +36,13 @@ stored. Each has one line of reason (ADR-0027).
      back.
    - R: every end is a stored snapshot, so a span's counters are exact differences. Wall time only
      picks the snapshot; order stays by boot and elapsed time (SPEC 7.8).
+   - Amended 2026-11-23 (audit BUG-011): a wall bound is first placed on each boot's clock at
+     its latest snapshot (`BootTimes`, the Timeline's rule of ADR-0056 §2 and §8) and becomes a boot
+     and elapsed time; rows are then compared by that, never by the wall time they were stamped
+     with. "24 h before the latest" is counted on the latest snapshot's boot clock, not from its
+     stamp. A snapshot or a session's end stamped while the clock ran ahead is therefore not taken
+     for a later one. A later boot's start ends the boot before it. The same holds for the
+     self-cost day and the rules' day.
 3. **The measured total is the stored window's own when every window in its chain started on
    battery.** Otherwise it is the sum of the chain's discharge windows: those whose first snapshot
    reports `plugType = 0`.

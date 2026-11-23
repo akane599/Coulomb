@@ -225,13 +225,25 @@ public abstract class SnapshotDao {
         toElapsedNs: Long,
     ): List<SnapshotEntity>
 
+    /** The first heavy snapshot at or after (boot, elapsed), in time order. */
+    @Query(
+        "SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} " +
+            "AND (bootSeq > :bootSeq OR (bootSeq = :bootSeq AND elapsedNs >= :elapsedNs)) ORDER BY bootSeq, elapsedNs LIMIT 1",
+    )
+    public abstract suspend fun firstHeavyAtOrAfter(
+        bootSeq: Int,
+        elapsedNs: Long,
+    ): SnapshotEntity?
+
     /**
-     * The first heavy snapshot at or after [wallMs], in time order: where a span that starts at a
-     * wall time can start (ADR-0036). Wall time only picks the start; order stays by boot and elapsed
-     * time (SPEC 7.8).
+     * The first heavy snapshot at or after [wallMs] on each boot's latest clock ([BootTimes]): where a
+     * span that starts at a wall time can start (ADR-0036 §2). The wall time becomes a boot and
+     * elapsed time before any row is compared, so a snapshot stamped by a clock that ran ahead is not
+     * taken for a later one (audit BUG-011). Order stays by boot and elapsed time (SPEC 7.8).
      */
-    @Query("SELECT * FROM snapshot WHERE kind = ${RecordCodes.SNAPSHOT_HEAVY} AND wallMs >= :wallMs ORDER BY bootSeq, elapsedNs LIMIT 1")
-    public abstract suspend fun firstHeavyFrom(wallMs: Long): SnapshotEntity?
+    @Transaction
+    public open suspend fun firstHeavyFrom(wallMs: Long): SnapshotEntity? =
+        bootTimes().key(wallMs)?.let { firstHeavyAtOrAfter(it.bootSeq, it.elapsedNs) }
 
     /**
      * The latest snapshot at or before (boot, elapsed) that stored a history read. A span of history

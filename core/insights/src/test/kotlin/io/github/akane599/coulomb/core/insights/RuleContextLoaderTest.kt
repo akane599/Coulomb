@@ -64,13 +64,14 @@ class RuleContextLoaderTest {
     private suspend fun heavy(
         atHours: Double,
         plugType: Int = 0,
+        wallMs: Long? = null,
     ): SnapshotEntity {
         val ms = (atHours * hour).toLong()
         val snapshot =
             SnapshotEntity(
                 bootSeq = 1,
                 elapsedNs = ms * NS_PER_MS,
-                wallMs = BASE_WALL + ms,
+                wallMs = wallMs ?: (BASE_WALL + ms),
                 trigger = SnapshotTrigger.SCREEN_OFF,
                 kind = SnapshotKind.HEAVY,
                 levelPct = 80,
@@ -177,6 +178,22 @@ class RuleContextLoaderTest {
             )
         return session.copy(id = db.sessionDao().insert(session))
     }
+
+    /** Audit BUG-011: the day starts a day before its end on the boot's latest clock, whatever an earlier snapshot's clock read. */
+    @Test
+    fun theDayAfterAClockSetBackIsOneDay() =
+        runTest {
+            val ahead = heavy(0.0, wallMs = BASE_WALL + 72 * hour)
+            val from = heavy(48.0)
+            val to = heavy(72.0, wallMs = BASE_WALL + 72 * hour + 1)
+            window(ahead, from, modeledMah = 100.0, uids = listOf(mah(own, "all", 9.0)))
+            window(from, to, modeledMah = 100.0, uids = listOf(mah(own, "all", 1.0)))
+
+            val day = checkNotNull(loader.load(to.wallMs, hour).day)
+
+            assertThat(day.span).isEqualTo(Span(from.wallMs, to.wallMs))
+            assertThat(day.self).isEqualTo(SelfCost(1.0, 5000.0))
+        }
 
     @Test
     fun theDayCountsAppsOnBatteryAndKeepsScreenOffTimeApart() =

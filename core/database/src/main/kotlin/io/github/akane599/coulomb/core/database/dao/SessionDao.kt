@@ -40,18 +40,21 @@ public interface SessionDao {
     ): List<SessionEntity>
 
     /**
-     * The longest closed session of [kind] lasting at least [minNs] that ended at or after
-     * [sinceWall], with both end snapshots: Drain's "Last night" (ADR-0036). A session lies within
-     * one boot, so its elapsed times compare.
+     * The longest closed session of [kind] lasting at least [minNs] that ended at or after (boot,
+     * elapsed), with both end snapshots: Drain's "Last night" (ADR-0036). Its end is compared in
+     * boot and elapsed time, not by the wall clock it was stamped with (audit BUG-011). A session
+     * lies within one boot, so its elapsed times compare.
      */
     @Query(
-        "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL AND endWall >= :sinceWall " +
+        "SELECT * FROM session WHERE kind = :kind AND closeReason IS NOT NULL " +
+            "AND (bootSeq > :sinceBootSeq OR (bootSeq = :sinceBootSeq AND endElapsedNs >= :sinceElapsedNs)) " +
             "AND startSnapshotId IS NOT NULL AND endSnapshotId IS NOT NULL AND endElapsedNs - startElapsedNs >= :minNs " +
             "ORDER BY endElapsedNs - startElapsedNs DESC, bootSeq DESC LIMIT 1",
     )
     public suspend fun longestClosed(
         kind: SessionKind,
-        sinceWall: Long,
+        sinceBootSeq: Int,
+        sinceElapsedNs: Long,
         minNs: Long,
     ): SessionEntity?
 

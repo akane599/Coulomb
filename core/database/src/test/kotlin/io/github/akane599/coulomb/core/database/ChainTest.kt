@@ -5,12 +5,15 @@ package io.github.akane599.coulomb.core.database
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import io.github.akane599.coulomb.core.database.dao.BootKey
 import io.github.akane599.coulomb.core.database.dao.ChainStat
 import io.github.akane599.coulomb.core.database.dao.ChainUid
 import io.github.akane599.coulomb.core.database.dao.ChainWake
 import io.github.akane599.coulomb.core.database.dao.WindowRows
 import io.github.akane599.coulomb.core.database.dao.WindowStat
 import io.github.akane599.coulomb.core.database.dao.WindowWake
+import io.github.akane599.coulomb.core.database.dao.firstHeavyWithin
+import io.github.akane599.coulomb.core.database.dao.keyBefore
 import io.github.akane599.coulomb.core.database.entity.UidPowerEntity
 import io.github.akane599.coulomb.core.database.entity.WindowUid
 import io.github.akane599.coulomb.core.database.entity.WindowUidEntity
@@ -125,15 +128,44 @@ class ChainTest : DatabaseTest() {
             assertThat(totals.measuredMs).isEqualTo(0)
         }
 
+    /**
+     * A wall time is placed on each boot's clock at its latest snapshot before any row is compared
+     * (ADR-0036 §2). Boot 2 started at 1,250 s by its own clock, which ends boot 1 there, although
+     * boot 1's last snapshot was stamped later.
+     */
     @Test
     fun aSpanStartsAtTheFirstHeavySnapshotFromAWallTime() =
         runTest {
-            snapshots.insert(snapshot(elapsedS = 100, wallMs = 5_000))
-            snapshots.insert(snapshot(elapsedS = 200, wallMs = 9_000, kind = SnapshotKind.LIGHT))
-            val heavy = snapshots.insert(snapshot(elapsedS = 300, wallMs = 12_000))
-            // A later boot whose clock was set back still comes after it.
-            snapshots.insert(snapshot(elapsedS = 10, bootSeq = 2, wallMs = 11_000))
-            assertThat(snapshots.firstHeavyFrom(9_000)?.id).isEqualTo(heavy)
-            assertThat(snapshots.firstHeavyFrom(20_000)).isNull()
+            snapshots.insert(snapshot(elapsedS = 100, wallMs = 1_100_000))
+            snapshots.insert(snapshot(elapsedS = 200, wallMs = 1_200_000, kind = SnapshotKind.LIGHT))
+            val heavy = snapshots.insert(snapshot(elapsedS = 300, wallMs = 1_300_000))
+            val nextBoot = snapshots.insert(snapshot(elapsedS = 10, bootSeq = 2, wallMs = 1_260_000))
+
+            // Within boot 1: the light snapshot is passed over.
+            assertThat(snapshots.firstHeavyFrom(1_150_000)?.id).isEqualTo(heavy)
+            // Before every boot: the first heavy snapshot there is.
+            assertThat(snapshots.firstHeavyFrom(5_000)?.id).isNotNull()
+            // Once boot 2 has started, a wall time is its own.
+            assertThat(snapshots.firstHeavyFrom(1_255_000)?.id).isEqualTo(nextBoot)
+            assertThat(snapshots.firstHeavyFrom(2_000_000)).isNull()
+        }
+
+    /** Audit BUG-011: a snapshot stamped while the clock ran ahead is not later than one stamped after it was set back. */
+    @Test
+    fun aSpanFromAWallTimeStartsOnEachBootsLatestClock() =
+        runTest {
+            val hourS = 3_600L
+            val hourMs = 3_600_000L
+            // The clock ran 72 h ahead at the first snapshot and was right from the second on.
+            snapshots.insert(snapshot(elapsedS = 0, wallMs = 72 * hourMs))
+            val dayStart = snapshots.insert(snapshot(elapsedS = 48 * hourS, wallMs = 48 * hourMs))
+            val to = checkNotNull(snapshots.snapshot(snapshots.insert(snapshot(elapsedS = 72 * hourS, wallMs = 72 * hourMs))))
+
+            assertThat(snapshots.firstHeavyFrom(48 * hourMs)?.id).isEqualTo(dayStart)
+            assertThat(snapshots.firstHeavyWithin(24 * hourMs, to)?.id).isEqualTo(dayStart)
+            assertThat(snapshots.keyBefore(to, 24 * hourMs)).isEqualTo(BootKey(1, 48 * hourS * 1_000_000_000))
+            // The end's own stamp does not move the day either: an end stamped ahead still has its day behind it.
+            val stampedAhead = to.copy(wallMs = 500 * hourMs)
+            assertThat(snapshots.firstHeavyWithin(24 * hourMs, stampedAhead)?.id).isEqualTo(dayStart)
         }
 }

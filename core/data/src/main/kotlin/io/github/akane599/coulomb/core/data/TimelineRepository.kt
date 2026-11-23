@@ -5,12 +5,12 @@ package io.github.akane599.coulomb.core.data
 
 import android.util.Log
 import io.github.akane599.coulomb.core.common.AppDispatchers
-import io.github.akane599.coulomb.core.database.dao.BootClock
 import io.github.akane599.coulomb.core.database.dao.DeviceDao
 import io.github.akane599.coulomb.core.database.dao.HistoryDao
 import io.github.akane599.coulomb.core.database.dao.SampleDao
 import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
+import io.github.akane599.coulomb.core.database.dao.bootTimes
 import io.github.akane599.coulomb.core.database.entity.BatterySampleEntity
 import io.github.akane599.coulomb.core.database.entity.CorruptChunkException
 import io.github.akane599.coulomb.core.model.SessionKind
@@ -61,9 +61,10 @@ public class TimelineRepository
                 require(toWallMs > fromWallMs) { "a span ends after it starts" }
                 val builder = TimelineBuilder(fromWallMs, toWallMs)
                 val latest = snapshots.latest() ?: return@withContext builder.build(emptyList(), emptyList(), fromWallMs, emptyList())
-                val clocks = BootTimes(snapshots.bootClocks(Int.MIN_VALUE, Int.MAX_VALUE))
-                val from = clocks.key(fromWallMs)
-                val to = clocks.key(toWallMs)
+                val clocks = snapshots.bootTimes()
+                val none = { builder.build(emptyList(), emptyList(), fromWallMs, emptyList()) }
+                val from = clocks.key(fromWallMs) ?: return@withContext none()
+                val to = clocks.key(toWallMs) ?: return@withContext none()
                 // From the read before the span: its successor restates the state (ADR-0014).
                 val start = snapshots.lastWithHistoryAtOrBefore(from.bootSeq, from.elapsedNs)
                 val end = snapshots.firstAtOrAfter(to.bootSeq, to.elapsedNs)
@@ -84,25 +85,6 @@ public class TimelineRepository
                 val current = current(inSpan) { s -> clocks.wallAt(s.bootSeq, s.elapsedNs) ?: s.wallMs }
                 builder.build(stored.events, stored.gaps, knownUntil, current)
             }
-
-        /** Each boot's wall time at elapsed zero, by its latest snapshot, as [history] places events. */
-        private class BootTimes(
-            clocks: List<BootClock>,
-        ) {
-            private val boots = clocks.sortedBy { it.bootSeq }.map { it.bootSeq to it.wallMs - it.elapsedNs / NS_PER_MS }
-            private val zero = boots.toMap()
-
-            fun wallAt(
-                bootSeq: Int,
-                elapsedNs: Long,
-            ): Long? = zero[bootSeq]?.plus(elapsedNs / NS_PER_MS)
-
-            /** [wallMs] in the last boot that started by then; before every boot, the first one's start. */
-            fun key(wallMs: Long): Key {
-                val (boot, zeroMs) = boots.lastOrNull { it.second <= wallMs } ?: return Key(boots.first().first, 0)
-                return Key(boot, (wallMs - zeroMs) * NS_PER_MS)
-            }
-        }
 
         /**
          * The screen-off session [sessionId] as a timeline (SPEC 10.7), on the axis [NightSummary]

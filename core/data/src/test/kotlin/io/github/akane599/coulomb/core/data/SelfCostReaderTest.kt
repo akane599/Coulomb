@@ -41,6 +41,26 @@ internal class SelfCostReaderTest : DrainDbTest() {
             assertThat(cost.partial).isFalse()
         }
 
+    /**
+     * Audit BUG-011: the day's start is found on the boot's latest clock. A snapshot stamped while
+     * the clock ran three days ahead is not "within the last day" of one stamped after it was put right.
+     */
+    @Test
+    fun aClockSetBackDoesNotStretchTheLastDay() =
+        runTest {
+            val ahead = heavy(0, wallMs = BASE_WALL + 3 * DAY_S * 1_000)
+            val from = heavy(2 * DAY_S, wallMs = BASE_WALL + 2 * DAY_S * 1_000)
+            val to = heavy(3 * DAY_S, wallMs = BASE_WALL + 3 * DAY_S * 1_000 + 1)
+            store(window(ahead, from).modeled(), WindowRows(uids = listOf(uid(OWN, 9.0))))
+            store(window(from, to).modeled(), WindowRows(uids = listOf(uid(OWN, 1.0))))
+            db.deviceDao().upsertProfile(DeviceProfileEntity(FP, "t", "t", 37, 3_700_000, 5_000, "power_profile", 1, 1, true, null, null))
+
+            val cost = checkNotNull(reader().lastDay(OWN, FP))
+
+            assertThat(cost.ownMah).isWithin(1e-9).of(1.0)
+            assertThat(cost.fromWallMs).isEqualTo(wall(from))
+        }
+
     /** Audit DATA-014: no model's figures is no reading, and a stretch without them makes the reading partial. */
     @Test
     fun withoutAModeledWindowThereIsNoReadingAndAMissingOneMakesItPartial() =

@@ -9,6 +9,7 @@ import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
 import io.github.akane599.coulomb.core.database.dao.WindowDao
 import io.github.akane599.coulomb.core.database.dao.covers
+import io.github.akane599.coulomb.core.database.dao.firstHeavyWithin
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -55,7 +56,7 @@ public class SelfCostReader
         ): SelfCost? =
             withContext(dispatchers.io) {
                 val to = snapshots.latestHeavy() ?: return@withContext null
-                val from = snapshots.firstHeavyFrom(to.wallMs - DAY_MS) ?: return@withContext null
+                val from = snapshots.firstHeavyWithin(DAY_MS, to) ?: return@withContext null
                 val before = from.bootSeq < to.bootSeq || (from.bootSeq == to.bootSeq && from.elapsedNs < to.elapsedNs)
                 val links = windows.chainLinks(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
                 if (!before || links.none { it.device }) return@withContext null

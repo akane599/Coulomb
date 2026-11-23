@@ -13,6 +13,8 @@ import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
 import io.github.akane599.coulomb.core.database.dao.WindowDao
 import io.github.akane599.coulomb.core.database.dao.WindowRows
+import io.github.akane599.coulomb.core.database.dao.firstHeavyWithin
+import io.github.akane599.coulomb.core.database.dao.keyBefore
 import io.github.akane599.coulomb.core.database.entity.ReferenceEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
@@ -428,7 +430,7 @@ internal class DrainReader
                 }
 
                 DrainSpan.Last24Hours -> {
-                    snapshots.latestHeavy()?.let { to -> from(to.wallMs - DAY_MS, to) }
+                    snapshots.latestHeavy()?.let { to -> span(snapshots.firstHeavyWithin(DAY_MS, to), to) }
                 }
 
                 DrainSpan.LastNight -> {
@@ -496,7 +498,8 @@ internal class DrainReader
 
         private suspend fun lastNight(): Bounds? {
             val latest = snapshots.latestHeavy() ?: return null
-            val night = sessions.longestClosed(SessionKind.SCREEN_OFF, latest.wallMs - DAY_MS, NIGHT_MIN_NS) ?: return null
+            val since = snapshots.keyBefore(latest, DAY_MS) ?: return null
+            val night = sessions.longestClosed(SessionKind.SCREEN_OFF, since.bootSeq, since.elapsedNs, NIGHT_MIN_NS) ?: return null
             val from = night.startSnapshotId?.let { snapshots.snapshot(it) } ?: return null
             val to = night.endSnapshotId?.let { snapshots.snapshot(it) } ?: return null
             return Bounds(from, to, windows.forSession(night.id)).takeIf { before(from, to) }
@@ -541,10 +544,13 @@ internal class DrainReader
         private suspend fun from(
             startWall: Long,
             to: SnapshotEntity,
-        ): Bounds? {
-            val from = snapshots.firstHeavyFrom(startWall) ?: return null
-            return Bounds(from, to, null).takeIf { before(from, to) }
-        }
+        ): Bounds? = span(snapshots.firstHeavyFrom(startWall), to)
+
+        /** From [from] to [to]; null without a start, or when it does not come first. */
+        private fun span(
+            from: SnapshotEntity?,
+            to: SnapshotEntity,
+        ): Bounds? = from?.let { Bounds(it, to, null).takeIf { b -> before(b.from, to) } }
 
         private class Measured(
             val mah: Double,

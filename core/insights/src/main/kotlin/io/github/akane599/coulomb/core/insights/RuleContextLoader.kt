@@ -8,6 +8,7 @@ import io.github.akane599.coulomb.core.database.dao.SessionDao
 import io.github.akane599.coulomb.core.database.dao.SnapshotDao
 import io.github.akane599.coulomb.core.database.dao.WindowDao
 import io.github.akane599.coulomb.core.database.dao.covers
+import io.github.akane599.coulomb.core.database.dao.firstHeavyWithin
 import io.github.akane599.coulomb.core.database.entity.ChargerProfileEntity
 import io.github.akane599.coulomb.core.database.entity.SessionEntity
 import io.github.akane599.coulomb.core.database.entity.SnapshotEntity
@@ -134,7 +135,7 @@ public class RuleContextLoader(
      */
     private suspend fun day(capacity: Double?): DayUse? {
         val to = snapshots.latestHeavy() ?: return null
-        val from = snapshots.firstHeavyFrom(to.wallMs - DAY_MS)?.takeIf { before(it, to) } ?: return null
+        val from = snapshots.firstHeavyWithin(DAY_MS, to)?.takeIf { before(it, to) } ?: return null
         val chain = Chain(from, to)
         val uids = windows.chainUids(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs)
         val modeled = windows.chainTotals(from.bootSeq, from.elapsedNs, to.bootSeq, to.elapsedNs).modeledMah
