@@ -218,19 +218,24 @@ public class InsightCopy(
                 val to = if (sameDay) formats.clock(e.toWallMs, zone, nowWallMs) else formats.endClock(e.toWallMs, zone, nowWallMs)
                 formats.range(formats.clock(e.fromWallMs, zone, nowWallMs), to)
             }
+        // Each row's own source (SPEC 10.1, audit BUG-012): the rule, a configured threshold and the
+        // period are no figures of the phone's and carry no mark; a threshold or a usual value worked
+        // out from the user's own past is Derived.
+        val computed = Provenance.DERIVED.takeIf { insight.rule in COMPUTED_THRESHOLDS }
         val rows =
             listOfNotNull(
-                R.string.insight_row_rule to resources.getString(ruleName(insight.rule)),
-                R.string.insight_row_measured to value(e.measured, e.unit),
-                R.string.insight_row_threshold to value(e.threshold, e.unit),
-                e.values["median"]?.let { R.string.insight_row_baseline to value(it, e.unit) },
-                R.string.insight_row_period to period,
+                Triple(R.string.insight_row_rule, resources.getString(ruleName(insight.rule)), null),
+                Triple(R.string.insight_row_measured, value(e.measured, e.unit), provenance(insight.rule)),
+                Triple(R.string.insight_row_threshold, value(e.threshold, e.unit), computed),
+                e.values["median"]?.let { Triple(R.string.insight_row_baseline, value(it, e.unit), Provenance.DERIVED) },
+                Triple(R.string.insight_row_period, period, null),
             )
         return DataTable(
             title = resources.getString(R.string.insight_why_title),
             columns = listOf(resources.getString(R.string.insight_column_what), resources.getString(R.string.insight_column_value)),
-            rows = rows.map { (label, value) -> listOf(resources.getString(label), value) },
-            provenance = provenance(insight.rule),
+            rows = rows.map { (label, value, _) -> listOf(resources.getString(label), value) },
+            provenance = null,
+            rowProvenance = rows.map { it.third },
         )
     }
 
@@ -310,6 +315,12 @@ public class InsightCopy(
     private fun celsius(degrees: Double): String = formats.temperature(degrees * DECI).joined()
 
     private companion object {
+        /**
+         * Rules whose threshold is a share or a multiple of the user's own usual, not a configured
+         * limit alone: R04 and R18 against a median, R13 against the charger's usual power.
+         */
+        val COMPUTED_THRESHOLDS = setOf(RuleId.HIGH_SCREEN_OFF_DRAIN, RuleId.SLOW_CHARGING, RuleId.UPDATE_REGRESSION)
+
         val RULE_NAMES: Map<RuleId, Int> =
             RuleId.entries
                 .zip(

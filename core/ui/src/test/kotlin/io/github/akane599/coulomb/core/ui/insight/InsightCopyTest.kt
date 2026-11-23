@@ -156,13 +156,40 @@ class InsightCopyTest {
                 // From the day before to now: both ends name their day, so the span never reads as nothing.
                 listOf("Period", "Thu 08:00 – Fri 08:00"),
             ).inOrder()
-        assertThat(table.provenance).isEqualTo(Provenance.MEASURED)
+        // The measured row carries the mark; the rule, a configured threshold and the period are no figures of the phone's.
+        assertThat(table.provenance).isNull()
+        assertThat(table.rowProvenance).containsExactly(null, Provenance.MEASURED, null, null).inOrder()
         // A rule that compares with the user's own past shows that too.
         val night = all[3].copy(evidence = all[3].evidence.copy(unit = EvidenceUnit.PERCENT_PER_HOUR))
         assertThat(copy.evidence(night, zone, now).rows.map { it.first() })
             .containsExactly("Rule", "Found", "Threshold", "Your usual", "Period")
             .inOrder()
-        assertThat(copy.evidence(night, zone, now).provenance).isEqualTo(Provenance.DERIVED)
+        assertThat(copy.evidence(night, zone, now).rowProvenance)
+            .containsExactly(null, Provenance.DERIVED, Provenance.DERIVED, Provenance.DERIVED, null)
+            .inOrder()
+    }
+
+    /**
+     * Audit BUG-012: each row is marked by its own source (SPEC 10.1). A limit from the rule's
+     * settings is not Measured because the value beside it is; a threshold or a usual value worked
+     * out from the user's own past is Derived.
+     */
+    @Test
+    @Config(qualifiers = "en")
+    fun theEvidenceTableMarksEachRowBySource() {
+        val copy = copy("en")
+        val zone = ZoneId.of("UTC")
+        val rows = { rule: RuleId -> copy.evidence(all.single { it.rule == rule }, zone, now).rowProvenance }
+
+        // A configured limit: only what was found is a figure of the phone's.
+        assertThat(rows(RuleId.HOT_BATTERY)).containsExactly(null, Provenance.MEASURED, null, null).inOrder()
+        assertThat(rows(RuleId.SELF_COST)).containsExactly(null, Provenance.MODELED, null, null).inOrder()
+        // Thresholds that are a multiple of the user's own usual.
+        assertThat(rows(RuleId.SLOW_CHARGING)).containsExactly(null, Provenance.MEASURED, Provenance.DERIVED, null).inOrder()
+        assertThat(rows(RuleId.UPDATE_REGRESSION))
+            .containsExactly(null, Provenance.MODELED, Provenance.DERIVED, Provenance.DERIVED, null)
+            .inOrder()
+        for (insight in all) assertThat(copy.evidence(insight, zone, now).provenance).isNull()
     }
 
     @Test
