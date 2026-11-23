@@ -21,6 +21,13 @@ Glance cuts text that does not fit at a character, not at a word.
    changed is drawn again. A widget composed after a process start reads its own part once. The
    widgets observe the store, not the repositories, so a live Glance session does not re-read on
    each sample.
+   Amended 2026-11-23 (audit BUG-020): "a light snapshot re-reads the level alone" holds for the
+   top drains only, which are attribution and change with heavy snapshots. The last night and the
+   health estimate come from sessions and samples, which light snapshots change too; without
+   platform dumps every snapshot is light, and those two widgets never moved after their first
+   read in a process. Every placed part except the top drains is now read again after any
+   snapshot. The cost is the two reads per light snapshot while such a widget is placed; a
+   widget is still drawn only when its part changed.
 2. **No schedule.** `updatePeriodMillis` is 0 and no work is enqueued. Glance's own session worker
    runs only when the launcher or `updateAll` asks.
 3. **System face.** Widgets use DESIGN.md's sizes and colours with the system sans: `RemoteViews`

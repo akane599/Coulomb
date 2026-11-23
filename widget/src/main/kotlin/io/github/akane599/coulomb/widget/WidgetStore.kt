@@ -80,8 +80,9 @@ class WidgetStore
         private var windowRead = false
 
         /**
-         * A snapshot was stored. A light one changes the level alone; a [heavy] one may change every
-         * part. Only widgets whose part changed are drawn again.
+         * A snapshot was stored. Any one may change the level, the last night and the health
+         * estimate, which come from samples and sessions; only a [heavy] one changes the top drains
+         * ([reloads]). Only widgets whose part changed are drawn again.
          */
         suspend fun refresh(heavy: Boolean) {
             val manager = GlanceAppWidgetManager(context)
@@ -90,7 +91,7 @@ class WidgetStore
             val before = data.value
             lock.withLock {
                 if (heavy) windowRead = false
-                placed.forEach { if (heavy || it == WidgetKind.LEVEL || it !in loaded) load(it) }
+                placed.forEach { if (reloads(it, heavy, loaded)) load(it) }
             }
             val after = data.value
             placed.filter { it.part(before) != it.part(after) }.forEach { it.widget.updateAll(context) }
@@ -170,3 +171,14 @@ internal fun Context.openIntent(open: String): Intent =
         .setData(Uri.fromParts("coulomb", open, null))
         .putExtra(OpenRequest.EXTRA, open)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+/**
+ * Whether [kind] is read again after a snapshot. Only the top drains need a heavy one: they are
+ * attribution. The night and the health estimate change with light snapshots too, and without
+ * platform dumps every snapshot is light (ADR-0058 §1 as amended, audit BUG-020).
+ */
+internal fun reloads(
+    kind: WidgetKind,
+    heavy: Boolean,
+    loaded: Set<WidgetKind>,
+): Boolean = heavy || kind != WidgetKind.DRAINS || kind !in loaded
