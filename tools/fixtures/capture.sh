@@ -13,10 +13,14 @@
 #                                   cycle (AOSP BatteryStatsService, ADR-0005); `-c` is used.
 #   --reset, --write, settings put, appops set, pm grant: never.
 set -euo pipefail
+# Raw output names apps, accounts and the device: readable by its owner only (audit SEC-002).
+umask 077
 
 serial=${1:?adb serial}
 out=${2:?raw output dir}
+[ ! -L "$out" ] || { echo "refusing: $out is a symbolic link" >&2; exit 2; }
 mkdir -p "$out/probe"
+chmod 700 "$out"
 status="$out/status.tsv"
 printf 'file\tcommand\texit\tbytes\tstderr\n' > "$status"
 

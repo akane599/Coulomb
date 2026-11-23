@@ -19,12 +19,16 @@
 # It changes emulator state only: the Shizuku server, kernel log records, one wakelock and the
 # screen. The Shizuku server ends in root mode.
 set -euo pipefail
+# Raw output names apps, accounts and the device: readable by its owner only (audit SEC-002).
+umask 077
 
 serial=${1:?emulator serial}
 out=${2:?output dir}
 pkg=${3:-io.github.akane599.coulomb}
 here=$(cd "$(dirname "$0")" && pwd)
+[ ! -L "$out" ] || { echo "refusing: $out is a symbolic link" >&2; exit 2; }
 mkdir -p "$out"
+chmod 700 "$out"
 [ -z "$(ls -A "$out")" ] || { echo "refusing: $out is not empty" >&2; exit 2; }
 
 # adb joins its arguments into one remote command line: quote anything with spaces inside it.

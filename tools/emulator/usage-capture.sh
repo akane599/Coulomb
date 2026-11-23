@@ -13,11 +13,15 @@
 # sessions' starts. Output is RAW: keep <raw-out-dir> outside the repository and redact it with
 # tools/fixtures/redact.py before anything is committed (ADR-0004).
 set -euo pipefail
+# Raw output names apps, accounts and the device: readable by its owner only (audit SEC-002).
+umask 077
 
 serial=${1:?emulator serial}
 out=${2:?raw output dir}
 settle=${SETTLE_S:-60}
+[ ! -L "$out" ] || { echo "refusing: $out is a symbolic link" >&2; exit 2; }
 mkdir -p "$out"
+chmod 700 "$out"
 [ -z "$(ls -A "$out")" ] || { echo "refusing: $out is not empty" >&2; exit 2; }
 
 sh_() { timeout 120 adb -s "$serial" shell -T "$@" </dev/null; }

@@ -19,11 +19,15 @@
 #   dumpsys batterystats --checkin  deletes batterystats-checkin.bin (ADR-0005); `-c` is used.
 #   --reset, --write, settings put, appops set, pm grant, am force-stop: never.
 set -euo pipefail
+# Raw output names apps, accounts and the device: readable by its owner only (audit SEC-002).
+umask 077
 
 serial=${1:?adb serial}
 out=${2:?raw output dir}
 pkg=${3:-io.github.akane599.coulomb}
+[ ! -L "$out" ] || { echo "refusing: $out is a symbolic link" >&2; exit 2; }
 mkdir -p "$out"
+chmod 700 "$out"
 [ -z "$(ls -A "$out")" ] || { echo "refusing: $out is not empty" >&2; exit 2; }
 
 sh_() { timeout 120 adb -s "$serial" shell -T "$@"; }
