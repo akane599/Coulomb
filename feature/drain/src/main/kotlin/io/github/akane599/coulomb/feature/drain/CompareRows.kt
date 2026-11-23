@@ -130,6 +130,7 @@ private fun LazyListScope.componentItems(
                 }
             ListCaption(R.string.drain_compare_caption_model, comparison, formats) {
                 if (coarse) Caption(stringResource(R.string.drain_compare_components_coarse))
+                if (comparison.componentsPartial) Caption(stringResource(R.string.drain_compare_components_partial))
             }
         }
     }

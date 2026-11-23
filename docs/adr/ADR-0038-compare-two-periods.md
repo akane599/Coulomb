@@ -69,6 +69,12 @@ column.
      and the screen says so as Drain does (ADR-0032 §4).
    - Each window keeps only its largest wake records (ADR-0032), so a wake record missing from a
      period may be a small one, not a zero. The Wakeups caption says a figure may be a little low.
+   - Amended 2026-11-23 (audit BUG-019): the detailed component split (S4) can leave part of a
+     period's modeled energy undivided (ADR-0035 §7), and each component is then a lower bound by
+     up to that rest. When the rest is above 5% of a period's modeled total, the component rows
+     keep both rates and show no change, and a caption says why. Under 5% they compare: a change
+     of a few percent of the total can still be coverage, which is the price of not hiding every
+     change after one failed read (the owner left this choice, option (b), to the fix run).
    - The system apps the switch hides share one row ("3 system apps hidden"), so the list still
      accounts for their change.
 6. **Every per-hour figure is Derived.** One mark on each list's caption covers its rows (DESIGN.md:

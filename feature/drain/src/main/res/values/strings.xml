@@ -124,6 +124,7 @@
     <string name="drain_show_components">Show %1$s’s components</string>
     <string name="drain_hide_components">Hide %1$s’s components</string>
     <string name="drain_compare_components_coarse">Android names only some components in one of these periods; the rest is under Other.</string>
+    <string name="drain_compare_components_partial">In one of these periods Android broke down only part of the energy, so the components’ changes are not shown.</string>
     <string name="drain_components_empty">No component breakdown for this window.</string>
     <string name="drain_view_table">View as table</string>
     <string name="drain_table_reconcile">Measured and modeled</string>

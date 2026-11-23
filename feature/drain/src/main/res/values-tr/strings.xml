@@ -120,6 +120,7 @@
     <string name="drain_show_components">%1$s bileşenlerini göster</string>
     <string name="drain_hide_components">%1$s bileşenlerini gizle</string>
     <string name="drain_compare_components_coarse">Android bu dönemlerden birinde bileşenlerin yalnızca bazılarını adlandırıyor; gerisi Diğer altında.</string>
+    <string name="drain_compare_components_partial">Bu dönemlerden birinde Android enerjinin yalnızca bir kısmını bileşenlere ayırdı; bu yüzden bileşenlerdeki değişim gösterilmiyor.</string>
     <string name="drain_components_empty">Bu aralık için bileşen dökümü yok.</string>
     <string name="drain_view_table">Tablo olarak gör</string>
     <string name="drain_table_reconcile">Ölçülen ve modellenen</string>

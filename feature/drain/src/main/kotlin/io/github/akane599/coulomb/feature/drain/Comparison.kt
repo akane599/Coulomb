@@ -122,9 +122,11 @@ internal data class ComparedRow(
     val subject: CompareSubject,
     val first: Double?,
     val second: Double?,
+    /** False when either side is only a lower bound, so their difference says nothing (audit BUG-019). */
+    val comparable: Boolean = true,
 ) {
-    /** The second period's rate less the first's; null unless both are known. */
-    val change: Double? get() = if (first != null && second != null) second - first else null
+    /** The second period's rate less the first's; null unless both are known and compare. */
+    val change: Double? get() = if (comparable && first != null && second != null) second - first else null
 }
 
 /** One Wakeups group in both periods (ADR-0038 §5). */
@@ -195,6 +197,12 @@ internal data class Comparison(
 
     /** Either period summed its apps over shorter windows, so their figures are lower bounds (ADR-0032 §4). */
     val lowerBound: Boolean get() = first.report?.lowerBound == true || second.report?.lowerBound == true
+
+    /**
+     * A period's detailed split left part of its energy undivided, so its components are lower
+     * bounds and the component rows show no change (ADR-0038 §5, audit BUG-019).
+     */
+    val componentsPartial: Boolean get() = listOfNotNull(first.report, second.report).any { !it.componentsWhole }
 
     /** Both periods ran long enough on battery for the apps' and components' rates. */
     val ratesCounted: Boolean get() = first.ratesCounted && second.ratesCounted
@@ -309,8 +317,23 @@ private fun componentRows(
     b: DrainReport?,
 ): List<ComparedRow> {
     val sameSource = a == null || b == null || a.detailedComponents == b.detailedComponents
-    return rows(componentFigures(a, sameSource), componentFigures(b, sameSource))
+    val whole = listOfNotNull(a, b).all { it.componentsWhole }
+    return rows(componentFigures(a, sameSource), componentFigures(b, sameSource), comparable = whole)
 }
+
+/**
+ * The components account for nearly all the period's modeled energy. S5's coarse rows always do;
+ * S4's detailed ones when what it left undivided is at most [MAX_UNDIVIDED_SHARE] of the modeled
+ * total. Above that each component is a lower bound, by up to the undivided rest (audit BUG-019).
+ */
+private val DrainReport.componentsWhole: Boolean
+    get() {
+        val rest = componentsNotBrokenDownMah ?: return true
+        return rest <= drains.modeledMah * MAX_UNDIVIDED_SHARE
+    }
+
+/** ADR-0038 §5: an undivided rest up to this share of the modeled total does not hide the changes. */
+private const val MAX_UNDIVIDED_SHARE = 0.05
 
 /** S4's detailed components: its windows hold at least half the span's modeled total (ADR-0035 §7). */
 private val DrainReport.detailedComponents: Boolean get() = componentsNotBrokenDownMah != null
@@ -338,11 +361,12 @@ private fun componentFigures(
 private fun rows(
     first: Figures?,
     second: Figures?,
+    comparable: Boolean = true,
 ): List<ComparedRow> {
     val subjects = linkedMapOf<String, CompareSubject>()
     listOfNotNull(first, second).forEach { figures -> figures.amounts.forEach { (key, value) -> subjects.putIfAbsent(key, value.first) } }
     return subjects
-        .map { (key, subject) -> ComparedRow(key, subject, first?.perHour(key), second?.perHour(key)) }
+        .map { (key, subject) -> ComparedRow(key, subject, first?.perHour(key), second?.perHour(key), comparable) }
         .filter { (it.first ?: 0.0) > 0 || (it.second ?: 0.0) > 0 }
         .sortedWith(BY_CHANGE)
 }

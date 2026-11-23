@@ -107,6 +107,33 @@ class ComparisonTest {
         assertTrue(both.all { it.change != null })
     }
 
+    /**
+     * Audit BUG-019: a period whose detailed split left half its energy undivided has components that
+     * are lower bounds. Against a fully split period their "change" is only what was divided.
+     */
+    @Test
+    fun aPartlyBrokenDownPeriodsComponentsShowNoChange() {
+        val half =
+            period(yesterday, deviceMah = 100.0, components = listOf(ComponentDrain(PowerComponent.SCREEN, 50.0)))
+                .let { it.copy(report = it.report?.copy(componentsNotBrokenDownMah = 50.0)) }
+        val whole =
+            period(today, deviceMah = 100.0, components = listOf(ComponentDrain(PowerComponent.SCREEN, 100.0)))
+                .let { it.copy(report = it.report?.copy(componentsNotBrokenDownMah = 0.0)) }
+
+        val partial = compare(half, whole, includeSystem = false)
+        val row = partial.components.single()
+        assertEquals(25.0, row.first!!, 1e-9)
+        assertEquals(50.0, row.second!!, 1e-9)
+        assertNull(row.change)
+        assertTrue(partial.componentsPartial)
+
+        // Both split whole: the change is a change. A remainder of a few percent still counts as whole.
+        val nearly = whole.copy(days = yesterday).let { it.copy(report = it.report?.copy(componentsNotBrokenDownMah = 4.0)) }
+        val both = compare(nearly, whole, includeSystem = false)
+        assertTrue(both.components.all { it.change != null })
+        assertTrue(!both.componentsPartial)
+    }
+
     @Test
     fun rowsRankByTheSizeOfTheirChangeAndAMissingAppIsZero() {
         val first = period(yesterday, apps = listOf(app(HALCYON, 100.0), app(WAYLINE, 60.0)))
