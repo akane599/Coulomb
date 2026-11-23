@@ -17,21 +17,18 @@ import io.github.akane599.coulomb.core.insights.ShownInsight
 import io.github.akane599.coulomb.core.model.InsightSeverity
 import io.github.akane599.coulomb.core.model.SnapshotTrigger
 import io.github.akane599.coulomb.core.model.dumpsys.ThermalDump
+import io.github.akane599.coulomb.core.ui.PullRefresh
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /** What Charging shows (SPEC 10.9), in the states of SPEC 10.11. */
@@ -95,20 +92,12 @@ public class ChargingViewModel
                 .catch { emit(false) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
-        private val refreshing = MutableStateFlow(false)
+        private val pull = PullRefresh(viewModelScope, REFRESH_WAIT_MS) { collector.snapshot(SnapshotTrigger.PULL_TO_REFRESH) }
 
-        /** True from a pull until the next reading arrives, or [REFRESH_WAIT_MS] at most. */
-        internal val isRefreshing: StateFlow<Boolean> = refreshing.asStateFlow()
+        /** True from a pull until the collector has handled it, or [REFRESH_WAIT_MS] at most (audit BUG-017). */
+        internal val isRefreshing: StateFlow<Boolean> = pull.isRefreshing
 
-        internal fun refresh() {
-            if (refreshing.value) return
-            refreshing.value = true
-            collector.post(SnapshotTrigger.PULL_TO_REFRESH)
-            viewModelScope.launch {
-                withTimeoutOrNull(REFRESH_WAIT_MS) { state.drop(1).first() }
-                refreshing.value = false
-            }
-        }
+        internal fun refresh() = pull.pull()
 
         /** Lite mode; false until read. */
         internal val lite: StateFlow<Boolean> =
