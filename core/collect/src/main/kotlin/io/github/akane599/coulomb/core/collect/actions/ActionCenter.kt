@@ -61,8 +61,13 @@ public class ActionCenter internal constructor(
     /** The newest [limit] rows of the log, newest first (audit PERF-007). */
     public fun records(limit: Int): Flow<List<ActionRecord>> = log.observe(limit).map { rows -> rows.map(::record) }
 
-    /** The changes in force, newest first: few, however long the log. */
-    public val active: Flow<List<ActionRecord>> = log.observeUnreverted().map { rows -> rows.map(::record).filter { it.active } }
+    /**
+     * The changes in force, newest first: few, however long the log. Room runs the query again on
+     * every log write, an automation call's own row too, so a list equal to the last is dropped
+     * here (audit PERF-002).
+     */
+    public val active: Flow<List<ActionRecord>> =
+        log.observeUnreverted().map { rows -> rows.map(::record).filter { it.active } }.distinctUntilChanged()
 
     /**
      * What a screen's reading of the phone depends on: the changes in force and the newest action
