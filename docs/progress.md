@@ -279,6 +279,63 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
       the validation capture copies the database and its log as one moment (OPS-001); protocol A
       judges one unbroken run by the elapsed clock (OPS-003).
     - Still open (P3): the Timeline's current line is drawn behind a boot whose clock was stale.
+- **Second whole-app audit (2026-11-23, of 0.1.0's commit `88634b0`).** 46 findings confirmed by
+  independent reviewers: 8 medium, 38 low. Four were regressions of the first audit's fixes and
+  thirteen were fixes left incomplete. 44 are fixed, each with a test that fails without its fix
+  where one could be written; `tools/ci/check.sh all` passed on a clean checkout after each batch.
+  - Medium:
+    - "Delete all data" holds the collector before it takes the Action Center's lock, never
+      inside it (CONC-010).
+    - A battery history read cut after lost record boundaries keeps no `NEXT`, and no cursor
+      moves past now (SEC-004, ADR-0014).
+    - A given-up worker bind no longer stops the next worker that connects (CONC-002).
+    - A span's wall bound is placed on the boot's clock before rows are compared (BUG-011,
+      ADR-0036 §2).
+    - An unwatched stretch that no history read followed ends the screen session (BUG-001,
+      ADR-0064 §5).
+    - A level change on the charger reaches the Live Update and the alarms (BUG-003, ADR-0057).
+    - A tapped Timeline stretch cut by the read or a gap says "before", "or later" and "at least"
+      (DATA-003, ADR-0056 §12).
+    - A wake record summed over windows is a lower bound, and an empty group is "none of 1 s or
+      longer" (DATA-004, ADR-0036 §4).
+  - Low, by area:
+    - Action Center and data: a force stop whose reply was lost stays on record; the log is
+      closed to automation while it is erased; a restored install whose reset failed reads its
+      consents off; imported settings are one write (DATA-001, DATA-006, DATA-002, CONC-006).
+    - Parsers and probes: checkin rows are held against the order the platform writes them in,
+      and only the fields its writer quotes are read as quoted; a resume reason with an unread
+      line is not whole; a kernel probe cut short reports nothing as read (SEC-001, BUG-005,
+      BUG-006; ADR-0013).
+    - Privileges: a call takes its lease on the worker as it finds it; the ledger is updated in
+      one step; a cancelled transfer closes its pipe; worker rows are filed at the shell tier
+      under a root server; the ADB lines name Coulomb's Android user; the worker's caller check
+      and action guards have tests on the real classes (CONC-003, CONC-008, CONC-005, BUG-008,
+      BUG-009, TEST-001).
+    - Collector: a heavy snapshot stored light is reported light; a day already stored is not
+      stored again after a clock set-back (BUG-013, BUG-002).
+    - Screens and copy: the night and health widgets follow light snapshots; a spinner ends with
+      its snapshot; insight links show a destination's first screen; the Timeline keeps a steady
+      temperature; Health's "See all" appears with a closed discharge; the evidence table marks
+      each row by its source; a risen level is said to have risen; Compare hides component
+      changes that are only coverage (BUG-020, BUG-017, BUG-004, BUG-015, BUG-016, BUG-012,
+      BUG-018, BUG-021, BUG-019, BUG-010, DATA-005, PERF-002).
+    - Failed writes: a screen's write that fails for storage no longer ends the app; a rule
+      refresh does not undo a dismissal or snooze; a cancelled export closes its document
+      (BUG-024, BUG-022, CONC-004, CONC-001).
+    - Tools: key containers are ignored and refused inside the checkout; the release script
+      runs every check on the commit before it signs; captures are readable by their owner
+      only; the fixture redactor refuses labels that leave `fixtures/` and masks the README in
+      place (OPS-001, TEST-003, SEC-002, BUG-025, DATA-007).
+  - One independent read-only review of the parser, clock and session changes (SEC-004,
+    SEC-001, BUG-005, BUG-011, BUG-001). It found a rule of the SEC-001 fix that cut off honest
+    dumps (a wakeup alarm's name across lines; removed), a quote in an unquoted name that hid
+    rows (fixed), and an empty history read that counted as a witness (fixed). What it showed to
+    remain is written into ADR-0013, ADR-0036 §2 and ADR-0064 §5.
+  - Not fixed: the Charging screen's whole-charge re-read on each sample (PERF-001: CPU on the
+    charger only), and SPEC 16.4's Compose accessibility checks, which run nowhere yet (TEST-002,
+    `docs/questions.md`).
+  - Not run on a device: all of it. The first release with these fixes needs the R8 smoke test
+    of `docs/releasing.md`, as every release does.
 - **Parity matrix and the unread sources (SPEC 2, 5, 18; ADR-0068).** The SPEC 18 audit found
   parity rows without a screen and sources never read; each now has one, on stored data:
   - App detail: CPU time (user and system), the modeled share of mobile radio time, syncs with
