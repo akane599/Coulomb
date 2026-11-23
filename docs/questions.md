@@ -5,6 +5,16 @@ start of every phase. Answered questions move to the bottom with the answer and 
 
 ## Open
 
+- 2026-11-23. **SPEC 16.4's Compose accessibility checks run nowhere (audit TEST-002).** The
+  screenshot suite composes every screen and compares pixels; nothing runs the Accessibility Test
+  Framework over those trees, so a missing label or a target under 48 dp passes CI. Wiring it
+  means a new test dependency (Roborazzi's accessibility-check module, at the Roborazzi version
+  in use, to be confirmed as published), a check in each module's screenshot helper, and then a
+  first wave of findings over some 420 screen tests, each fixed in UI code (which can move
+  goldens) or suppressed with a recorded reason. That is a piece of work with its own review,
+  not a fix beside others. Default in use: not wired; SPEC 18's accessibility row stays "Partly"
+  and names this. Suggested order when it is taken up: a spike on `:feature:now` to count
+  findings, the check at warning level across all modules, then at error level.
 - 2026-11-22. **An app removed inside a long window (audit BUG-062).** A reference, day or
   session window diffs the counters at its ends, and keeps a snapshot between them only around a
   reset, a restart or, since 79eba39, the last place an app gone from the end's counters was seen.

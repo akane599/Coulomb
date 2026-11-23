@@ -357,7 +357,7 @@ phone runs (ADR-0053); "owner" means an owner hard stop.
 | `impeccable detect design-lab/` zero | Done | P3 gate |
 | Two consecutive whole-app audit and critique runs | Done | Runs 7 and 8 clean (`docs/design-gates/2026-11-22-*-run-{7,8}.md`, ADR-0069 §12) |
 | Screenshot suite in all themes, three font scales, two widths, both languages | Done | CI composes every screen; `verifyRoborazziDebug` over all twelve screenshot modules passed against the committed goldens on 2026-11-22 |
-| WCAG AA contrast; TalkBack script | Partly | `ContrastTest`; TalkBack script on a device: phone or AVD run |
+| WCAG AA contrast; TalkBack script | Partly | `ContrastTest`; TalkBack script on a device: phone or AVD run. SPEC 16.4's Compose accessibility checks are not run anywhere yet (audit TEST-002, `docs/questions.md`) |
 | No INTERNET | Done | `verifyReleaseManifestPermissions` in CI |
 | Performance targets 16.5 | Done | Macrobenchmark on the phone, 2026-11-11 |
 | 30-day stress test | Done | Schema 5 pass (P2) |
