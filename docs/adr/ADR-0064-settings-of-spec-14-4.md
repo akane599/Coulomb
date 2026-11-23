@@ -52,6 +52,17 @@ Screen-on sampling, Theme, Language, Units, Data retention and the Developer con
    snapshot (`CollectorEngine.watching`), not while the process lived. A Lite snapshot reads the
    history and the level for what changed in between, as after a process start, so a session
    never joins across a plug or screen change Coulomb did not see.
+   Amended 2026-11-23 (audit BUG-001): "never joins" held only when a history read covered the
+   stretch. Without one (no privileges, a light snapshot, a read that failed, was skipped, was
+   not placed or has a gap) nothing shows whether the screen changed, so the screen-on or
+   screen-off session ends at that look with a data gap and a new one opens. No reference moves,
+   since no change is known. The plug is not treated that way: closing the discharge session at
+   every Lite look would restart Now's discharge summary and its rates at each app open. Its
+   witnesses are the level (a rise while unplugged) and, new here, the plug type: on a charger
+   at both looks but another one means an unplug in between. What stays unseen without a
+   history read is a short top-up of a point or less, and an unplug and replug on the same
+   charger. A fragment between two looks still states the screen's state for that stretch; its
+   data-gap end is what marks it as less than a watched session.
 6. **"Longer raw retention" is one switch: 60 days instead of 14.** Raw samples only; every other
    line of SPEC 7.7 stays. A setting can lengthen the time, never shorten it. By
    `SizeBudgetTest`'s rates (5,000 samples a day at 77 bytes) the 46 further days add about 18 MB

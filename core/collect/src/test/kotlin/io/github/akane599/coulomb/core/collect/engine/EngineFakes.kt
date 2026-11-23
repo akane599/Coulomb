@@ -75,6 +75,7 @@ internal class FakeDevice(
         screenOn: Boolean,
         plugged: Boolean = false,
         status: Int = if (plugged) BatteryManager.BATTERY_STATUS_CHARGING else BatteryManager.BATTERY_STATUS_DISCHARGING,
+        plugType: Int = if (plugged) BatteryManager.BATTERY_PLUGGED_USB else 0,
     ) {
         clock.elapsedNs = hoursNs(hours)
         reading =
@@ -83,7 +84,7 @@ internal class FakeDevice(
                 wallMs = clock.wallMs(),
                 levelPct = level,
                 status = status,
-                plugType = if (plugged) BatteryManager.BATTERY_PLUGGED_USB else 0,
+                plugType = plugType,
                 health = BatteryManager.BATTERY_HEALTH_GOOD,
                 voltageMv = 3_900,
                 tempDeciC = 300,

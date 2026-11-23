@@ -97,8 +97,129 @@ class CollectorWatchTest {
             engine.handle(SnapshotTrigger.SERVICE_STARTED)
             device.set(hours = 9.0, level = 78, chargeMah = 3_900.0, screenOn = false)
             engine.handle(SnapshotTrigger.SCREEN_OFF)
-            // The screen stayed on throughout, so its session is one; the screen off was seen.
+            // The screen was on at each look, but two stretches were not watched (1 h to 7 h, and 7 h to
+            // the service's own first snapshot at 8 h) and no history read followed them: whether it
+            // stayed on is not known, so a session ends at each of those looks (audit BUG-001). The
+            // screen off at the end was seen.
             val screenOn = db.sessionDao().observeRecent(SessionKind.SCREEN_ON, 10).first()
-            assertThat(screenOn.single().closeReason).isEqualTo(SessionCloseReason.STATE_CHANGED)
+            assertThat(screenOn.map { it.closeReason })
+                .containsExactly(SessionCloseReason.STATE_CHANGED, SessionCloseReason.DATA_GAP, SessionCloseReason.DATA_GAP)
+                .inOrder()
+        }
+
+    /** An engine whose service never attached: Lite, where nothing is watched between two looks. */
+    private fun unwatched() = CollectorEngine(db, device, stats, identity, clock, MemoryBlobs(), labels)
+
+    /** A history read that ended, was placed and found no change. */
+    private fun quietRead() =
+        HistoryRead(
+            emptyList(),
+            BatteryHistory(null, nextCursorMs = 1_000, firstRecordMs = null, recordCount = 0, gapBeforeFirstRecord = false),
+            SourceStatus.OK,
+        )
+
+    /**
+     * Audit BUG-001: without privileges there is no history read, so nothing says the screen stayed
+     * on between two app opens. The session ends at the second, as one whose change was not seen;
+     * no reference moves, since no change is known, and the discharge goes on.
+     */
+    @Test
+    fun liteWithoutAHistoryReadEndsTheScreenSessionAtTheNextLook() =
+        runTest {
+            stats.available = false
+            val engine = unwatched()
+            device.set(hours = 1.0, level = 80, chargeMah = 4_000.0, screenOn = true)
+            engine.handle(SnapshotTrigger.APP_OPENED)
+            val sinceScreenOff = db.snapshotDao().autoReference(AutoReference.SINCE_SCREEN_OFF)?.snapshotId
+            val sinceUnplugged = db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)?.snapshotId
+            device.set(hours = 2.0, level = 75, chargeMah = 3_750.0, screenOn = true)
+            engine.handle(SnapshotTrigger.APP_OPENED)
+
+            val screenOn = db.sessionDao().observeRecent(SessionKind.SCREEN_ON, 10).first()
+            assertThat(screenOn.map { it.closeReason }).containsExactly(null, SessionCloseReason.DATA_GAP)
+            assertThat(
+                db
+                    .sessionDao()
+                    .observeRecent(SessionKind.DISCHARGE, 10)
+                    .first()
+                    .single()
+                    .closeReason,
+            ).isNull()
+            assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_SCREEN_OFF)?.snapshotId).isEqualTo(sinceScreenOff)
+            assertThat(db.snapshotDao().autoReference(AutoReference.SINCE_UNPLUGGED)?.snapshotId).isEqualTo(sinceUnplugged)
+        }
+
+    @Test
+    fun aFailedHistoryReadEndsTheScreenOffSessionAtTheNextLook() =
+        runTest {
+            val engine = unwatched()
+            device.set(hours = 1.0, level = 80, chargeMah = 4_000.0, screenOn = false)
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+            device.set(hours = 7.0, level = 70, chargeMah = 3_500.0, screenOn = false)
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+
+            val screenOff = db.sessionDao().observeRecent(SessionKind.SCREEN_OFF, 10).first()
+            assertThat(screenOff.map { it.closeReason }).containsExactly(null, SessionCloseReason.DATA_GAP)
+        }
+
+    /** A read that followed the whole stretch and found no flip is the witness the screen needs. */
+    @Test
+    fun aCompleteReadWithoutAFlipKeepsTheScreenSession() =
+        runTest {
+            stats.history = { quietRead() }
+            val engine = unwatched()
+            device.set(hours = 1.0, level = 80, chargeMah = 4_000.0, screenOn = false)
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+            device.set(hours = 7.0, level = 70, chargeMah = 3_500.0, screenOn = false)
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+
+            assertThat(
+                db
+                    .sessionDao()
+                    .observeRecent(SessionKind.SCREEN_OFF, 10)
+                    .first()
+                    .single()
+                    .closeReason,
+            ).isNull()
+        }
+
+    /** On a charger at both looks, but another one: it was unplugged in between. */
+    @Test
+    fun aChangedChargerWhileUnwatchedEndsTheChargeSession() =
+        runTest {
+            stats.history = { quietRead() }
+            val engine = unwatched()
+            device.set(
+                hours = 1.0,
+                level = 50,
+                chargeMah = 2_500.0,
+                screenOn = false,
+                plugged = true,
+                plugType = BatteryManager.BATTERY_PLUGGED_AC,
+            )
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+            device.set(
+                hours = 7.0,
+                level = 90,
+                chargeMah = 4_500.0,
+                screenOn = false,
+                plugged = true,
+                plugType = BatteryManager.BATTERY_PLUGGED_USB,
+            )
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+
+            val charges = db.sessionDao().observeRecent(SessionKind.CHARGE, 10).first()
+            assertThat(charges.map { it.closeReason }).containsExactly(null, SessionCloseReason.DATA_GAP)
+            // The same charger at both looks is one session.
+            device.set(
+                hours = 13.0,
+                level = 100,
+                chargeMah = 5_000.0,
+                screenOn = false,
+                plugged = true,
+                plugType = BatteryManager.BATTERY_PLUGGED_USB,
+            )
+            engine.handle(SnapshotTrigger.LITE_PERIODIC)
+            assertThat(db.sessionDao().observeRecent(SessionKind.CHARGE, 10).first()).hasSize(2)
         }
 }

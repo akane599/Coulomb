@@ -61,6 +61,12 @@ internal data class WriteContext(
     val watched: Boolean,
     /** Kinds whose state changed unseen, from the history read (only when not [watched]). */
     val changedUnseen: Set<SessionKind>,
+    /**
+     * Kinds Coulomb could not follow since its last look: it was not watching, and no complete
+     * history read covered the stretch. Their sessions end with a data gap, but no reference moves,
+     * since no change is known (ADR-0064 §5, audit BUG-001).
+     */
+    val notFollowed: Set<SessionKind> = emptySet(),
     val counterReliable: Boolean,
     /** For level-based drain (ADR-0018): the platform's own capacity estimate. */
     val capacityMah: Double?,
@@ -175,7 +181,8 @@ internal class SnapshotWriter(
         val temp = reading.tempDeciC
         if (level == null || temp == null) return Changes()
         val open = sessions.open()
-        val state = DeviceState(stored.bootSeq, reading.plugged, reading.screenOn, context.watched, changedUnseen = context.changedUnseen)
+        val unseen = context.changedUnseen + context.notFollowed
+        val state = DeviceState(stored.bootSeq, reading.plugged, reading.screenOn, context.watched, changedUnseen = unseen)
         val opened = mutableSetOf<SessionKind>()
         val closed = mutableListOf<SessionEntity>()
         for (change in SessionRules.reconcile(open.map { OpenSession(it.id, it.kind, it.bootSeq) }, state)) {

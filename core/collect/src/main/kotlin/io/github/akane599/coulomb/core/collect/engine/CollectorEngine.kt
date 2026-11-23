@@ -69,6 +69,7 @@ internal class CollectorEngine(
     private val rails: RailSource = RailSource.None,
 ) {
     private val writer = SnapshotWriter(db)
+    private val stretch = UnwatchedStretch(db)
     private val retention = Retention(db, blobs)
     private val calibrator = CalibrationTracker(db.deviceDao(), db.sampleDao())
 
@@ -377,7 +378,7 @@ internal class CollectorEngine(
         val previousHeavy = db.snapshotDao().latestHeavy()
         val kind = if (dump != null) SnapshotKind.HEAVY else SnapshotKind.LIGHT
         val blob = stats?.let { writeBlob(trigger, reading, boot, it, usage?.raw, kind == SnapshotKind.HEAVY) }
-        val unseen = if (!watchedSinceLast) unseenKinds(ingest) + chargedUnseen(reading, boot) else emptySet()
+        val unwatched = if (watchedSinceLast) Unwatched.NONE else stretch.since(history?.status, ingest, reading, boot)
         val entity =
             entity(reading, boot, trigger, kind, dump).copy(
                 historyCursorMs = ingest?.nextCursorMs,
@@ -389,7 +390,8 @@ internal class CollectorEngine(
                 privilegeMode = kernel.mode,
             )
         val context =
-            writeContext(reading, previousHeavy, unseen).copy(references = trigger in REFERENCE_TRIGGERS, designMah = storedDesignMah())
+            writeContext(reading, previousHeavy, unwatched.changedUnseen)
+                .copy(notFollowed = unwatched.notFollowed, references = trigger in REFERENCE_TRIGGERS, designMah = storedDesignMah())
         val changed =
             db.withTransaction {
                 // A read that set no cursor stored nothing: the events before this snapshot are not all in.
@@ -553,38 +555,6 @@ internal class CollectorEngine(
         return heavy.kernelLog(bootKey ?: NO_BOOT, cursor ?: NO_CURSOR, minOf(SOURCE_TIMEOUT_MS, leftMs))
     }
 
-    /**
-     * After a process start in the same boot, a level well above the last unplugged one stored:
-     * the device charged while Coulomb was not running, even when the history read does not show
-     * it. Across a reboot the gauge may re-estimate the level, so nothing is inferred there.
-     */
-    private suspend fun chargedUnseen(
-        reading: LightReading,
-        boot: BootEntity,
-    ): Set<SessionKind> {
-        val level = reading.levelPct ?: return emptySet()
-        if (reading.plugged) return emptySet()
-        val snapshot = db.snapshotDao().latest()
-        val sample = db.sampleDao().latest()
-        val sampleIsLater =
-            sample != null &&
-                (
-                    snapshot == null ||
-                        sample.bootSeq > snapshot.bootSeq ||
-                        (sample.bootSeq == snapshot.bootSeq && sample.elapsedNs > snapshot.elapsedNs)
-                )
-        // The latest stored reading, as (boot, plug type, level).
-        val last =
-            when {
-                sampleIsLater -> Triple(sample.bootSeq, sample.plugType, sample.levelPct)
-                snapshot != null -> Triple(snapshot.bootSeq, snapshot.plugType, snapshot.levelPct)
-                else -> return emptySet()
-            }
-        val (lastBoot, lastPlug, lastLevel) = last
-        if (lastBoot != boot.bootSeq || lastPlug != 0 || lastLevel == null) return emptySet()
-        return if (level > lastLevel + LEVEL_NOISE) setOf(SessionKind.CHARGE, SessionKind.DISCHARGE) else emptySet()
-    }
-
     /** The light part of a snapshot row; the caller adds what the reads gave. */
     private fun entity(
         reading: LightReading,
@@ -705,15 +675,6 @@ internal class CollectorEngine(
         val offset = db.deviceDao().boot(last.bootSeq)?.historyOffsetMs ?: return null
         val lastMonotonic = cursor - 1
         return ReadEnd(last.bootSeq, offset, lastMonotonic, (lastMonotonic - offset) * NS_PER_MS, state = null)
-    }
-
-    /** Plug and screen kinds whose history state flipped in a read Coulomb was not watching. */
-    private fun unseenKinds(ingest: ReadResult?): Set<SessionKind> {
-        val transitions = ingest?.transitions.orEmpty()
-        return buildSet {
-            if (HistoryKind.PLUGGED in transitions) addAll(listOf(SessionKind.CHARGE, SessionKind.DISCHARGE))
-            if (HistoryKind.SCREEN in transitions) addAll(listOf(SessionKind.SCREEN_ON, SessionKind.SCREEN_OFF))
-        }
     }
 
     /**
@@ -867,9 +828,6 @@ internal class CollectorEngine(
 
         /** A wall-minus-elapsed change past this inside a read is a clock change, not rounding. */
         const val MAX_CLOCK_DRIFT_MS: Long = 1_000
-
-        /** A level this far above the last one stored is a charge, not gauge noise. */
-        private const val LEVEL_NOISE = 1
 
         /** No kernel boot or cursor: the worker reads S27 from the ring's oldest record. */
         private const val NO_BOOT = 0L
