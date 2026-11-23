@@ -5,7 +5,7 @@ battery statistics to show where the charge went, how fast it drains and how hea
 With [Shizuku](https://shizuku.rikka.app/) or a compatible manager it can read the system's deeper battery
 dumps. Without one it falls back to a basic mode and says so.
 
-Status: 0.1.0, the first release, is on the [Releases](https://github.com/akane599/Coulomb/releases) page
+Status: 0.1.1 is on the [Releases](https://github.com/akane599/Coulomb/releases) page
 with its known limits; accuracy on a real phone is not measured yet. Progress by phase is in
 [`docs/progress.md`](docs/progress.md).
 

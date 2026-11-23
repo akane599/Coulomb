@@ -220,6 +220,21 @@ Started 2026-11-21, on the data pulled that day (ADR-0053).
   notes give the signing certificate's digest and the known limits: no accuracy run on a phone
   yet, the Action Center's changes never run on a device, Sui and the original Shizuku on 17
   untested.
+- **0.1.1 built, smoke-tested and published (2026-11-23, owner request).** The second audit's
+  fixes were merged to `main`; `tools/ci/check.sh all` passed on the merge and again inside
+  `tools/release/build.sh`, which now runs it before signing. Built from `c7a116f` (version code
+  3, SHA-256 `8059d78c14547c21d5b201a56e4b235f668cdd8bbfa047a10afb09c888a07a76`, 7,574,676
+  bytes, the same signing certificate). The R8 smoke test ran on `pixel-api37` in a read-only
+  session, with the owner's agreement to replace the development build there for that session:
+  onboarding through the Shizuku fork (13.7.0, shell) passed; `io.github.akane599.coulomb:priv`
+  ran as uid 2000, the grants went through it, "Helper process" read Ready and every source
+  under "With the helper process" Available; `s5.batterystats_proto`, `s6.batterystats_checkin`
+  and `s7.batterystats_history` were Available, so the stricter S6 parser reads a live Android
+  17 dump whole; S4 was Limited with `NO_DEVICE` as before. After a screen off and on the
+  Timeline showed the moment. Logcat since the install had no crash, no missing-code error and
+  no warning from Coulomb. Tag `v0.1.1` on `c7a116f`; the GitHub Release carries the tested APK
+  and its SHA-256 file, downloaded again and compared byte for byte. Not covered, as for 0.1.0:
+  the phone, and Drain's per-app list.
 - The emulator host was unreachable earlier that day because a proxy's TUN on the build server
   captured the traffic to it; the owner stopped the proxy.
 - **Repository audit verified (2026-11-22, owner request).** An automated audit at `257d766` listed
