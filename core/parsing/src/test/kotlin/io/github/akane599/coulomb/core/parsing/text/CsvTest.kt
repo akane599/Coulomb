@@ -50,4 +50,15 @@ class CsvTest {
     fun aQuoteInsideAnUnquotedFieldIsJustACharacter() {
         assertThat(Csv.split("a\"b,c")).containsExactly("a\"b", "c").inOrder()
     }
+
+    /** Where the writer quotes one known field, a quote elsewhere is only a character (review of audit SEC-001). */
+    @Test
+    fun onlyTheNamedFieldIsQuoted() {
+        assertThat(Csv.split("9,1,l,pr,\"a,b\",1,\"x", quoted = 4)).containsExactly("9", "1", "l", "pr", "a,b", "1", "\"x").inOrder()
+        assertThat(Csv.split("9,1,l,wl,\"x,0,f", quoted = Csv.NO_FIELD)).containsExactly("9", "1", "l", "wl", "\"x", "0", "f").inOrder()
+        assertThat(Csv.hasOpenQuoteAt("9,1,l,jb,\"name", 4)).isTrue()
+        assertThat(Csv.hasOpenQuoteAt("9,1,l,jb,\"name\",5,\"y", 4)).isFalse()
+        assertThat(Csv.hasOpenQuoteAt("9,1,l,wl,\"x,0", Csv.NO_FIELD)).isFalse()
+        assertThat(Csv.hasOpenQuoteAt("9,1", 4)).isFalse()
+    }
 }

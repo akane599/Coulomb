@@ -10,7 +10,6 @@ import io.github.akane599.coulomb.core.parsing.ParseContext
 import io.github.akane599.coulomb.core.parsing.io.Line
 import io.github.akane599.coulomb.core.parsing.io.LineReader
 import io.github.akane599.coulomb.core.parsing.io.MeteredSource
-import io.github.akane599.coulomb.core.parsing.text.Csv
 import java.io.IOException
 import java.io.InputStream
 import java.util.TreeMap
@@ -162,12 +161,13 @@ private class CheckinWalk(
     /**
      * Why [row] cannot stand where the writer puts it, or null. The writer prints the `i` lines,
      * then the device section, then each UID's lines in ascending UID order (a `SparseArray`), with
-     * each single-line section at most once, and a `wua` name with its count after it
-     * (BatteryStats.java `dumpCheckin` and `dumpCheckinLocked`: android-17.0.0_r1 L7832-7905 and
-     * L4260-4970, android-16.0.0_r4 L7800-7873 and L4239-4949). Job, sync and process names are
-     * quoted without escaping and `wua` names keep their line breaks, so a name can end its own row
-     * and carry others; those break this order where the real lines resume (audit SEC-001). A
-     * section this parser does not know is not placed: it is counted and never read.
+     * each single-line section at most once (BatteryStats.java `dumpCheckin` and
+     * `dumpCheckinLocked`: android-17.0.0_r1 L7832-7905 and L4260-4970, android-16.0.0_r4
+     * L7800-7873 and L4239-4949). Job, sync and process names are quoted without escaping, so a name
+     * can end its own row and carry others; those break this order where the real lines resume
+     * (audit SEC-001). A `wua` name keeps its line breaks but has its commas replaced, so its lines
+     * can never be rows and need no rule. A section this parser does not know is not placed: it is
+     * counted and never read.
      */
     private fun outOfOrder(row: CheckinRow): String? {
         if (row.category == "i") return "information line after the since-charged section".takeIf { sawSinceCharged }
@@ -189,8 +189,6 @@ private class CheckinWalk(
         block: Int?,
     ): String? {
         if (block != null && row.uid < block) return "UID lines out of order"
-        // Commas in the name are replaced, so its first line has no count (L4952-4953).
-        if (row.type == "wua" && row.size < WakeupAlarmCol.entries.size) return "wakeup alarm name across lines"
         if (row.uid != block) blockSections.clear()
         return "second ${row.type} line for one UID".takeIf { row.type in ONCE_PER_UID && !blockSections.add(row.type) }
     }
@@ -211,7 +209,7 @@ private class CheckinWalk(
 
     /** [line] as a row, or null once the reason it is not one is recorded. */
     private fun row(line: Line): CheckinRow? {
-        val fields = Csv.split(line.text)
+        val fields = CheckinLines.split(line.text)
         val uid = fields.getOrNull(1)?.toIntOrNull()
         when {
             fields.size < CheckinRow.HEADER || !isVersion(fields[0]) -> issue(line, "not a checkin line")

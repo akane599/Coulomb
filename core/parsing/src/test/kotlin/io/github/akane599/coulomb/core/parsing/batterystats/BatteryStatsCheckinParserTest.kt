@@ -244,26 +244,66 @@ class BatteryStatsCheckinParserTest {
     }
 
     /**
-     * Audit SEC-001: the writer keeps line breaks in a wakeup alarm's name and only replaces its
-     * commas, so the name's first line never has the count after it.
+     * A wakeup alarm's name keeps its line breaks, but the writer replaces its commas, so no line of
+     * it can pass for a row: it costs that alarm's count and nothing else (audit SEC-001, review).
      */
     @Test
-    fun aWakeupAlarmNameWithALineBreakEndsTheRead() {
-        // UID 10050 sets an alarm with the tag "x<LF>9,1000,l,cpu,888888,888888,0<LF>y".
+    fun aWakeupAlarmNameWithALineBreakCostsOnlyThatAlarm() {
+        // The tag "x<LF>9,1000,l,cpu,888888,888888,0<LF>y", as the writer prints it.
         val (dump, report) =
             parse(
                 HEAD +
                     "9,1000,l,cpu,1,1,0\n" +
                     "9,10050,l,wua,*walarm*:x\n" +
-                    "9,1000,l,cpu,888888,888888,0\n" +
-                    "y,1\n",
+                    "9_1000_l_cpu_888888_888888_0\n" +
+                    "y,1\n" +
+                    "9,10060,l,cpu,2,2,0\n",
+            )
+        assertThat(report.complete).isTrue()
+        assertThat(dump.uids.map { it.uid }).containsExactly(1000, 10050, 10060)
+        assertThat(dump.uids.first { it.uid == 1000 }.cpuUserMs).isEqualTo(1L)
+    }
+
+    /**
+     * Only the names the writer quotes are quoted: the first field of `kwl`, `wr`, `rpm`, `sy`, `jb`,
+     * `jbc` and `pr`. A quote anywhere else is a character of an app's text. Read as an opening
+     * quote it swallowed the lines after it, which hid rows in a dump reported whole (review of SEC-001).
+     */
+    @Test
+    fun aQuoteInAnUnquotedNameSwallowsNoRows() {
+        // A wakelock tag that starts with a quote.
+        val (dump, report) =
+            parse(
+                HEAD +
+                    "9,10050,l,wl,\"x,0,f,0,0,0,0,p,9,600,0,0,0\n" +
+                    "9,10050,l,cpu,5,5,0\n" +
+                    "9,10090,l,cpu,7,7,0\n" +
+                    "9,10090,l,pr,\"proc\",1,2,3,4,5,6\n",
+            )
+        assertThat(report.complete).isTrue()
+        assertThat(dump.uids.first { it.uid == 10050 }.cpuUserMs).isEqualTo(5L)
+        assertThat(dump.uids.first { it.uid == 10090 }.cpuUserMs).isEqualTo(7L)
+    }
+
+    /**
+     * A job name that closes its own quote, forges rows for a higher UID and ends in a row whose
+     * last field takes the writer's closing quote: that quote opens nothing, so the app's own
+     * lines after it are read, and they break the order (review of SEC-001).
+     */
+    @Test
+    fun aForgedBlockCannotSwallowTheLinesThatGiveItAway() {
+        val (dump, report) =
+            parse(
+                HEAD +
+                    "9,10050,l,jb,\"@a\",1,1,1,1\n" +
+                    "9,10077,l,cpu,999999,999999,0\n" +
+                    "9,10077,l,wua,q,5,@pkg/.Svc\",5,1,5,1\n" +
+                    "9,10050,l,cpu,3,3,0\n" +
+                    "9,10050,l,pr,\"proc\",1,2,3,4,5,6\n",
             )
         assertThat(report.complete).isFalse()
-        assertThat(dump.uidsComplete).isFalse()
-        assertThat(dump.uids.filter { it.cpuUserMs == 888_888L }).isEmpty()
-        assertThat(report.issues.single().message).isEqualTo("wakeup alarm name across lines; the rest of the dump is not read")
-        // The device section was whole before the UIDs began.
-        assertThat(dump.device).isNotNull()
+        assertThat(dump.uids).isEmpty()
+        assertThat(report.issues.last().message).isEqualTo("UID lines out of order; the rest of the dump is not read")
     }
 
     /**

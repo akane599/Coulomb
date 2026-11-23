@@ -129,24 +129,32 @@ fixed or recorded.
   names are written without escaping line breaks; only `wl` names are cleaned. Read line by
   line, the rest of such a name passed for a record, so an app could add rows to any UID.
   Records are now joined while a quote is open (`CheckinLines`), with a 64 KB cap on length.
-  `wl` names have commas and line breaks replaced, so they cannot carry a record. Where a record's end is
+  `wua` and `wl` names have commas replaced, so they cannot carry a record. Where a record's end is
   lost (a record past the cap, or a history wakelock tag printed without doubling its quotes),
   nothing after it is read as a record: the S6 parser stops there as at a cut, and S7 keeps only a
   `NEXT:` on the last line (ADR-0014, second amendment).
 - **Rows out of the writer's order (amended 2026-11-23, audit SEC-001).** Joining lines while a
-  quote is open does not cover two shapes. A `wua` name has only its commas replaced and keeps its
-  line breaks, and a quoted name can close its own quote before a line break; either way the name
-  ends its row early and its remaining lines read as rows of any UID or of the device. The format
-  cannot mark where a name ends, so the S6 parser holds every row against the writer's order
-  instead (`dumpCheckin`, `dumpCheckinLocked`, the same in both tags): the `i` lines, then the
-  device section with its single lines once, then the UIDs ascending with each single-line section
-  once per UID, and a `wua` name always followed by its count. At the first row that breaks this
-  the read stops as at a cut and is incomplete; no UID is kept, since rows before that one may
-  have come out of the same name, and the device section is kept because a device line after the
-  first UID stops the read before it is taken. What stays possible: an app adding rows to its own
-  UID, and rows for a higher UID when none of its own lines and no line of a lower real UID
-  follow. A section the parser does not know is counted as unknown and not placed, so an OEM's
-  extra sections do not stop a read. Both fixture devices keep the order.
+  quote is open does not cover a quoted name that closes its own quote before a line break: the
+  name ends its row early and its remaining lines read as rows of any UID or of the device. The
+  format cannot mark where a name ends, so the S6 parser holds every row against the writer's
+  order instead (`dumpCheckin`, `dumpCheckinLocked`, the same in both tags): the `i` lines, then
+  the device section with its single lines once, then the UIDs ascending with each single-line
+  section once per UID. At the first row that breaks this the read stops as at a cut and is
+  incomplete; no UID is kept, since rows before that one may have come out of the same name, and
+  the device section is kept because a device line after the first UID stops the read before it
+  is taken. What stays possible: an app adding rows to its own UID, and rows for a higher UID
+  when none of its own lines and no line of a lower real UID follow. A section the parser does
+  not know is counted as unknown and not placed, so an OEM's extra sections do not stop a read.
+  Both fixture devices keep the order.
+- **Only the writer's quotes are quotes (2026-11-23, independent review of the above).** The
+  writer quotes one field: the name of `kwl`, `wr`, `rpm`, `sy`, `jb`, `jbc` and `pr`, right after
+  the type. The parser took a quote at the start of any field for an opening one, so a wakelock
+  tag that begins with `"` swallowed the lines after it into its name, up to the next line that
+  closes a quote: rows vanished from a dump reported whole. A quote now opens a name only in
+  that one field of those seven types; anywhere else it is a character. The review also showed
+  that a first draft of the order rule, which stopped the read at a `wua` name across lines,
+  was wrong: the writer replaces the commas of that name, so none of its lines can be a row,
+  and the rule only cut off honest dumps. It was taken out; such a name costs its alarm's count.
 - **Completeness.** A UID entry the proto adapter cannot decode, or a checkin record whose end is
   lost, makes the dump and the UID list incomplete: per-UID sums are partial.
 - **No invented zeros.** A checkin line that is there but short, or has a column that is not a

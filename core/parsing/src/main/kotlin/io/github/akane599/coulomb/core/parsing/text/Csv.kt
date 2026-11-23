@@ -13,12 +13,24 @@ package io.github.akane599.coulomb.core.parsing.text
  * columns after it; the format cannot tell the two apart.
  */
 internal object Csv {
-    fun split(line: String): List<String> {
+    /** Every field may be quoted. */
+    fun split(line: String): List<String> = split(line, ANY_FIELD)
+
+    /**
+     * Only field [quoted] may be quoted ([NO_FIELD] for none): in every other field a quote is a
+     * character like any other. For lines whose writer quotes one known field, so that a quote in
+     * an app's text elsewhere opens nothing.
+     */
+    fun split(
+        line: String,
+        quoted: Int,
+    ): List<String> {
         val fields = ArrayList<String>(INITIAL_FIELDS)
         var i = 0
         val n = line.length
         while (true) {
-            if (i < n && line[i] == QUOTE) {
+            val mayBeQuoted = quoted == ANY_FIELD || quoted == fields.size
+            if (mayBeQuoted && i < n && line[i] == QUOTE) {
                 val close = closingQuote(line, i + 1)
                 if (close < 0) {
                     fields += line.substring(i + 1)
@@ -59,6 +71,19 @@ internal object Csv {
         return false
     }
 
+    /** True when field [field] of [line] starts with a quote that has no closing quote. Other fields' quotes are not looked at. */
+    fun hasOpenQuoteAt(
+        line: String,
+        field: Int,
+    ): Boolean {
+        var start = 0
+        repeat(field) {
+            start = line.indexOf(COMMA, start) + 1
+            if (start == 0) return false
+        }
+        return start < line.length && line[start] == QUOTE && closingQuote(line, start + 1) < 0
+    }
+
     private fun closingQuote(
         line: String,
         from: Int,
@@ -71,6 +96,8 @@ internal object Csv {
         return -1
     }
 
+    const val ANY_FIELD = -1
+    const val NO_FIELD = -2
     private const val QUOTE = '"'
     private const val COMMA = ','
     private const val INITIAL_FIELDS = 16

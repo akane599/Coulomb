@@ -20,7 +20,8 @@ import io.github.akane599.coulomb.core.parsing.text.Csv
  * - `9,h,` history records quote a tag inline only when the pool is full, and double its quotes
  *   (`printBitDescriptions` and `printNextItem`, android-17.0.0_r1 L6684-6734 and L6829-7206,
  *   android-16.0.0_r4 L6652-6702 and L6797-7174), so an odd number of quotes means one is open.
- * - Other records (`jb`, `sy`, `pr`, `kwl`, `wr`) follow the [Csv] rule.
+ * - Other records follow the [Csv] rule in the one field their writer quotes ([quotedField]): the
+ *   name of `kwl`, `wr`, `rpm`, `sy`, `jb`, `jbc` and `pr`. Elsewhere a quote is only a character.
  *
  * Where a record ends can be lost, and with it where the next one starts; [desync] then says why,
  * the record comes back [Line.truncated], and every later call returns physical lines as they are,
@@ -100,6 +101,10 @@ internal class CheckinLines(
         private const val ESCAPE = '\\'
         private const val POOL_STRING_FIELD = 4
 
+        /** `9`, uid, category, type, then the name. */
+        private const val NAME_FIELD = 4
+        private val QUOTED_NAME_TYPES = setOf("kwl", "wr", "rpm", "sy", "jb", "jbc", "pr")
+
         /** `,w=<formatted uid>:` right before a history record's first quote. */
         private val UNESCAPED_TAG_OPENING = Regex(",w=[0-9a-z]{1,24}:$")
 
@@ -108,9 +113,32 @@ internal class CheckinLines(
             when {
                 text.startsWith(POOL_PREFIX) -> poolStringOpen(text)
                 text.startsWith(HISTORY_PREFIX) -> text.count { it == QUOTE } % 2 == 1
-                text.startsWith(DATA_PREFIX) -> Csv.hasOpenQuote(text.toString())
+                text.startsWith(DATA_PREFIX) -> text.toString().let { Csv.hasOpenQuoteAt(it, quotedField(it)) }
                 else -> false
             }
+
+        /**
+         * The field of a `9,<uid>,<category>,<type>,…` line that its writer quotes, or
+         * [Csv.NO_FIELD]: the name, right after the type, of kernel wakelocks, wakeup reasons, rpm
+         * states, syncs, jobs, job completions and processes (BatteryStats.dumpCheckinLocked,
+         * android-17.0.0_r1 L4483, L4494, L4514-4518, L4770, L4786, L4798, L4938; the same calls at
+         * android-16.0.0_r4 L4462-4917). In any other line, and in any other field, a quote is a
+         * character of the text: a wakelock tag may start with one, and read as an opening quote it
+         * swallowed the lines after it (audit SEC-001, review).
+         */
+        fun quotedField(text: String): Int {
+            var comma = -1
+            repeat(NAME_FIELD - 1) {
+                comma = text.indexOf(',', comma + 1)
+                if (comma < 0) return Csv.NO_FIELD
+            }
+            val end = text.indexOf(',', comma + 1)
+            if (end < 0) return Csv.NO_FIELD
+            return if (text.substring(comma + 1, end) in QUOTED_NAME_TYPES) NAME_FIELD else Csv.NO_FIELD
+        }
+
+        /** [text] as fields, by the rule of [quotedField]. */
+        fun split(text: String): List<String> = Csv.split(text, quotedField(text))
 
         /** True when a history record's first quote opens a tag that does not double its quotes. */
         fun unescapedTag(text: String): Boolean {
