@@ -30,6 +30,11 @@ either is the path the key takes into the build and the steps around it.
    creates no tag and no release; it prints the two commands. A workflow that signs on GitHub
    would need the key stored there, which is the owner's to decide and can be added later without
    changing the build. Reason: the cheaper and easier to take back of the two.
+   Amended 2026-11-23 (audit TEST-003): "on `origin/main`" was taken to mean "its checks have
+   run". The pre-push hook checks the working tree, which can hold changes the pushed commit
+   lacks, and nobody waits for CI. The script now runs `tools/ci/check.sh all` on the clean
+   commit itself before it signs, with the signing variables unset, as CI builds it. It also
+   refuses a keystore that lies inside the checkout (audit OPS-001).
 4. **Versions stay in `gradle.properties`.** `coulomb.versionName` is MAJOR.MINOR.PATCH and the
    tag is `v` and that name; `coulomb.versionCode` rises by hand with it. The script refuses a
    version whose tag exists. Reason: one place, and no build that depends on git state.

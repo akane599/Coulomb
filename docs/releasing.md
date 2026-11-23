@@ -47,7 +47,9 @@ and names the missing ones.
 1. Raise `coulomb.versionName` (MAJOR.MINOR.PATCH) and `coulomb.versionCode` (always by at least
    one) in `gradle.properties`, commit, and push. The pre-push hook runs everything CI runs.
 2. With the four variables set, run `tools/release/build.sh`. It refuses a working tree with
-   changes, a commit that is not on `origin/main`, a version whose tag exists, an APK that does
+   changes and a commit that is not on `origin/main`, then runs `tools/ci/check.sh all` on that
+   commit, without the signing variables, and signs nothing if it fails: the pre-push hook checks
+   the working tree, which is not always the commit. It also refuses a version whose tag exists, an APK that does
    not verify or is signed with a debug key, and an APK of 15 MB or more (SPEC 16.5). It writes
    `build/release/coulomb-<version>.apk` with its SHA-256 file and prints the signing
    certificate's digest.

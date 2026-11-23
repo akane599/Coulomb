@@ -40,11 +40,19 @@ case "$keystore_dir/" in
   "$(pwd -P)/"*) fail "the keystore is inside the repository; keep it outside (docs/releasing.md)" ;;
 esac
 
-# A release is a commit that passed the pre-push checks, and nothing else.
+# A release is a clean commit on origin/main that passes everything CI runs, checked here on
+# exactly that commit: the pre-push hook builds the working tree, which can differ from what was
+# committed, and nobody waits for CI (audit TEST-003).
 changes=$(git status --porcelain)
 [ -z "$changes" ] || fail "the working tree has changes:
 $changes"
-git merge-base --is-ancestor HEAD origin/main || fail "HEAD is not on origin/main; push it first, so its checks have run"
+git merge-base --is-ancestor HEAD origin/main || fail "HEAD is not on origin/main; push it first"
+# Without the signing variables, as CI builds it, so that no test or plugin sees the key
+# (ADR-0067 §1, §2).
+(
+  unset COULOMB_KEYSTORE COULOMB_KEYSTORE_PASSWORD COULOMB_KEY_ALIAS COULOMB_KEY_PASSWORD
+  tools/ci/check.sh all
+) || fail "tools/ci/check.sh all failed on $(git rev-parse --short HEAD); nothing was signed"
 
 version=$(sed -n 's/^coulomb\.versionName=//p' gradle.properties)
 code=$(sed -n 's/^coulomb\.versionCode=//p' gradle.properties)
