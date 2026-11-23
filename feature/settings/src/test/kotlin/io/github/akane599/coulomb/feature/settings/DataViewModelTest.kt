@@ -220,12 +220,48 @@ class DataViewModelTest {
             assertThat(model.settled().message).isEqualTo(DataMessage.EXPORT_LEFT)
         }
 
+    /**
+     * Audit CONC-001: a raw export cancelled while its dumps run. The document's stream is closed
+     * before the provider is asked to remove the document, not left open behind it.
+     */
+    @Test
+    fun aCancelledRawExportClosesItsDocumentBeforeRemovingIt() =
+        runTest {
+            host.rawWaits = true
+            val model = model()
+
+            model.export(ExportKind.RAW, FILE)
+            model.state.first { it.work is DataWork.Exporting }
+            host.rawStarted.first { it }
+            model.cancel()
+            withContext(Dispatchers.Default) { withTimeout(5_000) { model.state.first { it.work == DataWork.Idle } } }
+
+            assertThat(host.discarded).containsExactly(FILE)
+            assertThat(host.closedAtDiscard).isTrue()
+        }
+
+    private class Tracking : ByteArrayOutputStream() {
+        var closed = false
+
+        override fun close() {
+            closed = true
+            super.close()
+        }
+    }
+
     private class FakeHost : DataHost {
         var inForce = 0
         var opens = true
         var raw = RawBundleResult(RawPart.COMPLETE, RawPart.COMPLETE)
         var reading = ByteArray(0)
-        var written = ByteArrayOutputStream()
+        var written: ByteArrayOutputStream = Tracking()
+
+        /** The raw bundle's dumps never end, and it does not close its stream: only a cancel ends it. */
+        var rawWaits = false
+        val rawStarted = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+        /** Whether the document's stream was closed when the provider was asked to remove it. */
+        var closedAtDiscard: Boolean? = null
         val discarded = ArrayList<Uri>()
         val events = ArrayList<String>()
         val restartedSignal = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -236,11 +272,12 @@ class DataViewModelTest {
 
         var deletes = true
 
-        override suspend fun output(uri: Uri): OutputStream? = if (opens) ByteArrayOutputStream().also { written = it } else null
+        override suspend fun output(uri: Uri): OutputStream? = if (opens) Tracking().also { written = it } else null
 
         override suspend fun input(uri: Uri): InputStream = ByteArrayInputStream(reading)
 
         override suspend fun discard(uri: Uri): Boolean {
+            closedAtDiscard = (written as? Tracking)?.closed
             discarded += uri
             return deletes
         }
@@ -251,7 +288,13 @@ class DataViewModelTest {
 
         override suspend fun applySettings(json: String): Boolean = if (settingsFail) throw IOException("disk full") else true
 
-        override suspend fun rawBundle(out: OutputStream): RawBundleResult = raw.also { out.close() }
+        override suspend fun rawBundle(out: OutputStream): RawBundleResult {
+            if (rawWaits) {
+                rawStarted.value = true
+                kotlinx.coroutines.awaitCancellation()
+            }
+            return raw.also { out.close() }
+        }
 
         /** The Action Center's lock, which is not reentrant. */
         val lock = Mutex()

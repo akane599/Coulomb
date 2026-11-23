@@ -5,12 +5,18 @@ package io.github.akane599.coulomb.core.collect.export
 
 import com.google.common.truth.Truth.assertThat
 import io.github.akane599.coulomb.core.privileged.BatteryStatsMode
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.util.zip.ZipInputStream
 
 /** SPEC 14.5's raw bundle: the dumps as Android printed them, and a README that says what is missing. */
@@ -90,4 +96,53 @@ class RawBundleTest {
         assertThat(RawBundle.copyCapped(ByteArrayInputStream(ByteArray(10)), file, max = 300)).isTrue()
         assertThat(file.length()).isEqualTo(10)
     }
+
+    private class Tracking : ByteArrayOutputStream() {
+        var closed = false
+
+        override fun close() {
+            closed = true
+            super.close()
+        }
+    }
+
+    /**
+     * Audit CONC-001: the picked document's stream is this call's from its first line. A dump that
+     * fails, or a cancel while it runs, comes before the zip that used to be the only thing closing it.
+     */
+    @Test
+    fun aDumpThatFailsStillClosesTheDocument() =
+        runTest {
+            val out = Tracking()
+            val failed =
+                runCatching {
+                    RawBundle {
+                        _,
+                        _,
+                        ->
+                        throw IOException("the worker died")
+                    }.write(out, folder.root.resolve("raw"), origin)
+                }
+
+            assertThat(failed.exceptionOrNull()).isInstanceOf(IOException::class.java)
+            assertThat(out.closed).isTrue()
+        }
+
+    @Test
+    fun aCancelDuringTheDumpStillClosesTheDocument() =
+        runBlocking {
+            val out = Tracking()
+            val dumping = CompletableDeferred<Unit>()
+            val job =
+                launch {
+                    RawBundle { _, _ ->
+                        dumping.complete(Unit)
+                        awaitCancellation()
+                    }.write(out, folder.root.resolve("raw"), origin)
+                }
+            dumping.await()
+            job.cancelAndJoin()
+
+            assertThat(out.closed).isTrue()
+        }
 }

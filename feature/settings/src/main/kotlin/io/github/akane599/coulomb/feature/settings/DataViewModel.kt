@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -234,6 +235,20 @@ public class DataViewModel internal constructor(
         running: Job?,
     ): DataMessage {
         val out = host.output(uri) ?: throw IOException("The document could not be opened")
+        // The stream is this call's until it returns. A cancel or a failure before a writer closes it
+        // must not leave it open while the export's finally removes the document (audit CONC-001).
+        try {
+            return written(kind, out, running)
+        } finally {
+            withContext(NonCancellable + Dispatchers.IO) { out.closeQuietly() }
+        }
+    }
+
+    private suspend fun written(
+        kind: ExportKind,
+        out: OutputStream,
+        running: Job?,
+    ): DataMessage {
         val progress = { done: Long, total: Long ->
             // The writers do not suspend: this is where a cancelled export stops.
             running?.ensureActive()
@@ -274,9 +289,14 @@ public class DataViewModel internal constructor(
                         if (input == null) {
                             ImportResult.Refused(ImportProblem.FAILED)
                         } else {
-                            transfer.import(input) { rows ->
-                                running?.ensureActive()
-                                ui.update { it.copy(work = DataWork.Importing(rows)) }
+                            try {
+                                transfer.import(input) { rows ->
+                                    running?.ensureActive()
+                                    ui.update { it.copy(work = DataWork.Importing(rows)) }
+                                }
+                            } finally {
+                                // Closed here too: a cancel before the load begins never reaches its reader.
+                                withContext(NonCancellable + Dispatchers.IO) { input.closeQuietly() }
                             }
                         }
                     ui.update {
@@ -494,5 +514,17 @@ private class AndroidDataHost(
     private companion object {
         const val TAG = "Data"
         const val RAW_SCRATCH = "raw-export"
+    }
+}
+
+/**
+ * Closes a picked document's stream. One its writer already closed is closed again for nothing, and
+ * a close that fails after a failure is only logged: the failure itself has been told.
+ */
+private fun Closeable.closeQuietly() {
+    try {
+        close()
+    } catch (e: IOException) {
+        Log.w("Data", "document not closed", e)
     }
 }

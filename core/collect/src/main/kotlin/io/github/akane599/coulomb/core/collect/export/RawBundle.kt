@@ -68,28 +68,46 @@ public class RawBundle internal constructor(
         origin: RawOrigin,
     ): RawBundleResult =
         withContext(Dispatchers.IO) {
-            scratch.deleteRecursively()
-            scratch.mkdirs()
-            try {
-                val stats = scratch.resolve(STATS)
-                val history = scratch.resolve(HISTORY)
-                val result = RawBundleResult(dump(BatteryStatsMode.CHECKIN, stats), dump(BatteryStatsMode.HISTORY, history))
-                ZipOutputStream(out.buffered()).use { zip ->
-                    zip.putNextEntry(ZipEntry(README))
-                    zip.write(readme(origin, result).toByteArray())
-                    zip.closeEntry()
-                    for ((name, file, part) in listOf(Triple(STATS, stats, result.stats), Triple(HISTORY, history, result.history))) {
-                        if (part == RawPart.MISSING || !file.isFile) continue
-                        zip.putNextEntry(ZipEntry(name))
-                        file.inputStream().use { it.copyTo(zip) }
-                        zip.closeEntry()
-                    }
-                }
-                result
-            } finally {
-                scratch.deleteRecursively()
-            }
+            // [out] is this call's from its first line: a dump that fails or is cancelled closes it
+            // too, not only the zip that is opened after the dumps (audit CONC-001).
+            out.use { sink -> bundle(sink, scratch, origin) }
         }
+
+    private suspend fun bundle(
+        sink: OutputStream,
+        scratch: File,
+        origin: RawOrigin,
+    ): RawBundleResult {
+        scratch.deleteRecursively()
+        scratch.mkdirs()
+        try {
+            val stats = scratch.resolve(STATS)
+            val history = scratch.resolve(HISTORY)
+            val result = RawBundleResult(dump(BatteryStatsMode.CHECKIN, stats), dump(BatteryStatsMode.HISTORY, history))
+            val parts = listOf(Triple(STATS, stats, result.stats), Triple(HISTORY, history, result.history))
+            ZipOutputStream(sink.buffered()).use { zip ->
+                zip.putNextEntry(ZipEntry(README))
+                zip.write(readme(origin, result).toByteArray())
+                zip.closeEntry()
+                parts
+                    .filter { (_, file, part) ->
+                        part != RawPart.MISSING && file.isFile
+                    }.forEach { (name, file, _) -> zip.add(name, file) }
+            }
+            return result
+        } finally {
+            scratch.deleteRecursively()
+        }
+    }
+
+    private fun ZipOutputStream.add(
+        name: String,
+        file: File,
+    ) {
+        putNextEntry(ZipEntry(name))
+        file.inputStream().use { it.copyTo(this) }
+        closeEntry()
+    }
 
     private fun readme(
         origin: RawOrigin,
