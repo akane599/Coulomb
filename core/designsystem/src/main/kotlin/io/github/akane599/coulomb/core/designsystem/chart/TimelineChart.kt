@@ -743,10 +743,10 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.timeline
             if (event.type != PointerEventType.Scroll || change == null) continue
             val delta = change.scrollDelta
             val layout = place()
-            val focus = ((change.position.x - layout.plotLeft) / (layout.plotRight - layout.plotLeft)).coerceIn(0f, 1f)
+            val focus = wheelFocus(change.position.x, layout.plotLeft, layout.plotRight, rtl, size.width.toFloat())
             when {
                 event.keyboardModifiers.isCtrlPressed && delta.y != 0f -> {
-                    gestures()?.onTransform?.invoke(if (delta.y < 0) WHEEL_ZOOM else 1 / WHEEL_ZOOM, if (rtl) 1 - focus else focus, 0f)
+                    gestures()?.onTransform?.invoke(if (delta.y < 0) WHEEL_ZOOM else 1 / WHEEL_ZOOM, focus, 0f)
                     change.consume()
                 }
 
@@ -758,6 +758,19 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.timeline
         }
     }
 }
+
+/**
+ * Where the pointer is, as a share of the plot from the start of time: the scale's own answer, which
+ * knows how a right-to-left layout mirrors the plot and its margins, as the pinch uses it (audit
+ * BUG-010). The share does not depend on the window's times.
+ */
+internal fun wheelFocus(
+    x: Float,
+    plotStart: Float,
+    plotEnd: Float,
+    rtl: Boolean,
+    width: Float,
+): Float = TimeScale(0, 1, plotStart, plotEnd, rtl, width).share(x)
 
 /** One notch of the wheel zooms by this factor, or moves the window by this share of its width. */
 private const val WHEEL_ZOOM = 1.25f
