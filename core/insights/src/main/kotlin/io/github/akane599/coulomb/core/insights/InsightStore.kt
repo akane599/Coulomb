@@ -37,36 +37,59 @@ public class InsightStore(
     public suspend fun record(
         candidates: List<InsightCandidate>,
         nowWallMs: Long,
-    ): List<Insight> =
-        candidates.mapNotNull { candidate ->
-            val latest = latest(candidate)
-            val stored = latest?.let { StoredInsight(it.id, it.severity, it.state, it.stateChangedWall, it.snoozeUntilWall) }
-            when (InsightLifecycle.decide(candidate.severity, stored, nowWallMs)) {
-                Decision.Keep -> {
-                    null
-                }
+    ): List<Insight> = candidates.mapNotNull { candidate -> apply(candidate, nowWallMs, again = true)?.let(::read) }
 
-                Decision.Open -> {
-                    entity(candidate, nowWallMs).let { it.copy(id = dao.insert(it)) }
-                }
+    /**
+     * One candidate: read, decide, write. The user's taps come on another thread, so a write changes
+     * only what its decision is about, and sets `NEW` only while the insight is still open: a
+     * dismissal or snooze made since the read stays. A raise that found the insight closed is decided
+     * once more on the row as it is now, where a rise opens a new insight (SPEC 9.1, 9.4; audit
+     * CONC-004). The row that is now `NEW` because of this, or null.
+     */
+    private suspend fun apply(
+        candidate: InsightCandidate,
+        nowWallMs: Long,
+        again: Boolean,
+    ): InsightEntity? {
+        val latest = latest(candidate)
+        val stored = latest?.let { StoredInsight(it.id, it.severity, it.state, it.stateChangedWall, it.snoozeUntilWall) }
+        return when (InsightLifecycle.decide(candidate.severity, stored, nowWallMs)) {
+            Decision.Keep -> {
+                null
+            }
 
-                is Decision.Raise -> {
-                    checkNotNull(
-                        latest,
-                    ).takes(candidate).copy(state = InsightState.NEW, stateChangedWall = nowWallMs).also {
-                        dao.update(it)
-                    }
-                }
+            Decision.Open -> {
+                entity(candidate, nowWallMs).let { it.copy(id = dao.insert(it)) }
+            }
 
-                is Decision.Refresh -> {
-                    checkNotNull(latest).takes(candidate).also { dao.update(it) }.let { null }
+            is Decision.Raise -> {
+                val raised = checkNotNull(latest).takes(candidate).copy(state = InsightState.NEW, stateChangedWall = nowWallMs)
+                when {
+                    raise(raised, nowWallMs) -> raised
+                    again -> apply(candidate, nowWallMs, again = false)
+                    else -> null
                 }
-            }?.let(::read)
+            }
+
+            is Decision.Refresh -> {
+                with(checkNotNull(latest).takes(candidate)) { dao.refresh(id, subjectKey, windowId, severity, subjectUid, evidenceJson) }
+                null
+            }
+        }
+    }
+
+    /** Whether [raised] was stored: false when the user closed the insight since it was read. */
+    private suspend fun raise(
+        raised: InsightEntity,
+        nowWallMs: Long,
+    ): Boolean =
+        with(raised) {
+            dao.raise(id, subjectKey, windowId, severity, subjectUid, evidenceJson, InsightState.NEW, nowWallMs, OPEN) > 0
         }
 
     /** Insights not yet dismissed, snoozed or acted on: highest severity first, then newest. */
     public fun observeOpen(): Flow<List<Insight>> =
-        dao.observeInState(listOf(InsightState.NEW, InsightState.SEEN)).map { rows ->
+        dao.observeInState(OPEN).map { rows ->
             rows.mapNotNull(::read).sortedWith(compareByDescending<Insight> { it.severity }.thenByDescending { it.createdWallMs })
         }
 
@@ -82,7 +105,9 @@ public class InsightStore(
         insight: Insight,
         nowWallMs: Long,
     ) {
-        if (insight.state == InsightState.NEW) dao.setState(insight.id, InsightState.SEEN, nowWallMs)
+        // The check saves a write per shown card; the guard in the query keeps a snooze or a dismissal
+        // made since the list was read (audit CONC-004).
+        if (insight.state == InsightState.NEW) dao.advance(insight.id, InsightState.NEW, InsightState.SEEN, nowWallMs)
     }
 
     public suspend fun dismiss(
@@ -148,5 +173,8 @@ public class InsightStore(
     public companion object {
         public const val SNOOZE_DAY_MS: Long = 24 * 60 * 60 * 1000L
         public const val SNOOZE_WEEK_MS: Long = 7 * SNOOZE_DAY_MS
+
+        /** The states in which an insight is shown, and may be raised in place. */
+        private val OPEN = listOf(InsightState.NEW, InsightState.SEEN)
     }
 }
