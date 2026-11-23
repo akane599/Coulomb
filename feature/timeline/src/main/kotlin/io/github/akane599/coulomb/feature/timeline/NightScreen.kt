@@ -392,9 +392,11 @@ private fun NightTimeline(
             amps = { formats.signedCurrent(it).joined() },
         )
     val awake = timeline.tracks[TimelineTrack.AWAKE].orEmpty()
+    // A stretch without history is not time asleep: over such a night both totals cover only the
+    // known part and are lower bounds, as in the table (audit DATA-005).
     val summary =
         stringResource(
-            R.string.night_timeline_summary,
+            if (timeline.partlyKnown) R.string.night_timeline_summary_partial else R.string.night_timeline_summary,
             formats.percent(night.startLevel),
             formats.percent(night.endLevel),
             formats.integer(timeline.wakeups.toLong()),
