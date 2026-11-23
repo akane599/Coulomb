@@ -52,41 +52,44 @@ internal class HealthRepositoryTest {
 
     private suspend fun <T> real(block: suspend () -> T): T = withContext(Dispatchers.Default) { withTimeout(10_000) { block() } }
 
+    /** A closed session of [kind] from 20% to 100% over 80 minutes from [start]. */
+    private fun closed(
+        kind: SessionKind,
+        start: Long,
+    ) = SessionEntity(
+        kind = kind,
+        bootSeq = 1,
+        startElapsedNs = 0,
+        endElapsedNs = 80 * minuteNs,
+        startWall = start,
+        endWall = start + 80 * 60_000L,
+        startSnapshotId = null,
+        endSnapshotId = null,
+        startLevel = 20,
+        endLevel = 100,
+        startChargeUah = null,
+        endChargeUah = null,
+        chargeSource = null,
+        avgCurrentMa = null,
+        peakCurrentMa = null,
+        minTempDeciC = 290,
+        meanTempDeciC = 320,
+        maxTempDeciC = 360,
+        awakeRatio = null,
+        deepIdleReached = null,
+        deepIdleReachedMs = null,
+        minutesAtOrAbove80 = 20,
+        minutesAt100 = 0,
+        stressIndex = 1.0,
+        cycleEquivalents = 0.8,
+        closeReason = SessionCloseReason.STATE_CHANGED,
+        quality = 1.0,
+    )
+
     /** A closed charge from 20% to 100% over 80 minutes, a sample a minute at 2 A and 4 V. */
     private suspend fun charge(): Long {
         val start = now - 2 * 3_600_000L
-        val id =
-            db.sessionDao().insert(
-                SessionEntity(
-                    kind = SessionKind.CHARGE,
-                    bootSeq = 1,
-                    startElapsedNs = 0,
-                    endElapsedNs = 80 * minuteNs,
-                    startWall = start,
-                    endWall = start + 80 * 60_000L,
-                    startSnapshotId = null,
-                    endSnapshotId = null,
-                    startLevel = 20,
-                    endLevel = 100,
-                    startChargeUah = null,
-                    endChargeUah = null,
-                    chargeSource = null,
-                    avgCurrentMa = null,
-                    peakCurrentMa = null,
-                    minTempDeciC = 290,
-                    meanTempDeciC = 320,
-                    maxTempDeciC = 360,
-                    awakeRatio = null,
-                    deepIdleReached = null,
-                    deepIdleReachedMs = null,
-                    minutesAtOrAbove80 = 20,
-                    minutesAt100 = 0,
-                    stressIndex = 1.0,
-                    cycleEquivalents = 0.8,
-                    closeReason = SessionCloseReason.STATE_CHANGED,
-                    quality = 1.0,
-                ),
-            )
+        val id = db.sessionDao().insert(closed(SessionKind.CHARGE, start))
         for (minute in 0..80) {
             db.sampleDao().insert(
                 BatterySampleEntity(
@@ -111,6 +114,32 @@ internal class HealthRepositoryTest {
         db.sessionDao().upsertChargeDetail(ChargeDetailEntity(id, 2, charger, 8.0, 8.0, null, 20, 0, null, null))
         return id
     }
+
+    /**
+     * Audit BUG-016: "See all" is also the only way to the discharge sessions, so one closed
+     * discharge is history beyond the preview, however few charges there are.
+     */
+    @Test
+    fun aClosedDischargeOpensTheHistoryWithFewCharges() =
+        runTest {
+            charge()
+            db.sessionDao().insert(closed(SessionKind.DISCHARGE, now - 5 * 3_600_000L))
+
+            val report = real { repository.report.first { it.sessions.isNotEmpty() } }
+
+            assertThat(report.sessions).hasSize(1)
+            assertThat(report.moreSessions).isTrue()
+        }
+
+    @Test
+    fun withNoChargeADischargeStillOpensTheHistory() =
+        runTest {
+            db.sessionDao().insert(closed(SessionKind.DISCHARGE, now - 5 * 3_600_000L))
+
+            val report = real { repository.report.first { it.moreSessions } }
+
+            assertThat(report.sessions).isEmpty()
+        }
 
     @Test
     fun aClosedChargeReachesTheReportAndOpensWithItsCurve() =

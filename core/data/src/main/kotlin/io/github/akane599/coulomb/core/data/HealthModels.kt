@@ -23,7 +23,10 @@ public data class HealthReport(
     val habits: ChargeHabits?,
     /** The latest closed charge sessions, newest first, at most [HealthRepository.RECENT_SESSIONS]. */
     val sessions: List<ChargeSessionRow>,
-    /** Whether more closed charge sessions exist than [sessions] holds. */
+    /**
+     * Whether the session history holds more than [sessions]: more closed charges, or any closed
+     * discharge, which only that history shows (audit BUG-016).
+     */
     val moreSessions: Boolean,
     /** Newest seen first. */
     val chargers: List<Charger>,

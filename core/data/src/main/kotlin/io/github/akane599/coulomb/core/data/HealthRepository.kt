@@ -80,7 +80,9 @@ public class HealthRepository
                         sessions.observeClosed(SessionKind.CHARGE, RECENT_SESSIONS + 1),
                         sessions.observeClosedSince(SessionKind.CHARGE, System.currentTimeMillis() - HABITS_MS),
                         sessions.observeChargerProfiles(),
-                    ) { recent, window, chargers -> Charges(recent, window, chargers) },
+                        // "See all" also leads to the discharge sessions (audit BUG-016).
+                        sessions.observeClosed(SessionKind.DISCHARGE, 1).map { it.isNotEmpty() }.distinctUntilChanged(),
+                    ) { recent, window, chargers, discharged -> Charges(recent, window, chargers, discharged) },
                 )
             }.distinctUntilChanged()
 
@@ -181,7 +183,7 @@ public class HealthRepository
                 trend = HealthReader.trend(stored.estimates, stored.summaries, settledDay),
                 habits = HealthReader.habits(window, highTime),
                 sessions = charges.recent.take(RECENT_SESSIONS).map(HealthReader::row),
-                moreSessions = charges.recent.size > RECENT_SESSIONS,
+                moreSessions = charges.recent.size > RECENT_SESSIONS || charges.discharged,
                 chargers = charges.chargers.map(HealthReader::charger),
             )
         }
@@ -237,6 +239,8 @@ public class HealthRepository
             val recent: List<SessionEntity>,
             val window: List<SessionEntity>,
             val chargers: List<ChargerProfileEntity>,
+            /** A closed discharge session exists. */
+            val discharged: Boolean,
         )
 
         public companion object {
