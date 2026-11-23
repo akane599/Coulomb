@@ -19,7 +19,6 @@ import io.github.akane599.coulomb.core.model.insight.Insight
 import io.github.akane599.coulomb.feature.actions.AppActionsSheet
 import io.github.akane599.coulomb.feature.actions.appActionsViewModel
 import io.github.akane599.coulomb.navigation.AppNavigator
-import io.github.akane599.coulomb.navigation.Destination
 import io.github.akane599.coulomb.navigation.Route
 
 /**
@@ -57,16 +56,20 @@ fun InsightLinks(
     }
 }
 
-/** The actions that open a screen of Coulomb. */
-private fun AppNavigator.follow(
+/**
+ * The actions that open a screen of Coulomb. A link shows a destination's first screen, never one
+ * left open there: `show`, as Now's own links do, not the bar's `select` (audit BUG-004). Internal
+ * for its test.
+ */
+internal fun AppNavigator.follow(
     action: ActionId,
     insight: Insight,
 ) {
     when (action) {
         ActionId.OPEN_APP_DETAIL -> {
             insight.uid?.let {
-                // App detail lives below Drain, whose window it reads.
-                select(Destination.Drain)
+                // App detail lives below Drain's list, whose window it reads.
+                show(Route.Drain)
                 openDetail(Route.AppDetail(it))
             }
         }
@@ -83,7 +86,7 @@ private fun AppNavigator.follow(
         }
 
         ActionId.OPEN_HEALTH -> {
-            select(Destination.Health)
+            show(Route.Health)
         }
 
         ActionId.OPEN_DOZE -> {
