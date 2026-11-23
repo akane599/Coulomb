@@ -158,7 +158,7 @@ private fun Page(
             // On a compact window Drain's selector is not on screen here.
             caption = spanName(detail.span, formats),
         )
-        InWindow(detail.entry, detail.coverage, formats)
+        InWindow(detail.entry, detail.coverage, detail.lowerBound, formats)
         if (detail.nights.isNotEmpty()) {
             SectionTitle(stringResource(R.string.wake_nights), provenance = Provenance.MEASURED)
             Nights(detail.nights, zone, nowMs, formats)
@@ -219,6 +219,7 @@ private val WakeKind.title: Int
 private fun InWindow(
     entry: WakeEntry?,
     coverage: Coverage,
+    lowerBound: Boolean,
     formats: Formats,
 ) {
     val colors = CoulombTheme.colors
@@ -247,7 +248,13 @@ private fun InWindow(
             }
         }
     }
-    if (coverage == Coverage.PARTIAL) Note(stringResource(R.string.wake_partial))
+    // One note: part of the window not collected, or a sum over windows that each keep only their
+    // longest records (audit DATA-004). Either way the figures are lower bounds.
+    if (coverage == Coverage.PARTIAL) {
+        Note(stringResource(R.string.wake_partial))
+    } else if (lowerBound) {
+        Note(stringResource(R.string.wake_lower_bound))
+    }
 }
 
 /** SPEC 10.5's per-session counts: each of the latest nights, with its bar against the busiest of them. */
@@ -289,7 +296,8 @@ private fun nightValue(
             byTime -> formats.held(entry.totalMs)
             else -> pluralStringResource(R.plurals.drain_times, entry.count.quantity(), formats.integer(entry.count))
         }
-    return if (entry != null && night.coverage == Coverage.PARTIAL) stringResource(R.string.wake_at_least, figure) else figure
+    val atLeast = entry != null && (night.coverage == Coverage.PARTIAL || night.lowerBound)
+    return if (atLeast) stringResource(R.string.wake_at_least, figure) else figure
 }
 
 /** The apps that took the first wakelock after this wake, or why none can be named. */

@@ -109,6 +109,13 @@ public data class DrainReport(
     val chargedInSpan: Boolean,
     /** Every wakelock, kernel source, wakeup reason and resume cause, longest first. */
     val wakes: List<WakeEntry>,
+    /**
+     * [wakes] were summed over more than one window. Each window keeps only its records of 1 s or
+     * more and the 30 longest of a kind (`WindowBuilder.MIN_WAKE_MS`, `MAX_WAKES_PER_KIND`), so a
+     * record may be missing from some of them and its time and count are lower bounds (ADR-0036 §4,
+     * audit DATA-004).
+     */
+    val wakesLowerBound: Boolean = false,
     /** Which sources of [wakes] and [alarms] the span collected; a missing source is never zero. */
     val wakeCoverage: WakeCoverage,
     /** Wakeup alarms per app, most first (S5 reports wakeup alarms only). */

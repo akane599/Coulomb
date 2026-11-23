@@ -270,6 +270,8 @@ internal class DrainReader
                 lowerBound = detail == null,
                 chargedInSpan = totals.pluggedWindows > 0,
                 wakes = wakes(rows, chain, names),
+                // Read once and kept: the wake coverage below needs the same steps.
+                wakesLowerBound = detail == null && chain.steps().size > 1,
                 wakeCoverage = if (detail != null) WakeCoverage.ofWindow(detail) else WakeCoverage.ofChain(chain.steps()),
                 alarms = alarms(rows, chain, names),
                 heldMs = held(rows, chain),

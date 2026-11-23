@@ -34,6 +34,8 @@ public data class WakeSourceDetail(
     val nights: List<WakeNight>,
     /** Which apps followed this wake; null for a kind the history does not record ([WakeCorrelation]). */
     val apps: WakeApps?,
+    /** [entry] was summed over several windows and is a lower bound ([DrainReport.wakesLowerBound]). */
+    val lowerBound: Boolean = false,
 )
 
 /** The record in one screen-off session of the Night Report. */
@@ -42,6 +44,8 @@ public data class WakeNight(
     /** Null when the session has no such record: none happened, or under less than whole [coverage], none was collected. */
     val entry: WakeEntry?,
     val coverage: Coverage,
+    /** [entry] was summed over several windows and is a lower bound ([DrainReport.wakesLowerBound]). */
+    val lowerBound: Boolean = false,
 )
 
 /** The apps that took the first wakelock after the phone woke for one reason, over a stretch of history. */
@@ -186,6 +190,7 @@ public class WakeSourceRepository
                         coverage = report.wakeCoverage.of(kind),
                         nights = rows,
                         apps = if (kind == WakeKind.WAKEUP_REASON) apps(tag, report.drains.toWallMs) else null,
+                        lowerBound = report.wakesLowerBound,
                     )
                 }.flowOn(dispatchers.io)
         }
@@ -198,7 +203,7 @@ public class WakeSourceRepository
         ): List<WakeNight> =
             latest.map { night ->
                 val report = drains.report(DrainSpan.Night(night.id)).first()
-                WakeNight(night, report?.find(kind, tag), report?.wakeCoverage?.of(kind) ?: Coverage.NONE)
+                WakeNight(night, report?.find(kind, tag), report?.wakeCoverage?.of(kind) ?: Coverage.NONE, report?.wakesLowerBound == true)
             }
 
         /** The day of history that ends where the span does. */

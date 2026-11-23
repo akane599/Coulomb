@@ -197,7 +197,8 @@
         <item quantity="other">%1$s wakeup alarms</item>
     </plurals>
     <string name="drain_show_all">Show all %1$s</string>
-    <string name="drain_wake_none">None recorded in this window.</string>
+    <string name="drain_wake_none_kept">Nothing held the phone awake for 1 s or longer in this window, and no alarm woke it.</string>
+    <string name="drain_wake_lower_bound">Summed from shorter windows, each of which keeps only records of 1 s or longer and the 30 longest of each kind, so a figure may be low.</string>
     <string name="drain_detail_separator">%1$s · %2$s</string>
 
     <string name="drain_empty_since_unplugged">Per-app drain appears with the first full reading after the unplug.</string>
@@ -211,6 +212,7 @@
     <string name="drain_wake_not_collected">Wakeups weren’t collected for this window.</string>
     <string name="drain_wake_group_not_collected">Not collected for this window.</string>
     <string name="drain_wake_group_none">None recorded.</string>
+    <string name="drain_wake_group_none_kept">None of 1 s or longer recorded.</string>
     <string name="drain_wake_group_partial">Only part of this window was collected, so the real counts may be higher.</string>
     <string name="drain_wake_group_none_partial">None recorded in the part of this window that was collected.</string>
     <!-- SPEC 19.3 glossary. -->
@@ -325,6 +327,7 @@
     <string name="wake_none_in_window">Not among this window’s records. Coulomb keeps the 30 longest of each kind, each of 1 s or more, so a shorter or rarer one may have run.</string>
     <string name="wake_not_collected">Not collected in this window, so Coulomb can’t say whether it ran.</string>
     <string name="wake_partial">Collected for part of this window: the figures are lower bounds.</string>
+    <string name="wake_lower_bound">Summed from shorter windows that keep only their longest records: the figures are lower bounds.</string>
     <string name="wake_nights">Night by night</string>
     <string name="wake_night_length">%1$s with the screen off</string>
     <string name="wake_night_none">No record</string>

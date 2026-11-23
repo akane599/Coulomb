@@ -192,7 +192,8 @@
         <item quantity="other">%1$s uyandıran alarm</item>
     </plurals>
     <string name="drain_show_all">Tümünü göster (%1$s)</string>
-    <string name="drain_wake_none">Bu aralıkta kayıt yok.</string>
+    <string name="drain_wake_none_kept">Bu aralıkta telefonu 1 sn veya daha uzun uyanık tutan bir şey yok ve onu uyandıran alarm da yok.</string>
+    <string name="drain_wake_lower_bound">Daha kısa aralıklardan toplandı; her aralık yalnızca 1 sn ve üzeri kayıtları ve her türün en uzun 30 kaydını tutar, bu yüzden bir değer düşük olabilir.</string>
     <string name="drain_detail_separator">%1$s · %2$s</string>
 
     <string name="drain_empty_since_unplugged">Uygulama başına tüketim, şarjdan çıkardıktan sonraki ilk tam ölçümle görünür.</string>
@@ -205,6 +206,7 @@
     <string name="drain_wake_not_collected">Bu aralık için uyandırmalar toplanmadı.</string>
     <string name="drain_wake_group_not_collected">Bu aralık için toplanmadı.</string>
     <string name="drain_wake_group_none">Kayıt yok.</string>
+    <string name="drain_wake_group_none_kept">1 sn veya daha uzun kayıt yok.</string>
     <string name="drain_wake_group_partial">Bu aralığın yalnızca bir kısmı toplandı; gerçek sayılar daha yüksek olabilir.</string>
     <string name="drain_wake_group_none_partial">Bu aralığın toplanan kısmında kayıt yok.</string>
     <string name="drain_wake_partial_definition">Bir uygulamanın, ekran kapalıyken işlemcinin çalışmaya devam etmesi isteği.</string>
@@ -304,6 +306,7 @@
     <string name="wake_none_in_window">Bu aralığın kayıtları arasında yok. Coulomb her türün en uzun 30 kaydını, her biri 1 sn veya daha uzunsa saklar; daha kısa ya da daha seyrek biri çalışmış olabilir.</string>
     <string name="wake_not_collected">Bu aralıkta toplanmadı; çalışıp çalışmadığını Coulomb söyleyemez.</string>
     <string name="wake_partial">Bu aralığın bir bölümünde toplandı: rakamlar alt sınırdır.</string>
+    <string name="wake_lower_bound">Yalnızca en uzun kayıtlarını tutan daha kısa aralıklardan toplandı: rakamlar alt sınırdır.</string>
     <string name="wake_nights">Gece gece</string>
     <string name="wake_night_length">Ekran %1$s kapalıydı</string>
     <string name="wake_night_none">Kayıt yok</string>

@@ -57,6 +57,14 @@ stored. Each has one line of reason (ADR-0027).
    - Screen sessions store no detail, so Last night always reads the chain.
    - R: each consecutive window folds UIDs under 0.1 mAh into the remainder (ADR-0018), so a sum
      over windows can miss an app's small parts but never adds any.
+   Amended 2026-11-23 (audit DATA-004): the same holds for wake records. A window keeps only its
+   records of 1 s or more and the 30 longest of a kind, and no mark of what it dropped, so a
+   record summed over more than one window is a lower bound (`DrainReport.wakesLowerBound`): the
+   wake page says so and writes "At least" for a night, and Drain's Wakeups lens adds a line.
+   An empty group of a batterystats kind reads "None of 1 s or longer recorded", never "None".
+   A stored mark per window and kind of what was dropped would say "at least" only where
+   something was; it needs a schema change and was left out (the owner left the choice to the
+   fix run, option (a) of its plan).
 5. **A wakelock's screen-off share** is its time in wholly screen-off windows, divided by its time
    in wholly screen-off or wholly screen-on windows. Without either kind it has no share.
    - R: screen changes take heavy snapshots, so most windows are one or the other; a mixed window's

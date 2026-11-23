@@ -136,7 +136,10 @@ internal fun LazyListScope.wakeupItems(
     val only =
         when {
             coverages.all { it == Coverage.NONE } -> R.string.drain_wake_not_collected
-            empty && coverages.all { it == Coverage.WHOLE } -> R.string.drain_wake_none
+
+            // "None" is more than is known: a window keeps wake records of 1 s or more only (audit DATA-004).
+            empty && coverages.all { it == Coverage.WHOLE } -> R.string.drain_wake_none_kept
+
             else -> null
         }
     if (only != null) {
@@ -151,8 +154,9 @@ internal fun LazyListScope.wakeupItems(
         return
     }
     item(key = "wake-caption", contentType = "note") {
+        val caption = stringResource(R.string.drain_wakeups_caption)
         Text(
-            stringResource(R.string.drain_wakeups_caption),
+            if (report.wakesLowerBound) caption + " " + stringResource(R.string.drain_wake_lower_bound) else caption,
             Modifier.fillMaxWidth().padding(top = CoulombSpacing.Space16),
             color = CoulombTheme.colors.textSecondary,
             style = CoulombTheme.typography.caption,
@@ -170,6 +174,7 @@ internal fun LazyListScope.wakeupItems(
             count = view.entries.size,
             sections = view.sections(open).map { Section(it.subsystem?.name, it.subsystem?.label, it.entries) },
             coverage = view.coverage,
+            floored = view.kind in FLOORED,
             open = open,
             toggle = { lists.toggleGroup(view.group.ordinal) },
             formats = formats,
@@ -200,6 +205,13 @@ private fun LazyListScope.alarmItems(
         rowKey = { "alarm-${it.uid}" },
     ) { alarm, first -> AlarmRow(alarm, alarm.wakeups / alarmWakeups, report.basisMs(WakeBasis.ALARMS), first, formats) }
 }
+
+/**
+ * The kinds batterystats gives. A window keeps their records of 1 s or more only
+ * (`WindowBuilder.MIN_WAKE_MS`), so an empty group of one is "none of 1 s or longer", never "none".
+ * The root kinds mark their own cut as partial coverage.
+ */
+private val FLOORED = setOf(WakeKind.PARTIAL, WakeKind.KERNEL, WakeKind.WAKEUP_REASON)
 
 /** A run of a Wakeups group's rows; [subsystem] heads it in the Kernel group and is null elsewhere. */
 internal data class WakeSection(
@@ -250,9 +262,10 @@ private fun <T> LazyListScope.group(
     toggle: () -> Unit,
     formats: Formats,
     rowKey: (T) -> String,
+    floored: Boolean = false,
     row: @Composable (entry: T, first: Boolean) -> Unit,
 ) {
-    item(key = "group-$key", contentType = "group-head") { GroupTop(head(), count, coverage) }
+    item(key = "group-$key", contentType = "group-head") { GroupTop(head(), count, coverage, floored) }
     sections.forEachIndexed { at, section ->
         val title = section.title
         if (title != null) {
@@ -319,6 +332,7 @@ private fun LazyItemScope.GroupTop(
     head: GroupHead,
     count: Int,
     coverage: Coverage,
+    floored: Boolean,
 ) {
     val colors = CoulombTheme.colors
     val type = CoulombTheme.typography
@@ -329,7 +343,7 @@ private fun LazyItemScope.GroupTop(
                 when (coverage) {
                     Coverage.NONE -> R.string.drain_wake_group_not_collected
                     Coverage.PARTIAL -> R.string.drain_wake_group_none_partial
-                    Coverage.WHOLE -> R.string.drain_wake_group_none
+                    Coverage.WHOLE -> if (floored) R.string.drain_wake_group_none_kept else R.string.drain_wake_group_none
                 }
             Text(
                 stringResource(text),

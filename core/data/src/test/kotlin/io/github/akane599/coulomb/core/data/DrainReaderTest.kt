@@ -633,4 +633,30 @@ internal class DrainReaderTest : DrainDbTest() {
                     ?.map { it.component },
             ).containsExactly(PowerComponent.CPU)
         }
+
+    /**
+     * Audit DATA-004: each window keeps only its wake records of 1 s or more and the 30 longest of a
+     * kind. A record summed over several windows may be missing from some of them, so its time and
+     * count are lower bounds; a stored window's own records are what that window kept.
+     */
+    @Test
+    fun aWakeSummedOverWindowsIsALowerBoundAndOneWindowIsNot() =
+        runTest {
+            val a = heavy(1_000)
+            val b = heavy(2_000)
+            val c = heavy(3_000)
+            store(window(a, b))
+            store(window(b, c), WindowRows(wakes = listOf(wake(1_400, 40))))
+
+            val summed = checkNotNull(reader.read(DrainSpan.Last24Hours, empty()))
+            assertThat(summed.wakes.single().totalMs).isEqualTo(1_400)
+            assertThat(summed.wakesLowerBound).isTrue()
+
+            // One window from end to end: nothing was summed.
+            heavy(4_000).also { d -> store(window(c, d), WindowRows(wakes = listOf(wake(2_000, 3)))) }
+            val night = sessions.insert(screenOff(c, checkNotNull(snapshots.latestHeavy()).id))
+            val one = checkNotNull(reader.read(DrainSpan.Night(night), empty()))
+            assertThat(one.wakes.single().totalMs).isEqualTo(2_000)
+            assertThat(one.wakesLowerBound).isFalse()
+        }
 }
