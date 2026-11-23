@@ -14,7 +14,6 @@ import io.github.akane599.coulomb.core.model.InsightSeverity
 import io.github.akane599.coulomb.core.model.InsightState
 import kotlinx.coroutines.flow.Flow
 
-/** Insights (SPEC 9) and the action log (SPEC 13). Order that decides behaviour follows ids. */
 /** The columns of an insight that the rules own: what [InsightDao.refresh] writes, and nothing else. */
 public data class InsightEvidence(
     val id: Long,
@@ -25,6 +24,7 @@ public data class InsightEvidence(
     val evidenceJson: String,
 )
 
+/** Insights (SPEC 9) and the action log (SPEC 13). Order that decides behaviour follows ids. */
 @Dao
 public interface InsightDao {
     @Insert
