@@ -24,6 +24,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicInteger
 
 /** SPEC 7.5: what follows a stored snapshot hears of it, in order, and cannot stop collection. */
 @RunWith(AndroidJUnit4::class)
@@ -109,6 +110,52 @@ class CollectorActorTest {
             assertThat(db.snapshotDao().latestHeavy()).isNull()
             actor.release()
             assertThat(handled(SnapshotTrigger.SERVICE_STARTED)).isEqualTo(SnapshotOutcome.HEAVY)
+            actor.close()
+        }
+
+    /**
+     * Audit BUG-003: a level change is stored as a sample, which no snapshot observer hears of. On
+     * the charger the Live Update and the target alarm follow each percent, so they are told; off
+     * the charger nothing runs per percent.
+     */
+    @Test
+    fun aLevelChangeOnTheChargerReachesTheLevelObserversAndOffItNothing() =
+        runBlocking {
+            val snapshots = AtomicInteger()
+            val levels = AtomicInteger()
+            val observer =
+                object : SnapshotObserver {
+                    override suspend fun onSnapshot(heavy: Boolean) {
+                        snapshots.incrementAndGet()
+                    }
+
+                    override suspend fun onLevel() {
+                        levels.incrementAndGet()
+                    }
+                }
+            val engine = CollectorEngine(db, device, FakeStats(clock), FakeIdentity(), clock, MemoryBlobs(), FakeLabels(mutableMapOf()))
+            val actor = CollectorActor(engine, scope, setOf(observer))
+
+            suspend fun handled(trigger: SnapshotTrigger): SnapshotOutcome {
+                val done = CompletableDeferred<SnapshotOutcome>()
+                actor.post(CollectorEvent.Trigger(trigger, done))
+                return withTimeout(TIMEOUT_MS) { done.await() }
+            }
+            device.set(hours = 9.0, level = 40, chargeMah = 2_000.0, screenOn = false, plugged = true)
+            handled(SnapshotTrigger.POWER_CONNECTED)
+            for ((i, level) in listOf(41, 42, 43).withIndex()) {
+                device.set(hours = 9.1 + i * 0.1, level = level, chargeMah = 2_050.0 + i * 50, screenOn = false, plugged = true)
+                assertThat(handled(SnapshotTrigger.LEVEL_CHANGED)).isEqualTo(SnapshotOutcome.NONE)
+            }
+            assertThat(snapshots.get()).isEqualTo(1)
+            assertThat(levels.get()).isEqualTo(3)
+
+            device.set(hours = 9.5, level = 43, chargeMah = 2_150.0, screenOn = false)
+            handled(SnapshotTrigger.POWER_DISCONNECTED)
+            device.set(hours = 9.9, level = 42, chargeMah = 2_100.0, screenOn = false)
+            assertThat(handled(SnapshotTrigger.LEVEL_CHANGED)).isEqualTo(SnapshotOutcome.NONE)
+            assertThat(snapshots.get()).isEqualTo(2)
+            assertThat(levels.get()).isEqualTo(3)
             actor.close()
         }
 

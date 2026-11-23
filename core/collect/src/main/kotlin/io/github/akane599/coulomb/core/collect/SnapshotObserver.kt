@@ -17,6 +17,13 @@ import dagger.multibindings.Multibinds
 public fun interface SnapshotObserver {
     /** A snapshot was stored; [heavy] when it read the platform's statistics. */
     public suspend fun onSnapshot(heavy: Boolean)
+
+    /**
+     * The level changed on the charger and was stored as a sample, not a snapshot (ADR-0015). Only
+     * what follows each percent there belongs here: the Charging Live Update and the alarms
+     * (SPEC 12.2, 12.3; audit BUG-003). Off the charger nothing is called per percent.
+     */
+    public suspend fun onLevel() {}
 }
 
 /** The set is empty unless a module binds observers into it. */

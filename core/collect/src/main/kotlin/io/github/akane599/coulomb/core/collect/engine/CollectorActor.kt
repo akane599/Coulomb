@@ -85,6 +85,7 @@ internal class CollectorActor(
                     else -> SnapshotOutcome.NONE
                 }
             if (action == Action.LIGHT || action == Action.HEAVY) notify(heavy = action == Action.HEAVY)
+            if (action == Action.SAMPLE && levelOnCharger(event)) each { it.onLevel() }
         } catch (e: CancellationException) {
             throw e
         } catch (
@@ -97,11 +98,23 @@ internal class CollectorActor(
         }
     }
 
-    /** SPEC 7.5: what follows a stored snapshot. One observer's failure is not the others' or the collector's. */
-    private suspend fun notify(heavy: Boolean) {
+    /**
+     * A level change stored as a sample while on the charger. The Live Update and the target alarm
+     * follow each percent there (SPEC 12.2, 12.3), and a sample is no snapshot (ADR-0015), so the
+     * observers are told of it apart (audit BUG-003). The trigger already holds the collector
+     * awake; nothing is added off the charger.
+     */
+    private fun levelOnCharger(event: CollectorEvent): Boolean =
+        (event as? CollectorEvent.Trigger)?.trigger == SnapshotTrigger.LEVEL_CHANGED && engine.pluggedAtLastTrigger
+
+    /** SPEC 7.5: what follows a stored snapshot. */
+    private suspend fun notify(heavy: Boolean) = each { it.onSnapshot(heavy) }
+
+    /** Calls every observer. One observer's failure is not the others' or the collector's. */
+    private suspend fun each(call: suspend (SnapshotObserver) -> Unit) {
         for (observer in observers) {
             try {
-                observer.onSnapshot(heavy)
+                call(observer)
             } catch (e: CancellationException) {
                 throw e
             } catch (

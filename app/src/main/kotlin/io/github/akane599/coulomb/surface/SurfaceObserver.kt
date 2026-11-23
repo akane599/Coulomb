@@ -85,6 +85,23 @@ class SurfaceObserver
             widgets.refresh(heavy)
         }
 
+        /**
+         * A level change on the charger (audit BUG-003): the Monitor line, the Charging Live Update
+         * and the alarms, which follow each percent there (SPEC 12.1 to 12.3). No rule, digest or
+         * widget runs: those follow snapshots (SPEC 7.5, 12.4). Lite has none of the three
+         * (ADR-0064 §5).
+         */
+        override suspend fun onLevel() {
+            val set = settings.settings.first()
+            if (set.liteMode) return
+            val nowMs = System.currentTimeMillis()
+            val reading = battery.reading.first() ?: return
+            notifier.ensureChannels()
+            notifier.monitor(monitorLine(reading, formatsFor(context)))
+            charge(nowMs, reading.battery.levelPct)
+            alerts(reading, nowMs, set)
+        }
+
         /** "0.7 %/h · screen off 6 h" (SPEC 12.1): the rate of the state with the most to say, or the level on the charger. */
         private fun monitorLine(
             reading: BatteryReading,

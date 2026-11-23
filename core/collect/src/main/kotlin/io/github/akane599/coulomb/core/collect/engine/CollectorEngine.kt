@@ -107,9 +107,14 @@ internal class CollectorEngine(
     var calibration: CurrentCalibration? = null
         private set
 
+    /** The last trigger's own reading found the phone on a charger. */
+    var pluggedAtLastTrigger: Boolean = false
+        private set
+
     /** Handles one trigger and returns what it did: a heavy snapshot that was stored light is [Action.LIGHT]. */
     suspend fun handle(trigger: SnapshotTrigger): Action {
         val reading = light.read()
+        pluggedAtLastTrigger = reading.plugged
         val uptimeAtReadMs = clock.uptimeMs()
         val boot = enterBoot(reading)
         val decision =

@@ -23,13 +23,21 @@ may be told.
    (SPEC 7.2). It reads stored state only. No alarm, job, timer or sampler is added. It also runs
    the insight engine after a heavy snapshot, which the app's insights binding did before, so the
    notifications see what that run found.
+   Amended 2026-11-23 (audit BUG-003): a level change is not a snapshot. It is stored as a sample
+   (ADR-0015), and no snapshot observer heard of it, so on the charger the Live Update stood
+   still and the target alarm waited for the next screen or plug event. The observer now has a
+   second entry, `onLevel`, which the collector calls for a level change stored as a sample
+   while the phone is on a charger. It runs the Monitor line, the Live Update and the alarms
+   only; rules, the digest and the widgets still follow snapshots. Off the charger nothing runs
+   per percent. A light snapshot per percent was the other way; it would debounce the heavy
+   snapshot of an app open within a minute of each level change.
 3. **Monitor line.** The collector's own notification (channel `collector`, id 1) is posted again
    with one line: the screen-off rate and its hours when there are 15 minutes of it, else the
    screen-on rate, else nothing; on the charger, the level. `:core:collect` builds the
    notification; the app supplies the line, because the collector may not depend on read models.
 4. **Live Update pace.** Shown with the first snapshot of a charge, then on a level change no
-   sooner than 30 s after the last update. Snapshots come with level changes, so nothing ticks
-   in between. The request to be promoted is always made; the system and the user decide
+   sooner than 30 s after the last update. Level changes on the charger reach the observer
+   (§2 as amended), so nothing ticks in between. The request to be promoted is always made; the system and the user decide
    (AOSP `Notification.hasPromotableCharacteristics`, cited in the code).
    `canPostPromotedNotifications()` is for Settings to say whether Live Updates are allowed, not
    for building a different notification: unpromoted, it is the same ongoing notification.

@@ -56,8 +56,9 @@ Glance cuts text that does not fit at a character, not at a word.
 ## Consequences
 
 - With the screen off and unplugged no snapshot is stored, so a widget shows the level of the
-  last snapshot until the next one; level changes are light snapshots, so it is at most a point
-  behind while the phone is awake.
+  last snapshot until the next one. A level change is a sample, not a snapshot (corrected
+  2026-11-23, audit BUG-003), so the widget follows the level at the next screen, plug or
+  periodic snapshot, and can be more than a point behind until then.
 - At 200% text the level widget may drop its verdict and top drains a row; nothing is cut.
 
 ## Not verified yet
