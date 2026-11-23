@@ -12,4 +12,6 @@ dependencies {
     implementation(projects.core.datastore)
     implementation(projects.core.insights)
     implementation(projects.core.privileged)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }
